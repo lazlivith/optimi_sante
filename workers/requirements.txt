@@ -1,0 +1,4 @@
+psycopg2-binary
+WooCommerce
+python-dotenv
+beautifulsoup4

@@ -1,0 +1,99 @@
+spring:
+  application:
+    name: optimisante-backend
+  profiles:
+    active: dev
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5432/optimisante_db
+    username: postgres
+    password: Investx2026
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      pool-name: OptimisanteHikariCP
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:default-dev-secret-key-at-least-32-chars-long!}
+      expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24 hours
+  aws:
+    s3:
+      endpoint: ${AWS_S3_ENDPOINT:http://localhost:4566}
+      region: ${AWS_REGION:us-east-1}
+      access-key: ${AWS_ACCESS_KEY:test}
+      secret-key: ${AWS_SECRET_KEY:test}
+      bucket: ${AWS_S3_BUCKET:optimisante-docs-dev}
+    kms:
+      endpoint: ${AWS_KMS_ENDPOINT:http://localhost:4566}
+      key-id: ${AWS_KMS_KEY_ID:default-kms-key-id}
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:default}
+    api-key: ${CLOUDINARY_API_KEY:default}
+    api-secret: ${CLOUDINARY_API_SECRET:default}
+
+stripe:
+  api-key: ${STRIPE_SECRET_KEY:sk_test_PLACEHOLDER}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_PLACEHOLDER}
+  currency: eur
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 10
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+  aws:
+    s3:
+      region: ${AWS_REGION}
+      bucket: ${AWS_S3_BUCKET}

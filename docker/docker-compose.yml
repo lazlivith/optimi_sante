@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: optimisante-postgres
+    ports:
+      - "5051:5432"
+    environment:
+      POSTGRES_DB: optimisante_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - optimisante-pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: optimisante-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - optimisante-redisdata:/data
+    restart: unless-stopped
+
+  localstack:
+    image: localstack/localstack:latest
+    container_name: optimisante-localstack
+    ports:
+      - "4566:4566"            # LocalStack Gateway
+      - "4510-4559:4510-4559"  # external services port range
+    environment:
+      - SERVICES=s3,kms
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: optimisante-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/optimisante_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_DATA_REDIS_HOST=redis
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+volumes:
+  optimisante-pgdata:
+  optimisante-redisdata:

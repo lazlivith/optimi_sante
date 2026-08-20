@@ -1,0 +1,458 @@
+CAHIER DES CHARGES TECHNIQUE V6 (FINAL READY FOR DEV)
+Projet : Plateforme E-Commerce B2B/B2C & SaaS de Mobilité/Formation Médicale Optimi Santé
+En-tête / Mission : « Faciliter la mobilité en formation pour les médecins d'Afrique »
+Périmètre : Pure Player Web E-Commerce (Matériel Médical), Lead Capture, Inscription & Onboarding Formations, Tracking Consulaire (Visa/Convention Tripartite), Multi-Tenant & RBAC.
+Stack Technique : Java 21 (Spring Boot 3 + OpenPDF) + React 18 (Tailwind CSS) + Python 3.12 (FastAPI Worker pour scripts/traitements batch) + PostgreSQL 16 + Redis + AWS S3 KMS.
+ 
+________________________________________
+1. MATRICE DES RÔLES ET ACCÈS (RBAC)
+                          ┌─────────────────────────────────────────────────────────────────┐
+                          │            REACT FRONTEND / API GATEWAY JWT (RBAC)              │
+                          └────┬─────────────────┬───────────────────┬──────────────────┬───┘
+                               │                 │                   │                  │
+                               ▼                 ▼                   ▼                  ▼
+                    ┌──────────────────┐┌──────────────────┐┌──────────────────┐┌──────────────────┐
+                    │ Client B2C       ││ Client B2B       ││ Médecin (BFC)    ││ CHU / Partner    │
+                    │ - Catalogue Web  ││ - Tarifs Pro/Devis││ - Lead Capture   ││ - Création Session│
+                    │ - Carte / Stripe ││ - Paiement BC 30j││ - Dossier Visa   ││ - Validation Cand.│
+                    └──────────────────┘└──────────────────┘└──────────────────┘└──────────────────┘
+                               │                 │                   │                  │
+                               └─────────────────┴─────────┬─────────┴──────────────────┘
+                                                           │
+                                                           ▼
+                                            ┌─────────────────────────────┐
+                                            │ Dashboard Back-Office Admin │
+                                            │ - Valide Comptes B2B & CHU  │
+                                            │ - Émet Conventions / Visas  │
+                                            │ - Audit RGPD / Logs Finance │
+                                            └─────────────────────────────┘
+Espace / Fonctionnalité	B2C (CLIENT_B2C)	B2B (CLIENT_B2B)	Médecin (MEDECIN)	CHU / Partner (CENTRE_FORMATION)	Admin Optimi (ADMIN / SUPER_ADMIN)
+Achat Catalogue E-Commerce	Carte / Virement	Carte / BC 30j / Devis	Non	Non	Full Admin
+Téléchargement Brochures	Libre	Libre	Lead Capture Obligatoire	Libre	Full Admin
+Gestion Sessions Formation	Non	Non	Consultation / Inscription	Création / Édition	Validation / Publication
+Validation Candidatures	Non	Non	Non	Oui (Académique)	Oui (Administrative/Visa)
+Coffre-fort Documents	Non	Non	Upload (Passeport, etc.)	Lecture Sécurisée	Validation / Signatures
+
+ 
+________________________________________
+2. MODÉLISATION DE LA BASE DE DONNÉES (POSTGRESQL 16)
+SQL
+-- 1. MULTI-TENANT & CORE USERS
+CREATE TABLE tenants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(50) UNIQUE NOT NULL, -- 'FR_MAIN'
+    name VARCHAR(150) NOT NULL,
+    domain VARCHAR(255) UNIQUE NOT NULL,
+    currency VARCHAR(10) DEFAULT 'EUR',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(30) NOT NULL CHECK (role IN ('SUPER_ADMIN', 'ADMIN', 'CLIENT_B2C', 'CLIENT_B2B', 'MEDECIN', 'CENTRE_FORMATION')),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE NULL -- Soft Delete
+);
+
+-- 2. EXTENSIONS PROFIL (CLASS TABLE INHERITANCE)
+
+CREATE TABLE company_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    company_name VARCHAR(255) NOT NULL,
+    siret_finess VARCHAR(50) NOT NULL,
+    vat_number VARCHAR(50),
+    billing_address TEXT NOT NULL,
+    b2b_discount_rate DECIMAL(5, 2) DEFAULT 0.00,
+    credit_limit DECIMAL(10, 2) DEFAULT 0.00,
+    is_credit_approved BOOLEAN DEFAULT FALSE,
+    approved_by UUID REFERENCES users(id),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE doctor_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone_whatsapp VARCHAR(30) NOT NULL,
+    country_of_residence VARCHAR(100) NOT NULL,
+    medical_specialty VARCHAR(150) NOT NULL,
+    medical_council_number VARCHAR(100),
+    current_hospital VARCHAR(255),
+    passport_number VARCHAR(100),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE partner_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    institution_name VARCHAR(255) NOT NULL,
+    finess_accreditation VARCHAR(100) NOT NULL,
+    contact_person_name VARCHAR(150) NOT NULL,
+    contact_email VARCHAR(255) NOT NULL,
+    contact_phone VARCHAR(30) NOT NULL,
+    address TEXT NOT NULL,
+    is_verified BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. DOMAINE E-COMMERCE & RESERVATION TRANSACTIONNELLE
+
+CREATE TABLE categories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+    name VARCHAR(150) NOT NULL,
+    slug VARCHAR(150) NOT NULL,
+    parent_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+    UNIQUE(tenant_id, slug)
+);
+
+CREATE TABLE products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+    sku VARCHAR(100) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL,
+    description TEXT,
+    base_price DECIMAL(10, 2) NOT NULL,
+    stock_quantity INT DEFAULT 0,
+    stock_threshold INT DEFAULT 5,
+    is_quote_only BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+    version INT DEFAULT 1, -- Optimistic Locking
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE NULL -- Soft Delete
+);
+
+CREATE TABLE stock_reservations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    quantity INT NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+    order_number VARCHAR(50) UNIQUE NOT NULL,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    payment_method VARCHAR(50) CHECK (payment_method IN ('STRIPE_CARD', 'BANK_TRANSFER', 'PURCHASE_ORDER_30D', 'QUOTE_REQUEST')),
+    payment_status VARCHAR(30) DEFAULT 'UNPAID' CHECK (payment_status IN ('UNPAID', 'PAID', 'PENDING_APPROVAL', 'QUOTE_SENT', 'QUOTE_REJECTED')),
+    status VARCHAR(30) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PROCESSING', 'SHIPPED', 'CANCELLED')),
+    is_quote BOOLEAN DEFAULT FALSE,
+    purchase_order_ref VARCHAR(100),
+    total_amount DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE order_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES products(id),
+    unit_price DECIMAL(10, 2) NOT NULL,
+    quantity INT NOT NULL,
+    subtotal DECIMAL(10, 2) NOT NULL
+);
+
+-- 4. DOMAINE FORMATIONS & MOBILITÉ
+
+CREATE TABLE trainings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+    partner_id UUID NOT NULL REFERENCES partner_profiles(id) ON DELETE RESTRICT,
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    medical_specialty VARCHAR(150) NOT NULL,
+    description TEXT NOT NULL,
+    brochure_s3_key TEXT NOT NULL,
+    duration_days INT NOT NULL,
+    is_long_stay BOOLEAN DEFAULT FALSE,
+    price DECIMAL(10, 2) NOT NULL,
+    is_published BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE training_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    training_id UUID NOT NULL REFERENCES trainings(id) ON DELETE CASCADE,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    capacity INT NOT NULL,
+    available_seats INT NOT NULL,
+    location_hospital VARCHAR(255) NOT NULL,
+    status VARCHAR(30) DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'FULL', 'CANCELLED', 'COMPLETED'))
+);
+
+CREATE TABLE prospect_leads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    training_id UUID REFERENCES trainings(id) ON DELETE CASCADE,
+    email VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone_whatsapp VARCHAR(30) NOT NULL,
+    country VARCHAR(100) NOT NULL,
+    specialty VARCHAR(150) NOT NULL,
+    downloaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE enrollments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    enrollment_number VARCHAR(50) UNIQUE NOT NULL,
+    doctor_id UUID NOT NULL REFERENCES doctor_profiles(id) ON DELETE RESTRICT,
+    session_id UUID NOT NULL REFERENCES training_sessions(id) ON DELETE RESTRICT,
+    lead_id UUID REFERENCES prospect_leads(id) ON DELETE SET NULL, -- Traçabilité Lead Capture
+    status VARCHAR(30) DEFAULT 'PENDING_REVIEW' CHECK (status IN (
+        'PENDING_REVIEW', 'APPROVED_ACADEMIC', 'APPROVED_ADMINISTRATIVE',
+        'CONVENTION_ISSUED', 'VISA_SUBMITTED', 'READY_TO_START', 'REJECTED'
+    )),
+    tripartite_convention_s3_key TEXT,
+    rejection_reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE enrollment_documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    enrollment_id UUID NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE,
+    document_type VARCHAR(50) NOT NULL CHECK (document_type IN ('PASSPORT', 'DIPLOMA', 'MEDICAL_COUNCIL_CERT', 'FINANCIAL_GUARANTEE', 'VISA_GRANT')),
+    s3_key TEXT NOT NULL,
+    is_verified BOOLEAN DEFAULT FALSE,
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index d'Optimisation
+CREATE INDEX idx_products_tenant_sku ON products(tenant_id, sku) WHERE deleted_at IS NULL;
+CREATE INDEX idx_stock_res_expiry ON stock_reservations(expires_at);
+CREATE INDEX idx_orders_user ON orders(user_id);
+CREATE INDEX idx_enrollments_doctor ON enrollments(doctor_id);
+CREATE INDEX idx_enrollments_lead ON enrollments(lead_id);
+ 
+________________________________________
+3. ARCHITECTURE BACKEND & FLUX DE DONNÉES
+E-Commerce Checkout & Réservation de Stock (Spring Boot Transactionnel) :
+1.	L'utilisateur lance le checkout.
+2.	Java Spring Boot insère une ligne dans stock_reservations avec un expires_at à $T + 15\text{ min}$.
+3.	Lors du calcul du stock disponible pour un produit, l'application exécute :
+$$\text{Stock Disponible} = \text{stock\_quantity} - \sum(\text{stock\_reservations non expirées})$$
+4.	Une fois le paiement Stripe/BC validé, le stock physique est décrémenté en BDD via une requête avec lock optimiste (version = version + 1) et la ligne de réservation est nettoyée.
+Génération Synchrone de la Convention Tripartite (Java Native OpenPDF) :
+1.	Lors du passage du statut de la candidature à APPROVED_ADMINISTRATIVE, Spring Boot déclenche la génération du PDF en mémoire via OpenPDF.
+2.	Le fichier généré est directement transmis sur AWS S3 KMS.
+3.	La clé tripartite_convention_s3_key est immédiatement enregistrée dans la table enrollments.
+ 
+________________________________________
+4. DESIGN DES APIS REST CLÉS (SPRING BOOT)
+•	POST /api/v1/cart/checkout : Valide le panier, exécute la réservation de stock transactionnelle et initie la session Stripe ou la soumission de commande B2B.
+•	POST /api/v1/quotes/request : Génère une demande de devis (is_quote = true) pour les produits sur devis (is_quote_only = true).
+•	POST /api/v1/trainings/{id}/lead-capture : Enregistre le prospect dans prospect_leads et fournit une Presigned URL S3 pour le téléchargement sécurisé de la brochure.
+•	PATCH /api/v1/partner/enrollments/{id}/academic-review : Permet au CHU d'approuver académiquement le dossier du médecin.
+•	GET /api/v1/documents/{documentId}/download-url : Génère un lien de téléchargement S3 KMS temporaire (TTL 15 min) après vérification stricte du rôle RBAC.
+ 
+________________________________________
+5. ROADMAP TECHNIQUE & PLANNING DES SPRINTS
+┌─────────────────────────────────────────────────────────────────────────┐
+│ SPRINT 1 : Socle Identity RBAC, Multi-Tenant & Schema V6                │
+│ • Scripts Migration Flyway/Liquibase avec le schéma PostgreSQL V6       │
+│ • Configuration Spring Security (JWT, 4 Rôles, Intercepteurs)          │
+│ • Configuration AWS S3 KMS & Service Presigned URLs                     │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+┌────────────────────────────────────▼────────────────────────────────────┐
+│ SPRINT 2 : Moteur E-Commerce, Devis B2B & Réservation Stock             │
+│ • Engine Catalogue, Gestion Devis & Tables Transactionnelles Stock      │
+│ • Tunnels de paiement Stripe (B2C) et Bon de Commande / Devis (B2B)      │
+│ • Dashboard Admin : Validation des crédits B2B et modération devis      │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+┌────────────────────────────────────▼────────────────────────────────────┐
+│ SPRINT 3 : Lead Capture & Module CHU Partenaire                         │
+│ • Endpoint Lead Capture & Génération liens de téléchargement brochures  │
+│ • Interface React CHU : Création de sessions et validation candidats    │
+│ • Formulaires d'inscription & Dépôt sécurisé des pièces Médecin         │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+┌────────────────────────────────────▼────────────────────────────────────┐
+│ SPRINT 4 : Generation PDF OpenPDF & Tracking Consulaire                 │
+│ • Engine Java OpenPDF pour génération instantanée des Conventions PDF   │
+│ • Stepper de suivi du dossier de mobilité (Passeport, Visa, Logistique) │
+│ • Interconnexion Lead Capture -> Inscription Finale (`lead_id`)         │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+┌────────────────────────────────────▼────────────────────────────────────┐
+│ SPRINT 5 : Interfaces Spécifiques, Audits & Dashboard Governance        │
+│ • Espace Médecin (Coffre-fort documentaire) & Espace CHU                │
+│ • Dashboard Governance Dual-Admin (Finance, Modération, Audits RGPD)    │
+│ • Scripts Python FastAPI pour rapports batch et exports analytiques     │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+┌────────────────────────────────────▼────────────────────────────────────┐
+│ SPRINT 6 : Hardening Sécurité, Tests E2E & Déploiement                  │
+│ • Tests de charge, audits de sécurité OWASP & vérification Soft Delete   │
+│ • Tests E2E Playwright sur les 4 parcours applicatifs                   │
+│ • Déploiement CI/CD Docker Kubernetes sur infrastructure Cloud 
+ 
+Planning de Réalisation (12 Semaines / 6 Sprints)
+Semaine	Sprint / Phase	Objectifs & Livrables Clés	Stack & Composants Directs
+S1	Sprint 1
+
+
+(Socle & Identity)	• Initialisation des dépôts et pipeline CI/CD
+
+
+• Execution des scripts Flyway/Liquibase BDD (Schéma V6.1)
+
+
+• Configuration du Multi-Tenancy (FR_MAIN)	• PostgreSQL 16
+
+
+• Flyway / Liquibase
+
+
+• Docker / Git
+S2	Sprint 1
+
+
+(Security & S3)	• Implémentation Spring Security + JWT RBAC (4 rôles)
+
+
+• Configuration AWS S3 KMS & Service Presigned URLs
+
+
+• Auth Interceptors & Handlers de permissions côté React	• Java 21 / Spring Boot 3
+
+
+• React 18 / Tailwind
+
+
+• AWS S3 KMS
+S3	Sprint 2
+
+
+(Engine Catalog)	• Moteur de catalogue produits, catégories & grilles tarifaires B2B
+
+
+• Gestion des réservations transactionnelles de stock (stock_reservations)	• Spring Boot 3
+
+
+• PostgreSQL 16
+
+
+• Redis
+S4	Sprint 2
+
+
+(Checkout & Devis)	• Tunnel Checkout B2C/B2B (Stripe, Virement)
+
+
+• Endpoint & Workflow de demande de devis B2B (QUOTE_REQUEST)
+
+
+• Dashboard Admin pour modération et émission des devis	• Stripe API
+
+
+• Spring Boot 3
+
+
+• React 18
+S5	Sprint 3
+
+
+(Lead Capture)	• Endpoint POST /lead-capture & génération de Presigned URLs pour brochures
+
+
+• Traçabilité BDD (prospect_leads) pour le suivi d'acquisition	• Spring Boot 3
+
+
+• AWS S3 KMS
+S6	Sprint 3
+
+
+(Module CHU)	• Interface CHU/Partner : Création & gestion des sessions de formation
+
+
+• Formulaire d'inscription Médecin & Dépôt sécurisé des pièces en BDD	• React 18 / Tailwind
+
+
+• Spring Boot 3
+S7	Sprint 4
+
+
+(Engine OpenPDF)	• Développement de l'Engine OpenPDF synchrone en Java (Conventions Tripartites)
+
+
+• Upload direct S3 KMS et enregistrement automatique de tripartite_convention_s3_key	• Java 21 / OpenPDF
+
+
+• AWS S3 KMS
+S8	Sprint 4
+
+
+(Tracking Visa)	• Stepper de suivi de mobilité (Passeport, Visa, Logistique)
+
+
+• Interconnexion analytique Lead Capture $\rightarrow$ Inscription finale (lead_id)	• React 18 / Tailwind
+
+
+• PostgreSQL 16
+S9	Sprint 5
+
+
+(Espaces Dédiés)	• Espace Médecin (Coffre-fort documentaire) & Espace CHU
+
+
+• Interface de validation académique pour le partenaire	• React 18 / Tailwind
+
+
+• Spring Boot 3
+S10	Sprint 5
+
+
+(Governance & Batch)	• Dashboard Governance Dual-Admin (Finance, Modération, Audits RGPD)
+
+
+• Worker Python FastAPI : Scripts batch pour exports analytiques et rapports	• Python 3.12 / FastAPI
+
+
+• PostgreSQL 16
+S11	Sprint 6
+
+
+(Hardening & Tests)	• Audits de sécurité OWASP, étanchéité RBAC et vérification du Soft Delete
+
+
+• Tests de charge sur la réservation transactionnelle de stock
+
+
+• Tests E2E Playwright sur les 4 parcours applicatifs	• Playwright
+
+
+• JMeter / Gatling
+
+
+• Spring Security
+S12	Sprint 6
+
+
+(Déploiement)	• Déploiement CI/CD Docker Kubernetes sur l'infrastructure Cloud
+
+
+• Recette fonctionnelle finale (UAT) & Mise en production	• Kubernetes / Docker
+
+
+• CI/CD Pipelines
+
+ 
+Jalons & Livrables Clés (Milestones V6.1)
+•	Fin Semaine 2 (Fin Sprint 1) : Socle de base opérationnel (BDD PostgreSQL V6.1, Authentification JWT multi-tenant 4 rôles & Stockage S3 KMS sécurisé avec Presigned URLs).
+•	Fin Semaine 4 (Fin Sprint 2) : Boutique E-Commerce B2C / B2B totalement fonctionnelle (Achats CB Stripe, Virement bancaire, demandes de devis & réservation transactionnelle de stock).
+•	Fin Semaine 6 (Fin Sprint 3) : Captation des prospects (Lead Capture avec traçabilité BDD) et Espace CHU Partenaire opérationnel (Gestion des sessions & candidatures).
+•	Fin Semaine 8 (Fin Sprint 4) : Moteur OpenPDF synchrone d'émission des conventions tripartites sur S3 KMS et suivi consulaire des Visas fonctionnel.
+•	Fin Semaine 10 (Fin Sprint 5) : Ensemble des 4 espaces utilisateurs (B2C, B2B, Médecin, CHU) et du Back-Office Admin/Governance avec scripts batch Python finalisés.
+•	Fin Semaine 12 (Fin Sprint 6) : Hardening sécurité OWASP, tests E2E Playwright validés, plateforme déployée en production sur infrastructure Cloud Kubernetes.
+
