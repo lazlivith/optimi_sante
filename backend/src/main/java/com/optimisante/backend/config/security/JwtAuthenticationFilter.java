@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.optimisante.backend.domain.identity.repository.TenantRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 
@@ -28,6 +29,7 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
+    private final TenantRepository tenantRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -43,21 +45,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (StringUtils.hasText(tenantIdStr)) {
                     TenantContext.setTenantId(UUID.fromString(tenantIdStr));
                 }
-
-                // Extract roles from token. Note: in a real scenario we'd use the JwtTokenProvider properly
-                // Since this is a simple filter, we might need to parse claims again or add a method to provider
-                // For efficiency, we will parse the role. Let's retrieve role directly using Jwts parser 
-                // However, a better way is to expose getRoleFromJWT in provider. 
-                // For now, let's keep it simple: assuming role is there.
                 
-                // Temporary workaround to extract role without modifying Provider again immediately:
-                // Actually, I can just trust the DB or add getRoleFromJWT.
-                // I will modify JwtTokenProvider to add getRoleFromJWT, but for now I'll use a dummy authority
-                // Wait, Spring Security requires roles prefixed with "ROLE_" usually if using hasRole().
-                
-                // Let's assume we implement it correctly in the provider or just use a generic USER role 
-                // if we don't fetch it. No, we MUST fetch it.
-                // Let's create an Authentication object.
                 String role = tokenProvider.getRoleFromJWT(jwt);
                 List<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role));
 
@@ -67,6 +55,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+            
+            // If TenantContext is still empty (e.g. anonymous user), try to get it from header
+            if (TenantContext.getTenantId() == null) {
+                String headerTenant = request.getHeader("X-Tenant-Id");
+                if (StringUtils.hasText(headerTenant)) {
+                    try {
+                        TenantContext.setTenantId(UUID.fromString(headerTenant));
+                    } catch (IllegalArgumentException e) {
+                        // It might be a code instead of UUID, let's look it up
+                        tenantRepository.findByCode(headerTenant).ifPresent(tenant -> 
+                            TenantContext.setTenantId(tenant.getId())
+                        );
+                    }
+                }
             }
 
             filterChain.doFilter(request, response);
