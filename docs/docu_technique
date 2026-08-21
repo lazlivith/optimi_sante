@@ -1,0 +1,71 @@
+# Rapport Technique et Suivi de Projet - Optimi Santé
+**Dernière mise à jour : Sprint 3 Terminé (21 Août 2026)**
+
+Ce document sert de journal de bord technique et d'audit de l'état d'avancement du projet Optimi Santé, en stricte corrélation avec le **Cahier des Charges Technique V6.1**. Toute déviation ou ajustement technique y est documenté.
+
+---
+
+## 1. État d'Avancement Global (Sprints 1 à 3)
+
+### ✅ SPRINT 1 : Socle Identity RBAC, Multi-Tenant & Schema V6 (Terminé)
+- **Base de données :** Initialisation du schéma PostgreSQL V6.1 avec Flyway (`V1__init_schema_v6_1.sql`). Architecture Multi-Tenant (`tenants`), gestion fine des rôles (RBAC) via JWT (`SUPER_ADMIN`, `ADMIN`, `CLIENT_B2C`, `CLIENT_B2B`, `MEDECIN`, `CENTRE_FORMATION`).
+- **Sécurité :** Mise en place de Spring Security, `JwtAuthenticationFilter`, configuration de `TenantContext`.
+- **Infrastructure :** Conteneurisation de la base PostgreSQL et de Redis via Docker Compose.
+- **Stockage (Déviation Temporaire) :** Pour faciliter le développement local sans complexité IAM/KMS immédiate, une interface abstraite `StorageService` a été implémentée avec **Cloudinary**. Le rebasculement sur AWS S3 KMS se fera de façon transparente en production.
+
+### ✅ SPRINT 2 : Moteur E-Commerce, Devis B2B & Réservation Stock (Terminé)
+- **Transactionnel & E-Commerce :** Création des entités `Product`, `Order`, et implémentation du tunnel d'achat transactionnel (`POST /api/v1/orders/checkout`).
+- **Réservation de Stock :** Implémentation du lock optimiste et du nettoyage asynchrone des stocks (via `StockReservation` et Redis).
+- **Parcours B2B :** Implémentation du flux de "Demande de Devis" (`QUOTE_REQUEST`). Conformément à la V6.1, le paiement différé à 30 jours n'est pas géré par défaut.
+
+### ✅ SPRINT 3 : Lead Capture & Module CHU Partenaire (Terminé)
+- **Modèle de Données :** Implémentation des entités `Training`, `ProspectLead` et `PartnerProfile`.
+- **API Lead Capture :** Création du endpoint `POST /api/v1/trainings/{id}/lead-capture` sécurisé (autorisé publiquement via `permitAll` dans `SecurityConfig`). L'API génère une URL signée via `StorageService` (TTL 60 min).
+- **Front-End (React) :** 
+  - Développement de la page `TrainingsPage.tsx` et de la modale `LeadCaptureModal.tsx`.
+  - **Ajustement de l'UX (Spécification Client) :** Séparation claire entre le téléchargement de la brochure (lien PDF direct) et le formulaire de Lead Capture qui est déclenché par le bouton **"Postuler"** (bloqué si non authentifié). Le formulaire s'intitule "Télécharger la brochure" mais le bouton d'action est bien "Postuler".
+- **Migrations Supplémentaires :** Ajout du script `V5__insert_mock_trainings.sql` pour injecter un `tenant`, un `user`, un `partner_profile` et 3 `trainings` (avec UUIDs fixes) afin de tester le bout-en-bout du Lead Capture.
+- **Note BDD :** Le timestamp d'insertion d'un prospect (Lead Capture) est stocké dans la colonne `downloaded_at` (et non `created_at`).
+
+---
+
+## 2. Choix Techniques Actuels et Ajustements
+
+1. **Service de Stockage (Cloudinary vs S3 KMS)**
+   - **Décision :** Utilisation de `CloudinaryStorageServiceImpl` qui implémente `StorageService`.
+   - **Conséquence :** Les tests du Sprint 3 renvoient une erreur `404 Not Found` lors du clic sur l'URL générée. C'est le comportement attendu en environnement de développement, car l'API génère une URL signée temporelle parfaite, mais pointe vers le fichier factice `"mock-key"` inséré via la migration V5. Ce point sera résolu au Sprint 4 lors de la mise en place de l'upload réel de documents.
+   - Les variables d'environnement (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, etc.) ont été ajoutées au `docker-compose.yml` du backend.
+
+2. **Logique Frontend de la Captation**
+   - L'API Lead Capture ne bloque plus l'interface avec des pop-ups (`window.open`). Le bouton de succès du formulaire affiche directement le lien sécurisé généré par l'API afin de garantir la compatibilité avec tous les navigateurs.
+
+3. **Base de Données et Migrations**
+   - L'ORM Hibernate est configuré en `ddl-auto: validate`. La structure de la BDD est intégralement pilotée par les scripts **Flyway** (`classpath:db/migration`).
+   - Séquence actuelle : `V1` -> `V2` -> `V3` -> `V4` -> `V5`.
+
+---
+
+## 3. Prochaine Étape : SPRINT 4 (Génération PDF & Gestion Documentaire)
+
+Le Sprint 4 se concentre sur la génération de documents PDF dynamiques à haute valeur métier via la stack **OpenPDF + Flying Saucer + Thymeleaf**.
+
+### 3.1. Les 3 Templates Documentaires
+1. **Devis B2B Pro Forma (`DEV-[Année]-[ID]`) :**
+   - *Usage :* Commercial / Établissements (B2B).
+   - *Déclencheur :* `POST /api/v1/orders/quote-request`.
+   - *Stockage :* `docs/devis/DEV-{year}-{orderId}.pdf`
+2. **Reçu de Paiement (`REC-[Année]-[ID]`) :**
+   - *Usage :* Justificatif comptable post-paiement.
+   - *Déclencheur :* Webhook Stripe (`payment_intent.succeeded`) ou validation virement Admin.
+   - *Stockage :* `docs/receipts/REC-{year}-{paymentId}.pdf`
+3. **Attestation d'Inscription Confirmée (`INS-[Année]-[ID]`) :**
+   - *Usage :* Document officiel (Visa d'études, Ordre des médecins).
+   - *Déclencheur :* Validation du dossier de candidature CHU (`Enrollment`).
+   - *Stockage :* `docs/enrollments/ATT-{year}-{enrollmentId}.pdf`
+
+### 3.2. Architecture Technique
+- **Dépendances Maven :** `openpdf`, `flying-saucer-pdf-openpdf`, `spring-boot-starter-thymeleaf`.
+- **Rendu HTML/CSS :** 
+  - Utilisation de Thymeleaf pour l'injection dynamique des données.
+  - Structuration en composants réutilisables : `header.html` (Logo, N° Agrément) et `footer.html` (SIRET, Mentions légales).
+- **Service de Stockage :** Envoi des PDF générés en mémoire vers Cloudinary/S3, puis liaison de l'URL signée à l'entité concernée (Order, Enrollment).

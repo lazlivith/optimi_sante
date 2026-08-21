@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Devis Pro Forma</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 20mm;
+            @bottom-center {
+                content: element(footer);
+            }
+        }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 12px; color: #333; }
+        .footer { position: running(footer); }
+        .watermark {
+            position: absolute;
+            top: 30%;
+            left: 20%;
+            font-size: 80px;
+            color: rgba(200, 200, 200, 0.3);
+            transform: rotate(-45deg);
+            z-index: -1;
+        }
+        .info-table { width: 100%; margin-top: 30px; margin-bottom: 30px; }
+        .info-table td { vertical-align: top; }
+        .items-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .items-table th { background-color: #f5f5f5; border-bottom: 2px solid #004D40; text-align: left; padding: 8px; color: #004D40; }
+        .items-table td { border-bottom: 1px solid #ddd; padding: 8px; }
+        .totals-table { width: 50%; float: right; margin-top: 20px; border-collapse: collapse; }
+        .totals-table td { padding: 8px; border-bottom: 1px solid #eee; }
+        .totals-table .bold { font-weight: bold; }
+        .totals-table .total-row { background-color: #e0f2f1; color: #004D40; font-weight: bold; font-size: 14px; border-bottom: none; }
+    </style>
+</head>
+<body>
+
+    <div th:replace="~{pdf/components/header :: header}"></div>
+
+    <div class="watermark">PRO FORMA</div>
+
+    <h2 style="text-align: center; color: #004D40; margin-top: 20px;">DEVIS PRO FORMA</h2>
+    
+    <table class="info-table">
+        <tr>
+            <td width="50%">
+                <strong>Émetteur :</strong><br/>
+                OptimiSanté SAS<br/>
+                123 Avenue de la Médecine<br/>
+                75000 Paris, France
+            </td>
+            <td width="50%" style="text-align: right;">
+                <strong>Destinataire :</strong><br/>
+                <span th:text="${clientName}">Nom du Client</span><br/>
+                <span th:text="${clientAddress}">Adresse du Client</span><br/>
+                <span th:text="${clientVat}">TVA: FRXX 123456789</span>
+            </td>
+        </tr>
+    </table>
+
+    <div style="margin-bottom: 20px;">
+        <strong>Référence :</strong> <span th:text="${orderReference}">DEV-2026-0001</span><br/>
+        <strong>Date d'émission :</strong> <span th:text="${date}">01/01/2026</span><br/>
+        <strong>Validité :</strong> 30 jours
+    </div>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th style="text-align: right;">Qté</th>
+                <th style="text-align: right;">Prix Unitaire HT</th>
+                <th style="text-align: right;">Total HT</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="item : ${items}">
+                <td th:text="${item.description}">Produit X</td>
+                <td style="text-align: right;" th:text="${item.quantity}">1</td>
+                <td style="text-align: right;" th:text="${#numbers.formatDecimal(item.unitPrice, 1, 'WHITESPACE', 2, 'POINT')} + ' €'">100.00 €</td>
+                <td style="text-align: right;" th:text="${#numbers.formatDecimal(item.subtotal, 1, 'WHITESPACE', 2, 'POINT')} + ' €'">100.00 €</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table class="totals-table">
+        <tr>
+            <td>Total HT :</td>
+            <td style="text-align: right;" th:text="${#numbers.formatDecimal(totalAmount, 1, 'WHITESPACE', 2, 'POINT')} + ' €'">100.00 €</td>
+        </tr>
+        <tr>
+            <td>TVA (0% - Export/Exonéré) :</td>
+            <td style="text-align: right;">0.00 €</td>
+        </tr>
+        <tr class="total-row">
+            <td>TOTAL TTC :</td>
+            <td style="text-align: right;" th:text="${#numbers.formatDecimal(totalAmount, 1, 'WHITESPACE', 2, 'POINT')} + ' €'">100.00 €</td>
+        </tr>
+    </table>
+
+    <div style="clear: both; margin-top: 60px;">
+        <p><strong>Conditions de paiement :</strong></p>
+        <p>Paiement par virement bancaire sous 30 jours à réception de facture. Merci de préciser la référence du devis lors de votre virement.</p>
+    </div>
+
+    <div th:replace="~{pdf/components/footer :: footer}"></div>
+
+</body>
+</html>

@@ -31,11 +31,39 @@ public class CloudinaryStorageService implements StorageService {
             );
 
             Map<?, ?> uploadResult = cloudinary.uploader().upload(bytes, uploadParams);
-            return uploadResult.get("secure_url").toString();
+            return uploadResult.get("public_id").toString();
             
         } catch (IOException e) {
             log.error("Failed to upload file to Cloudinary: {}", e.getMessage(), e);
             throw new RuntimeException("Could not upload file to storage", e);
+        }
+    }
+
+    @Override
+    public String uploadFile(org.springframework.web.multipart.MultipartFile file, String folderPath) {
+        try {
+            return uploadFile(file.getBytes(), file.getOriginalFilename(), folderPath);
+        } catch (IOException e) {
+            log.error("Failed to read MultipartFile: {}", e.getMessage(), e);
+            throw new RuntimeException("Could not read file for upload", e);
+        }
+    }
+
+    @Override
+    public String uploadGeneratedPdf(byte[] pdfBytes, String folderPath, String fileName) {
+        try {
+            Map<String, Object> uploadParams = ObjectUtils.asMap(
+                    "folder", folderPath,
+                    "public_id", fileName,
+                    "resource_type", "raw" // PDFs can be uploaded as raw or image, but raw is safer for documents
+            );
+
+            Map<?, ?> uploadResult = cloudinary.uploader().upload(pdfBytes, uploadParams);
+            return uploadResult.get("public_id").toString();
+            
+        } catch (IOException e) {
+            log.error("Failed to upload generated PDF to Cloudinary: {}", e.getMessage(), e);
+            throw new RuntimeException("Could not upload PDF to storage", e);
         }
     }
 

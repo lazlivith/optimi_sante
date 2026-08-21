@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: optimisante_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: Investx2026
     volumes:
       - optimisante-pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -27,8 +27,8 @@ services:
     image: localstack/localstack:latest
     container_name: optimisante-localstack
     ports:
-      - "4566:4566"            # LocalStack Gateway
-      - "4510-4559:4510-4559"  # external services port range
+      - "4566:4566" # LocalStack Gateway
+      - "4510-4559:4510-4559" # external services port range
     environment:
       - SERVICES=s3,kms
       - DEBUG=1
@@ -48,8 +48,29 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/optimisante_db
       - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_DATASOURCE_PASSWORD=Investx2026
       - SPRING_DATA_REDIS_HOST=redis
+      # Identifiants Cloudinary reels dans docker/.env (jamais pousse sur Git) - voir
+      # docker/.env.example pour la marche a suivre.
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - JWT_SECRET=default-dev-secret-key-at-least-32-chars-long!
+      # Identifiants Mailtrap à renseigner une fois le compte créé (mailtrap.io, gratuit) —
+      # tant qu'ils sont vides, l'envoi d'email échouera proprement (erreur loggée, sans
+      # bloquer le reste du parcours).
+      - MAIL_HOST=${MAIL_HOST:-sandbox.smtp.mailtrap.io}
+      - MAIL_PORT=${MAIL_PORT:-2525}
+      - MAIL_USERNAME=${MAIL_USERNAME:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_FROM=${MAIL_FROM:-no-reply@optimisante.fr}
+      - FRONTEND_BASE_URL=http://localhost:5173
+      - DOCTOR_APPLICATION_FEE=${DOCTOR_APPLICATION_FEE:-50.00}
+      # Clés Stripe à renseigner une fois disponibles (dashboard.stripe.com, mode Test) —
+      # tant qu'elles sont absentes, le paiement échoue proprement (erreur loggée : "Invalid
+      # API Key"), sans bloquer le reste du parcours ni corrompre de données.
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-sk_test_PLACEHOLDER}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-whsec_PLACEHOLDER}
     depends_on:
       - postgres
       - redis

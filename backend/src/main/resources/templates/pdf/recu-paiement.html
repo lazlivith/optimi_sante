@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Reçu de Paiement</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 20mm;
+            @bottom-center {
+                content: element(footer);
+            }
+        }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 12px; color: #333; }
+        .footer { position: running(footer); }
+        .watermark {
+            position: absolute;
+            top: 30%;
+            left: 20%;
+            font-size: 80px;
+            color: rgba(0, 150, 136, 0.15);
+            transform: rotate(-45deg);
+            z-index: -1;
+            font-weight: bold;
+        }
+        .info-table { width: 100%; margin-top: 30px; margin-bottom: 30px; }
+        .info-table td { vertical-align: top; }
+        .summary-box { background-color: #f1f8e9; border: 1px solid #c5e1a5; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <div th:replace="~{pdf/components/header :: header}"></div>
+
+    <div class="watermark">PAYÉ / ACQUITTÉ</div>
+
+    <h2 style="text-align: center; color: #004D40; margin-top: 20px;">REÇU DE PAIEMENT / FACTURE ACQUITTÉE</h2>
+    
+    <table class="info-table">
+        <tr>
+            <td width="50%">
+                <strong>Émetteur :</strong><br/>
+                OptimiSanté SAS<br/>
+                123 Avenue de la Médecine<br/>
+                75000 Paris, France
+            </td>
+            <td width="50%" style="text-align: right;">
+                <strong>Client :</strong><br/>
+                <span th:text="${clientName}">Nom du Client</span><br/>
+                <span th:text="${clientEmail}">client@email.com</span>
+            </td>
+        </tr>
+    </table>
+
+    <div class="summary-box">
+        <h3 style="margin-top: 0; color: #33691E;">Détails de la transaction</h3>
+        <table width="100%">
+            <tr>
+                <td width="50%"><strong>Référence Reçu :</strong> <span th:text="${receiptReference}">REC-2026-0001</span></td>
+                <td width="50%"><strong>Date de paiement :</strong> <span th:text="${date}">01/01/2026</span></td>
+            </tr>
+            <tr>
+                <td><strong>Méthode de paiement :</strong> <span th:text="${paymentMethod}">Stripe / Carte Bancaire</span></td>
+                <td><strong>ID Transaction :</strong> <span th:text="${transactionId}">pi_123456789</span></td>
+            </tr>
+            <tr>
+                <td colspan="2" style="padding-top: 10px;">
+                    <strong>Montant Total Payé :</strong> 
+                    <span style="font-size: 16px; font-weight: bold; color: #33691E;" th:text="${#numbers.formatDecimal(totalAmount, 1, 'WHITESPACE', 2, 'POINT')} + ' €'">100.00 €</span>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <strong>Solde restant à payer :</strong> 0.00 €
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div style="margin-top: 40px;">
+        <p>Nous vous remercions pour votre confiance.</p>
+        <p>Ce document fait office de facture acquittée. Conservez-le précieusement.</p>
+    </div>
+
+    <div th:replace="~{pdf/components/footer :: footer}"></div>
+
+</body>
+</html>

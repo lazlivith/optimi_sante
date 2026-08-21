@@ -10,7 +10,7 @@ export function CartPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successQuote, setSuccessQuote] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const hasQuoteOnlyItems = items.some(i => i.isQuoteOnly);
 
@@ -153,15 +153,27 @@ export function CartPage() {
             </span>
           </div>
 
-          {hasQuoteOnlyItems ? (
-             <button 
-                onClick={handleQuoteRequest}
-                disabled={isProcessing}
-                className="w-full flex items-center justify-center px-6 py-4 bg-brand-orange text-white font-bold rounded-xl hover:bg-orange-600 disabled:opacity-50 transition-colors shadow-sm"
-              >
-                {isProcessing ? <Loader2 className="animate-spin mr-2 w-5 h-5" /> : null}
-                Demander un devis
-              </button>
+          {hasQuoteOnlyItems || user?.role === 'CLIENT_B2B' ? (
+             <div className="space-y-3">
+               <button 
+                  onClick={handleQuoteRequest}
+                  disabled={isProcessing}
+                  className="w-full flex items-center justify-center px-6 py-4 bg-brand-orange text-white font-bold rounded-xl hover:bg-orange-600 disabled:opacity-50 transition-colors shadow-sm"
+                >
+                  {isProcessing ? <Loader2 className="animate-spin mr-2 w-5 h-5" /> : null}
+                  Demander un devis
+                </button>
+                {user?.role === 'CLIENT_B2B' && !hasQuoteOnlyItems && (
+                  <button 
+                    onClick={handleStripeCheckout}
+                    disabled={isProcessing}
+                    className="w-full flex items-center justify-center px-6 py-4 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-50 transition-colors shadow-sm"
+                  >
+                    {isProcessing ? <Loader2 className="animate-spin mr-2 w-5 h-5" /> : null}
+                    Payer par carte (CB)
+                  </button>
+                )}
+             </div>
           ) : (
              <button 
                 onClick={handleStripeCheckout}

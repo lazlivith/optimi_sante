@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Attestation d'Inscription</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 20mm;
+            @bottom-center {
+                content: element(footer);
+            }
+        }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 13px; color: #333; line-height: 1.5; }
+        .footer { position: running(footer); }
+        .watermark {
+            position: absolute;
+            top: 40%;
+            left: 15%;
+            font-size: 70px;
+            color: rgba(25, 118, 210, 0.1);
+            transform: rotate(-45deg);
+            z-index: -1;
+            font-weight: bold;
+            border: 4px solid rgba(25, 118, 210, 0.1);
+            padding: 20px;
+        }
+        .cert-header { text-align: center; margin-top: 40px; margin-bottom: 40px; }
+        .highlight { font-weight: bold; color: #1565C0; }
+        .section-title { border-bottom: 2px solid #1565C0; color: #1565C0; padding-bottom: 5px; margin-top: 30px; margin-bottom: 15px; }
+        .signature-box { margin-top: 60px; width: 100%; }
+        .signature-box td { text-align: center; vertical-align: bottom; height: 100px; }
+    </style>
+</head>
+<body>
+
+    <div th:replace="~{pdf/components/header :: header}"></div>
+
+    <div class="watermark">CONFIRMÉ</div>
+
+    <div class="cert-header">
+        <h2 style="color: #1565C0; margin-bottom: 5px;">ATTESTATION D'INSCRIPTION OFFICIELLE</h2>
+        <p style="margin: 0; color: #666;">Réf : <span th:text="${enrollmentReference}">INS-2026-0001</span></p>
+    </div>
+
+    <p>Nous soussignés, <strong>OptimiSanté SAS</strong>, certifions par la présente que :</p>
+    
+    <div style="background-color: #f5f5f5; padding: 15px; border-left: 4px solid #1565C0; margin: 20px 0;">
+        <p style="margin: 5px 0;"><strong>Dr. <span th:text="${doctorName}">Nom du Médecin</span></strong></p>
+        <p style="margin: 5px 0;">Spécialité : <span th:text="${doctorSpecialty}">Spécialité</span></p>
+        <p style="margin: 5px 0;">Numéro de Passeport : <span th:text="${passportNumber}">XX0000</span></p>
+    </div>
+
+    <p>est officiellement inscrit(e) et attendu(e) pour participer au programme de formation médicale suivant :</p>
+
+    <h3 class="section-title">Détails de la Formation</h3>
+    <table width="100%" cellpadding="5">
+        <tr>
+            <td width="30%"><strong>Programme :</strong></td>
+            <td width="70%" class="highlight" th:text="${trainingTitle}">Titre de la formation</td>
+        </tr>
+        <tr>
+            <td><strong>Établissement d'accueil :</strong></td>
+            <td th:text="${hospitalName}">Nom du CHU</td>
+        </tr>
+        <tr>
+            <td><strong>Période du stage :</strong></td>
+            <td>Du <strong th:text="${startDate}">01/01/2026</strong> au <strong th:text="${endDate}">31/01/2026</strong></td>
+        </tr>
+    </table>
+
+    <h3 class="section-title">Démarches Administratives (Visa & Logistique)</h3>
+    <p>
+        Cette attestation est délivrée pour servir et valoir ce que de droit, notamment pour appuyer 
+        les <strong>démarches d'obtention de visa d'études/stage</strong> auprès des autorités consulaires compétentes. 
+        L'hébergement et la prise en charge logistique seront assurés selon les termes de la convention tripartite.
+    </p>
+
+    <table class="signature-box">
+        <tr>
+            <td width="50%">
+                <strong>Direction OptimiSanté</strong><br/>
+                <span style="color: #999; font-style: italic;">[Cachet Numérique Apposé]</span><br/>
+                Fait à Paris, le <span th:text="${date}">01/01/2026</span>
+            </td>
+            <td width="50%">
+                <strong>Direction des Affaires Médicales</strong><br/>
+                <span th:text="${hospitalName}">CHU</span><br/>
+                <span style="color: #999; font-style: italic;">[Signature Validée Numériquement]</span>
+            </td>
+        </tr>
+    </table>
+
+    <div th:replace="~{pdf/components/footer :: footer}"></div>
+
+</body>
+</html>
