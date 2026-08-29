@@ -17,4 +17,17 @@ public class UserProfileDTO {
     private String email;
     private Role role;
     private String tenantCode;
+    // Champs Médecin
+    private String firstName;
+    private String lastName;
+    private String phoneWhatsapp;
+    private String countryOfResidence;
+    private String medicalSpecialty;
+    private String medicalCouncilNumber;
+    private String currentHospital;
+    // Champs B2B
+    private String companyName;
+    private String siretFiness;
+    private String vatNumber;
+    private String billingAddress;
 }

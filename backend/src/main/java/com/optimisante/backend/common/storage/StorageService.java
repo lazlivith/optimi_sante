@@ -33,7 +33,7 @@ public interface StorageService {
 
     /**
      * Generate a presigned or signed URL for temporary access to a private resource.
-     * 
+     *
      * @param publicId The public ID or path of the resource
      * @param expirationMinutes The duration in minutes before the URL expires
      * @return The temporary secure URL
@@ -41,8 +41,29 @@ public interface StorageService {
     String generatePresignedOrSignedUrl(String publicId, int expirationMinutes);
 
     /**
+     * Upload a media file (image or video) meant to be publicly displayed (e.g. a training's
+     * illustration), as opposed to {@link #uploadFile} which always stores as "raw" — appropriate
+     * for private documents (PDFs) but not for inline &lt;img&gt;/&lt;video&gt; rendering.
+     *
+     * @param file The media file to upload
+     * @param folderPath The target folder path in the storage provider
+     * @param resourceType Either "image" or "video"
+     * @return The public_id of the uploaded media
+     */
+    String uploadMedia(org.springframework.web.multipart.MultipartFile file, String folderPath, String resourceType);
+
+    /**
+     * Build a plain (non-signed) delivery URL for a media resource uploaded via {@link #uploadMedia}.
+     *
+     * @param publicId The public ID of the resource
+     * @param resourceType Either "image" or "video" (must match what was passed to uploadMedia)
+     * @return The public delivery URL
+     */
+    String generateMediaUrl(String publicId, String resourceType);
+
+    /**
      * Delete a file from the storage provider.
-     * 
+     *
      * @param publicId The public ID or path of the resource to delete
      */
     void deleteFile(String publicId);

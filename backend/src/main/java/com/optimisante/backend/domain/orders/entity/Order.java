@@ -2,6 +2,7 @@ package com.optimisante.backend.domain.orders.entity;
 
 import com.optimisante.backend.domain.identity.entity.Tenant;
 import com.optimisante.backend.domain.identity.entity.User;
+import com.optimisante.backend.domain.promotion.entity.PromoCode;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -61,6 +62,17 @@ public class Order {
 
     @Column(name = "stripe_checkout_session_id", length = 255)
     private String stripeCheckoutSessionId;
+
+    @Column(name = "document_s3_key", length = 255)
+    private String documentS3Key;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promo_code_id")
+    private PromoCode promoCode;
+
+    @Column(name = "discount_amount", nullable = false, precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal discountAmount = BigDecimal.ZERO;
 
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;

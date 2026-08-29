@@ -32,4 +32,9 @@ public class OrderResource {
     public ResponseEntity<Page<OrderResponseDto>> getMyOrders(@PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(orderService.getMyOrders(pageable));
     }
+
+    @GetMapping("/checkout-session-status")
+    public ResponseEntity<java.util.Map<String, Object>> getCheckoutSessionStatus(@RequestParam String sessionId) {
+        return ResponseEntity.ok(orderService.getCheckoutSessionStatus(sessionId));
+    }
 }

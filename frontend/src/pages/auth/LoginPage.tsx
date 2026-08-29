@@ -2,19 +2,19 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { authService } from '../../api/authService';
 import { useAuth } from '../../context/AuthContext';
-import { User as UserIcon, Lock, AlertCircle } from 'lucide-react';
+import { User as UserIcon, Lock } from 'lucide-react';
+import { Toast } from '../../components/common/Toast';
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
-  
-  const from = location.state?.from?.pathname || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +31,24 @@ export const LoginPage = () => {
       const profile = await authService.getProfile();
       login(response.accessToken, profile);
       
-      navigate(from, { replace: true });
+      setSuccess('Bienvenue, ' + (profile.email || 'Utilisateur'));
+      
+      setTimeout(() => {
+        if (location.state?.from?.pathname && location.state.from.pathname !== '/') {
+          navigate(location.state.from.pathname, { replace: true });
+        } else {
+          const role = profile.role;
+          if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
+            navigate('/admin/quotes', { replace: true });
+          } else if (role === 'CENTRE_FORMATION') {
+            navigate('/partner/sessions', { replace: true });
+          } else if (role === 'MEDECIN') {
+            navigate('/doctor/vault', { replace: true });
+          } else {
+            navigate('/', { replace: true });
+          }
+        }
+      }, 1000);
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.status === 403) {
         setError('Identifiants incorrects.');
@@ -57,12 +74,7 @@ export const LoginPage = () => {
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 text-red-700 p-4 rounded-md text-sm flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-500" />
-              {error}
-            </div>
-          )}
+          {/* Toast is rendered below */}
           
           <div className="space-y-4 rounded-md shadow-sm">
             <div>
@@ -136,6 +148,21 @@ export const LoginPage = () => {
           </div>
         </form>
       </div>
+      
+      {error && (
+        <Toast 
+          type="error" 
+          message={error} 
+          onClose={() => setError('')} 
+        />
+      )}
+      {success && (
+        <Toast 
+          type="success" 
+          message={success} 
+          onClose={() => setSuccess('')} 
+        />
+      )}
     </div>
   );
 };

@@ -7,6 +7,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
+  updateUser: (updatedData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,16 +37,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = (token: string, newUser: User) => {
     localStorage.setItem('token', token);
     setUser(newUser);
+    
+    // Role-based redirection
+    let redirectPath = '/';
+    switch (newUser.role) {
+      case 'ADMIN':
+      case 'SUPER_ADMIN':
+        redirectPath = '/admin';
+        break;
+      case 'MEDECIN':
+        redirectPath = '/doctor';
+        break;
+      case 'CENTRE_FORMATION':
+        redirectPath = '/partner';
+        break;
+      case 'CLIENT_B2B':
+      case 'CLIENT_B2C':
+        redirectPath = '/catalog';
+        break;
+      default:
+        redirectPath = '/';
+    }
+    window.location.href = redirectPath;
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
-    window.location.href = '/';
+    window.location.href = '/login';
+  };
+
+  const updateUser = (updatedData: Partial<User>) => {
+    if (user) {
+      setUser({ ...user, ...updatedData });
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

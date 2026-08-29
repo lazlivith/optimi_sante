@@ -52,8 +52,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/catalog/**").permitAll()
                         .requestMatchers("/api/v1/payments/webhook").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/trainings").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/trainings/*/sessions").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/trainings/*/lead-capture").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/documents/**").permitAll()
+                        .requestMatchers("/api/v1/partnership/**").permitAll()
+                        .requestMatchers("/api/v1/doctor-applications/**").permitAll()
                         .anyRequest().authenticated()
                 );
 

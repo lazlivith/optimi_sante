@@ -13,7 +13,26 @@ export interface LeadCaptureResponseDto {
   brochureDownloadUrl: string;
 }
 
+export interface TrainingSummaryDto {
+  id: string;
+  title: string;
+  medicalSpecialty: string;
+  description: string | null;
+  durationDays: number;
+  isLongStay: boolean;
+  location: string | null;
+  brochureUrl: string | null;
+  imageUrl: string | null;
+  videoUrl: string | null;
+  price: number;
+}
+
 export const trainingService = {
+  getTrainings: async (): Promise<TrainingSummaryDto[]> => {
+    const { data } = await axiosClient.get<TrainingSummaryDto[]>('/trainings');
+    return data;
+  },
+
   captureLead: async (trainingId: string, request: LeadCaptureRequestDto) => {
     const { data } = await axiosClient.post<LeadCaptureResponseDto>(`/trainings/${trainingId}/lead-capture`, request);
     return data;

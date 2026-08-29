@@ -62,6 +62,18 @@ public class Product {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    @Column(name = "image_url", length = 512)
+    private String imageUrl;
+
+    @Column(name = "promo_price", precision = 10, scale = 2)
+    private BigDecimal promoPrice;
+
+    @Column(name = "promo_starts_at")
+    private OffsetDateTime promoStartsAt;
+
+    @Column(name = "promo_ends_at")
+    private OffsetDateTime promoEndsAt;
+
     @Version
     @Builder.Default
     private Integer version = 1;
@@ -75,5 +87,27 @@ public class Product {
     @PrePersist
     protected void onCreate() {
         this.createdAt = OffsetDateTime.now();
+    }
+
+    /**
+     * Prix de base à utiliser (avant remise B2B) : le prix promotionnel s'il est défini et que
+     * la date courante tombe dans la fenêtre [promoStartsAt, promoEndsAt], sinon le prix normal.
+     * Point unique de vérité utilisé à la fois par l'affichage catalogue et le calcul du
+     * montant réellement facturé au checkout, pour qu'ils ne divergent jamais.
+     */
+    @Transient
+    public BigDecimal getEffectiveBasePrice() {
+        if (promoPrice == null) {
+            return basePrice;
+        }
+        OffsetDateTime now = OffsetDateTime.now();
+        boolean startOk = promoStartsAt == null || !now.isBefore(promoStartsAt);
+        boolean endOk = promoEndsAt == null || !now.isAfter(promoEndsAt);
+        return (startOk && endOk) ? promoPrice : basePrice;
+    }
+
+    @Transient
+    public boolean isPromoActive() {
+        return promoPrice != null && getEffectiveBasePrice().compareTo(basePrice) < 0;
     }
 }

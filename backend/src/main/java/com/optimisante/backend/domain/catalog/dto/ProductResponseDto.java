@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.catalog.dto;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record ProductResponseDto(
@@ -14,5 +15,8 @@ public record ProductResponseDto(
         BigDecimal b2bDiscountRate,
         Integer stockQuantity,
         Boolean isQuoteOnly,
-        CategorySummaryDto category
+        String imageUrl,
+        CategorySummaryDto category,
+        Boolean isOnPromo,
+        OffsetDateTime promoEndsAt
 ) {}

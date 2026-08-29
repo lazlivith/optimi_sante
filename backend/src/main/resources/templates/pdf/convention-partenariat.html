@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Convention de Partenariat</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 20mm;
+            @bottom-center {
+                content: element(footer);
+            }
+        }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 12px; color: #333; line-height: 1.6; }
+        h2 { text-align: center; color: #154D44; margin-top: 10px; }
+        .ref { text-align: center; color: #8a9490; font-size: 11px; margin-bottom: 30px; }
+        .section-title { border-bottom: 2px solid #154D44; color: #154D44; padding-bottom: 5px; margin-top: 30px; margin-bottom: 15px; font-size: 14px; }
+        .signature-box { margin-top: 60px; width: 100%; }
+        .signature-box td { text-align: center; vertical-align: bottom; height: 100px; width: 50%; }
+        .fill-line { border-bottom: 1px solid #999; display: inline-block; width: 100%; min-height: 18px; }
+        table.fields td { padding: 6px 0; }
+        table.fields td.label { width: 220px; font-weight: bold; color: #154D44; }
+    </style>
+</head>
+<body>
+
+    <div th:replace="~{components/header :: header}"></div>
+
+    <h2>CONVENTION DE PARTENARIAT</h2>
+    <p class="ref">Optimi Santé — Réseau de Centres de Formation Partenaires</p>
+
+    <p>
+        Entre <strong>Optimi Santé SAS</strong>, dont le siège est situé 123 Avenue de la Médecine, 75000 Paris, France,
+        ci-après désignée « Optimi Santé »,
+    </p>
+    <p>Et l'établissement soussigné, ci-après désigné « le Partenaire » :</p>
+
+    <div class="section-title">Identification de l'établissement</div>
+    <table class="fields" width="100%">
+        <tr><td class="label">Nom de l'institution</td><td><span class="fill-line"></span></td></tr>
+        <tr><td class="label">N° d'accréditation FINESS</td><td><span class="fill-line"></span></td></tr>
+        <tr><td class="label">Nom du contact référent</td><td><span class="fill-line"></span></td></tr>
+        <tr><td class="label">Email de contact</td><td><span class="fill-line"></span></td></tr>
+        <tr><td class="label">Téléphone</td><td><span class="fill-line"></span></td></tr>
+        <tr><td class="label">Adresse complète</td><td><span class="fill-line"></span></td></tr>
+    </table>
+
+    <div class="section-title">Objet du partenariat</div>
+    <p>
+        Le Partenaire s'engage à accueillir des médecins étrangers dans le cadre de formations et stages cliniques
+        organisés via la plateforme Optimi Santé, à publier ses sessions de formation disponibles, à examiner les
+        candidatures reçues et à fournir les documents administratifs nécessaires au suivi des dossiers de mobilité
+        (passeport, visa, convention tripartite) en collaboration avec l'équipe Optimi Santé.
+    </p>
+
+    <div class="section-title">Engagements réciproques</div>
+    <p>
+        Optimi Santé s'engage à assurer la promotion des formations du Partenaire auprès des médecins candidats,
+        à faciliter la gestion administrative des inscriptions et à fournir un accès à son espace partenaire dédié
+        pour le suivi des candidatures et sessions.
+    </p>
+
+    <div class="section-title">Durée et résiliation</div>
+    <p>
+        La présente convention est conclue pour une durée indéterminée, résiliable par chacune des parties avec un
+        préavis écrit de trois (3) mois.
+    </p>
+
+    <table class="signature-box">
+        <tr>
+            <td>
+                Pour Optimi Santé<br/><br/><br/>
+                Signature et cachet
+            </td>
+            <td>
+                Pour le Partenaire<br/><br/><br/>
+                Signature et cachet
+            </td>
+        </tr>
+    </table>
+
+    <div th:replace="~{components/footer :: footer}"></div>
+
+</body>
+</html>

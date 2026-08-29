@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../api/authService';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
+import { Toast } from '../../components/common/Toast';
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'B2C' | 'B2B' | 'DOCTOR'>('B2C');
+  const [activeTab, setActiveTab] = useState<'B2C' | 'B2B'>('B2C');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -20,16 +21,6 @@ export const RegisterPage = () => {
   const [vatNumber, setVatNumber] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
 
-  // Doctor fields
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phoneWhatsapp, setPhoneWhatsapp] = useState('');
-  const [countryOfResidence, setCountryOfResidence] = useState('');
-  const [medicalSpecialty, setMedicalSpecialty] = useState('');
-  const [medicalCouncilNumber, setMedicalCouncilNumber] = useState('');
-  const [currentHospital, setCurrentHospital] = useState('');
-  const [passportNumber, setPassportNumber] = useState('');
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -42,16 +33,11 @@ export const RegisterPage = () => {
       if (activeTab === 'B2C') {
         await authService.registerB2C({ tenantCode, email, password });
       } else if (activeTab === 'B2B') {
-        await authService.registerB2B({ 
-          tenantCode, email, password, companyName, siretFiness, vatNumber, billingAddress 
-        });
-      } else if (activeTab === 'DOCTOR') {
-        await authService.registerDoctor({
-          tenantCode, email, password, firstName, lastName, phoneWhatsapp, 
-          countryOfResidence, medicalSpecialty, medicalCouncilNumber, currentHospital, passportNumber
+        await authService.registerB2B({
+          tenantCode, email, password, companyName, siretFiness, vatNumber, billingAddress
         });
       }
-      
+
       setSuccess(true);
       setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {
@@ -98,21 +84,18 @@ export const RegisterPage = () => {
           >
             Entreprise (B2B)
           </button>
-          <button
-            onClick={() => setActiveTab('DOCTOR')}
-            className={`flex-1 py-3 text-sm font-medium border-b-2 ${activeTab === 'DOCTOR' ? 'border-brand-green text-brand-green' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-          >
-            Médecin
-          </button>
+        </div>
+
+        <div className="mb-6 p-4 bg-brand-light rounded-lg text-sm text-brand-dark">
+          Vous êtes médecin et souhaitez postuler à une formation ?{' '}
+          <Link to="/formations" className="font-semibold text-brand-green hover:underline">
+            Consultez nos formations disponibles
+          </Link>
+          {' '}— l'inscription se fait directement lors de votre candidature.
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="bg-red-50 text-red-700 p-4 rounded-md text-sm flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-500" />
-              {error}
-            </div>
-          )}
+          {/* Toast is rendered below */}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
@@ -134,18 +117,6 @@ export const RegisterPage = () => {
               </>
             )}
 
-            {activeTab === 'DOCTOR' && (
-              <>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Prénom</label><input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full rounded-md border-slate-300 shadow-sm p-2.5 border" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Nom</label><input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full rounded-md border-slate-300 shadow-sm p-2.5 border" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Spécialité Médicale</label><input type="text" required value={medicalSpecialty} onChange={(e) => setMedicalSpecialty(e.target.value)} className="w-full rounded-md border-slate-300 shadow-sm p-2.5 border" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Pays de résidence</label><input type="text" required value={countryOfResidence} onChange={(e) => setCountryOfResidence(e.target.value)} className="w-full rounded-md border-slate-300 shadow-sm p-2.5 border" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Téléphone (WhatsApp)</label><input type="text" required value={phoneWhatsapp} onChange={(e) => setPhoneWhatsapp(e.target.value)} className="w-full rounded-md border-slate-300 shadow-sm p-2.5 border" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Numéro de Passeport</label><input type="text" value={passportNumber} onChange={(e) => setPassportNumber(e.target.value)} className="w-full rounded-md border-slate-300 shadow-sm p-2.5 border" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Numéro d'Ordre (Médical)</label><input type="text" value={medicalCouncilNumber} onChange={(e) => setMedicalCouncilNumber(e.target.value)} className="w-full rounded-md border-slate-300 shadow-sm p-2.5 border" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Hôpital d'exercice</label><input type="text" value={currentHospital} onChange={(e) => setCurrentHospital(e.target.value)} className="w-full rounded-md border-slate-300 shadow-sm p-2.5 border" /></div>
-              </>
-            )}
           </div>
 
           <div className="pt-4">
@@ -162,6 +133,14 @@ export const RegisterPage = () => {
           </div>
         </form>
       </div>
+      
+      {error && (
+        <Toast 
+          type="error" 
+          message={error} 
+          onClose={() => setError('')} 
+        />
+      )}
     </div>
   );
 };

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Convention Tripartite</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 20mm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            color: #333333;
+            line-height: 1.5;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #059669; /* emerald-600 */
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #059669;
+            font-size: 18pt;
+            margin: 0;
+            text-transform: uppercase;
+        }
+        .header p {
+            font-size: 10pt;
+            color: #64748B;
+            margin: 5px 0 0 0;
+        }
+        h2 {
+            font-size: 14pt;
+            color: #0F172A;
+            border-bottom: 1px solid #E2E8F0;
+            padding-bottom: 5px;
+            margin-top: 25px;
+        }
+        .section {
+            margin-bottom: 15px;
+        }
+        .field {
+            margin-bottom: 5px;
+        }
+        .label {
+            font-weight: bold;
+            display: inline-block;
+            width: 150px;
+        }
+        .content {
+            text-align: justify;
+        }
+        .signatures {
+            margin-top: 50px;
+            width: 100%;
+        }
+        .signatures table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .signatures td {
+            width: 33%;
+            vertical-align: top;
+            text-align: center;
+            padding: 10px;
+        }
+        .signatures .title {
+            font-weight: bold;
+            margin-bottom: 50px;
+        }
+        .signatures .name {
+            border-top: 1px solid #333;
+            padding-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Convention Tripartite de Stage / Formation</h1>
+        <p>Référence: <span th:text="${reference}">CONV-2026-XXXX</span> | Date: <span th:text="${currentDate}">01/01/2026</span></p>
+    </div>
+
+    <div class="content">
+        <p>Entre les soussignés :</p>
+        
+        <h2>1. L'Établissement d'Accueil (CHU)</h2>
+        <div class="section">
+            <div class="field"><span class="label">Établissement :</span> <span th:text="${chuName}">CHU de Bordeaux</span></div>
+            <div class="field"><span class="label">Adresse :</span> <span th:text="${chuAddress}">Place Amélie Raba Léon, 33000 Bordeaux</span></div>
+        </div>
+
+        <h2>2. L'Organisme de Formation</h2>
+        <div class="section">
+            <div class="field"><span class="label">Organisme :</span> OptimiSanté SAS</div>
+            <div class="field"><span class="label">Siège social :</span> Bordeaux, France</div>
+        </div>
+
+        <h2>3. Le Praticien</h2>
+        <div class="section">
+            <div class="field"><span class="label">Nom et Prénom :</span> <span th:text="${doctorName}">Dr. Jean Dupont</span></div>
+            <div class="field"><span class="label">Spécialité :</span> <span th:text="${doctorSpecialty}">Cardiologie</span></div>
+            <div class="field"><span class="label">Email :</span> <span th:text="${doctorEmail}">jean.dupont@example.com</span></div>
+        </div>
+
+        <h2>Article 1 : Objet de la convention</h2>
+        <div class="section">
+            La présente convention a pour objet de définir les conditions dans lesquelles le Praticien effectuera un stage d'observation et de perfectionnement au sein de l'Établissement d'Accueil, encadré par OptimiSanté.
+        </div>
+
+        <h2>Article 2 : Durée et Déroulement</h2>
+        <div class="section">
+            Le stage se déroulera du <strong th:text="${startDate}">01/09/2026</strong> au <strong th:text="${endDate}">30/09/2026</strong>.
+        </div>
+
+        <h2>Article 3 : Engagements</h2>
+        <div class="section">
+            Le praticien s'engage à respecter le règlement intérieur de l'établissement d'accueil. L'établissement d'accueil s'engage à fournir l'encadrement médical nécessaire à la bonne réalisation des objectifs de formation.
+        </div>
+    </div>
+
+    <div class="signatures">
+        <table>
+            <tr>
+                <td>
+                    <div class="title">Le Praticien</div>
+                    <br/><br/><br/>
+                    <div class="name" th:text="${doctorName}">Dr. Jean Dupont</div>
+                </td>
+                <td>
+                    <div class="title">Pour OptimiSanté</div>
+                    <br/><br/><br/>
+                    <div class="name">La Direction</div>
+                </td>
+                <td>
+                    <div class="title">Pour le CHU</div>
+                    <br/><br/><br/>
+                    <div class="name">Le Doyen / Directeur</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+</body>
+</html>

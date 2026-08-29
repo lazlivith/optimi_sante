@@ -35,7 +35,7 @@
 </head>
 <body>
 
-    <div th:replace="~{pdf/components/header :: header}"></div>
+    <div th:replace="~{components/header :: header}"></div>
 
     <div class="watermark">PRO FORMA</div>
 
@@ -51,7 +51,7 @@
             </td>
             <td width="50%" style="text-align: right;">
                 <strong>Destinataire :</strong><br/>
-                <span th:text="${clientName}">Nom du Client</span><br/>
+                <span th:text="${customerName}">Nom du Client</span><br/>
                 <span th:text="${clientAddress}">Adresse du Client</span><br/>
                 <span th:text="${clientVat}">TVA: FRXX 123456789</span>
             </td>
@@ -59,8 +59,8 @@
     </table>
 
     <div style="margin-bottom: 20px;">
-        <strong>Référence :</strong> <span th:text="${orderReference}">DEV-2026-0001</span><br/>
-        <strong>Date d'émission :</strong> <span th:text="${date}">01/01/2026</span><br/>
+        <strong>Référence :</strong> <span th:text="${orderNumber}">DEV-2026-0001</span><br/>
+        <strong>Date d'émission :</strong> <span th:text="${currentDate}">01/01/2026</span><br/>
         <strong>Validité :</strong> 30 jours
     </div>
 
@@ -75,7 +75,7 @@
         </thead>
         <tbody>
             <tr th:each="item : ${items}">
-                <td th:text="${item.description}">Produit X</td>
+                <td th:text="${item.name}">Produit X</td>
                 <td style="text-align: right;" th:text="${item.quantity}">1</td>
                 <td style="text-align: right;" th:text="${#numbers.formatDecimal(item.unitPrice, 1, 'WHITESPACE', 2, 'POINT')} + ' €'">100.00 €</td>
                 <td style="text-align: right;" th:text="${#numbers.formatDecimal(item.subtotal, 1, 'WHITESPACE', 2, 'POINT')} + ' €'">100.00 €</td>
@@ -103,7 +103,7 @@
         <p>Paiement par virement bancaire sous 30 jours à réception de facture. Merci de préciser la référence du devis lors de votre virement.</p>
     </div>
 
-    <div th:replace="~{pdf/components/footer :: footer}"></div>
+    <div th:replace="~{components/footer :: footer}"></div>
 
 </body>
 </html>

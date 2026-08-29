@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
-import { orderService, type CheckoutRequestDto, type QuoteRequestDto } from '../api/orderService';
-import { Link } from 'react-router-dom';
+import { orderService, type QuoteRequestDto } from '../api/orderService';
+import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Box, Trash2, ArrowLeft, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -14,28 +14,14 @@ export function CartPage() {
 
   const hasQuoteOnlyItems = items.some(i => i.isQuoteOnly);
 
-  const handleStripeCheckout = async () => {
+  const navigate = useNavigate();
+
+  const handleCheckoutRedirect = () => {
     if (!isAuthenticated) {
       window.location.href = '/login';
       return;
     }
-    
-    setIsProcessing(true);
-    setError(null);
-    try {
-      const request: CheckoutRequestDto = {
-        items: items.map(item => ({ productId: item.id, quantity: item.cartQuantity })),
-        paymentMethod: 'STRIPE_CARD'
-      };
-      const response = await orderService.checkout(request);
-      if (response.paymentUrl) {
-        clearCart();
-        window.location.href = response.paymentUrl;
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Erreur lors du checkout.');
-      setIsProcessing(false);
-    }
+    navigate('/checkout');
   };
 
   const handleQuoteRequest = async () => {
@@ -165,18 +151,18 @@ export function CartPage() {
                 </button>
                 {user?.role === 'CLIENT_B2B' && !hasQuoteOnlyItems && (
                   <button 
-                    onClick={handleStripeCheckout}
+                    onClick={handleCheckoutRedirect}
                     disabled={isProcessing}
                     className="w-full flex items-center justify-center px-6 py-4 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-50 transition-colors shadow-sm"
                   >
                     {isProcessing ? <Loader2 className="animate-spin mr-2 w-5 h-5" /> : null}
-                    Payer par carte (CB)
+                    Payer la commande
                   </button>
                 )}
              </div>
           ) : (
              <button 
-                onClick={handleStripeCheckout}
+                onClick={handleCheckoutRedirect}
                 disabled={isProcessing}
                 className="w-full flex items-center justify-center px-6 py-4 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-50 transition-colors shadow-sm"
               >

@@ -6,5 +6,6 @@ import java.util.List;
 
 public record CheckoutRequestDto(
         List<CheckoutItemDto> items,
-        PaymentMethod paymentMethod
+        PaymentMethod paymentMethod,
+        String promoCode
 ) {}

@@ -3,6 +3,12 @@ spring:
     name: optimisante-backend
   profiles:
     active: dev
+  servlet:
+    multipart:
+      # Relevé au-delà du défaut (1 MB) pour permettre l'upload d'une courte vidéo
+      # d'illustration de formation (image de formation, brochures restent bien en-dessous).
+      max-file-size: 30MB
+      max-request-size: 35MB
 
 ---
 spring:
@@ -11,7 +17,7 @@ spring:
       on-profile: dev
 
   datasource:
-    url: jdbc:postgresql://127.0.0.1:5432/optimisante_db
+    url: jdbc:postgresql://127.0.0.1:5051/optimisante_db
     username: postgres
     password: Investx2026
     driver-class-name: org.postgresql.Driver
@@ -23,7 +29,7 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
@@ -39,11 +45,30 @@ spring:
       host: 127.0.0.1
       port: 6379
 
+  mail:
+    host: ${MAIL_HOST:sandbox.smtp.mailtrap.io}
+    port: ${MAIL_PORT:2525}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+        transport:
+          protocol: smtp
+
 app:
   security:
     jwt:
       secret: ${JWT_SECRET:default-dev-secret-key-at-least-32-chars-long!}
       expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24 hours
+  mail:
+    from: ${MAIL_FROM:no-reply@optimisante.fr}
+    frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+  doctor-application:
+    fee-amount: ${DOCTOR_APPLICATION_FEE:50.00} # Frais de dossier fixes, indépendants du prix de la formation
   aws:
     s3:
       endpoint: ${AWS_S3_ENDPOINT:http://localhost:4566}

@@ -31,4 +31,6 @@ public class LeadCaptureRequestDto {
 
     @NotBlank(message = "La spécialité est obligatoire")
     private String specialty;
+
+    private String source;
 }

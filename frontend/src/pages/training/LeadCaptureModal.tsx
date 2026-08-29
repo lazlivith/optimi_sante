@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, CheckCircle, Loader2, X } from 'lucide-react';
+import { CheckCircle, Loader2, X } from 'lucide-react';
 import { trainingService, type LeadCaptureRequestDto } from '../../api/trainingService';
 
 interface LeadCaptureModalProps {
@@ -22,7 +22,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  // const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -37,12 +37,12 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
     try {
       const response = await trainingService.captureLead(trainingId, formData);
       setSuccess(true);
-      setDownloadUrl(response.brochureDownloadUrl);
+      // setDownloadUrl(response.brochureDownloadUrl);
       if (response.brochureDownloadUrl) {
         window.open(response.brochureDownloadUrl, '_blank');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erreur lors de la demande de brochure.');
+      setError(err.response?.data?.message || 'Erreur lors de la candidature.');
     } finally {
       setIsSubmitting(false);
     }
@@ -77,7 +77,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
         ) : (
           <>
             <div className="p-8 border-b border-slate-100">
-              <h2 className="text-xl font-bold text-brand-dark mb-2">Télécharger la brochure</h2>
+              <h2 className="text-xl font-bold text-brand-dark mb-2">Candidature à la formation</h2>
               <p className="text-sm text-slate-500">
                 Formation : <span className="font-semibold text-brand-green">{trainingTitle}</span>
               </p>

@@ -29,6 +29,9 @@ public class User {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
+    @Column(length = 30)
+    private String phone;
+
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
@@ -38,6 +41,9 @@ public class User {
 
     @Column(name = "is_active")
     private Boolean isActive = true;
+
+    @Column(name = "stripe_customer_id", length = 255)
+    private String stripeCustomerId;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

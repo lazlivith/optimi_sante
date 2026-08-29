@@ -120,11 +120,16 @@ public class CatalogService {
     }
 
     private ProductResponseDto mapToProductDto(Product product, BigDecimal b2bDiscountRate) {
-        BigDecimal finalPrice = product.getBasePrice();
-        
+        // Le prix promotionnel (s'il est actif) sert de base au calcul, la remise B2B
+        // s'applique ensuite par-dessus — même point de vérité que le calcul au checkout
+        // (Product.getEffectiveBasePrice), pour ne jamais afficher un prix qui ne serait pas
+        // celui réellement facturé.
+        BigDecimal effectiveBasePrice = product.getEffectiveBasePrice();
+        BigDecimal finalPrice = effectiveBasePrice;
+
         if (b2bDiscountRate != null && b2bDiscountRate.compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal multiplier = BigDecimal.ONE.subtract(b2bDiscountRate.divide(BigDecimal.valueOf(100)));
-            finalPrice = product.getBasePrice().multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
+            finalPrice = effectiveBasePrice.multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
         }
 
         CategorySummaryDto categoryDto = null;
@@ -147,7 +152,10 @@ public class CatalogService {
                 b2bDiscountRate,
                 product.getStockQuantity(),
                 product.getIsQuoteOnly(),
-                categoryDto
+                product.getImageUrl(),
+                categoryDto,
+                product.isPromoActive(),
+                product.isPromoActive() ? product.getPromoEndsAt() : null
         );
     }
 }

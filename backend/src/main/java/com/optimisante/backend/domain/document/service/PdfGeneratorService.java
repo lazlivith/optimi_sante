@@ -10,12 +10,19 @@ import org.xhtmlrenderer.pdf.ITextRenderer;
 import java.io.ByteArrayOutputStream;
 import java.util.Map;
 
+import com.optimisante.backend.common.storage.StorageService;
+
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PdfGeneratorService {
 
     private final TemplateEngine templateEngine;
+    private final StorageService storageService;
+
+    public PdfGeneratorService(@org.springframework.beans.factory.annotation.Qualifier("pdfTemplateEngine") TemplateEngine templateEngine, StorageService storageService) {
+        this.templateEngine = templateEngine;
+        this.storageService = storageService;
+    }
 
     /**
      * Génère un fichier PDF en mémoire à partir d'un template Thymeleaf.
@@ -49,15 +56,31 @@ public class PdfGeneratorService {
         }
     }
 
+    /**
+     * Génère un PDF et l'upload directement sur le cloud (Cloudinary/S3).
+     */
+    public String generateAndUploadPdf(String templateName, Map<String, Object> variables, String folder, String fileName) {
+        byte[] pdfBytes = generatePdfFromTemplate(templateName, variables);
+        return storageService.uploadGeneratedPdf(pdfBytes, folder, fileName);
+    }
+
     public byte[] generateQuotePdf(Map<String, Object> quoteData) {
-        return generatePdfFromTemplate("pdf/devis-b2b", quoteData);
+        return generatePdfFromTemplate("devis-b2b", quoteData);
     }
 
     public byte[] generateReceiptPdf(Map<String, Object> receiptData) {
-        return generatePdfFromTemplate("pdf/recu-paiement", receiptData);
+        return generatePdfFromTemplate("recu-paiement", receiptData);
     }
 
     public byte[] generateEnrollmentAttestationPdf(Map<String, Object> attestationData) {
-        return generatePdfFromTemplate("pdf/attestation-ins", attestationData);
+        return generatePdfFromTemplate("attestation-ins", attestationData);
+    }
+
+    public byte[] generateTripartiteConventionPdf(Map<String, Object> conventionData) {
+        return generatePdfFromTemplate("convention-tripartite", conventionData);
+    }
+
+    public byte[] generatePartnershipConventionPdf(Map<String, Object> data) {
+        return generatePdfFromTemplate("convention-partenariat", data);
     }
 }

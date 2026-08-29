@@ -1,5 +1,11 @@
 import { axiosClient } from './axiosClient';
 
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -11,11 +17,10 @@ export interface Product {
   b2bDiscountRate: number;
   stockQuantity: number;
   isQuoteOnly: boolean;
-  category?: {
-    id: string;
-    name: string;
-    slug: string;
-  };
+  imageUrl?: string;
+  category?: Category;
+  isOnPromo?: boolean;
+  promoEndsAt?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -38,7 +43,7 @@ export const catalogService = {
   },
   
   getCategories: async () => {
-    const { data } = await axiosClient.get('/catalog/categories');
+    const { data } = await axiosClient.get<Category[]>('/catalog/categories');
     return data;
   }
 };

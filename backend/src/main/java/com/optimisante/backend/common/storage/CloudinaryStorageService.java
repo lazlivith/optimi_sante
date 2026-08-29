@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,12 +26,19 @@ public class CloudinaryStorageService implements StorageService {
             Map<String, Object> uploadParams = ObjectUtils.asMap(
                     "folder", folderPath,
                     "public_id", publicId,
-                    "resource_type", "auto" // Automatically detect if it's an image, video, or raw file
+                    // "raw" (et non "auto") : generatePresignedOrSignedUrl() doit connaître le
+                    // resource_type exact au moment de reconstruire l'URL de téléchargement, et
+                    // "auto" n'est valide qu'à l'upload, pas pour une transformation/URL.
+                    "resource_type", "raw",
+                    "type", "upload" // "authenticated" nécessite une fonctionnalité de contrôle d'accès
+                                      // non activée sur ce compte Cloudinary (erreur "deny or ACL failure").
+                                      // "upload" + URL signée (voir generatePresignedOrSignedUrl) fonctionne
+                                      // sur tout compte standard, sans configuration supplémentaire.
             );
 
             Map<?, ?> uploadResult = cloudinary.uploader().upload(bytes, uploadParams);
             return uploadResult.get("public_id").toString();
-            
+
         } catch (IOException e) {
             log.error("Failed to upload file to Cloudinary: {}", e.getMessage(), e);
             throw new RuntimeException("Could not upload file to storage", e);
@@ -55,12 +61,16 @@ public class CloudinaryStorageService implements StorageService {
             Map<String, Object> uploadParams = ObjectUtils.asMap(
                     "folder", folderPath,
                     "public_id", fileName,
-                    "resource_type", "raw" // PDFs can be uploaded as raw or image, but raw is safer for documents
+                    "resource_type", "raw", // PDFs can be uploaded as raw or image, but raw is safer for documents
+                    "type", "upload" // "authenticated" nécessite une fonctionnalité de contrôle d'accès
+                                      // non activée sur ce compte Cloudinary (erreur "deny or ACL failure").
+                                      // "upload" + URL signée (voir generatePresignedOrSignedUrl) fonctionne
+                                      // sur tout compte standard, sans configuration supplémentaire.
             );
 
             Map<?, ?> uploadResult = cloudinary.uploader().upload(pdfBytes, uploadParams);
             return uploadResult.get("public_id").toString();
-            
+
         } catch (IOException e) {
             log.error("Failed to upload generated PDF to Cloudinary: {}", e.getMessage(), e);
             throw new RuntimeException("Could not upload PDF to storage", e);
@@ -70,12 +80,13 @@ public class CloudinaryStorageService implements StorageService {
     @Override
     public String generatePresignedOrSignedUrl(String publicId, int expirationMinutes) {
         try {
-            long expiresAt = Instant.now().getEpochSecond() + (expirationMinutes * 60L);
-            
-            // Generate a signed URL for a private or authenticated resource
+            // Generate a signed URL — le paramètre expirationMinutes n'est pas exploité tant que le
+            // compte Cloudinary n'a pas la fonctionnalité "Authenticated"/token-based access activée
+            // (cf. commentaire dans uploadFile/uploadGeneratedPdf) ; à revoir si cette fonctionnalité
+            // est activée côté compte pour de vrais liens à expiration.
             return cloudinary.url()
-                    .resourceType("auto")
-                    .type("authenticated")
+                    .resourceType("raw")
+                    .type("upload")
                     .signed(true)
                     .generate(publicId);
                     
@@ -83,6 +94,34 @@ public class CloudinaryStorageService implements StorageService {
             log.error("Failed to generate signed URL for publicId {}: {}", publicId, e.getMessage(), e);
             throw new RuntimeException("Could not generate signed URL", e);
         }
+    }
+
+    @Override
+    public String uploadMedia(org.springframework.web.multipart.MultipartFile file, String folderPath, String resourceType) {
+        try {
+            String publicId = UUID.randomUUID().toString();
+            Map<String, Object> uploadParams = ObjectUtils.asMap(
+                    "folder", folderPath,
+                    "public_id", publicId,
+                    "resource_type", resourceType, // "image" ou "video" : nécessaire pour un rendu
+                                                    // inline (<img>/<video>) et les transformations,
+                                                    // contrairement à "raw" utilisé pour les documents.
+                    "type", "upload"
+            );
+            Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(), uploadParams);
+            return uploadResult.get("public_id").toString();
+        } catch (IOException e) {
+            log.error("Failed to upload media to Cloudinary: {}", e.getMessage(), e);
+            throw new RuntimeException("Could not upload media to storage", e);
+        }
+    }
+
+    @Override
+    public String generateMediaUrl(String publicId, String resourceType) {
+        return cloudinary.url()
+                .resourceType(resourceType)
+                .type("upload")
+                .generate(publicId);
     }
 
     @Override

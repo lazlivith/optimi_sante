@@ -41,4 +41,15 @@ public class AuthResource {
     public ResponseEntity<UserProfileDTO> getProfile() {
         return ResponseEntity.ok(authService.getProfile());
     }
+
+    @PutMapping("/profile")
+    public ResponseEntity<UserProfileDTO> updateProfile(@RequestBody UpdateProfileRequestDto request) {
+        return ResponseEntity.ok(authService.updateProfile(request));
+    }
+
+    @PutMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequestDto request) {
+        authService.changePassword(request);
+        return ResponseEntity.ok().build();
+    }
 }

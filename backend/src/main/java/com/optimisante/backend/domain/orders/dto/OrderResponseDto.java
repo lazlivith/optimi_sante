@@ -20,6 +20,10 @@ public record OrderResponseDto(
         String stripePaymentIntentId,
         String stripeCheckoutSessionId,
         String paymentUrl,
+        String clientSecret,
+        String documentS3Key,
+        String promoCode,
+        BigDecimal discountAmount,
         OffsetDateTime createdAt,
         List<OrderItemDto> items
 ) {}

@@ -48,4 +48,12 @@ public class ProspectLead {
     @CreationTimestamp
     @Column(name = "downloaded_at", updatable = false)
     private OffsetDateTime downloadedAt;
+
+    @Column(length = 100)
+    private String source;
+
+    @Transient
+    public String getFullName() {
+        return (this.firstName != null ? this.firstName : "") + " " + (this.lastName != null ? this.lastName : "");
+    }
 }

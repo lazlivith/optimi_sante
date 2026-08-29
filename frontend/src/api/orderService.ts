@@ -1,4 +1,5 @@
 import { axiosClient } from './axiosClient';
+import type { Page } from './adminOrderService';
 
 export interface CheckoutItemDto {
   productId: string;
@@ -8,6 +9,7 @@ export interface CheckoutItemDto {
 export interface CheckoutRequestDto {
   items: CheckoutItemDto[];
   paymentMethod: 'STRIPE_CARD' | 'BANK_TRANSFER' | 'QUOTE_REQUEST';
+  promoCode?: string;
 }
 
 export interface QuoteRequestDto {
@@ -24,6 +26,24 @@ export interface OrderResponseDto {
   isQuote: boolean;
   totalAmount: number;
   paymentUrl?: string;
+  /** Renseigné uniquement pour un paiement STRIPE_CARD : initialise le Payment Element intégré (ui_mode "elements"). */
+  clientSecret?: string;
+  documentS3Key?: string;
+  promoCode?: string;
+  discountAmount?: number;
+  createdAt: string;
+}
+
+export interface PromoValidationResult {
+  valid: boolean;
+  discountAmount: number;
+  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
+}
+
+export interface CheckoutSessionStatusDto {
+  status: string;
+  paymentStatus: string;
+  orderNumber?: string;
 }
 
 export const orderService = {
@@ -36,9 +56,21 @@ export const orderService = {
     const { data } = await axiosClient.post<OrderResponseDto>('/orders/quote-request', request);
     return data;
   },
-  
-  getMyOrders: async () => {
-    const { data } = await axiosClient.get('/orders/my-orders');
+
+  getMyOrders: async (page = 0, size = 20): Promise<Page<OrderResponseDto>> => {
+    const { data } = await axiosClient.get<Page<OrderResponseDto>>(`/orders/my-orders?page=${page}&size=${size}`);
+    return data;
+  },
+
+  getCheckoutSessionStatus: async (sessionId: string): Promise<CheckoutSessionStatusDto> => {
+    const { data } = await axiosClient.get<CheckoutSessionStatusDto>('/orders/checkout-session-status', {
+      params: { sessionId }
+    });
+    return data;
+  },
+
+  validatePromoCode: async (code: string, orderAmount: number): Promise<PromoValidationResult> => {
+    const { data } = await axiosClient.post<PromoValidationResult>('/promo-codes/validate', { code, orderAmount });
     return data;
   }
 };

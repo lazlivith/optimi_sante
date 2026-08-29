@@ -1,4 +1,5 @@
-import React, { useState, useRef, DragEvent, ChangeEvent } from 'react';
+import { useState, useRef } from 'react';
+import type { DragEvent, ChangeEvent } from 'react';
 import { UploadCloud, FileText, AlertCircle, Loader2, X } from 'lucide-react';
 
 interface FileUploadDropzoneProps {
@@ -7,6 +8,7 @@ interface FileUploadDropzoneProps {
   acceptedTypes?: string[];
   isLoading?: boolean;
   uploadProgress?: number;
+  label?: string;
 }
 
 export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
@@ -15,6 +17,7 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
   acceptedTypes = ['application/pdf'],
   isLoading = false,
   uploadProgress = 0,
+  label = "Glissez-déposez la brochure PDF ici",
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -92,7 +95,7 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
               <UploadCloud className="w-8 h-8" />
             </div>
             <p className="text-sm font-medium text-slate-700">
-              Glissez-déposez la brochure PDF ici, ou <span className="text-emerald-600 underline">parcourez</span>
+              {label}, ou <span className="text-emerald-600 underline">parcourez</span>
             </p>
             <p className="text-xs text-slate-500">PDF jusqu'à {maxSizeMb} Mo</p>
           </div>

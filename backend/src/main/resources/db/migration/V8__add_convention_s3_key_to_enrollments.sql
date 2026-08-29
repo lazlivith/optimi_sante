@@ -1,0 +1,1 @@
+ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS convention_s3_key VARCHAR(255);
