@@ -6,3 +6,17 @@ target/
 dist/
 *.log
 .DS_Store
+
+# Scripts et artefacts de débogage locaux (jamais destinés au dépôt)
+Hash.java
+TestHash.java
+backend/fix_pwd.sql
+docker/fix_hashes.sql
+temp-bcrypt/
+
+# Exports/logs de données ponctuels (pas du code source)
+wc-product-export-*.csv
+workers/import_log_*.csv
+workers/venv/
+__pycache__/
+workers/__pycache__/
