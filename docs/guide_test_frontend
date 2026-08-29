@@ -1,0 +1,113 @@
+# Guide de Test Frontend — Par Rôle / Dashboard
+
+Ce guide liste les scénarios de test manuels pour chaque espace utilisateur. À suivre dans l'ordre — certains scénarios (CHU, Médecin, Admin) s'enchaînent.
+
+## Prérequis
+```powershell
+docker ps   # optimisante-backend, postgres, redis doivent être "Up"
+cd frontend
+npm run dev
+```
+Ouvrez `http://localhost:5173`.
+
+Tous les comptes utilisent le mot de passe **`password123`**.
+
+---
+
+## 0. Espace Public (non connecté)
+
+| Étape | Action | Résultat attendu |
+|---|---|---|
+| 1 | Aller sur `/` | Page d'accueil, catalogue vitrine |
+| 2 | Aller sur `/catalog` | Liste des produits, filtres par catégorie |
+| 3 | Aller sur `/formations` | **3 formations réelles** chargées depuis l'API (Échographie, Chirurgie mini-invasive, Réanimation néonatale) — la formation "Échographie" doit afficher un lieu "CHU Bordeaux - Bat A" (créé pendant nos tests) |
+| 4 | Cliquer "Postuler" sur une formation sans être connecté | Ouvre la modale de capture de lead (pas de blocage) |
+| 5 | Cliquer sur un produit → page détail | Fiche produit avec prix, description |
+
+---
+
+## 1. Espace Client B2C
+
+**Compte :** `b2c@optimi.com`
+
+| Étape | Action | Résultat attendu |
+|---|---|---|
+| 1 | `/login` → connexion | Redirection vers `/catalog` |
+| 2 | Recharger la page (F5) | **Reste connecté** (avant le correctif, ça déconnectait) |
+| 3 | Menu utilisateur (avatar, en haut à droite) | "Mon Profil", "Mes Commandes", "Se déconnecter" — plus aucun lien mort |
+| 4 | Ajouter un produit au panier → `/cart` → `/checkout` | Paiement par carte (Stripe) ou virement |
+| 5 | Après achat, aller sur **"Mes Commandes"** (`/my-orders`) | La commande apparaît avec montant, statut, type "Commande" |
+| 6 | "Mon Profil" | Champ téléphone visible ; email/rôle en lecture seule |
+
+---
+
+## 2. Espace Client B2B
+
+**Compte :** `b2b@optimi.com` (ou `clientb2b@optimi.com`)
+
+| Étape | Action | Résultat attendu |
+|---|---|---|
+| 1 | Connexion | Redirection vers `/catalog` |
+| 2 | Ajouter un produit *quote-only* au panier, demander un devis | `POST /orders/quote-request` → devis créé |
+| 3 | Menu utilisateur → **"Mes Devis"** (`/my-orders`) | Liste des devis avec statut "DEVIS ENVOYÉ" et lien PDF si généré |
+| 4 | "Mon Profil" | Champs "Nom de l'entreprise" et "SIRET/FINESS" visibles et modifiables ; sauvegarde fonctionnelle (`PUT /auth/profile`) |
+
+---
+
+## 3. Espace Médecin
+
+**Compte :** `medecin@optimi.com`
+
+| Étape | Action | Résultat attendu |
+|---|---|---|
+| 1 | Connexion | Redirection vers **`/doctor/vault`** (avant le correctif, cassé) |
+| 2 | Coffre-fort (`/doctor/vault`) | Doit déjà contenir une **Convention Tripartite** (générée pendant nos tests) — lien de téléchargement sécurisé fonctionnel |
+| 3 | "Mon Profil" | Champs Prénom, Nom, Spécialité, N° d'Ordre, Pays, Hôpital visibles et modifiables |
+| 4 | `/formations` → "Postuler" sur "Réanimation néonatale" ou "Chirurgie mini-invasive" | ⚠️ Aucune session ouverte n'existe pour ces 2 formations (seule "Échographie" en a une) — normal de ne rien trouver ; testez plutôt l'inscription sur une formation avec session (voir §6) |
+| 5 | Dossier déjà créé pendant nos tests : `/my-enrollments/68a8000b-fb05-406c-82df-4df21df73389` | Stepper visible, étape "Validé Administratif" active, formulaire d'upload de document en bas |
+
+---
+
+## 4. Espace CHU / Centre de Formation
+
+**Compte :** `chu@optimi.com`
+
+| Étape | Action | Résultat attendu |
+|---|---|---|
+| 1 | Connexion | Redirection vers `/partner/sessions` |
+| 2 | Onglet "Candidatures reçues" | Doit afficher le dossier du médecin créé pendant nos tests (statut "Approuvé Administratif") |
+| 3 | Onglet "Créer une session" → formulaire | ID formation à utiliser : `a1b2c3d4-e5f6-7890-1234-56789abcdef1` (Échographie — c'est la seule formation actuellement rattachée à ce compte CHU) |
+| 4 | Soumettre le formulaire | Toast de succès ; une nouvelle session apparaît dans `/trainings/{id}/sessions` |
+| 5 | ⚠️ Tester avec un autre ID de formation (ex. Chirurgie) | Doit échouer — ce compte CHU n'est pas propriétaire de cette formation (vérification de sécurité active) |
+
+---
+
+## 5. Espace Admin
+
+**Compte :** `admin@optimi.com`
+
+| Étape | Action | Résultat attendu |
+|---|---|---|
+| 1 | Connexion | Redirection vers `/admin/quotes` |
+| 2 | Modération des devis | Liste des devis B2B, boutons Valider/Rejeter, lien PDF |
+| 3 | Dossier CHU déjà créé : `/admin/enrollments/68a8000b-fb05-406c-82df-4df21df73389` | Détail complet, coffre-fort documentaire (le document "OTHER" uploadé pendant nos tests doit apparaître), bouton "Générer Convention" |
+| 4 | ⚠️ Pas de page de liste `/admin/enrollments` | **Limite connue** — il faut l'URL directe avec l'ID pour l'instant. Documenté dans `journal_erreurs_defis` comme point ouvert. |
+
+---
+
+## 6. Scénario bout-en-bout complet (recommandé pour valider tout le flux Sprint 3-4)
+
+1. **CHU** (`chu@optimi.com`) → créer une nouvelle session sur "Chirurgie mini-invasive" (⚠️ échouera, non propriétaire — utilisez plutôt "Échographie", `a1b2c3d4-...`)
+2. Récupérez l'ID de la session créée (visible dans la réponse réseau, onglet DevTools)
+3. **Médecin** (`medecin@optimi.com`, un *nouveau* compte médecin si possible pour repartir d'un dossier vierge) → `/formations/a1b2c3d4-e5f6-7890-1234-56789abcdef1/enroll` → sélectionner la session → s'inscrire
+4. Uploader un document justificatif (type "Passeport")
+5. **Admin** (`admin@optimi.com`) → `/admin/enrollments/{id du nouveau dossier}` → faire avancer le statut étape par étape jusqu'à "Validé Administratif"
+6. Vérifier que la convention se génère **automatiquement** à cette étape
+7. **Médecin** → `/doctor/vault` → la nouvelle convention doit apparaître
+
+---
+
+## Limites connues (pas des bugs — documentées dans `journal_erreurs_defis`)
+- Pas de page de liste globale pour l'admin (dossiers CHU, commandes) — uniquement les vues détail
+- `refreshToken` non exploité : la session expire sèchement après 24h, pas de renouvellement automatique
+- Les brochures des 3 formations de test pointent vers une clé Cloudinary factice (`mock-key`) → le téléchargement de brochure PDF échouera en 404, c'est un problème de **donnée de test**, pas de code

@@ -2,7 +2,7 @@ CAHIER DES CHARGES TECHNIQUE V6 (FINAL READY FOR DEV)
 Projet : Plateforme E-Commerce B2B/B2C & SaaS de Mobilité/Formation Médicale Optimi Santé
 En-tête / Mission : « Faciliter la mobilité en formation pour les médecins d'Afrique »
 Périmètre : Pure Player Web E-Commerce (Matériel Médical), Lead Capture, Inscription & Onboarding Formations, Tracking Consulaire (Visa/Convention Tripartite), Multi-Tenant & RBAC.
-Stack Technique : Java 21 (Spring Boot 3 + OpenPDF) + React 18 (Tailwind CSS) + Python 3.12 (FastAPI Worker pour scripts/traitements batch) + PostgreSQL 16 + Redis + AWS S3 KMS.
+Stack Technique : Java 21 (Spring Boot 3 + OpenPDF) + React 18 (Tailwind CSS) + Python 3.12 (FastAPI Worker pour scripts/traitements batch) + PostgreSQL 16 + Redis + Cloudinary.
  
 ________________________________________
 1. MATRICE DES RÔLES ET ACCÈS (RBAC)
@@ -243,7 +243,7 @@ $$\text{Stock Disponible} = \text{stock\_quantity} - \sum(\text{stock\_reservati
 4.	Une fois le paiement Stripe/BC validé, le stock physique est décrémenté en BDD via une requête avec lock optimiste (version = version + 1) et la ligne de réservation est nettoyée.
 Génération Synchrone de la Convention Tripartite (Java Native OpenPDF) :
 1.	Lors du passage du statut de la candidature à APPROVED_ADMINISTRATIVE, Spring Boot déclenche la génération du PDF en mémoire via OpenPDF.
-2.	Le fichier généré est directement transmis sur AWS S3 KMS.
+2.	Le fichier généré est directement transmis sur Cloudinary.
 3.	La clé tripartite_convention_s3_key est immédiatement enregistrée dans la table enrollments.
  
 ________________________________________
@@ -260,7 +260,7 @@ ________________________________________
 │ SPRINT 1 : Socle Identity RBAC, Multi-Tenant & Schema V6                │
 │ • Scripts Migration Flyway/Liquibase avec le schéma PostgreSQL V6       │
 │ • Configuration Spring Security (JWT, 4 Rôles, Intercepteurs)          │
-│ • Configuration AWS S3 KMS & Service Presigned URLs                     │
+│ • Configuration Cloudinary & Service Presigned URLs                     │
 └────────────────────────────────────┬────────────────────────────────────┘
                                      │
 ┌────────────────────────────────────▼────────────────────────────────────┐
@@ -321,7 +321,7 @@ S2	Sprint 1
 (Security & S3)	• Implémentation Spring Security + JWT RBAC (4 rôles)
 
 
-• Configuration AWS S3 KMS & Service Presigned URLs
+• Configuration Cloudinary & Service Presigned URLs
 
 
 • Auth Interceptors & Handlers de permissions côté React	• Java 21 / Spring Boot 3
@@ -330,7 +330,7 @@ S2	Sprint 1
 • React 18 / Tailwind
 
 
-• AWS S3 KMS
+• Cloudinary
 S3	Sprint 2
 
 
@@ -369,7 +369,7 @@ S5	Sprint 3
 • Traçabilité BDD (prospect_leads) pour le suivi d'acquisition	• Spring Boot 3
 
 
-• AWS S3 KMS
+• Cloudinary
 S6	Sprint 3
 
 
@@ -389,7 +389,7 @@ S7	Sprint 4
 • Upload direct S3 KMS et enregistrement automatique de tripartite_convention_s3_key	• Java 21 / OpenPDF
 
 
-• AWS S3 KMS
+• Cloudinary
 S8	Sprint 4
 
 

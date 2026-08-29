@@ -1,0 +1,99 @@
+🛠️ Prompts : Ce que vous devez faire maintenant (pas de code, uniquement des appels / données)
+1️⃣ Vérifier le JWT généré pour le compte B2B
+Login (POST /api/v1/auth/login) avec :
+json
+{
+  "email": "b2b@optimi.com",
+  "password": "password123"
+}
+Copiez l’intégralité de la valeur accessToken du corps de réponse (elle débute par eyJ...).
+Dans Postman, créez une variable d’environnement B2B_TOKEN contenant exactement ce token (sans espaces ni guillemets).
+2️⃣ Appeler le quote‑request avec les bons en‑têtes & payload
+Header	Valeur
+Authorization	Bearer {{B2B_TOKEN}}
+Content‑Type	application/json
+X‑Tenant‑Id	FR_MAIN
+Body (raw JSON) – utilisez un produit marqué is_quote_only = TRUE. Si vous n’avez pas encore de tel produit, créez‑en un rapidement (voir étape 3). Exemple :
+
+json
+{
+  "items": [
+    {
+      "productId": "a4ab3894-ec24-4c78-9696-01ac690f3dd1",   // ← ID du produit *quote‑only*
+      "quantity": 5
+    }
+  ],
+  "notes": "Demande de devis pour 5 Tensiomètres – Urgent"
+}
+Cliquez → Send. Vous devez obtenir :
+HTTP 200 OK avec le corps OrderResponseDto contenant documentS3Key (URL Cloudinary du PDF devis).
+
+3️⃣ Si vous ne disposez pas d’un produit is_quote_only = TRUE
+Identifiez un produit existant (ex. l’ID que vous avez déjà affiché : a4ab3894-ec24-4c78-9696-01ac690f3dd1).
+Mettez‑le à jour dans la base PostgreSQL (en une seule ligne) :
+sql
+UPDATE products
+SET is_quote_only = TRUE
+WHERE id = 'a4ab3894-ec24-4c78-9696-01ac690f3dd1';
+Vous pouvez lancer cette requête depuis votre conteneur optimisante-postgres avec :
+
+powershell
+docker exec -i optimisante-postgres psql -U postgres -d optimisante_db -c "<SQL ci‑dessus>"
+Refaites le login (étape 1) afin d’obtenir un nouveau token (le claim n’a pas changé, mais il vaut mieux repartir d’un token fraîchement émis).
+Répétez l’appel du quote‑request (étape 2).
+4️⃣ Vérifier la rôle du token (facultatif, mais utile)
+Dans Postman, ajoutez une petite requête GET /api/v1/auth/profile (qui nécessite uniquement le token).
+Le JSON retourné doit contenir :
+
+json
+{
+  "role": "CLIENT_B2B",
+  "tenantCode": "FR_MAIN",
+  ...
+}
+Si le champ role n’est pas CLIENT_B2B, alors le compte utilisé n’est pas celui attendu (vérifiez l’adresse e‑mail utilisée lors du login).
+
+5️⃣ (Option avancée) — Test en cURL pour éliminer un problème de Postman
+powershell
+curl -X POST http://localhost:8080/api/v1/orders/quote-request `
+  -H "Authorization: Bearer <YOUR_B2B_TOKEN>" `
+  -H "Content-Type: application/json" `
+  -H "X-Tenant-Id: FR_MAIN" `
+  -d '{"items":[{"productId":"a4ab3894-ec24-4c78-9696-01ac690f3dd1","quantity":5}],"notes":"Devis test"}'
+Si la réponse vaut 200, le problème venait d’un mauvais header ou d’un token mal collé dans Postman.
+
+📦 Plan d’action (One‑Pager)
+Step	Action	Pourquoi ?	Résultat attendu
+1	Login B2B → récupérer accessToken	Le token porte le claim role = CLIENT_B2B et tenant_id.	Variable B2B_TOKEN remplie.
+2	Vérifier le role via /api/v1/auth/profile	Confirmer que le token est bien B2B.	"role":"CLIENT_B2B" affiché.
+3	S’assurer que le produit ciblé a is_quote_only = TRUE	La logique d’OrderService bloque les devis sur les produits non‑quote‑only.	Mise à jour SQL si besoin.
+4	Appeler /api/v1/orders/quote-request avec Authorization, X‑Tenant‑Id, Content‑Type + payload correct	Passer les filtres de sécurité et de logique métier.	200 OK + JSON contenant documentS3Key.
+5	(Option) Ré‑exécuter le même appel en cURL pour valider la configuration Postman	Isoler un problème d’outil client.	Même réponse 200.
+6	Visualiser le PDF généré via l’URL documentS3Key (Cloudinary)	Confirmation visuelle que le moteur PDF fonctionne.	PDF du devis affiché.
+📚 Références dans votre doc technique / cahier des charges
+Section	Ce qui confirme le besoin
+CDC – 1. MATRICE DES RÔLES & ACCÈS (RBAC)	Le rôle CLIENT_B2B possède le droit de créer des Devis (QUOTE_REQUEST).
+CDC – 4. ARCHITECTURE BACKEND & FLUX DE DONNÉES – Devis B2B	L’endpoint /api/v1/orders/quote-request doit être protégé, récupérer le tenant_id du JWT ou du header X‑Tenant‑Id, et générer un PDF via PdfGeneratorService.
+DOCU_TECHNIQUE – Sprint 2 (Engine Catalogue, Devis B2B)	Le test 2 (devis B2B) est listé comme critique ; aucune modification du reste du socle n’est permise.
+SecurityConfig.java (ligne 52‑55)	requestMatchers("/api/v1/catalog/**").permitAll() → le catalogue est public, mais tout le reste nécessite authentification.
+JwtAuthenticationFilter.java (ligne 61‑73)	Fallback sur le header X‑Tenant‑Id lorsqu’il n’est pas présent dans le JWT.
+🛎️ Ce que nous ne modifions pas
+✅ Non‑touché
+Toute la logique de catalogue et de catalogue public.
+Le filtre JWT (pas de changement de code).
+Les services de paiement Stripe et de stock reservation (pas d’interruption).
+Les tables déjà migrées (aucune migration supplémentaire).
+Les contrôleurs déjà testés (login, catalogue).
+🚀 Prochaine étape immédiate (à faire vous-même)
+Exécuter les prompts 1‑4 ci‑dessus dans l’ordre.
+Si le quote‑request renvoie 200 OK, félicitations ! Vous avez validé le flux complet : authentification → tenant → rôle B2B → produit quote‑only → génération PDF → stockage Cloudinary.
+Si vous obtenez toujours une erreur : copiez le corps complet de la réponse (incluant le message d’exception) et partagez‑le ; nous pourrons alors cibler le point exact (ex. IllegalStateException: Tenant context is required ou Insufficient stock…).
+Astuce de product‑engineer : gardez toujours un tableau de bord Postman avec les variables d’environnement (B2B_TOKEN, X_TENANT_ID) afin de ne pas perdre le contexte entre les appels.
+
+🎉 En résumé
+Login ✅
+Catalogue public ✅
+Devis B2B – À faire :
+Vérifier le rôle et le tenant dans le JWT,
+S’assurer que le produit est is_quote_only = TRUE,
+Appeler le endpoint avec les bons headers.

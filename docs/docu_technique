@@ -1,5 +1,7 @@
 # Rapport Technique et Suivi de Projet - Optimi Santé
-**Dernière mise à jour : Sprint 3 Terminé (21 Août 2026)**
+**Dernière mise à jour : 28 Août 2026 — Refonte ERP (Admin/Partenaire/Médecin), infrastructure email, Partenariat CHU, Candidature médecin payante, Tunnel de paiement Stripe Elements**
+
+> 📋 Le détail de tous les bugs rencontrés, leur cause racine et leur correctif est tenu à jour dans `docs/journal_erreurs_defis` — à consulter avant de retoucher l'authentification, les inscriptions/formations, ou la génération de documents.
 
 Ce document sert de journal de bord technique et d'audit de l'état d'avancement du projet Optimi Santé, en stricte corrélation avec le **Cahier des Charges Technique V6.1**. Toute déviation ou ajustement technique y est documenté.
 
@@ -11,7 +13,7 @@ Ce document sert de journal de bord technique et d'audit de l'état d'avancement
 - **Base de données :** Initialisation du schéma PostgreSQL V6.1 avec Flyway (`V1__init_schema_v6_1.sql`). Architecture Multi-Tenant (`tenants`), gestion fine des rôles (RBAC) via JWT (`SUPER_ADMIN`, `ADMIN`, `CLIENT_B2C`, `CLIENT_B2B`, `MEDECIN`, `CENTRE_FORMATION`).
 - **Sécurité :** Mise en place de Spring Security, `JwtAuthenticationFilter`, configuration de `TenantContext`.
 - **Infrastructure :** Conteneurisation de la base PostgreSQL et de Redis via Docker Compose.
-- **Stockage (Déviation Temporaire) :** Pour faciliter le développement local sans complexité IAM/KMS immédiate, une interface abstraite `StorageService` a été implémentée avec **Cloudinary**. Le rebasculement sur AWS S3 KMS se fera de façon transparente en production.
+- **Stockage (Déviation Temporaire) :** Pour faciliter le développement local sans complexité IAM/KMS immédiate, une interface abstraite `StorageService` a été implémentée avec **Cloudinary**. Le rebasculement sur Cloudinary natif se fera de façon transparente en production.
 
 ### ✅ SPRINT 2 : Moteur E-Commerce, Devis B2B & Réservation Stock (Terminé)
 - **Transactionnel & E-Commerce :** Création des entités `Product`, `Order`, et implémentation du tunnel d'achat transactionnel (`POST /api/v1/orders/checkout`).
@@ -45,27 +47,131 @@ Ce document sert de journal de bord technique et d'audit de l'état d'avancement
 
 ---
 
-## 3. Prochaine Étape : SPRINT 4 (Génération PDF & Gestion Documentaire)
+## 3. Étape Validée : SPRINT 4 (Génération PDF & Gestion Documentaire) - ✅ Terminé
 
-Le Sprint 4 se concentre sur la génération de documents PDF dynamiques à haute valeur métier via la stack **OpenPDF + Flying Saucer + Thymeleaf**.
+Le Sprint 4 a été complété avec succès. Le moteur de génération de PDF dynamiques a été implémenté en utilisant **Thymeleaf + Flying Saucer (OpenPDF)**.
 
-### 3.1. Les 3 Templates Documentaires
-1. **Devis B2B Pro Forma (`DEV-[Année]-[ID]`) :**
-   - *Usage :* Commercial / Établissements (B2B).
-   - *Déclencheur :* `POST /api/v1/orders/quote-request`.
-   - *Stockage :* `docs/devis/DEV-{year}-{orderId}.pdf`
-2. **Reçu de Paiement (`REC-[Année]-[ID]`) :**
-   - *Usage :* Justificatif comptable post-paiement.
-   - *Déclencheur :* Webhook Stripe (`payment_intent.succeeded`) ou validation virement Admin.
-   - *Stockage :* `docs/receipts/REC-{year}-{paymentId}.pdf`
-3. **Attestation d'Inscription Confirmée (`INS-[Année]-[ID]`) :**
-   - *Usage :* Document officiel (Visa d'études, Ordre des médecins).
-   - *Déclencheur :* Validation du dossier de candidature CHU (`Enrollment`).
-   - *Stockage :* `docs/enrollments/ATT-{year}-{enrollmentId}.pdf`
+### 3.1. Implémentations Réalisées
+- **Moteur Isolé (`PdfConfig`, `PdfGeneratorService`) :** Un bean `TemplateEngine` spécifique a été configuré pour cibler exclusivement le répertoire `/templates/pdf/`, garantissant aucune collision avec d'autres vues MVC.
+- **Flux Devis B2B :** Câblage automatique dans `OrderService`. Lors d'une commande `QUOTE_REQUEST`, le devis est généré (`devis-b2b.html`), uploadé sur le Cloud, et son URL S3 est rattachée à la commande.
+- **Flux Reçu de Paiement :** Génération automatique (`recu-paiement.html`) lors de la confirmation d'un paiement.
+- **Flux Convention Tripartite :** Câblage dans `EnrollmentService`. Le passage d'une inscription au statut `APPROVED_ADMINISTRATIVE` déclenche automatiquement la génération de la convention (`convention-tripartite.html`) et son upload (stocké dans `conventionS3Key`).
 
-### 3.2. Architecture Technique
-- **Dépendances Maven :** `openpdf`, `flying-saucer-pdf-openpdf`, `spring-boot-starter-thymeleaf`.
-- **Rendu HTML/CSS :** 
-  - Utilisation de Thymeleaf pour l'injection dynamique des données.
-  - Structuration en composants réutilisables : `header.html` (Logo, N° Agrément) et `footer.html` (SIRET, Mentions légales).
-- **Service de Stockage :** Envoi des PDF générés en mémoire vers Cloudinary/S3, puis liaison de l'URL signée à l'entité concernée (Order, Enrollment).
+### 3.2. Architecture Technique Validée
+- Les dépendances `openpdf`, `flying-saucer-pdf-openpdf`, et `spring-boot-starter-thymeleaf` sont opérationnelles.
+- La structure modulaire HTML/CSS est en place (utilisation de fragments pour `header.html` et `footer.html`).
+
+---
+
+## 4. Session de Debug — 26/27 Août 2026 : Résolution des blocages Login & Devis/Checkout (Terminé)
+
+Le problème d'authentification évoqué ci-dessus (Sprint 1) est **résolu**, ainsi que deux bugs backend distincts découverts en creusant les échecs de test sur `/quote-request` et `/checkout`. Root cause de chacun, vérifié en base et en logs (pas de simple supposition) :
+
+1. **Login `b2b@optimi.com` → 401** : la migration `V11__insert_test_accounts.sql` n'avait jamais tourné. Double cause :
+   - L'image Docker du backend était figée sur un `app.jar` buildé *avant* la création de V11 (un `docker restart` ne suffit pas à prendre en compte un nouveau fichier de migration — il faut `docker compose build backend` puis recréer le conteneur).
+   - Une fois rebuild, V11 plantait quand même : elle référençait une colonne `is_credit_approved` sur `company_profiles` qui n'existe pas dans le schéma réellement appliqué (V1), écart avec la version initiale du CDC. **Corrigé** en retirant cette colonne de l'INSERT (`V11__insert_test_accounts.sql`).
+   - Le hash bcrypt des comptes de test a été vérifié via `pgcrypto` (`crypt('password123', password_hash)`) : il est correct, `password123` fonctionne pour tous les comptes seedés.
+
+2. **`/orders/quote-request` et `/orders/checkout` → 401 trompeur** : ce n'était **pas** un problème d'authentification. `OrderService.processOrderCreation` calculait `totalAmount` en variable locale mais ne l'assignait jamais à l'entité `Order` avant `save()`, causant une violation `NOT NULL` en base sur **toute** commande (checkout B2C/B2B et devis confondus). L'exception non interceptée remonte et se traduit — par un artefact du dispatch d'erreur Spring Security — en `401` vide côté client au lieu d'un `500`/`400`, ce qui a fortement compliqué le diagnostic. **Corrigé** par `order.setTotalAmount(totalAmount)` avant la sauvegarde (`OrderService.java`).
+   - **Constat important pour la suite** : le projet n'a **aucun** `@ControllerAdvice`/`@ExceptionHandler` global. Toute exception métier non catchée (ex. `InsufficientStockException`, `IllegalStateException`) traverse ce même chemin et ressort en `401` au lieu du code HTTP approprié. Recommandé pour le Sprint 6 (hardening) : ajouter un gestionnaire d'exceptions global mappant proprement ces cas (`409` pour stock insuffisant, `400` pour tenant/contexte manquant, etc.).
+
+3. **Génération PDF du devis silencieusement en échec** (`documentS3Key` restait `null`) : le `TemplateResolver` de `PdfConfig` préfixe déjà `/templates/pdf/`, mais les fragments `header`/`footer` étaient référencés avec `~{pdf/components/header :: header}` (préfixe doublé, chemin introuvable). Corrigé en `~{components/header :: header}` dans `devis-b2b.html`, `recu-paiement.html`, `attestation-ins.html`. Corrigé aussi une variable mal nommée dans `devis-b2b.html` (`item.description` → `item.name`, `clientName`/`orderReference`/`date` → `customerName`/`orderNumber`/`currentDate`, alignés sur les clés réellement fournies par `OrderService`).
+
+4. **Données de test** : stock à 0 sur les produits de démo bloquait les tests de réservation (`InsufficientStockException`). Stock ajusté à 50 sur le produit quote-only (`a4ab3894-...`) et sur un produit standard (`7c25910e-...`) — changement de donnée uniquement, aucun schéma ni code touché.
+
+**Résultat** : les 4 tests du parcours B2B (Login → Profil → Devis → Checkout) passent de bout en bout, PDF généré et uploadé à chaque fois. Un guide de test complet a été rédigé : `docs/guide_test_postman` (comptes de test, payloads exacts, tableau de dépannage). Aucune logique métier existante (catalogue, Stripe, réservation de stock, JWT, lead capture) n'a été modifiée au-delà des 3 corrections ci-dessus.
+
+---
+
+## 5. Session du 27-28 Août 2026 : Frontend Sprints 1-4 & Complétion Backend Formations/CHU (Terminé)
+
+Audit complet du frontend React (routes, dashboards par rôle, couverture des endpoints backend) suivi de deux phases de correctifs. Détail complet de chaque bug — cause racine, correctif, fichiers — dans `docs/journal_erreurs_defis`. Résumé :
+
+**Phase 1 — Bugs bloquants frontend :** session utilisateur perdue à chaque F5 (mauvaise URL de profil), redirections post-login vers des routes inexistantes, lien navbar mort pour les clients B2B/B2C. Nouvelle page `MyOrdersPage.tsx` (`/my-orders`) branchée sur l'endpoint `GET /my-orders` déjà fonctionnel mais jamais utilisé côté UI.
+
+**Phase 2 — Endpoints manquants + découvertes majeures :**
+- 6 endpoints backend ajoutés (liste formations, détail inscription médecin, liste/détail/documents admin, création de session CHU, mise à jour de profil).
+- **Bug critique découvert** : `@PreAuthorize("hasRole('DOCTOR')")` sur 4 endpoints (inscriptions, coffre-fort médecin) alors que le rôle réel est `MEDECIN` — **aucun médecin ne pouvait s'inscrire à une formation ni consulter son coffre-fort depuis le Sprint 3**, sans qu'aucune erreur de démarrage ne le signale. Corrigé partout, y compris le miroir frontend (`AuthContext`, `ProfilePage`).
+- **Faille de sécurité découverte et corrigée** : 6 endpoints retournaient des entités JPA brutes, exposant `passwordHash` (hash bcrypt) via les relations imbriquées. Remplacés par des DTOs dédiés.
+- **Dérive de schéma découverte et corrigée** (migrations `V12`, `V13`) : `ddl-auto: update` actif en parallèle de Flyway a laissé des colonnes orphelines `NOT NULL` (`location_hospital`, `enrollment_number`, `s3_key`) et une contrainte FK obsolète sur `enrollments.doctor_id`, bloquant silencieusement toute création de session ou d'inscription depuis l'origine du projet — invisible faute d'avoir jamais été exercé avant cette session (à cause du bug de rôle ci-dessus).
+
+**Parcours vérifié de bout en bout, en conditions réelles** (navigateur piloté + appels API réels, pas de simple relecture de code) : CHU crée une session de formation → médecin s'inscrit → upload de document justificatif → admin liste/consulte le dossier/l'approuve → convention tripartite générée automatiquement → visible dans le coffre-fort du médecin.
+
+**Points ouverts pour la suite** (voir `docs/journal_erreurs_defis` pour le détail) : absence de gestionnaire d'exceptions global, `ddl-auto` à repasser en `validate` une fois un audit plus large du schéma effectué, `refreshToken` non exploité côté frontend, pas de page de listing agrégé pour l'admin.
+
+---
+
+## 6. Session du 28 Août 2026 (suite) : Refonte ERP par rôle + Paiement/Documents/Profils + Partenariat CHU
+
+Suite à un retour utilisateur signalant des régressions en test manuel (paiement, téléchargement de documents, profils) et une demande de refonte structurelle : chaque rôle dispose désormais d'un **espace dédié type ERP** (sidebar, layout propre) plutôt que de pages éparpillées dans la boutique. Détail complet (cause racine, correctifs, fichiers) dans `docs/journal_erreurs_defis` ; résumé structurel ici.
+
+### 6.1. Correctifs Paiement / Documents / Profils
+- **Paiement carte (Stripe) :** `NullPointerException` systématique (ID de commande utilisé avant sa persistance) + incohérence totale de flux — le frontend implémentait Stripe Elements embarqué, le backend n'était câblé que pour Stripe Checkout hébergé (`clientSecret` n'existait même pas côté API). Réaligné sur le flux hébergé (redirection), avec pages `/checkout/success` et `/checkout/cancel` créées (absentes jusque-là).
+- **Téléchargement de documents (brochures, devis, conventions) :** le contrôleur générait un PDF factice à chaque appel au lieu de résoudre le document réellement stocké ; l'upload de brochure CHU n'attachait jamais le fichier à la formation ; `resource_type` Cloudinary incohérent entre upload et génération d'URL. Les trois corrigés. **Limite restante hors code** : le compte Cloudinary rejette toute livraison de type "raw" (`401 deny or ACL failure`) quel que soit le réglage d'URL — nécessite une action dans le dashboard Cloudinary de l'utilisateur.
+- **Profils :** le téléphone ne se sauvegardait que pour les médecins (`AuthService.updateProfile` ne traitait pas B2C/B2B/Admin/CHU). Colonne générique `users.phone` ajoutée (`V14`).
+- **B2C/B2B :** parcours d'achat et de devis rejoués en conditions réelles, aucun bug propre trouvé — le signalement correspondait au bug de paiement carte ci-dessus.
+
+### 6.2. Refonte ERP — Espaces dédiés par rôle
+Objectif : Admin, Partenaire (CHU) et Médecin naviguent désormais dans un layout à sidebar qui leur est propre (`AdminLayout`, `PartnerLayout`, `DoctorLayout`), distinct de la boutique (navbar/footer publics). **Aucun changement pour B2C/B2B**, qui restent sur le layout boutique existant.
+
+- **Espace Admin (`/admin/*`)** : sidebar (Tableau de bord, Utilisateurs, Catalogue, Devis B2B, Dossiers CHU, Demandes Partenariat). Nouvelle page `AdminUsersPage` (liste/filtre/recherche/activation de tous les comptes — fonctionnalité "Valide Comptes B2B & CHU" du CDC, absente jusque-là) avec nouveaux endpoints `GET/PATCH /admin/users*`. Nouvelle page `AdminEnrollmentsListPage` (l'endpoint `GET /admin/enrollments` existait déjà mais n'avait aucun consommateur frontend).
+- **Espace Partenaire/CHU (`/partner/*`)** : sidebar (Tableau de bord, Candidatures, Sessions, Mon Profil, Demandes Partenariat pour l'admin uniquement). Scission de l'ancienne page à onglets en pages dédiées. Menu déroulant de formations (`GET /partner/trainings`, nouveau) remplaçant la saisie manuelle d'UUID lors de la création d'une session.
+- **Espace Médecin (`/doctor/*`)** : sidebar (Mes dossiers, Coffre-fort, Mon Profil). Nouvelle page `MyEnrollmentsListPage` + endpoint `GET /enrollments` (le médecin n'avait auparavant aucun moyen de lister ses propres dossiers, seul l'accès direct par URL fonctionnait).
+- Chaque espace dispose d'un lien "Retour à la boutique"/"Accéder à la boutique" pour basculer vers l'e-commerce, conformément à la demande.
+
+### 6.3. CRUD Catalogue Produits (Admin)
+Le catalogue était jusque-là 100% lecture seule côté backend. Ajout de `GET/POST /admin/catalog/products`, `PUT /admin/catalog/products/{id}`, `PATCH /admin/catalog/products/{id}/status` (activer/désactiver), `GET /admin/catalog/categories`, avec page `AdminCatalogPage` (liste, création/édition via modale).
+
+**Correctif visibilité produit désactivé** : l'entité `Product` porte `@SQLRestriction("deleted_at IS NULL AND is_active = true")`, qui masquait automatiquement tout produit désactivé même à l'admin. Contourné — sans affaiblir la restriction globale (qui reste nécessaire pour la boutique publique) — via des projections SQL natives dédiées à l'admin (`AdminProductRow`, méthodes `findAllForAdmin`/`findByIdForAdmin`/`setActiveForAdmin` dans `ProductRepository`) qui bypassent `@SQLRestriction` sans jamais l'assouplir. Les produits désactivés sont maintenant visibles (grisés) et réactivables depuis `AdminCatalogPage`.
+
+### 6.4. Infrastructure Email (Mailtrap)
+Ajout de `spring-boot-starter-mail`, configuration SMTP (`sandbox.smtp.mailtrap.io:2525`, profil `dev`), `EmailService.sendCredentialsEmail(...)` pour l'envoi d'identifiants de connexion (email HTML). Envoi **non bloquant** : un échec SMTP est logué mais n'interrompt jamais le flux métier qui l'a déclenché (validation de candidature/partenariat). **Mailtrap n'est pas encore configuré côté utilisateur** — `MAIL_USERNAME`/`MAIL_PASSWORD` vides tant qu'un compte n'est pas créé sur mailtrap.io et les identifiants fournis.
+
+### 6.5. Module Partenariat CHU
+Nouveau domaine `domain/partnership/`, isolé (aucun parcours CHU auto-inscrit n'existait avant). Flux : un établissement télécharge un modèle de convention généré à la volée (`convention-partenariat.html`, moteur PDF existant), le renvoie signé via un formulaire public (`/devenir-partenaire`, table `partnership_requests` — migration `V15`), l'admin étudie et valide/rejette depuis `/admin/partnership-requests`. Validation → création automatique `User`(CENTRE_FORMATION) + `PartnerProfile` + mot de passe temporaire + email d'identifiants (via 6.4). Rejet → motif enregistré.
+
+**Conséquence sur l'inscription :** l'onglet "Médecin" de la page d'inscription (`RegisterPage`) a été retiré — remplacement décidé avec l'utilisateur, le parcours médecin passera exclusivement par une candidature payante (Phase 3, à venir). B2C/B2B inchangés. L'ancien endpoint `POST /auth/register/doctor` est laissé en place côté backend (inoffensif, non exposé côté UI) pour ne rien casser.
+
+### 6.6. État de vérification
+- Backend et frontend : compilation propre (Maven + `tsc -b`) sur l'ensemble des changements 6.1 à 6.5.
+- Restant à vérifier en conditions réelles après rebuild Docker : flux complet de demande de partenariat → validation → connexion avec identifiants temporaires.
+
+### Portée non couverte (Phase 3, prochaine étape)
+Candidature médecin payante (formulaire public, frais de dossier fixes ~50€ configurables, paiement **avant** obtention des identifiants), filtrage des candidats par formation côté CHU, boucle de communication admin/médecin/CHU sur les documents demandés/fournis pendant la procédure.
+
+---
+
+## 7. Session du 28 Août 2026 (suite) : Phase 3 — Candidature médecin payante
+
+Dernière des 3 phases du chantier ERP/paiement/email. L'analyse du besoin a montré que la boucle de communication admin/médecin/CHU et l'espace médecin (suivi temps réel, upload de documents) existaient déjà intégralement (sections 5-6) : il ne manquait qu'un point d'entrée payant pour la création du compte. Le pipeline `Enrollment` existant (PENDING_REVIEW → APPROVED_ACADEMIC → APPROVED_ADMINISTRATIVE → CONVENTION_ISSUED...) reste la "procédure administrative" gérée par l'admin, inchangée.
+
+**Architecture** : nouveau domaine isolé `domain/doctorapplication/` (migration `V16`, table `doctor_applications`). Un candidat sans compte choisit une session et ses informations → une ligne `PENDING_PAYMENT` est créée et une session Stripe Checkout hébergée est ouverte (frais de dossier fixes, indépendants du prix de la formation — `app.doctor-application.fee-amount`, défaut 50€). Aucun compte n'existe avant confirmation du paiement. Le webhook Stripe (`checkout.session.completed`), étendu par un branchement sur une métadonnée `"type": "DOCTOR_APPLICATION"` (le chemin par défaut vers `OrderService`, utilisé par l'e-commerce, reste strictement inchangé), déclenche la création atomique de `User`(MEDECIN, mot de passe temporaire) + `DoctorProfile` + `Enrollment` — ce dernier via `EnrollmentService.createEnrollment` **réutilisé tel quel**, sans duplication de la logique de décrémentation de places — puis l'envoi de l'email d'identifiants.
+
+**`TrainingEnrollmentPage.tsx` (parcours auth-gated existant) volontairement non modifiée** : elle sert désormais un second cas d'usage légitime (médecin déjà titulaire d'un compte s'inscrivant à une session supplémentaire, sans repayer). Le bouton "Postuler" de `TrainingDetailPage.tsx` bascule entre ce parcours et le nouveau formulaire public (`DoctorApplicationPage.tsx`, `/formations/:id/postuler`) selon l'état de connexion.
+
+**Trois bugs pré-existants découverts et corrigés en construisant cette phase** (détail dans `docs/journal_erreurs_defis`) :
+- `GET /trainings/{id}/sessions` n'était pas déclaré public dans `SecurityConfig` (invisible tant que seul un médecin déjà connecté l'appelait) ;
+- `authService.updateProfile` (frontend) ciblait un endpoint `/users/me` inexistant — le bouton "Enregistrer" de la page Profil échouait silencieusement pour tous les rôles depuis toujours, corrigé vers `/auth/profile` ;
+- absence totale de fonctionnalité "changer mon mot de passe", ajoutée (`PUT /auth/change-password`), nécessaire pour que les comptes à mot de passe temporaire (Partenaire Phase 2, Médecin Phase 3) soient réellement utilisables.
+
+**CHU** : filtrage des candidatures par formation ajouté (`GET /partner/enrollments?trainingId=`), au passage correction d'une incohérence pré-existante (`doctorName` calculé en dur au lieu de joindre `DoctorProfile`).
+
+**État de vérification** : compilation backend et frontend propre. Le paiement réel nécessite de vraies clés Stripe (actuellement clé de test placeholder, échoue proprement sur "Invalid API Key" — comportement déjà documenté pour le paiement carte e-commerce, section 6.1) ; l'email d'identifiants nécessite Mailtrap configuré (échec non bloquant en attendant).
+
+---
+
+## 8. Session du 28 Août 2026 (suite) : Phase 4 — Tunnel de paiement Stripe Elements intégré
+
+Vraies clés Stripe et identifiants Mailtrap fournis par l'utilisateur (stockés dans `docker/.env`, non versionné) et vérifiés fonctionnels en conditions réelles.
+
+**Demande** : exploiter la documentation Stripe (Adaptive Pricing, sauvegarde de moyens de paiement, Elements) pour un tunnel de paiement intégré à la page plutôt qu'une redirection vers checkout.stripe.com. Recherche documentaire faite avant tout code : Stripe recommande l'API Checkout Sessions (déjà la base du projet) avec `ui_mode` en mode formulaire intégré plutôt que l'API Payment Intents brute — aucune refonte architecturale nécessaire, seulement une évolution du mode d'affichage.
+
+**Livré** :
+- `users.stripe_customer_id` (migration `V17`) : un Customer Stripe par utilisateur, créé une fois et réutilisé, condition de la sauvegarde de carte.
+- `StripePaymentService` étendu (méthodes additives, l'ancien flux hébergé reste disponible mais n'est plus appelé) : création de Customer, sessions Checkout en mode formulaire intégré liées à un Customer existant (e-commerce) ou avec création automatique du Customer par Stripe (candidature médecin, aucun compte n'existe encore à ce stade).
+- `CheckoutPage.tsx` (boutique) et `DoctorApplicationPage.tsx` (candidature) : le paiement carte affiche désormais le Payment Element Stripe **directement dans la page** (composant partagé `StripeEmbeddedCheckout.tsx`), avec sauvegarde/réutilisation automatique de carte et plusieurs moyens de paiement (carte, Bancontact, EPS...) proposés sans configuration supplémentaire.
+- Nouvelle page `/checkout/complete` (calque du pattern de confirmation déjà en place pour `/candidature/success`) : interroge le statut réel du paiement après confirmation, le webhook restant la source de vérité côté serveur.
+
+**Piège technique notable** : la version `stripe-java` figée au projet (`24.22.0`) ne supportait pas encore le mode formulaire intégré ni la sauvegarde de moyens de paiement — mise à jour vers `29.2.0`. Dans cette génération du SDK, l'option porte le nom `CUSTOM` (pas `ELEMENTS`, terminologie historique "Custom Checkout" cohérente entre le SDK Java et le SDK React stables), sans changement fonctionnel. Détail complet, y compris le faux positif de compilation locale qui a initialement masqué le problème, dans `docs/journal_erreurs_defis`.
+
+**Vérifié en conditions réelles, bout en bout, navigateur piloté + vraie carte de test Stripe (4242 4242 4242 4242)** : commande e-commerce payée avec succès (Payment Element intégré, webhook reçu, commande marquée payée en base, reçu PDF généré, stock décrémenté, Customer Stripe persisté) ; candidature médecin testée jusqu'à l'affichage du formulaire de paiement intégré (accessible sans compte).

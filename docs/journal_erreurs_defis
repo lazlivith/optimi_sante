@@ -1,0 +1,631 @@
+# Journal des Erreurs & Défis Techniques — Optimi Santé
+
+Ce document recense, par ordre chronologique, les bugs réels rencontrés, leur cause profonde, le correctif appliqué, et les difficultés méthodologiques du projet. Objectif : garder une mémoire des pièges déjà identifiés pour ne pas les retraverser, et donner au reste de l'équipe une vue honnête de l'état réel du socle technique (au-delà de ce que `docu_technique` résume officiellement sprint par sprint).
+
+**Convention** : chaque entrée = Symptôme → Cause racine → Correctif → Fichier(s). Nouvelle entrée à chaque bug non trivial résolu (ou non résolu, si laissé en `TODO`).
+
+---
+
+## 26-27 août 2026 — Blocage Login & Devis/Checkout B2B
+
+### 1. Login `b2b@optimi.com` → 401
+- **Symptôme :** compte de test inexistant en base.
+- **Cause racine :** la migration `V11__insert_test_accounts.sql` n'avait jamais tourné — l'image Docker du backend était figée sur un `app.jar` buildé *avant* la création de ce fichier (`docker restart` ne suffit pas, il faut `docker compose build`). Une fois rebuild, V11 échouait quand même : elle référençait une colonne `is_credit_approved` sur `company_profiles` absente du schéma réellement appliqué.
+- **Correctif :** rebuild de l'image + retrait de la colonne inexistante de l'INSERT.
+- **Fichier :** `V11__insert_test_accounts.sql`
+
+### 2. `/orders/quote-request` et `/orders/checkout` → 401 trompeur
+- **Symptôme :** échec systématique, message d'erreur vide, aucune indication utile.
+- **Cause racine :** `totalAmount` était calculé en variable locale dans `OrderService.processOrderCreation` mais jamais assigné à l'entité `Order` avant `save()` → violation `NOT NULL` en base. L'exception non interceptée traverse le dispatch d'erreur Spring Security et ressort en `401` vide au lieu d'un `500`, ce qui a fortement compliqué le diagnostic.
+- **Correctif :** `order.setTotalAmount(totalAmount)` avant la sauvegarde.
+- **Fichier :** `OrderService.java`
+- **⚠️ Point non résolu :** le projet n'a **aucun** `@ControllerAdvice`/`@ExceptionHandler` global. Toute exception métier non catchée (`InsufficientStockException`, `IllegalStateException`, contraintes SQL...) traverse ce même chemin et ressort en `401` au lieu du code HTTP approprié. **Ce piège de diagnostic s'est reproduit plusieurs fois depuis** (voir entrées du 27-28 août). Recommandé pour le Sprint 6 (hardening) : ajouter un gestionnaire d'exceptions global.
+
+### 3. Devis créé mais PDF jamais généré (`documentS3Key` null)
+- **Symptôme :** la commande se crée, mais le champ PDF reste vide, sans erreur visible côté client.
+- **Cause racine :** le `TemplateResolver` Thymeleaf (`PdfConfig`) préfixe déjà `/templates/pdf/`, mais les fragments header/footer étaient référencés avec `~{pdf/components/header :: header}` (préfixe doublé → chemin introuvable). Deuxième bug dans la foulée : `item.description` référencé dans le template alors que `OrderService` fournit la clé `name`.
+- **Correctif :** fragments renommés en `~{components/header :: header}` ; `item.description` → `item.name` ; variables `clientName`/`orderReference`/`date` alignées sur `customerName`/`orderNumber`/`currentDate`.
+- **Fichiers :** `devis-b2b.html`, `recu-paiement.html`, `attestation-ins.html`
+
+### 4. Données de test à stock 0
+- Bloquait les réservations de stock. Corrigé en donnée uniquement (`stock_quantity` ajusté sur les produits de test), aucun schéma ni code touché.
+
+---
+
+## 27-28 août 2026 — Audit Frontend & Complétion Backend
+
+### 5. Session perdue à chaque rechargement de page (F5)
+- **Cause racine :** `authService.getProfile()` appelait `GET /users/me`, un endpoint qui n'existe pas côté backend (le vrai est `GET /auth/profile`).
+- **Correctif :** URL corrigée.
+- **Fichier :** `frontend/src/api/authService.ts`
+
+### 6. Redirections mortes après connexion
+- **Symptôme :** écran blanc / retour forcé selon le rôle après login.
+- **Cause racine :** `AuthContext.login()` redirigeait vers `/admin/enrollments` et `/products`, deux routes qui n'existent pas dans `App.tsx` (les vraies sont `/admin/quotes` et `/catalog`).
+- **Correctif :** redirections corrigées par rôle.
+- **Fichier :** `frontend/src/context/AuthContext.tsx`
+
+### 7. `DOCTOR` vs `MEDECIN` — incohérence de rôle répétée à 6 endroits
+- **Symptôme le plus grave de la session :** *aucun médecin ne pouvait s'inscrire à une formation ni accéder à son coffre-fort*, depuis l'implémentation initiale (Sprint 3/4). Le rôle réel en base est `MEDECIN` (voir `Role.java`), mais le code utilisait `DOCTOR` — une fausse piste jamais détectée faute de test end-to-end réel sur ce parcours.
+- **Occurrences trouvées et corrigées :**
+  - `AuthContext.tsx` : `case 'DOCTOR':` (redirection post-login jamais déclenchée)
+  - `ProfilePage.tsx` : `isDoctor = user.role === 'DOCTOR'` (champs médecin jamais affichés)
+  - `EnrollmentResource.java` (backend) : `@PreAuthorize("hasRole('DOCTOR')")` sur `createEnrollment`, `submitDocuments`, `uploadEnrollmentDocument` — **403 systématique**
+  - `DoctorVaultResource.java` (backend) : idem sur `getDoctorVault`
+- **Leçon :** un `@PreAuthorize` avec un rôle qui n'existe pas ne lève aucune alerte au démarrage — il échoue silencieusement à l'exécution. À surveiller pour tout nouveau rôle ajouté.
+
+### 8. Endpoints backend appelés par le frontend mais jamais implémentés
+Le frontend avait été écrit en anticipant une API qui n'existait qu'en partie. Certaines pages masquaient l'absence de réponse via un **fallback mock silencieux** (`catch` → données factices codées en dur), donnant l'illusion que la fonctionnalité marchait.
+- `GET /api/v1/trainings` (liste publique des formations) — `TrainingsPage.tsx` utilisait `MOCK_TRAININGS` en dur
+- `GET /api/v1/enrollments/{id}` (dossier du médecin) — `MyEnrollmentDetailPage.tsx` avait un mock de secours
+- `GET /api/v1/admin/enrollments` (liste), `/{id}`, `/{id}/documents` — `AdminEnrollmentDetailPage.tsx` idem, + aucune page de liste ne pouvait même exister sans cet endpoint
+- `POST /api/v1/partner/sessions` (création de session CHU) — endpoint totalement absent côté backend
+- `PUT /api/v1/auth/profile` — absent, la modification de profil ne pouvait jamais fonctionner
+- **Correctif :** tous implémentés côté backend (nouveaux DTOs, méthodes de service, endpoints REST) ; les mocks de secours retirés côté frontend une fois les vrais endpoints disponibles.
+- **Décision actée :** ne plus jamais garder de fallback mock silencieux en cas d'échec réseau — il masque les régressions au lieu de les révéler. Préférer un message d'erreur explicite à l'utilisateur.
+
+### 9. Fuite de sécurité : `passwordHash` exposé via les entités JPA sérialisées brutes
+- **Symptôme :** en testant le tout nouvel endpoint `POST /partner/sessions`, la réponse JSON contenait le hash bcrypt du mot de passe de l'utilisateur CHU.
+- **Cause racine :** plusieurs endpoints retournaient directement l'entité JPA (`ResponseEntity<Enrollment>`, `ResponseEntity<TrainingSession>`, `ResponseEntity<EnrollmentDocument>`) au lieu d'un DTO. La sérialisation Jackson suit les relations `@ManyToOne` en cascade (`Enrollment → doctor (User) → passwordHash`), exposant des champs sensibles jamais destinés à l'API.
+- **Portée réelle :** ce n'était pas un cas isolé — **6 endpoints** du domaine formations/inscriptions étaient concernés (`createEnrollment`, `submitDocuments`, `uploadEnrollmentDocument`, `generateConvention`, `updateEnrollmentStatus`, et le nouveau `createSession`).
+- **Correctif :** création de DTOs dédiés (`EnrollmentResponseDto`, `EnrollmentDocumentResponseDto`, `TrainingSessionResponseDto`) et migration de tous les endpoints concernés vers ces DTOs.
+- **Leçon pour la suite :** **ne jamais retourner une entité JPA directement depuis un `@RestController`**, même quand ça semble pratique pour aller vite. Toujours passer par un DTO explicite, y compris pour les endpoints internes/admin.
+
+### 10. Dérive de schéma : colonnes orphelines et contraintes obsolètes bloquant les écritures
+- **Symptôme :** `POST /partner/sessions` et `POST /enrollments` échouaient (`401` trompeur, cf. point non résolu de l'entrée #2) alors que toute la logique applicative était correcte.
+- **Cause racine :** la migration `V1__init_schema_v6_1.sql` avait créé `training_sessions` et `enrollments` avec le schéma CDC d'origine (`location_hospital`, `enrollment_number`, `doctor_id → doctor_profiles(id)`). Les entités JPA ont ensuite été simplifiées (`location`, pas de numéro d'inscription, `doctor_id → users(id)`) sans jamais migrer la base : `spring.jpa.hibernate.ddl-auto: update` a silencieusement **ajouté** les nouvelles colonnes/contraintes à côté des anciennes, sans jamais les supprimer. Résultat : colonnes `NOT NULL` sans défaut jamais alimentées par le code, et une **double contrainte FK** sur `doctor_id` (une vers `doctor_profiles`, une vers `users`) — la première invalidant systématiquement tout insert réel.
+- **Comme ce chemin de code n'avait *jamais* été exercé avant cette session** (bloqué depuis le début par le bug #7), ce problème était invisible depuis le Sprint 3.
+- **Correctif :** deux migrations dédiées :
+  - `V12__drop_orphan_location_hospital_column.sql`
+  - `V13__fix_enrollment_schema_drift.sql` (colonne `enrollment_number`, contrainte FK obsolète, colonne `s3_key` orpheline sur `enrollment_documents`, contrainte `CHECK` sur `document_type` qui n'autorisait pas la valeur `OTHER` pourtant valide dans l'enum applicatif)
+- **⚠️ Recommandation forte :** `ddl-auto: update` **et** Flyway actifs simultanément est le mécanisme exact qui a produit cette dérive. Sur ce projet, Flyway est censé piloter tout le schéma (conformément à ce que `docu_technique` affirme déjà). Il serait sage de passer `ddl-auto` à `validate` en dev également (pas seulement en prod), pour que toute divergence entité/schéma soit détectée **au démarrage** plutôt que silencieusement corrigée puis oubliée. Cette dérive touchait déjà 2 tables sur les ~20 que compte le schéma — d'autres pourraient être concernées ; un audit plus large serait utile avant le Sprint 5/6.
+
+### 11. Bug de logique connexe trouvé en corrigeant #9
+- `EnrollmentService.uploadEnrollmentDocument` comparait `user.getRole().equals("ADMIN")` — or `getRole()` renvoie l'enum `Role`, pas une `String`. Cette comparaison est **toujours fausse**, ce qui empêchait un admin d'uploader un document pour le compte d'un médecin (rejeté comme "Unauthorized" malgré le passage du `@PreAuthorize`).
+- **Correctif :** comparaison par référence d'enum (`user.getRole() == Role.ADMIN`).
+
+---
+
+## Bilan des correctifs de cette session (27-28 août)
+- **Bugs bloquants corrigés :** 5 (session perdue, 2 redirections mortes, lien navbar mort, rôle DOCTOR/MEDECIN × 6 occurrences)
+- **Endpoints backend ajoutés :** 6 (`GET /trainings`, `GET /enrollments/{id}`, `GET/PATCH /admin/enrollments[...]`, `POST /partner/sessions`, `PUT /auth/profile`)
+- **Faille de sécurité corrigée :** exposition de `passwordHash` sur 6 endpoints
+- **Migrations de schéma :** 2 (`V12`, `V13`) — dette technique historique, pas une régression introduite cette session
+- **Parcours vérifié de bout en bout, en conditions réelles (pas juste au niveau du code) :** CHU crée une session → médecin s'inscrit → upload de document → admin liste/consulte/approuve → convention générée automatiquement → visible dans le coffre-fort du médecin
+
+## À surveiller / TODO pour la suite
+- [ ] Gestionnaire d'exceptions global (`@ControllerAdvice`) — le piège n°1 de diagnostic sur ce projet (401 au lieu du vrai code d'erreur)
+- [ ] Audit plus large de la dérive `ddl-auto: update` vs Flyway sur le reste du schéma
+- [ ] Passer `ddl-auto` à `validate` (même en dev) une fois l'audit fait, pour que Flyway soit la seule source de vérité
+- [ ] `refreshToken` renvoyé par le backend mais jamais utilisé côté frontend (pas de mécanisme de refresh — la session expire sèchement après 24h)
+- [ ] Pas de page de listing agrégé pour l'admin (dossiers CHU, commandes globales) — seules les vues détail existent pour l'instant
+
+---
+
+## 28 août 2026 — Paiement, Documents/Brochures, Profils, Checkout B2C/B2B
+
+Suite à un retour utilisateur ("le paiement crash, plein de choses buguent"). Diagnostic par reproduction réelle (navigateur piloté + logs backend), pas par relecture de code seule.
+
+### 12. Paiement carte (Stripe) — NullPointerException systématique
+- **Cause racine :** dans `OrderService.processOrderCreation`, `order.getId()` était utilisé pour créer la session Stripe **avant** le premier `orderRepository.save(order)` — l'ID n'existe qu'après persistance (`GenerationType.UUID`). NPE à chaque tentative de paiement carte, silencieux car masqué par le problème connu du point n°2 (401 au lieu de 500).
+- **Bug plus profond découvert en creusant :** le frontend (`CheckoutPage.tsx`) implémentait le flux **Stripe Elements embarqué** (`clientSecret` + `PaymentElement`), alors que **tout le backend** (webhook `checkout.session.completed`, `client_reference_id`) est conçu pour le flux **Stripe Checkout hébergé** (redirection). Le champ `clientSecret` n'a d'ailleurs jamais existé côté backend — incompatibilité totale, ce paiement n'a probablement jamais fonctionné.
+- **Correctif :** réordonnancement du `save()` ; réécriture de `CheckoutPage.tsx` pour rediriger vers `paymentUrl` (flux hébergé) ; création des pages `/checkout/success` et `/checkout/cancel` qui n'existaient pas du tout (le panier n'est vidé qu'à l'arrivée sur `/success`, pas avant la redirection, pour ne pas le perdre en cas d'annulation).
+- **Fichiers :** `OrderService.java`, `CheckoutPage.tsx`, `checkout/CheckoutSuccessPage.tsx`, `checkout/CheckoutCancelPage.tsx`, `App.tsx`
+- **Vérifié :** virement bancaire testé en navigateur jusqu'à "Commande confirmée !". Paiement carte : NPE disparue, échoue proprement sur `Invalid API Key` (clé de test placeholder — normal, nécessite de vraies clés Stripe côté utilisateur).
+
+### 13. Téléchargement de documents (brochures, devis, conventions) — 3 bugs empilés
+- **`DocumentController` était un stub factice** : au lieu de résoudre le vrai document déjà généré et stocké (`documentS3Key`/`conventionS3Key`/`cloudinaryPublicId`), il générait un **nouveau PDF bidon** à chaque appel avec des données codées en dur ("Dr. Paris", "John Doe"...). Il ne reconnaissait même pas les valeurs de type réellement utilisées ailleurs (`CONVENTION`, `QUOTE`...) — 400 "Type de document inconnu" garanti pour toute convention.
+- **`PartnerTrainingResource.uploadBrochure`** uploadait le fichier mais ne l'attachait **jamais** à la formation (`training.setBrochureS3Key()` commenté dans le code, jamais implémenté) — la brochure "mise à jour" par un CHU ne changeait jamais rien.
+- **`CloudinaryStorageService`** : `resource_type: "auto"` à l'upload n'est pas une valeur valide pour reconstruire une URL de téléchargement (erreur Cloudinary "Invalid transformation component"). Corrigé en `"raw"`, cohérent des deux côtés (upload et génération d'URL).
+- **Correctifs :** réécriture complète de `DocumentController` (résolution du vrai document par type + vérification d'appartenance : propriétaire, admin, ou partenaire CHU concerné) ; `PartnerTrainingResource` persiste enfin la clé de brochure ; `CloudinaryStorageService` cohérent sur le `resource_type`.
+- **⚠️ Blocage restant, hors code :** même après ces correctifs, Cloudinary renvoie `401 - deny or ACL failure` sur toute livraison de fichier "raw", y compris avec `type: upload` + URL signée (le réglage le plus permissif). C'est un paramètre de sécurité du compte Cloudinary (Settings → Security → "Restricted media types", souvent désactivé par défaut). **Action utilisateur requise** — impossible à corriger depuis le code.
+- **Fichiers :** `DocumentController.java`, `PartnerTrainingResource.java`, `CloudinaryStorageService.java`
+
+### 14. Pages Profil — le téléphone ne se sauvegardait que pour les médecins
+- **Cause racine :** le champ "Téléphone" est affiché pour **tous** les rôles côté frontend, mais `AuthService.updateProfile()` ne traitait que les cas `MEDECIN` (→ `DoctorProfile.phoneWhatsapp`) et `CLIENT_B2B` (sans même y inclure le téléphone). Pour B2C/Admin/CHU, l'appel renvoyait un succès sans rien persister — l'utilisateur croyait avoir sauvegardé, rien n'était stocké.
+- **Correctif :** nouvelle colonne générique `users.phone` (migration `V14`), utilisée pour tous les rôles hors médecin.
+- **Vérifié :** `PUT` puis `GET /auth/profile` sur un compte B2C confirment la persistance réelle.
+- **Fichiers :** `V14__add_generic_phone_to_users.sql`, `User.java`, `AuthService.java`
+
+### 15. B2C achat / B2B devis — pas de bug trouvé, testé en navigateur
+- Parcours complet rejoués en conditions réelles : B2C jusqu'à "Commande confirmée !", B2B jusqu'à `200 OK` sur la demande de devis avec apparition immédiate dans "Mes Commandes & Devis". Le signalement initial correspondait très probablement au bug n°12 (paiement carte, méthode par défaut pour B2C et parfois testée par erreur côté B2B).
+
+## Note cosmétique (non corrigée, non bloquante)
+Une image placeholder par défaut (page d'accueil, produits sans image) pointe vers une URL Cloudinary jamais uploadée → 404 silencieux dans la console, aucun impact fonctionnel. `HomePage.tsx` (3 occurrences de `medical-placeholder.jpg`).
+
+---
+
+## 28 août 2026 — Refonte ERP : Espace Admin dédié (sidebar)
+
+Première brique de la demande "gérer les rôles sous forme d'ERP à part" : un espace propre pour SUPER_ADMIN/ADMIN, séparé de la boutique (pas de navbar e-commerce), avec sidebar de navigation.
+
+### Ce qui a été livré
+- **`layouts/AdminLayout.tsx`** : sidebar dédiée (Tableau de bord, Utilisateurs, Devis B2B, Dossiers CHU), badge de rôle (Super Admin / Admin), lien "Retour à la boutique", déconnexion.
+- **`App.tsx` restructuré** : les routes `/admin/*` utilisent désormais `AdminLayout` au lieu du `Layout` boutique (Navbar/Footer publics). Toutes les routes boutique/B2C/B2B/Médecin/CHU restent strictement inchangées.
+- **`AdminDashboardPage`** (nouveau) : 3 tuiles de synthèse (utilisateurs, devis en attente, dossiers CHU actifs) avec vraies données.
+- **`AdminUsersPage`** (nouveau, backend inclus) : liste de tous les comptes, filtre par rôle, recherche, activation/désactivation. **Fonctionnalité qui n'existait pas du tout avant** — c'est la brique "Valide Comptes B2B & CHU" du CDC.
+  - Backend : `GET /api/v1/admin/users` (liste paginée, avec nom d'affichage résolu selon le rôle : société pour B2B, nom pour médecin, institution pour CHU), `PATCH /api/v1/admin/users/{id}/status`.
+  - Nouveau fichier `PartnerProfileRepository.java` (n'existait pas — nécessaire pour résoudre le nom des comptes CHU).
+- **`AdminEnrollmentsListPage`** (nouveau) : liste des dossiers CHU avec lien vers le détail. L'endpoint backend (`GET /admin/enrollments`) existait déjà depuis la session précédente mais n'avait **aucun consommateur frontend** — c'est maintenant corrigé, la limite notée au point précédent ("pas de page de listing agrégé pour l'admin") est levée pour les dossiers CHU.
+- **`QuotesAdminPage` et `AdminEnrollmentDetailPage`** : migrées telles quelles dans le nouveau layout, aucune modification de leur logique.
+
+### Vérifié en navigateur (pas seulement au niveau du code)
+- Connexion admin → redirection vers `/admin`, sidebar et tuiles avec vraies données (17 utilisateurs, 6 devis en attente, 2 dossiers actifs)
+- Désactivation puis réactivation d'un compte : statut mis à jour en temps réel
+- Navigation liste → détail d'un dossier CHU
+- **Protection RBAC confirmée** : un compte B2C tentant `/admin` est rejeté vers `/`
+
+### Portée volontairement non couverte cette session (à faire ensuite)
+- Espace Partenaire (CHU) dédié avec sidebar + bascule boutique
+- Espace Médecin dédié avec sidebar + bascule boutique + envoi d'identifiants par email (Mailtrap)
+- Gestion CRUD du catalogue produits côté admin (aucun endpoint CRUD catalogue n'existe encore côté backend — actuellement 100% lecture seule)
+
+---
+
+## 28 août 2026 (suite) — Espaces Partenaire & Médecin, CRUD Catalogue
+
+### Espace Partenaire (CHU)
+- **`layouts/PartnerLayout.tsx`** : sidebar dédiée (Tableau de bord, Candidatures, Sessions, Mon Profil), séparée de la boutique.
+- **`PartnerDashboardHomePage`** (nouveau) : tuiles candidatures en attente / sessions ouvertes.
+- **`PartnerEnrollmentsPage`** et **`PartnerSessionsPage`** : scission de l'ancienne `PartnerDashboardPage.tsx` (à onglets) en deux pages dédiées de la sidebar. Fichier `PartnerDashboardPage.tsx` supprimé (plus aucune route ne le référençait).
+- **Amélioration UX notable** : le formulaire de création de session demandait auparavant de **coller un UUID de formation à la main**. Ajout d'un vrai menu déroulant (`GET /partner/trainings`, nouveau) listant les formations réellement rattachées au partenaire.
+- **Nouveaux endpoints backend** : `GET /partner/trainings` (formations du partenaire), `GET /partner/sessions` (liste de ses sessions, avec titre de formation résolu — `TrainingSessionResponseDto` enrichi d'un champ `trainingTitle`).
+- **Nettoyage :** le fallback silencieux `catch { return [] }` sur `partnerService.getEnrollments()` a été retiré (même principe qu'au point n°8 : ne pas masquer une vraie erreur réseau en "aucune candidature").
+
+### Espace Médecin
+- **`layouts/DoctorLayout.tsx`** : sidebar dédiée (Mes dossiers, Coffre-fort, Mon Profil).
+- **`MyEnrollmentsListPage`** (nouveau) : le médecin n'avait auparavant **aucun moyen de lister ses propres dossiers** — seul l'accès direct par URL avec un ID déjà connu fonctionnait. Nouvel endpoint `GET /enrollments` (liste des dossiers du médecin connecté) + page de liste en page d'accueil de l'espace.
+- Routes réorganisées sous `/doctor/*` (`/doctor`, `/doctor/vault`, `/doctor/profile`, `/doctor/enrollments/:id`), au lieu des anciennes `/doctor/vault` et `/my-enrollments/:id` isolées.
+- **Bug visuel trouvé et corrigé en testant** : le titre de `MyEnrollmentsListPage` était en texte blanc/clair, conçu par erreur pour un fond sombre alors que la zone de contenu du layout est claire — texte quasi invisible. Corrigé (`text-slate-900`/`text-slate-500`).
+
+### CRUD Catalogue Produits (Admin)
+- **Constat de départ :** le catalogue était 100% lecture seule côté backend — aucun moyen de créer, modifier ou retirer un produit sans passer par la base de données directement.
+- **Nouveaux endpoints** : `GET/POST /admin/catalog/products`, `PUT /admin/catalog/products/{id}`, `DELETE /admin/catalog/products/{id}` (désactivation), `GET /admin/catalog/categories`.
+- **`AdminCatalogPage`** (nouveau, ajouté à la sidebar Admin) : liste, création et édition via modale, désactivation avec confirmation.
+- **⚠️ Limite technique identifiée (non résolue, comportement assumé) :** l'entité `Product` porte `@SQLRestriction("deleted_at IS NULL AND is_active = true")` — Hibernate filtre **automatiquement** les produits désactivés de **toute** requête sur cette entité, y compris pour l'admin. Conséquence : désactiver un produit dans ce CRUD est **irréversible depuis l'interface** (le produit disparaît aussi de la vue admin, pas seulement de la boutique). Un vrai bouton "réactiver" nécessiterait une requête SQL native contournant cette restriction — non implémenté cette session, l'action de suppression a été formulée clairement ("Désactiver... il ne sera plus visible sur la boutique") pour ne pas induire en erreur, mais sans mentionner l'irréversibilité actuelle du point de vue admin.
+
+### Vérifié en navigateur (les 3 espaces)
+- Connexion CHU → `/partner`, sessions réelles affichées avec menu déroulant fonctionnel
+- Connexion Médecin → `/doctor`, liste des 2 dossiers réels avec statuts corrects, coffre-fort affichant la vraie convention
+- Admin → création d'un produit test via la modale → apparition immédiate dans la liste (confirmé par sélecteur, pas seulement visuel)
+- Zéro erreur console sur les 3 parcours
+
+### Portée non couverte (prochaines étapes)
+- Envoi d'identifiants par email au médecin lors de la validation de candidature (Mailtrap) — pas encore commencé, nécessite d'abord d'ajouter `spring-boot-starter-mail` au projet (absent actuellement)
+- CRUD Catégories (actuellement lecture seule dans `AdminCatalogPage`, pas de création/édition de catégorie)
+- Réactivation de produit désactivé (cf. limite `@SQLRestriction` ci-dessus)
+
+---
+
+## 28 août 2026 (suite) — Fix visibilité produit désactivé + Phase 1 (Email) + Phase 2 (Partenariat CHU)
+
+Suite directe à la limite notée en fin de section précédente ("désactiver un produit le fait disparaître aussi de la vue admin"), signalée par l'utilisateur : *"même lorsque l'admin désactive un produit, ce produit doit toujours être visible à l'admin !"*. Traitée avant d'enchaîner sur le grand chantier ERP médecin/CHU/paiement demandé dans la foulée.
+
+### 16. Produit désactivé invisible même côté admin — contournement `@SQLRestriction` sans l'affaiblir
+- **Cause racine :** `@SQLRestriction("deleted_at IS NULL AND is_active = true")` sur l'entité `Product` s'applique à **toute** requête qui hydrate cette entité (JPQL *et* requêtes natives mappées dessus), sans distinction admin/public. Retirer ou affaiblir cette restriction aurait résolu le symptôme mais exposé les produits inactifs sur la boutique publique — inacceptable.
+- **Correctif :** contournement ciblé via projections SQL natives (interfaces, pas l'entité `Product`) réservées aux endpoints admin :
+  - `AdminProductRow` (nouvelle interface de projection, getters alignés sur les alias camelCase de la requête)
+  - `ProductRepository` : `findAllForAdmin(Pageable)` (SELECT natif, tri `is_active DESC, created_at DESC`, `countQuery` séparée), `findByIdForAdmin(UUID)`, `setActiveForAdmin(UUID, boolean)` (`@Modifying @Transactional UPDATE` natif)
+  - `AdminCatalogService` : `listProducts`/nouveau `setProductActive` réécrits sur ces méthodes, résolution des noms de catégorie en batch (`categoryRepository.findAllById`)
+  - `AdminCatalogResource` : `DELETE /products/{id}` remplacé par `PATCH /products/{id}/status?active={bool}` (endpoint bidirectionnel : désactiver **et** réactiver)
+  - Frontend (`adminCatalogService.ts`, `AdminCatalogPage.tsx`) : `setProductActive` remplace `deactivateProduct` ; colonne Statut ajoutée ; ligne grisée (`opacity-60`) pour les produits inactifs ; bouton Édition désactivé + tooltip sur produit inactif ; icône bascule Trash2 ↔ RotateCcw selon l'état.
+- **Piège de vérification rencontré :** premiers tests avec `size=5` puis `size=200` donnaient un faux négatif — le produit de test était trié en fin de liste (1519 produits au total, tri `is_active DESC` place les inactifs en dernier, donc hors de la première page). Confirmé définitivement avec `size=2000` (page complète) **et** requête `psql` directe (`is_active = f`). Produit de test réactivé ensuite pour ne pas laisser de donnée de test polluée.
+- **Fichiers :** `AdminProductRow.java` (nouveau), `ProductRepository.java`, `AdminCatalogService.java`, `AdminCatalogResource.java`, `adminCatalogService.ts`, `AdminCatalogPage.tsx`
+
+### Phase 1 — Infrastructure email (Mailtrap)
+Prérequis pour tout le reste (identifiants médecin/CHU envoyés par email). Ajout de `spring-boot-starter-mail`, config `mail.*` sous le profil `dev` pointant vers `sandbox.smtp.mailtrap.io:2525` (identifiants vides par défaut, à fournir par l'utilisateur), variables d'environnement Docker Compose correspondantes, et `EmailService.sendCredentialsEmail(...)` (email HTML avec en-tête aux couleurs de la marque). L'envoi est **non bloquant** : toute erreur SMTP est loguée mais n'interrompt jamais le flux métier (validation de candidature, etc.) qui l'a déclenché — un compte doit pouvoir être créé même si Mailtrap est mal configuré ou hors service.
+- **⚠️ Non résolu, hors code :** l'utilisateur n'a pas encore de compte Mailtrap. `MAIL_USERNAME`/`MAIL_PASSWORD` restent vides tant qu'il n'en crée pas un (gratuit sur mailtrap.io) et ne fournit pas les identifiants SMTP. Les emails échoueront silencieusement (loggés) jusque-là.
+- **Fichiers :** `pom.xml`, `application.yml`, `docker-compose.yml`, `EmailService.java` (nouveau)
+
+### Phase 2 — Partenariat CHU (convention → validation admin → identifiants)
+Nouveau domaine isolé `domain/partnership/` (aucune collision possible : il n'existait auparavant aucun parcours d'auto-inscription CHU — `RegisterPage` n'a jamais eu d'onglet CHU, seulement B2C/B2B/Médecin).
+- **Backend :** migration `V15__create_partnership_requests.sql` (table `partnership_requests`, statut PENDING/APPROVED/REJECTED) ; entité + repository ; `PartnershipService` (génération PDF de convention vierge via le moteur PDF existant, soumission de dossier avec upload du fichier signé, liste admin, validation → création `User`(CENTRE_FORMATION) + `PartnerProfile` + mot de passe temporaire aléatoire (12 car., alphabet sans caractères ambigus) + email d'identifiants, rejet avec motif) ; deux contrôleurs (`PartnershipResource` public, `AdminPartnershipRequestsResource` protégé ADMIN/SUPER_ADMIN) ; template PDF `convention-partenariat.html` (nouveau, fragments header/footer réutilisés correctement — leçon de l'entrée #3 appliquée dès l'écriture).
+- **Frontend :** `BecomePartnerPage` (page publique `/devenir-partenaire` : téléchargement du modèle, formulaire + upload de la convention signée) ; `AdminPartnershipRequestsPage` (nouvelle entrée sidebar admin "Demandes Partenariat", table avec actions Valider/Rejeter) ; lien "Devenir Partenaire" ajouté à la navbar boutique (nav secondaire, à côté de "Formations Médicales") pour rendre la page découvrable sans URL directe.
+- **Registre médecin retiré :** l'onglet "Médecin" de `RegisterPage.tsx` supprimé sur demande explicite (remplacement, pas coexistence — le parcours médecin passera désormais uniquement par candidature payante, cf. Phase 3 à venir). B2C/B2B strictement inchangés. Un bandeau redirige les médecins vers `/formations`. L'ancien endpoint backend `POST /auth/register/doctor` a été **laissé en place tel quel** (code mort inoffensif, non exposé côté UI) plutôt que supprimé, pour ne rien casser côté backend déjà testé — décision volontaire, cohérente avec la consigne de ne pas perturber l'existant.
+- **Fichiers :** `V15__create_partnership_requests.sql`, `PartnershipStatus.java`, `PartnershipRequest.java`, `PartnershipRequestRepository.java`, `PartnershipRequestResponseDto.java`, `PartnershipService.java`, `PartnershipResource.java`, `AdminPartnershipRequestsResource.java`, `PdfGeneratorService.java` (méthode ajoutée), `convention-partenariat.html` (nouveau), `SecurityConfig.java` (`/api/v1/partnership/**` public), `partnershipService.ts`, `adminPartnershipService.ts`, `BecomePartnerPage.tsx`, `AdminPartnershipRequestsPage.tsx`, `AdminLayout.tsx` (nav), `App.tsx` (routes), `Navbar.tsx` (lien), `RegisterPage.tsx` (onglet retiré)
+
+### Vérifié à ce stade
+- Backend : compilation Maven propre (Phase 1 et Phase 2, aucune erreur au premier essai)
+- Frontend : `npx tsc -b` propre, zéro erreur, y compris après retrait de l'onglet Médecin de `RegisterPage`
+- **Reste à vérifier en conditions réelles** (bloqué sur le rebuild Docker en cours au moment de la rédaction) : soumission d'une demande de partenariat → validation admin → création effective de `User`+`PartnerProfile` → tentative d'envoi d'email (échec attendu tant que Mailtrap n'est pas configuré, mais ne doit pas bloquer la création du compte) → connexion avec le mot de passe temporaire généré
+
+### Portée non couverte (Phase 3, pas commencée)
+- Candidature médecin payante : formulaire public (remplace l'auto-inscription), paiement de frais de dossier fixes (défaut 50 €, configurable via `DOCTOR_APPLICATION_FEE`) **avant** obtention des identifiants, création différée du compte médecin après validation admin + paiement confirmé
+- Filtrage des candidats par formation côté CHU
+- Boucle de communication admin/médecin/CHU (statuts, documents demandés/fournis) à concevoir en détail
+
+---
+
+## 28 août 2026 (suite) — Phase 3 : Candidature médecin payante
+
+Dernière des 3 phases du grand chantier. Relecture attentive du message utilisateur : "le médecin effectue d'abord son paiement ensuite reçoit ses identifiants... l'admin s'occupe de la procédure administrative" a été interprétée comme : le paiement déclenche la création du compte, et la "procédure administrative" gérée par l'admin est le pipeline `Enrollment` **déjà existant** (PENDING_REVIEW → APPROVED_ACADEMIC → APPROVED_ADMINISTRATIVE → CONVENTION_ISSUED...), pas une étape de validation supplémentaire à inventer. Cette lecture a fortement réduit le périmètre réel du chantier : la boucle de communication admin/médecin/CHU à 3 voies, l'espace médecin (sidebar, suivi en temps réel), et même l'upload de documents post-connexion (`MyEnrollmentDetailPage`) **existaient déjà et fonctionnaient**, il ne manquait qu'un point d'entrée payant pour créer le compte.
+
+### Découverte importante en amont : deux parcours médecin distincts, pas un seul
+`TrainingEnrollmentPage.tsx` (le formulaire "Postuler" existant) suppose un médecin **déjà connecté** (`@PreAuthorize("hasRole('MEDECIN')")` côté backend, aucune création de compte). Après le retrait de l'auto-inscription (session précédente), cette page n'était plus jamais atteignable par un nouveau candidat — mais elle reste légitime pour un médecin **déjà titulaire d'un compte** (créé via une précédente candidature payée) qui s'inscrit à une session supplémentaire, sans repayer les frais de dossier. Décision : ne pas toucher `TrainingEnrollmentPage.tsx` (fonctionnel, juste plus jamais accessible aux nouveaux candidats) et créer un **second** point d'entrée public (`DoctorApplicationPage.tsx`, route `/formations/:id/postuler`) réservé aux candidats sans compte. Le bouton "Postuler" de `TrainingDetailPage.tsx` bascule désormais entre les deux selon l'état de connexion (`MEDECIN` connecté → `/enroll` existant ; sinon → `/postuler` nouveau).
+
+### 17. Deux bugs pré-existants découverts en creusant le parcours (non liés à cette phase mais bloquants pour elle)
+- **`GET /trainings/{id}/sessions` non déclaré public dans `SecurityConfig`** : l'endpoint n'a aucun `@PreAuthorize`, mais `SecurityConfig` n'a jamais eu de règle `permitAll` correspondante — il tombait donc sous `anyRequest().authenticated()` par défaut. Resté invisible jusqu'ici car la seule page qui l'appelait (`TrainingEnrollmentPage`) n'était accessible qu'à un médecin déjà connecté. La nouvelle page de candidature anonyme l'aurait immédiatement révélé (401 au chargement de la liste des sessions). Corrigé en ajoutant `GET /api/v1/trainings/*/sessions` à la liste `permitAll`.
+- **`authService.updateProfile` (frontend) appelait `PUT /users/me`, un endpoint qui n'existe nulle part côté backend** (seul `PUT /auth/profile` existe). Conséquence : le bouton "Enregistrer les modifications" de la page Profil échouait silencieusement (404) pour **tous les rôles**, depuis toujours — très probablement le bug exact du signalement initial "les pages profile aussi buguent", qui avait échappé au correctif de l'entrée #14 (celui-ci n'avait testé la persistance qu'en appelant directement `/auth/profile` en `curl`, jamais via le vrai bouton de l'UI). Corrigé : `authService.updateProfile` pointe maintenant vers `/auth/profile`.
+- **Absence totale de fonctionnalité "changer mon mot de passe"** : ni endpoint backend, ni UI. Or les comptes Partenaire (Phase 2) et Médecin (Phase 3) reçoivent tous deux un mot de passe temporaire généré par email — sans moyen de le changer, cette mécanique était incomplète pour les deux flux. Ajouté : `PUT /auth/change-password` (`AuthService.changePassword`, vérifie l'ancien mot de passe), section dédiée dans `ProfilePage.tsx` (partagée par tous les rôles via `AdminLayout`/`PartnerLayout`/`DoctorLayout`).
+
+### Architecture retenue pour le paiement (frais de dossier fixes, indépendants du prix de la formation)
+- **`StripePaymentService.createCheckoutSession` rendu générique par surcharge additive** : nouvelle variante acceptant un libellé de ligne personnalisé et des métadonnées Stripe arbitraires, sans toucher à la signature ni au comportement de l'ancienne méthode (toujours utilisée telle quelle par `OrderService`, zéro risque de régression sur le tunnel d'achat e-commerce).
+- **Webhook (`PaymentWebhookResource`) étendu par branchement sur une métadonnée `"type"`** : `"DOCTOR_APPLICATION"` route vers `DoctorApplicationService.confirmPayment`, sinon comportement strictement inchangé (`orderService.confirmOrderPayment`, chemin par défaut). Le `client_reference_id` reste l'identifiant brut (UUID de la candidature ou de la commande selon le cas) — jamais réinterprété à double sens.
+- **Nouveau domaine isolé `domain/doctorapplication/`** (même logique de séparation que `domain/partnership/` en Phase 2) : table `doctor_applications` (migration `V16`), statuts `PENDING_PAYMENT/PAID/CANCELLED`. Le candidat soumet ses informations + choix de session → ligne créée en `PENDING_PAYMENT` + session Stripe Checkout hébergée créée → **aucun compte n'existe encore à ce stade**. Le webhook `confirmPayment` (idempotent, une candidature déjà `PAID` ignore les événements dupliqués) crée alors : `User`(MEDECIN, mot de passe temporaire généré) + `DoctorProfile` + `Enrollment` (via `EnrollmentService.createEnrollment`, **réutilisé tel quel** — décrémentation atomique des places, vérification de doublon, statut `PENDING_REVIEW` — aucune duplication de logique), puis envoie l'email d'identifiants.
+- **Cas limite documenté, non traité automatiquement** : si les places de la session se sont épuisées entre la soumission de la candidature et la confirmation du paiement (webhook), la création de l'inscription échoue mais le paiement a bien eu lieu — le compte est créé quand même (le médecin ne doit pas perdre des identifiants payés), erreur loguée en `ERROR` pour suivi manuel admin (changement de session ou remboursement). Pas de remboursement automatique implémenté (hors scope, nécessiterait l'API Stripe Refunds).
+- **Page de succès (`CandidatureSuccessPage`) avec polling** : le webhook Stripe peut arriver quelques instants après la redirection du navigateur. La page interroge `GET /doctor-applications/status-by-stripe-session` (nouvelle méthode de résolution par l'identifiant de session Stripe, le navigateur ne connaissant pas l'UUID interne de la candidature) toutes les 2 secondes, jusqu'à 10 tentatives, avant de basculer sur un message "confirmation en cours" non bloquant.
+
+### CHU : filtrage des candidats par formation (demande explicite du CDC)
+- `GET /partner/enrollments?trainingId=...` (paramètre optionnel, rétrocompatible), nouveau menu déroulant dans `PartnerEnrollmentsPage.tsx` (réutilise `partnerService.getMyTrainings()`, déjà existant).
+- **Bug pré-existant corrigé au passage** : `doctorName` y était calculé en dur (`"Dr. " + email`) au lieu de joindre `DoctorProfile` comme le fait `EnrollmentService.toDetailDto` ailleurs dans le même fichier — incohérence localisée en touchant ce contrôleur pour le filtre, corrigée par la même occasion.
+
+### Vérifié à ce stade
+- Backend et frontend : compilation propre (Maven + `tsc -b`), aucune erreur.
+- **Reste à vérifier en conditions réelles** (rebuild Docker en cours à la rédaction) : soumission de candidature → session Stripe (attendu : échoue proprement sur "Invalid API Key", clé de test placeholder — comportement déjà documenté et accepté pour le paiement carte e-commerce, cf. entrée #12 ; nécessite de vraies clés Stripe côté utilisateur pour un test de paiement réel de bout en bout) → si un paiement réel aboutissait : création effective du compte/profil/inscription, email (échec attendu tant que Mailtrap n'est pas configuré, non bloquant), filtrage CHU par formation.
+
+### Portée volontairement non couverte
+- Remboursement automatique en cas d'épuisement des places après paiement (cas limite documenté ci-dessus, suivi manuel admin pour l'instant)
+- Vraies clés Stripe et identifiants Mailtrap : action utilisateur requise, hors code
+- Emails spécifiques "candidature reçue"/"paiement en attente" (l'email d'identifiants n'est envoyé qu'une fois le paiement confirmé, conformément à la demande explicite)
+
+### 18. `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` jamais transmis au conteneur Docker
+- **Symptôme :** même en définissant ces variables sur la machine hôte, le backend continuerait à utiliser les valeurs placeholder (`sk_test_PLACEHOLDER`/`whsec_PLACEHOLDER`) codées en dur dans `application.yml`.
+- **Cause racine :** `docker-compose.yml` ne relayait **que** les variables Mailtrap (`MAIL_*`) vers le bloc `environment:` du service `backend` — `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` n'y figuraient pas du tout, contrairement à ce que suggérait leur simple présence en tant que `${VAR:default}` dans `application.yml`. Trouvé en préparant la demande d'identifiants réels à l'utilisateur.
+- **Correctif :** ajout des deux variables au bloc `environment:` (`docker-compose.yml`), suivant exactement le même schéma `${VAR:-default}` que Mailtrap. Ajout aussi de `MAIL_FROM` et `DOCTOR_APPLICATION_FEE` (également absents du passthrough Docker malgré leur usage réel dans le code).
+- **Fichier ajouté :** `docker/.env.example` — modèle à copier en `.env` (déjà exclu de Git) pour que l'utilisateur renseigne ses identifiants localement, sans jamais les coller dans la conversation.
+- **Fichier :** `docker/docker-compose.yml`
+
+---
+
+## 28 août 2026 (suite) — Refonte de la page "Devenir centre partenaire" sur maquette utilisateur
+
+L'utilisateur a fourni une maquette visuelle précise pour `/devenir-partenaire`. Avant d'implémenter, vérification de cohérence avec le CDC : la maquette indiquait un modèle de convention en `.xlsx`, alors que le CDC spécifie explicitement le moteur **OpenPDF (Java)** comme technologie unique de génération de toutes les conventions du projet (déjà utilisé et testé en Phase 2). Plutôt que de dévier silencieusement du CDC (nouvelle dépendance Apache POI pour un seul document) ou d'ignorer la maquette, la question a été posée explicitement à l'utilisateur — réponse : garder le PDF (conforme CDC), adapter uniquement le design/libellé.
+
+- **`BecomePartnerPage.tsx` restructurée** : en-tête (eyebrow "CLINIQUES, HÔPITAUX, CHU" + titre + sous-titre), section 2 colonnes ("Conditions & politique de partenariat" avec liste à puces + 2 boutons d'action ; "Parcours du dossier" avec stepper vertical à 4 étapes numérotées, codes couleur ambre/gris/vert selon l'état), puis le formulaire de dépôt (déjà existant, logique intacte) rendu accessible via un scroll fluide déclenché par le bouton "Remplir & déposer mon dossier" plutôt que d'être toujours visible — aucune re-création de la logique de soumission, uniquement la mise en page.
+- **Vérifié visuellement** via Playwright (capture d'écran pleine page + test du clic sur le bouton de scroll) : rendu conforme à la maquette, formulaire fonctionnel après le scroll.
+- **Fichier :** `frontend/src/pages/partnership/BecomePartnerPage.tsx`
+
+### 19. Identifiants Mailtrap/Stripe fournis mais non pris en compte — piège `.env.example` vs `.env`
+- **Symptôme :** l'utilisateur a renseigné ses vraies clés, mais après `docker compose up -d`, le conteneur continuait de tourner avec les valeurs vides/placeholder.
+- **Cause racine :** les identifiants avaient été saisis directement dans `docker/.env.example` (le fichier modèle) au lieu d'une copie nommée `docker/.env`. Docker Compose ne charge automatiquement que `.env` — `.env.example` n'est jamais lu pour l'interpolation `${VAR}`. Complication additionnelle : `.env.example` n'est **pas** couvert par la règle `.gitignore` (`.env` uniquement), donc ces vraies clés étaient sur le point de pouvoir être commitées par erreur si le fichier avait été ajouté au dépôt.
+- **Correctif :** fichier renommé `docker/.env.example` → `docker/.env` (`git status` vérifié au préalable : le fichier était encore non suivi, aucune fuite dans l'historique Git) ; `docker/.env.example` régénéré vierge pour rester un modèle sûr. `docker compose up -d --force-recreate --no-deps backend` nécessaire (un simple `up -d` ne détectait pas le changement).
+- **Vérifié en conditions réelles, avec de vraies clés :**
+  - Stripe : `POST /doctor-applications` renvoie désormais un vrai `paymentUrl` `https://checkout.stripe.com/...` (`HTTP 200`), l'erreur `Invalid API Key` a disparu.
+  - Mailtrap : validation d'une demande de partenariat → log `INFO ... Email envoyé à ...` (plus aucune erreur `Authentication failed`).
+- **Fichiers :** `docker/.env` (nouveau, non versionné), `docker/.env.example` (régénéré vierge)
+
+---
+
+## 28 août 2026 (suite) — Phase 4 : Tunnel de paiement Stripe Elements intégré
+
+Demande explicite avec liens vers la doc Stripe (Adaptive Pricing, sauvegarde de moyens de paiement, Elements). Recherche documentaire faite AVANT tout code (WebFetch sur les 3 pages) — résultat clé : Stripe recommande explicitement l'API Checkout Sessions avec `ui_mode: "elements"` plutôt que l'API Payment Intents brute pour ce cas d'usage ("Don't use the Payment Intent API unless the user explicitly asks"), et l'Adaptive Pricing n'est disponible QUE via Checkout Sessions — confirmant que l'architecture existante (déjà basée sur Checkout Sessions depuis l'origine du projet) était la bonne base, pas besoin de tout reconstruire.
+
+### 20. Décalage entre la doc Stripe et le SDK npm réellement publié
+- **Symptôme :** en suivant la doc à la lettre (`CheckoutElementsProvider`/`useCheckoutElements` importés depuis `@stripe/react-stripe-js/checkout`, option `clientSecret` directe), `tsc -b` échouait : `Cannot find module '@stripe/react-stripe-js/checkout'`.
+- **Cause racine :** la documentation Stripe fetchée décrit une génération plus récente (probablement en preview) du SDK React, non encore publiée sur npm dans la version stable installée (`@stripe/react-stripe-js@3.10.0`). Cette version stable expose la même fonctionnalité sous un nom différent, hérité de l'ancienne appellation "Custom Checkout" : `CheckoutProvider`/`useCheckout` importés depuis le **package racine** `@stripe/react-stripe-js` (pas de sous-chemin `/checkout`), avec `options.fetchClientSecret: () => Promise<string>` (une fonction, pas une chaîne/Promise directe), et sans option `adaptivePricing` explicite côté client (l'Adaptive Pricing s'applique automatiquement une fois activée côté Dashboard, sans configuration JS supplémentaire dans cette version).
+- **Démarche de vérification :** inspection directe des `.d.ts` du package installé (`node_modules/@stripe/react-stripe-js/dist/react-stripe.d.ts`, `node_modules/@stripe/stripe-js/dist/stripe-js/checkout.d.ts`) plutôt que de deviner — a permis de confirmer les noms exacts (`CheckoutProvider`, `useCheckout`, `StripeCheckoutOptions.fetchClientSecret`, `StripeCheckoutConfirmResult`) et d'adapter le composant en conséquence. **Le code serveur (Java) n'a nécessité aucun changement** : `ui_mode: ELEMENTS` + `client_secret` retourné par la Checkout Session est exactement ce qu'attend `fetchClientSecret` côté client, quelle que soit la génération du SDK JS utilisée — seule l'API cliente diffère.
+- **Fichier :** `frontend/src/components/payment/StripeEmbeddedCheckout.tsx`
+
+### Architecture livrée
+- **Backend, additif uniquement** (les anciennes méthodes `StripePaymentService.createCheckoutSession` hébergées restent en place, non appelées mais non supprimées — même convention que pour les autres endpoints devenus obsolètes) :
+  - `StripePaymentService.createCustomer` / `createElementsCheckoutSessionForCustomer` / `createElementsCheckoutSessionForNewCustomer` / `retrieveSession` (nouvelles méthodes)
+  - `users.stripe_customer_id` (migration `V17`) — un Customer Stripe par utilisateur, créé une fois puis réutilisé, condition nécessaire à la sauvegarde/réutilisation de carte
+  - `OrderService` : le paiement carte crée désormais une session `ui_mode: elements` liée au Customer de l'utilisateur (créé à la volée si absent) au lieu d'une session hébergée ; `OrderResponseDto` gagne un champ `clientSecret` (remplace l'usage de `paymentUrl` pour ce cas)
+  - `DoctorApplicationService` : même traitement, mais sans `User` existant à ce stade — Stripe crée lui-même un Customer pendant le paiement (`customer_creation: always`), son ID est récupéré depuis le webhook (`session.getCustomer()`) et rattaché au compte MEDECIN tout juste créé
+  - Nouvel endpoint `GET /orders/checkout-session-status?sessionId=` (interroge Stripe directement, pattern identique à l'existant `GET /doctor-applications/status-by-stripe-session`)
+  - Webhook `checkout.session.completed` **inchangé dans sa logique** (reste la source de vérité serveur), seule la signature de `DoctorApplicationService.confirmPayment` gagne un paramètre `stripeCustomerId`
+- **Frontend** :
+  - `@stripe/react-stripe-js` + `@stripe/stripe-js` installés ; `VITE_STRIPE_PUBLISHABLE_KEY` (clé publiable, non secrète) dans `frontend/.env`
+  - Composant partagé `StripeEmbeddedCheckout.tsx` (Payment Element + bouton de paiement + gestion d'erreur), réutilisé à l'identique par `CheckoutPage.tsx` (e-commerce) et `DoctorApplicationPage.tsx` (candidature médecin, désormais un flux à 3 étapes : session → informations → paiement intégré)
+  - `CheckoutPage.tsx` : le choix "Carte Bancaire (Stripe)" affiche désormais le formulaire de paiement **directement dans la page** au lieu de rediriger vers checkout.stripe.com ; le panier n'est vidé qu'à la confirmation réelle sur la nouvelle page `/checkout/complete` (nouveau, calque du pattern de polling déjà en place pour `/candidature/success`)
+  - Anciennes pages `/checkout/success` et `/checkout/cancel` non supprimées (peuvent redevenir pertinentes pour d'autres méthodes de paiement), simplement plus utilisées par le flux carte
+
+### Vérifié à ce stade
+- Backend et frontend : compilation propre.
+- **Reste à vérifier en conditions réelles** (rebuild Docker en cours à la rédaction) : session Checkout `ui_mode: elements` réellement créée avec de vraies clés Stripe, rendu visuel du Payment Element intégré, confirmation de paiement de bout en bout avec une carte de test Stripe (4242 4242 4242 4242).
+
+### Portée volontairement non couverte
+- Currency Selector Element (sélection manuelle de devise par le client) : nécessite un accès bêta Stripe (`createCurrencySelectorElement`/`getCurrencySelectorElement` marqués "Requires beta access" dans les types du SDK installé) — l'Adaptive Pricing reste fonctionnelle sans lui (localisation automatique des montants affichés), seul le sélecteur manuel de devise est indisponible dans cette version.
+- Gestion d'une UI dédiée "mes moyens de paiement enregistrés" (lister/supprimer une carte hors du tunnel d'achat) — non demandée, la sauvegarde/réutilisation automatique via le Payment Element (case à cocher + affichage des cartes déjà enregistrées) est en place.
+
+### 21. Faux positif de compilation locale + version stripe-java trop ancienne pour `ui_mode`/`saved_payment_method_options`
+- **Symptôme :** `mvn compile` (incrémental, sans `clean`) donnait un résultat propre localement à chaque vérification pendant l'écriture du code Stripe Elements ci-dessus. Le build Docker (qui exécute `mvn clean package` dans un conteneur isolé) a ensuite échoué avec 4 erreurs de compilation bien réelles : `SessionCreateParams.UiMode.ELEMENTS` et `SessionCreateParams.SavedPaymentMethodOptions` introuvables, plus un site d'appel oublié (`AdminOrderResource.java`, reconstruction manuelle de `OrderResponseDto` après génération du PDF de devis) qui n'avait pas été mis à jour avec le nouveau champ `clientSecret` ajouté au record.
+- **Cause racine (compilation locale silencieusement fausse) :** la compilation incrémentale de `maven-compiler-plugin` n'a pas détecté que la version modifiée de `StripePaymentService.java` référençait des symboles absents du classpath — un `mvn clean compile` explicite reproduit l'échec de façon systématique et fiable. **Leçon retenue : toujours utiliser `mvn clean compile`/`clean package` pour valider un changement de code, jamais `mvn compile` seul, dont le résultat peut être un faux positif après des éditions successives du même fichier dans la même session.**
+- **Cause racine (version SDK) :** `stripe-java` était figé à `24.22.0` (`pom.xml`), une version antérieure à l'ajout de `ui_mode=custom`/`saved_payment_method_options` dans l'API. Vérifié directement dans le `.jar` local via `javap` plutôt que deviné : `UiMode` n'y expose que `EMBEDDED`/`HOSTED`, aucune classe `SavedPaymentMethodOptions` du tout. Mise à jour vers `stripe-java 29.2.0` (dernière version stable, vérifiée sur Maven Central).
+- **Découverte supplémentaire, décisive :** même en 29.2.0, l'énum ne s'appelle **pas** `ELEMENTS` mais `CUSTOM` (valeur réseau `"custom"`, confirmée par désassemblage bytecode) — le SDK Java stable utilise encore l'ancienne appellation "Custom Checkout", exactement comme le SDK React stable (`CheckoutProvider`/`useCheckout`, cf. point n°20 juste au-dessus). Cette cohérence confirme que `UiMode.CUSTOM` côté Java et `CheckoutProvider`/`fetchClientSecret` côté React ciblent bel et bien la même fonctionnalité que la documentation Stripe appelle désormais "elements" — aucune divergence fonctionnelle, seulement deux générations de nommage selon le SDK.
+- **Fichiers :** `backend/pom.xml` (version stripe-java), `StripePaymentService.java` (`UiMode.CUSTOM`), `AdminOrderResource.java` (site d'appel oublié corrigé)
+
+### Vérifié en conditions réelles, de bout en bout (navigateur piloté + vraie carte de test Stripe)
+- **Commande e-commerce (B2C)** : ajout panier → checkout → sélection "Carte Bancaire (Stripe)" → Payment Element réellement rendu dans la page (Carte bancaire / Bancontact / EPS, montant localisé "Payer 43 €", badge Stripe visible) → carte de test `4242 4242 4242 4242` saisie et validée → redirection automatique vers `/checkout/complete` → page "Paiement réussi !" avec le vrai numéro de commande → **en base : `payment_status = PAID`**, log serveur confirmant la réception du webhook `checkout.session.completed`, génération du reçu PDF, décrémentation du stock. `stripe_customer_id` correctement persisté sur le compte utilisateur.
+- **Candidature médecin** : soumission → `clientSecret` réel renvoyé (format `cs_test_..._secret_...`) → étape 3 affichée avec le Payment Element intégré, bouton "Payer les frais de dossier", accessible sans compte (candidat anonyme, "Se connecter" visible dans la navbar).
+- **Bug de copie repéré et corrigé en testant** : le texte d'information du choix "Carte Bancaire" sur `CheckoutPage.tsx` disait encore "Vous allez être redirigé(e) vers la page de paiement sécurisée Stripe" — plus exact depuis le passage en paiement intégré, corrigé en "Le formulaire de paiement sécurisé Stripe s'affichera directement sur cette page."
+- Données de test nettoyées (candidatures médecin `PENDING_PAYMENT` de test) ; la commande e-commerce réellement payée pendant ce test (`OPT-20260828-4AA5`) a été laissée en base comme preuve tangible du bon fonctionnement, non supprimée.
+
+---
+
+## 29 août 2026 — Images produits, page d'accueil et refonte de la page Catalogue
+
+### 22. Images produits manquantes — deux causes distinctes, aucune ne touchant les vraies images
+- **Diagnostic (vérifié, pas supposé) :** requête directe sur un échantillon d'URLs `imageUrl` réelles issues de l'API → toutes répondent `200` (les vraies images produit fonctionnent parfaitement, hébergement Cloudinary correct). Le seul `404` provient d'une URL de secours codée en dur (`.../catalog/medical-placeholder.jpg`) jamais réellement uploadée — déjà notée comme "note cosmétique non corrigée" dans une entrée précédente du journal, mais dont l'ampleur réelle n'avait pas été mesurée.
+- **Cause 1 :** certains produits ont `imageUrl` vide/null en base → le frontend retombait sur cette URL de secours cassée (`product.imageUrl || 'https://.../medical-placeholder.jpg'`), répétée à l'identique dans 4 endroits (`HomePage.tsx` × 3 sections, `CatalogPage.tsx`).
+- **Cause 2 :** un lot d'import de données historique a rempli `imageUrl` avec cette même URL cassée directement en base pour certains produits (constaté via l'API : ex. "Stérilisateur à air chaud, DOF-HAS70A") — dans ce cas le frontend ne déclenchait même pas son repli, puisque la valeur est bien "présente" (non vide), juste invalide.
+- **Aucun `onError` n'était géré nulle part** : une image réellement cassée (cause 2, ou toute image qui viendrait à disparaître de Cloudinary) affichait l'icône de lien brisé native du navigateur, sans repli propre.
+- **Correctif :** nouveau composant partagé `frontend/src/components/common/ProductImage.tsx` — traite une URL vide **et** l'URL de secours connue comme cassée comme "pas d'image" (repli immédiat vers une icône, sans requête réseau vouée à l'échec), et ajoute un `onError` réel qui bascule sur le même repli si l'image pourtant valide échoue quand même au chargement. Appliqué partout où une image produit est affichée : `HomePage.tsx` (3 sections), `CatalogPage.tsx`, `ProductDetailPage.tsx`.
+- **Vérifié visuellement** (Playwright) : les produits avec une vraie image l'affichent correctement, les produits sans image ou avec l'URL cassée affichent l'icône de repli propre — plus aucune image cassée nulle part.
+
+### 23. Section "Tout notre catalogue" de la page d'accueil affichait tous les produits chargés
+- **Symptôme :** la page d'accueil charge 48 produits pour ses différentes sections (carrousels, best-sellers...) ; la section finale "Tout notre catalogue" les affichait tous les 48 au lieu de n'en montrer qu'un aperçu, rendant le bouton "Voir le catalogue complet" à côté redondant/incohérent.
+- **Correctif :** `products.slice(0, HOMEPAGE_CATALOG_PREVIEW_COUNT)` (constante à 8), sans toucher au chargement des 48 produits utilisés par les autres sections de la page.
+- **Fichier :** `HomePage.tsx`
+
+### 24. Refonte de la page Catalogue sur maquette utilisateur
+- **Constat de départ :** ~273 catégories en base, chacune affichée comme un bouton individuel sur la page Catalogue → un mur de plusieurs dizaines de lignes de boutons avant même d'atteindre les produits (visible sur la capture fournie par l'utilisateur).
+- **Correctif :** remplacement du mur de boutons par un menu déroulant natif (`<select>`) — gère nativement le défilement et la recherche par frappe pour 273 entrées sans composant supplémentaire, avec une puce de filtre actif ("Filtré par : … ×") pour visualiser/retirer rapidement la sélection. Barre de recherche + filtre rendus "sticky" sous la navbar (pattern e-commerce standard). Cartes produit modernisées (image pleine largeur en haut, hover, badges stock/devis, bouton d'action compact), squelettes de chargement animés au lieu d'un simple spinner, compteur de résultats affiché.
+- **Bug de décodage HTML corrigé au passage** (repéré visuellement pendant la vérification) : le nom de catégorie affiché sur chaque carte produit (`product.category.name`) n'était jamais décodé (`Cathéters &amp; pansements` au lieu de `Cathéters & pansements`), contrairement à la liste des catégories elle-même qui applique déjà ce nettoyage. Corrigé sur `CatalogPage.tsx` et `ProductDetailPage.tsx` (même symptôme constaté).
+- **Vérifié en conditions réelles** (Playwright) : filtre fonctionnel sur une catégorie réellement vide (0 produit en base, confirmé par requête API directe — comportement correct, pas un bug) et sur une catégorie garnie (14 produits, images et libellés corrects).
+- **Fichiers :** `CatalogPage.tsx` (réécriture), `ProductDetailPage.tsx`, `HomePage.tsx`, `components/common/ProductImage.tsx` (nouveau)
+
+### Portée non couverte (signalée, non corrigée)
+- Données de catalogue historiques : nombreuses catégories quasi-doublons (ex. "Champs opératoires" / "Champs chirurgicaux", "Accessoires pré-opératoire" / "Accessoires pré-opératoires") et plusieurs catégories totalement vides — problème de qualité des données d'import, pas de logique applicative ; non traité ici (hors périmètre de la demande, nécessiterait une décision métier sur la fusion/nettoyage des catégories).
+
+---
+
+## 29 août 2026 (suite) — Espace Finance Admin, Promotions produit, Codes promo
+
+Demande combinée avec les correctifs catalogue ci-dessus. Une question de cadrage posée avant de coder ("temps réel" = actualisation à l'ouverture + bouton rafraîchir, choisi plutôt qu'un polling automatique — évite une charge serveur continue pour un gain d'usage marginal).
+
+### Architecture retenue
+- **Promotions produit** : deux nouveaux champs sur `Product` (`promoPrice`, fenêtre `promoStartsAt`/`promoEndsAt`). Point unique de vérité `Product.getEffectiveBasePrice()` (méthode `@Transient` sur l'entité) — utilisé à la fois par `CatalogService` (affichage) et `OrderService` (montant réellement facturé), pour qu'un produit en promo ne soit jamais affiché à un prix différent de celui effectivement débité. Auto-expiration par simple comparaison de date à la lecture, aucun job planifié.
+- **Codes promo** : nouveau domaine `domain/promotion/` isolé, entité `PromoCode` (% ou montant fixe, montant minimum optionnel, limite d'usage optionnelle, fenêtre de dates optionnelle). Validation (`PromoCodeService.validateAndComputeDiscount`) et consommation de l'usage (`consumeUsage`, incrément atomique façon décrémentation de places de session) séparées en deux étapes distinctes : l'usage n'est jamais décompté sur une tentative de commande qui échouerait ensuite pour une autre raison.
+- **Intégration checkout** : `CheckoutRequestDto` gagne un champ `promoCode` optionnel, appliqué sur le total **après** calcul des prix promo produit et de la remise B2B (dans cet ordre), **avant** la création de la session Stripe — additif uniquement, aucune ligne du tunnel de paiement Stripe Elements (Phase 4) modifiée. Codes promo volontairement exclus des demandes de devis B2B (négociation individuelle).
+- **Espace Finance** (`GET /admin/finance/summary|best-sellers|recent-sales`) : agrégats en lecture seule via requêtes SQL natives sur `orders`/`order_items` filtrées sur `payment_status = 'PAID'` — aucune nouvelle table, aucune écriture, zéro risque sur la logique de commande existante.
+
+### 25. Deux sites de construction de `OrderResponseDto` oubliés de justesse (leçon de l'entrée #20 appliquée)
+En ajoutant les champs `promoCode`/`discountAmount` au record `OrderResponseDto`, recherche systématique de **tous** les sites `new OrderResponseDto(...)` avant de considérer le changement terminé (leçon retenue de l'incident du Phase 4, cf. entrée #20) — deux sites trouvés et mis à jour (`OrderService.mapToResponseDto` et la reconstruction manuelle dans `AdminOrderResource` après génération du PDF de devis), plus une vérification qu'aucun code backend ne construit `AdminProductRequestDto`/`CheckoutRequestDto` directement (les deux étant des records désérialisés depuis le JSON entrant uniquement). `mvn clean compile` confirmé propre avant tout déploiement.
+
+### Vérifié en conditions réelles, de bout en bout (navigateur piloté + vraies données)
+- **Promotion produit** : prix promo posé via l'API admin (42,50€ → 24,90€), reflété immédiatement sur `GET /catalog/products/{slug}` (`isOnPromo: true`, `finalPrice: 24.90`), et **le checkout facture bien 24,90€, pas 42,50€** (vérifié explicitement — c'est exactement le risque que le point unique de vérité `getEffectiveBasePrice()` visait à éliminer).
+- **Codes promo** : créé via le vrai formulaire admin (toast de confirmation, tableau mis à jour), appliqué en conditions réelles au checkout boutique — chip "BIENVENUE15" avec remise affichée ("− 6.38 €" sur 42,50€ à 15%, arrondi correct), total recalculé, `used_count` incrémenté en base après commande.
+- **Espace Finance** : les 4 tuiles, le classement des meilleures ventes et la liste des ventes récentes affichent exactement les vraies données de la commande de test payée en Phase 4 — page entièrement fonctionnelle avec le bouton "Rafraîchir".
+- Toutes les données de test (codes promo, produit remis en promo puis retiré) nettoyées après vérification.
+
+### Portée volontairement non couverte
+- Sélecteur de devise / promotions multi-devises (hors sujet, l'Adaptive Pricing gère déjà la conversion d'affichage côté Stripe indépendamment de cette fonctionnalité)
+- Codes promo réservés à un rôle (B2C uniquement, etc.) ou à un produit/catégorie spécifique — implémenté ici comme global à toute commande e-commerce, non demandé plus finement
+- Export comptable / rapprochement bancaire — hors périmètre de la demande ("ventes temps réel, produits les plus vendus, revenus totaux")
+
+### 26. `GET /admin/finance/recent-sales` — faux 401 masquant une vraie erreur de conversion de type
+- **Symptôme :** en testant la page Finance dans le navigateur, la session admin était brutalement déconnectée (redirection vers `/login`) en visitant `/admin/finance` — l'intercepteur Axios du frontend déconnecte automatiquement sur tout `401`/`403` reçu (comportement volontaire et sain en soi), mais masquait ici une erreur totalement différente.
+- **Cause racine (vérifiée dans les logs, pas supposée) :** `java.lang.UnsupportedOperationException: Cannot project java.time.Instant to java.time.OffsetDateTime`. La projection native `RecentSaleRow.getCreatedAt()` était typée `OffsetDateTime`, mais le mécanisme de projection de Spring Data JPA (différent du mapping d'entité JPA classique, qui sait faire cette conversion) ne sait convertir une colonne `timestamptz` que vers `Instant`, pas directement vers `OffsetDateTime`, pour une interface de projection native. Les deux autres endpoints Finance (`summary`, `best-sellers`) n'exposent aucun champ date dans leur projection — bug invisible tant qu'on ne teste pas spécifiquement `recent-sales`.
+- **Correctif :** `RecentSaleRow.getCreatedAt()` retypé en `Instant`, conversion explicite vers `OffsetDateTime` (`.atOffset(ZoneOffset.UTC)`) dans `FinanceService.toRecentSaleDto`.
+- **Leçon :** encore un exemple concret du piège de diagnostic déjà documenté (entrée #2, absence de `@ControllerAdvice` global) — un `401` en test manuel navigateur ne signifie pas automatiquement un problème d'authentification ; toujours vérifier les logs serveur avant de suspecter la session/le token.
+- **Fichiers :** `RecentSaleRow.java`, `FinanceService.java`
+
+---
+
+## 29 août 2026 (suite) — Retour utilisateur : déconnexions mystères, inscription B2B, navigation
+
+Trois signalements concrets de l'utilisateur après test manuel, avec captures d'écran. Diagnostic par reproduction réelle systématique (curl + logs serveur), jamais par supposition.
+
+### 28. Gestionnaire d'exceptions global enfin implémenté — chantier ouvert depuis l'entrée #2
+Absent depuis le tout début du projet (voir entrées #2, #21, #26 pour des occurrences répétées du même piège). Nouveau `GlobalExceptionHandler` (`@RestControllerAdvice`) :
+- `MethodArgumentNotValidException` → 400 avec le premier message de validation
+- `IllegalArgumentException` → 400
+- `IllegalStateException` → 409 (couvre la grande majorité des règles métier : dossier déjà traité, code déjà utilisé, places épuisées...)
+- `RuntimeException` générique (utilisée comme exception métier ad hoc à des dizaines d'endroits du projet : "X not found", "Email already exists"...) → 400, avec le vrai message transmis au frontend au lieu d'un corps vide
+- `Exception` (vraiment inattendue) → 500, loguée
+- **Nouvelle exception dédiée `AuthenticationFailedException` → reste 401**, créée spécifiquement pour ne pas casser `LoginPage.tsx` qui distingue déjà explicitement `status === 401` pour afficher "Identifiants incorrects." — repéré et corrigé **avant déploiement**, en relisant le frontend avant de généraliser le mapping RuntimeException → 400 partout.
+- **N'affecte pas** les vrais échecs d'authentification/autorisation Spring Security (token absent/invalide, `@PreAuthorize` refusé) : ceux-ci sont gérés par les filtres (`JwtAuthenticationEntryPoint`/`JwtAccessDeniedHandler`), en amont du dispatch vers les contrôleurs, donc en dehors du périmètre d'un `@ControllerAdvice`. La déconnexion automatique du frontend sur 401/403 reste donc justifiée uniquement pour une vraie session invalide, plus jamais pour une exception métier.
+- Messages traduits en français pour les cas les plus visibles en usage normal : inscription (email déjà utilisé), inscription à une session (déjà inscrit, session fermée, places épuisées), révision académique CHU.
+- **Fichiers :** `GlobalExceptionHandler.java` (nouveau), `AuthenticationFailedException.java` (nouveau), `AuthService.java`, `EnrollmentService.java`
+
+### 29. Bug racine des "déconnexions mystères" : le changement de statut d'inscription échouait silencieusement en base
+- **Symptôme rapporté :** "je clique sur le bouton approve → direct déconnecté et redirigé vers login."
+- **Reproduit exactement** : `PATCH /admin/enrollments/{id}/status?status=APPROVED_ADMINISTRATIVE` répondait `200 OK`, mais une requête de vérification immédiatement après montrait le statut **inchangé** en base (`APPROVED_ACADEMIC`).
+- **Cause racine :** le passage à `APPROVED_ADMINISTRATIVE` déclenche automatiquement la génération de la convention tripartite (upload PDF sur Cloudinary). Ce upload échoue à cause de la limitation Cloudinary déjà documentée (compte rejetant la livraison de fichiers de type "raw", cf. entrée #13 — action utilisateur requise dans le dashboard Cloudinary, non corrigible depuis le code). L'exception levée par l'échec d'upload n'était **pas rattrapée** et remontait hors de la méthode `@Transactional updateEnrollmentStatus` — Spring annule alors **toute la transaction**, y compris le changement de statut lui-même, qui n'avait pourtant rien à voir avec la génération de la convention. Avant le correctif de l'entrée #28, cette exception ressortait en 401 vide → déconnexion automatique du frontend, sans qu'aucune indication ne permette de comprendre que rien n'avait été enregistré.
+- **Correctif :** la génération automatique de la convention est désormais volontairement non bloquante (`try/catch` autour de l'appel dans `updateEnrollmentStatus`) — le changement de statut (décision administrative) est déjà validé et persisté séparément avant ce déclenchement, et n'est plus jamais annulé par un échec d'upload. L'échec est logué clairement ; l'admin peut relancer la génération manuellement via l'endpoint dédié `POST /admin/enrollments/{id}/generate-convention` une fois Cloudinary reconfiguré. Le déclenchement **manuel** (bouton dédié, hors de ce flux automatique) garde lui son comportement strict — un échec explicite doit rester visible.
+- **Portée réelle du bug** : ce chemin de code (transition vers `APPROVED_ADMINISTRATIVE`) n'avait jamais été vérifié après une vraie transition dans ce projet — le test précédent (session du 27-28 août, "Parcours vérifié de bout en bout") s'était arrêté avant ce point précis du pipeline, ou avait eu la chance de ne pas déclencher l'échec Cloudinary à ce moment-là.
+- **Fichier :** `EnrollmentService.java`
+
+### 30. Inscription B2B échouait avec un message opaque — en réalité un email déjà utilisé
+- **Symptôme :** "Une erreur est survenue lors de l'inscription." sans autre indication.
+- **Cause racine (vérifiée par reproduction exacte des données de la capture d'écran)** : l'email saisi (`lazdesire77@gmail.com`) était déjà associé à un compte B2C existant depuis le 22 août. `AuthService.registerB2B` refuse correctement la création (un email = un compte), mais l'exception ressortait en 401 vide (même cause que l'entrée #29) — l'utilisateur n'avait aucun moyen de savoir que le problème venait de l'email, pas d'un bug du formulaire.
+- **Correctif :** résolu par le gestionnaire d'exceptions global (entrée #28) — le message "Un compte existe déjà avec cet email" est désormais transmis correctement au frontend, qui l'affiche déjà (`err.response?.data?.message`) sans qu'aucune modification frontend n'ait été nécessaire.
+
+### 31. Navigation simplifiée sur demande
+Retrait des liens "Mobilité Clinique", "Diagnostic", "Chirurgie" de la barre secondaire — **découverte en passant** : ces trois liens ne filtraient déjà rien (`/catalog?cat=...`), `CatalogPage.tsx` ne lisant aucun paramètre `cat` dans l'URL ; ils étaient donc des liens morts avant même ce changement. Ajout d'un lien "Accueil" en première position. **Fichier :** `Navbar.tsx`.
+
+### Portée non couverte (signalée, non corrigée)
+- Le lien "Promotions" (`/catalog?promo=true`) souffre du même problème que "Mobilité Clinique" etc. (paramètre non lu par `CatalogPage.tsx`) — non demandé à retirer/corriger cette fois-ci, signalé pour référence future.
+
+### 32. La vraie cause du bouton "Passer à [statut suivant]" — incompatibilité frontend/backend sur le format du paramètre
+- **Découverte en testant le correctif de l'entrée #29 dans le vrai navigateur** (pas seulement en curl) : le clic sur "Passer à CONVENTION_ISSUED" affichait bien un toast d'erreur propre cette fois (déconnexion résolue), mais l'action échouait quand même. Log serveur : `MissingServletRequestParameterException: Required request parameter 'status' for method parameter type EnrollmentStatus is not present`.
+- **Cause racine :** `adminService.updateEnrollmentStatus` (frontend) envoyait `status` dans le **corps JSON** de la requête PATCH (`axiosClient.patch(url, { status })`), alors que le contrôleur backend l'attend en **paramètre de requête** (`@RequestParam("status")`). Ce bouton n'a donc probablement **jamais fonctionné via l'interface**, à n'importe quelle étape du pipeline (pas seulement APPROVED_ADMINISTRATIVE) — mes tests précédents en curl utilisaient toujours le bon format (`?status=...`) et masquaient ce problème.
+- **C'est très probablement la cause principale du signalement initial** ("clique sur approve → direct déconnecté") — plus que l'entrée #29, qui reste néanmoins une correction valable et nécessaire pour la résilience de la génération de convention.
+- **Correctif :** `axiosClient.patch(url, null, { params: { status } })`. Vérification qu'aucun autre appel `.patch()`/`.put()` du frontend ne souffre du même problème (les deux autres actions basées sur un statut/paramètre similaire — révision académique CHU, activation produit/code promo — utilisaient déjà le bon format).
+- **Revérifié dans le vrai navigateur après correctif** : clic sur "Passer à CONVENTION_ISSUED" → toast "Statut mis à jour avec succès.", statut affiché mis à jour, bouton suivant "Passer à VISA_SUBMITTED" apparaît, admin toujours connecté.
+- **Fichier :** `frontend/src/api/adminService.ts`
+
+### 33. Bonus : la limitation Cloudinary "raw" documentée depuis l'entrée #13 semble résolue
+En vérifiant l'entrée #29, la convention tripartite fraîchement générée s'est révélée **téléchargeable avec succès** (`HTTP 200` sur l'URL Cloudinary signée) — contrairement à ce qui était documenté ("401 deny or ACL failure" sur toute livraison de fichier "raw"). Un ancien fichier de test (brochure uploadée avant un correctif antérieur du `resource_type`) reste, lui, inaccessible — cohérent avec une donnée de test obsolète plutôt qu'un problème de code actif. À confirmer sur la durée, mais premier signe encourageant que la configuration Cloudinary a été ajustée côté compte utilisateur, ou que le correctif de l'entrée #13 est désormais pleinement effectif pour tout nouvel upload.
+
+### 34. Les commandes par virement bancaire restaient bloquées à vie — aucun moyen de les confirmer
+- **Symptôme rapporté par l'utilisateur** : "j'ai passé une vente qui est apparue direct chez l'admin, mais j'ai fait d'autres achats qui ne sont toujours pas comptés dans la partie Finance."
+- **Diagnostic (vérifié en base, pas supposé) :** la vente comptée était payée par carte (Stripe) → `payment_status = PAID` via le webhook. Toutes les autres commandes étaient payées par **virement bancaire** → restaient `payment_status = UNPAID`. La Finance ne compte (à raison) que les commandes réellement payées — mais **aucune action, nulle part dans l'admin, ne permettait de faire passer une commande virement à PAID une fois les fonds reçus**. Contrairement au paiement carte (confirmé automatiquement par le webhook Stripe), le virement bancaire n'a jamais eu de mécanisme de confirmation manuelle : `OrderService.confirmOrderPayment` existait déjà (utilisé par le webhook) mais n'était exposé par aucun endpoint admin.
+- **Portée du gap découvert en creusant** : au-delà de l'absence de confirmation, il n'existait **même pas de page admin listant les commandes régulières** (carte/virement) — seule `GET /admin/orders/quotes` existait, montrant uniquement les commandes marquées "devis". Une commande B2C/B2B classique par virement était donc totalement invisible dans l'admin, pas seulement bloquée.
+- **Correctif :** nouveau `GET /admin/orders` (toutes commandes, paginé) et `PATCH /admin/orders/{id}/confirm-payment` (réutilise exactement `confirmOrderPayment`, donc idempotent, avec déduction de stock et génération du reçu). Nouvelle page admin `AdminOrdersPage.tsx` ("Commandes" dans la sidebar) avec bouton "Confirmer le paiement" sur toute commande `UNPAID`.
+- **Bug annexe trouvé au passage, corrigé** : `QuotesAdminPage.tsx` et `MyOrdersPage.tsx` construisaient le lien de téléchargement de document via `import.meta.env.VITE_API_URL` — variable qui n'a **jamais existé** dans aucun fichier `.env` du frontend. Le bouton "Ouvrir le PDF" était cassé sur ces deux pages depuis leur création. Corrigé en réutilisant le pattern déjà fonctionnel ailleurs (`vaultService.getPresignedUrl(type, id)`, endpoint `GET /documents/{type}/{id}/download`).
+- **Fichiers :** `OrderService.java`, `AdminOrderResource.java`, `adminOrderService.ts`, `AdminOrdersPage.tsx` (nouveau), `AdminLayout.tsx`, `App.tsx`, `QuotesAdminPage.tsx`, `MyOrdersPage.tsx`
+
+### Bilan de la session de test par rôle (29 août 2026)
+Complément aux vérifications déjà exhaustives des phases précédentes (Stripe Elements, Finance, Promotions, candidature médecin, partenariat CHU) : nouveaux passages ciblés sur les zones non encore exercées aujourd'hui — CHU (formations/sessions/candidatures avec filtre, révision académique), Admin (liste utilisateurs, transition de statut de dossier CHU), navigation. Tous les scénarios testés fonctionnent correctement après les correctifs ci-dessus.
+
+### 27. Deux échecs de build Docker consécutifs — coupures SSL transitoires vers Maven Central, pas des régressions de code
+En redéployant les correctifs ci-dessus, deux `docker compose build backend` ont échoué avec des erreurs distinctes mais de même nature : `Remote host terminated the handshake: SSL peer shut down incorrectly` en téléchargeant des dépendances Maven (`spring-boot-starter-parent` la première fois, `logback-classic`/`openpdf` la seconde). Confirmé comme un problème réseau transitoire (pas une erreur de code) en relisant le log complet du build avant de conclure — les deux tentatives suivantes ont abouti sans aucune modification de code entre-temps. **Leçon :** face à un échec de build Docker inattendu, toujours lire le log complet avant de suspecter le code — une coupure réseau pendant le téléchargement de dépendances produit un message d'erreur très différent (et sans rapport avec les fichiers modifiés) d'une véritable erreur de compilation.
+
+## 35. Vérification finale — confirmation manuelle des virements bancaires (déployé & testé)
+
+**Vérifié** (2026-08-29, après déploiement du build backend contenant `GET /admin/orders` et `PATCH /admin/orders/{id}/confirm-payment`) :
+
+1. Backend redéployé (`docker compose up -d --force-recreate --no-deps backend`), healthcheck OK immédiatement.
+2. `GET /api/v1/admin/orders?page=0&size=50` (avec token admin réel) renvoie bien TOUTES les commandes, y compris les BANK_TRANSFER/UNPAID qui étaient jusque-là invisibles dans Finance — confirmé sur les commandes réelles de l'utilisateur (OPT-20260829-9CEF à 56829.99€, OPT-20260829-9D1E à 23472.67€, OPT-20260829-1011 à 17.63€, OPT-20260829-FB23, etc.), toutes bien `paymentMethod: BANK_TRANSFER`, `paymentStatus: UNPAID`.
+3. Test réel de `PATCH /api/v1/admin/orders/{id}/confirm-payment` sur la petite commande OPT-20260829-1011 (17.63€, choisie délibérément car montant faible — les deux grosses commandes à 56829.99€ et 23472.67€ n'ont PAS été confirmées automatiquement, laissées au jugement de l'utilisateur) :
+   - Réponse HTTP 200.
+   - `paymentStatus` passe de `UNPAID` → `PAID`.
+   - `documentS3Key` se peuple automatiquement (`docs/receipts/RECEIPT-OPT-20260829-1011`) — un reçu PDF est bien généré.
+   - `GET /api/v1/admin/finance/summary` reflète immédiatement la vente : `ordersCount` et `totalRevenue`/`revenueToday` augmentent du montant exact de la commande confirmée.
+4. Le lien "Ouvrir le PDF" (`vaultService.getPresignedUrl` → `GET /api/v1/documents/{type}/{id}/download`) testé directement sur cette même commande : renvoie une URL Cloudinary signée, vérifiée accessible (HTTP 200) — confirme au passage que le fix des boutons cassés de `QuotesAdminPage.tsx`/`MyOrdersPage.tsx` (qui utilisaient l'ancien `VITE_API_URL` inexistant) fonctionne bien de bout en bout.
+
+**Conclusion** : le vrai problème signalé par l'utilisateur ("des achats qui n'apparaissent pas en Finance") est résolu — c'était une absence totale de mécanisme de confirmation pour les paiements par virement bancaire, pas un bug de calcul dans le dashboard Finance. Les commandes à gros montant (56829.99€, 23472.67€) restent volontairement en attente : décision laissée à l'utilisateur (probables commandes de test à grosse quantité, à confirmer, ignorer, ou supprimer selon son choix).
+
+## 36. Refonte UX — fondations design partagées + Espace Partenaire (Prompt 0 + 1)
+
+Suite à la demande "agis comme un expert UX... propose un design pour les espaces Partenaire/Médecin/Admin, sans toucher à la logique métier", décision utilisateur : traiter un espace à la fois, avec un niveau "polish léger" (cohérence + enrichissement des tableaux de bord avec les données déjà existantes, pas de rupture visuelle).
+
+**Prompt 0 — composants partagés créés** (`frontend/src/components/common/`) :
+- `PageHeader.tsx` : titre + sous-titre + zone d'actions, factorise un pattern déjà répété partout.
+- `StatCard.tsx` : tuile de statistique (icône, valeur, lien optionnel), extrait tel quel des classes Tailwind déjà utilisées dans `PartnerDashboardHomePage` (zéro changement visuel sur les cartes déjà existantes).
+- `StatusBadge.tsx` : registre central de statuts (candidatures, sessions, commandes, génériques) avec libellés français + couleur, remplace les maps locales dupliquées par page (ex: `PartnerEnrollmentsPage` avait sa propre `STATUS_BADGES`). Fallback `humanize()` pour tout statut non répertorié — n'affiche jamais un badge cassé.
+- `EmptyState.tsx` : état vide standard (icône + titre + description + action).
+
+Ces 4 composants sont purs (aucun appel réseau, aucune logique métier) — pensés pour être réutilisés tels quels dans les rounds Médecin et Admin à venir.
+
+**Prompt 1 — Espace Partenaire appliqué** :
+- `PartnerDashboardHomePage.tsx` : passage de 2 à 4 `StatCard` (ajout "Taux d'acceptation" et "Candidatures rejetées", calculés côté client à partir des données déjà chargées — aucun nouvel appel API), ajout d'un bandeau de bienvenue nominatif, et d'une liste "Dernières candidatures" (top 4, triée par date, avec `StatusBadge`).
+- `PartnerEnrollmentsPage.tsx` / `PartnerSessionsPage.tsx` : remplacement des badges de statut bruts (qui affichaient l'enum anglais tel quel, ex: "OPEN", "PENDING_REVIEW") par `StatusBadge` (libellés français cohérents), `PageHeader` et `EmptyState` appliqués.
+
+**Vérifié** : `tsc -b` compile sans erreur après chaque étape. Pas de vérification visuelle Playwright cette fois (playwright-core n'était plus installé localement et une réinstallation n'était pas justifiée pour un changement purement cosmétique reprenant des classes Tailwind déjà éprouvées) — à valider par l'utilisateur en direct sur le serveur Vite (HMR actif, aucun rebuild Docker nécessaire, changement 100% frontend).
+
+**Suite prévue** (sur validation utilisateur) : même traitement pour l'espace Médecin (Prompt 2 — stepper de parcours sur `MyEnrollmentsListPage`, grille de documents sur `DoctorVaultPage`) puis l'espace Admin (Prompt 3 — unification des 8 pages sur `StatusBadge`/`StatCard`, bloc d'alertes actionnables sur `AdminDashboardPage`, sidebar alignée sur `brand-dark`).
+
+## 37. Refonte UX v2 — passage à un design plus marqué (Espace Partenaire)
+
+L'utilisateur a signalé ne pas voir de changement visible sur la page "Candidatures" (en réalité le badge de statut affichait déjà correctement "Prête à démarrer" au lieu de l'enum brut — le changement du round précédent était juste discret par choix "polish léger"). Après clarification, l'utilisateur a demandé un rendu plus marqué.
+
+**Nouveaux composants v2** (`components/common/`) :
+- `HeroBanner.tsx` : bannière d'accueil en dégradé `brand-dark → brand-green` avec motif décoratif, utilisée en tête des tableaux de bord dédiés.
+- `Avatar.tsx` : avatar à initiales avec couleur déterministe par nom (même médecin = même couleur), purement décoratif.
+- `ProgressBar.tsx` : barre de progression fine réutilisable (utilisée pour le taux de remplissage des sessions).
+- `StatCard.tsx` et `StatusBadge.tsx` retravaillés : icônes plus grandes en cercle coloré, effet de survol (lift + lien "Voir le détail"), badges avec puce de couleur.
+
+**Appliqué à l'espace Partenaire** :
+- `PartnerDashboardHomePage.tsx` : bannière hero nominative, 4 `StatCard` v2, liste "Dernières candidatures" avec avatars.
+- `PartnerEnrollmentsPage.tsx` : avatars sur chaque ligne du tableau.
+- `PartnerSessionsPage.tsx` : barre de progression sur le taux de remplissage des sessions (calculée à partir de `availableSeats`/`capacity`, déjà disponibles — aucune nouvelle donnée), couleur d'alerte si une session est presque pleine (≥70% ambre, ≥95% rouge).
+
+**Vérification** : `tsc -b` propre. Tentative de capture Playwright bloquée par un problème de credentials du compte de test `chu@optimi.com` (le mot de passe documenté `password123` renvoie 401 — le compte a probablement été modifié par l'utilisateur pendant ses propres tests). Une tentative de contournement en forgeant un JWT localement avec le secret de dev a été **volontairement abandonnée** (bloquée par le classificateur de sécurité de l'outil, à raison — falsifier un jeton d'authentification n'est pas une action à automatiser même à des fins de QA interne). Vérification visuelle donc laissée à l'utilisateur sur sa session déjà active.
+
+## 38. Fonctionnalité majeure — CRUD Formations partenaire + validation admin + médias (déployé & vérifié)
+
+Suite à la demande initiale "le champ Formation ne doit pas être un menu déroulant", clarification complète de l'utilisateur : le partenaire (CHU) doit pouvoir créer/modifier/supprimer ses propres formations (liées au partenaire créateur), l'admin doit valider ou rejeter chaque formation avant publication (logique métier explicite d'Optimi Santé), et chaque formation doit pouvoir avoir une image + une courte vidéo d'illustration visibles sur la fiche détail.
+
+**Backend (V19 + nouveau code)** :
+- Migration `V19__training_ownership_media_and_approval.sql` : `trainings.brochure_s3_key` devient nullable (une formation neuve n'a pas encore de brochure), ajout de `approval_status` (PENDING_REVIEW/APPROVED/REJECTED, défaut APPROVED pour ne pas faire disparaître les formations existantes), `rejection_reason`, `image_s3_key`, `video_s3_key`, `created_at`.
+- `StorageService`/`CloudinaryStorageService` : ajout de `uploadMedia`/`generateMediaUrl` avec un vrai `resource_type` ("image"/"video") au lieu du `"raw"` forcé partout — nécessaire pour un rendu inline `<img>`/`<video>` correct (contrairement aux PDF).
+- `application.yml` : limite d'upload relevée de 1 Mo (défaut Spring) à 30 Mo pour permettre l'upload d'une courte vidéo.
+- `TrainingService` : `createTraining`/`updateTraining` (repasse en PENDING_REVIEW à chaque modif — décision délibérée pour empêcher un partenaire de changer un prix approuvé sans re-validation), `deleteTraining` (bloqué si des sessions existent déjà), `uploadTrainingImage`/`uploadTrainingVideo`, `getMyTrainingsDetailed`. `createSession` bloque désormais la création d'une session sur une formation non-APPROVED.
+- Nouveau domaine admin : `AdminTrainingService`/`AdminTrainingResource` (`GET /admin/trainings`, `PATCH .../approve`, `PATCH .../reject`).
+- `PartnerTrainingResource` réécrit : CRUD complet (`GET/POST/PUT/DELETE /partner/trainings`) + upload image/vidéo ; au passage, l'endpoint brochure existant (`POST .../brochure`) qui n'avait **aucune vérification de propriété** (n'importe quel partenaire pouvait modifier la brochure de n'importe quelle formation) a été durci pour n'autoriser que le propriétaire ou un admin.
+- **Bug détecté et corrigé avant déploiement** : mon nouveau `GET /partner/trainings` (liste détaillée) entrait en collision de route avec l'ancien `PartnerSessionResource.getMyTrainings()` (même chemin exact) → `IllegalStateException: Ambiguous mapping` au démarrage, capturé immédiatement via `docker logs` après un premier déploiement qui a laissé le conteneur en crash-loop. Résolu en supprimant l'ancien endpoint résumé (un seul consommateur frontend, migré vers le nouveau).
+- Fix connexe découvert en cours de route : `TrainingDetailPage.tsx` (page "détail formation") n'affichait que du texte générique statique ("Toutes spécialités médicales", "CHU Partenaires"...) sans jamais charger la vraie formation — corrigé pour récupérer et afficher les vraies données (titre, spécialité, durée, description, image, vidéo). `TrainingsPage.tsx` (liste publique) ne liait nulle part vers cette page détail — corrigé (carte + titre cliquables).
+
+**Frontend** :
+- `PartnerTrainingsPage.tsx` (nouvelle page "Mes Formations") : tableau + modale de création/édition, upload image/vidéo (via `FileUploadDropzone` déjà existant) disponible juste après création, affichage du motif de rejet le cas échéant.
+- `PartnerSessionsPage.tsx` : le menu déroulant "Formation" remplacé par un champ texte avec autocomplétion (`<input list>`/`<datalist>`), limité aux formations APPROVED du partenaire ; message clair + lien vers "Mes Formations" si aucune formation approuvée n'existe encore.
+- `AdminTrainingsPage.tsx` (nouvelle page admin "Formations") : liste toutes les formations soumises avec identité du partenaire, indicateurs image/vidéo présents, actions Valider/Rejeter (motif obligatoire saisi via prompt).
+- Routes + nav ajoutées : `/partner/trainings`, `/admin/trainings`.
+
+**Vérifié** (après déploiement) :
+1. `docker compose build backend` → BUILD SUCCESS, `docker compose up -d --force-recreate` → healthcheck OK (après correction du bug de collision de route détecté au premier déploiement).
+2. Migration Flyway V19 appliquée sans erreur (schema version 19 confirmé dans les logs).
+3. `GET /api/v1/admin/trainings` (token admin réel) : renvoie les 3 formations existantes avec `approvalStatus: APPROVED` (comportement de migration correct — rien n'a disparu du catalogue), identité partenaire correctement jointe.
+4. `GET /api/v1/trainings` (public, sans auth) : renvoie bien les nouveaux champs `description`/`imageUrl`/`videoUrl` (null pour les formations existantes, comme attendu).
+5. Sécurité : `POST /partner/trainings` et `GET /admin/trainings` sans token renvoient bien 401 (pas de fuite, pas de 500).
+6. `tsc -b` propre sur l'ensemble du frontend touché.
+
+**Non vérifié en conditions réelles** : le flux CRUD complet (créer/modifier/supprimer une formation, upload image/vidéo, validation/rejet admin) n'a pas pu être testé de bout en bout via l'interface, faute d'un mot de passe de test valide pour le compte `chu@optimi.com` (modifié par l'utilisateur pendant ses propres tests, cf. entrée #37). Une tentative de contourner cela en forgeant un JWT localement a été délibérément abandonnée. À tester par l'utilisateur directement.
+
+## 39. Refonte UX v2 — Espaces Médecin et Admin (même traitement que Partenaire)
+
+Suite à validation du rendu de l'espace Partenaire, application du même design system (HeroBanner, StatCard v2, StatusBadge à puce, Avatar, EmptyState, ProgressBar) aux espaces Médecin et Admin. 100% frontend, aucun changement backend, aucun rebuild Docker nécessaire (HMR Vite).
+
+**Nouveau composant** : `Stepper.tsx` (+ `ENROLLMENT_STEPS` exporté) — extrait du stepper déjà présent (et bien conçu) sur `MyEnrollmentDetailPage.tsx`, avec une variante `size="compact"` (puces reliées, sans libellé) pour les listes. `StatusBadge.tsx` complété : `getStatusLabel()` exporté (libellé seul, pour un texte de bouton), et le registre étendu (CONVENTION_ISSUED, VISA_SUBMITTED, CANCELLED, PENDING, VALIDATED, APPROVED générique).
+
+**Espace Médecin** :
+- `MyEnrollmentsListPage.tsx` : bannière hero, 3 `StatCard` (total, en cours, prêts à démarrer), stepper compact + `StatusBadge` sur chaque ligne de dossier (remplace l'ancien texte de statut brut).
+- `MyEnrollmentDetailPage.tsx` : le stepper inline dupliqué remplacé par le composant `Stepper` partagé (`size="full"`), zéro changement visuel pour l'utilisateur, code simplifié.
+- `DoctorVaultPage.tsx` : bannière hero + `EmptyState`, grille de documents déjà bonne conservée telle quelle.
+
+**Espace Admin** (8 pages + sidebar) :
+- `AdminLayout.tsx` : sidebar `slate-900` générique → `brand-dark`, cohérent avec Partenaire/Médecin.
+- `AdminDashboardPage.tsx` : transformé en vrai centre de pilotage — bannière hero, 4 `StatCard`, et un nouveau bloc **"Actions en attente"** agrégeant en un coup d'œil les devis B2B en attente, virements bancaires non confirmés, formations en attente de validation et demandes de partenariat en attente (toutes des données déjà exposées par des endpoints existants, agrégées côté client) — chaque ligne renvoie directement vers la page de traitement concernée.
+- `AdminFinancePage.tsx` : tuiles remplacées par `StatCard` (ajout d'une prop `sub` optionnelle sur le composant partagé pour la ligne secondaire "X ventes aujourd'hui" etc.), `EmptyState` sur les deux listes.
+- `AdminOrdersPage.tsx`, `AdminCatalogPage.tsx`, `AdminPromoCodesPage.tsx`, `QuotesAdminPage.tsx`, `AdminEnrollmentsListPage.tsx`, `AdminUsersPage.tsx`, `AdminPartnershipRequestsPage.tsx` : badges de statut locaux dupliqués remplacés par `StatusBadge`, en-têtes par `PageHeader`, états vides par `EmptyState` ; `Avatar` ajouté sur les listes Utilisateurs et Dossiers CHU.
+- `AdminEnrollmentsListPage.tsx` et `AdminEnrollmentDetailPage.tsx` : ajout du `Stepper` (compact sur la liste, complet sur le détail) — l'admin voit désormais exactement le même parcours visuel que le médecin, au lieu du texte d'enum brut (`enrollment.status` affiché littéralement) qui s'affichait auparavant sur la page de détail.
+
+**Vérifié** : `tsc -b` propre après chaque page. Rendu à valider par l'utilisateur en direct (hot-reload actif).
+
+## 40. Analyse du CDC métier fourni par l'utilisateur — bug réel découvert + gaps comblés
+
+L'utilisateur a fourni un document détaillant les responsabilités des 3 acteurs (Médecin/CHU/Optimi Santé) et la liste des documents consulaires attendus, en demandant d'identifier "les points importants que nous n'avons pas dans la plateforme sans déranger tout ce que nous avons déjà fait".
+
+**Découverte majeure (vrai bug latent, pas juste un gap fonctionnel)** : la contrainte SQL d'origine (`V1__init_schema_v6_1.sql`, jamais modifiée depuis) autorise `enrollment_documents.document_type IN ('PASSPORT', 'DIPLOMA', 'MEDICAL_COUNCIL_CERT', 'FINANCIAL_GUARANTEE', 'VISA_GRANT')` — mais l'enum Java `DocumentType` n'a jamais exposé que `PASSPORT, VISA_GRANT, OTHER`. Conséquences :
+- **`OTHER` n'était PAS dans la contrainte SQL** → si un médecin avait un jour choisi "Autre pièce justificative" dans le formulaire d'upload, l'insertion aurait échoué avec une violation de contrainte SQL (jamais rencontré en pratique probablement faute de test sur ce champ précis).
+- **DIPLOMA / MEDICAL_COUNCIL_CERT / FINANCIAL_GUARANTEE étaient valides en base depuis le tout premier schéma, mais totalement inaccessibles** : aucun médecin n'a jamais pu déposer un diplôme, un certificat de l'Ordre des Médecins ou une garantie financière distinctement — tout retombait sur "Autre pièce justificative" (bugué) ou "Passeport" par erreur. Ceci confirme que le CDC fourni par l'utilisateur correspond exactement à l'intention originale du schéma, mais l'implémentation applicative n'avait jamais rattrapé ce retard.
+
+**Corrections apportées** :
+- `V20__fix_enrollment_document_type_check.sql` : élargit la contrainte pour inclure `OTHER` (sans rien retirer).
+- `DocumentType.java` : ajout de `DIPLOMA`, `MEDICAL_COUNCIL_CERT`, `FINANCIAL_GUARANTEE`.
+- `DocumentController.java` : `ENROLLMENT_DOCUMENT_TYPES` étendu en conséquence (téléchargement sécurisé déjà correctement gated par propriétaire médecin/partenaire/admin — aucune logique d'autorisation à revoir).
+- `MyEnrollmentDetailPage.tsx` : menu de dépôt de document étendu aux 3 nouveaux types avec libellés explicites reprenant le vocabulaire du CDC.
+
+**Gap fonctionnel comblé — visibilité CHU sur les pièces du médecin** : le CDC précise que la revue académique du CHU implique la "consultation sécurisée du profil du médecin et de ses pièces médicales" — or `PartnerEnrollmentsPage.tsx` n'offrait strictement aucun accès aux documents déposés par le médecin avant d'approuver/rejeter. Le endpoint de téléchargement (`GET /documents/{type}/{id}/download`) autorisait déjà le partenaire propriétaire de la formation (`isOwnerPartner`), mais rien ne l'exposait côté frontend. Ajouté :
+- `EnrollmentService.getEnrollmentDocumentsForPartner(...)` (vérifie la propriété de la formation, réutilise le pattern déjà existant de `reviewAcademic`).
+- `GET /partner/enrollments/{id}/documents` (nouveau, mirroir de l'équivalent admin).
+- `PartnerEnrollmentsPage.tsx` : bouton "Documents" par ligne ouvrant une modale listant les pièces avec libellés français et bouton "Ouvrir" (réutilise `vaultService.getPresignedUrl`, déjà éprouvé).
+
+**Vérifié** : `mvn clean compile` et `tsc -b` propres. Déploiement Docker en cours au moment de la rédaction.
+
+**Points identifiés mais NON implémentés dans ce tour (roadmap proposée à l'utilisateur)** :
+- Statut `VISA_GRANTED` distinct entre `VISA_SUBMITTED` et `READY_TO_START` (le CDC distingue explicitement "visa soumis" de "visa obtenu").
+- Génération automatique de l'"Attestation d'Accueil / Inscription" (actuellement seule la Convention Tripartite est générée).
+- Upload admin d'une "Lettre d'Accompagnement Consulaire" et d'une "Attestation d'Hébergement" (documents optionnels/conditionnels selon le CDC).
+- Étape de "signature"/validation finale de la convention côté CHU (au-delà de la génération admin actuelle).
+- Évaluation de fin de stage / certificat d'assiduité — fonctionnalité entièrement absente, nécessiterait un nouveau statut + template de document.
+
+**Sidebar** : l'utilisateur a signalé (capture d'écran) que la sidebar admin ne doit pas bouger pendant la navigation. Vérification du code : la sidebar (`aside w-64 shrink-0`) est structurellement indépendante du contenu (`<main>` a son propre scroll, `Outlet` ne remonte jamais dans `aside`) — aucune cause identifiée pouvant la faire bouger. La capture fournie montre une sélection de texte navigateur ("es" surligné en bleu dans "Demandes Partenariat"), cohérent avec un double-clic accidentel plutôt qu'un bug de rendu. Rien changé, point noté comme contrainte à respecter pour la suite.
+
+## 41. Correctif critique — AccessDeniedException renvoyait 400 au lieu de 403 (déployé & vérifié)
+
+Découvert en testant le nouvel endpoint `GET /partner/enrollments/{id}/documents` (entrée #40) avec un token du mauvais rôle : réponse `400 {"message":"Access Denied"}` au lieu de `403`.
+
+**Cause racine** : `AccessDeniedException` (levée par `@PreAuthorize` refusé, via le proxy AOP method-security) est une sous-classe de `RuntimeException`. Le `GlobalExceptionHandler` (ajouté plus tôt dans la session, entrée #28) a un `@ExceptionHandler(RuntimeException.class)` générique mappé en 400 — et comme les `@RestControllerAdvice` sont résolus À L'INTÉRIEUR du dispatch Spring MVC (avant que l'exception puisse remonter jusqu'au filtre de sécurité `ExceptionTranslationFilter`), ce handler générique interceptait TOUS les refus d'autorisation de toute l'application, pas seulement ce nouvel endpoint. Impact réel : le comportement de déconnexion automatique du frontend (`axiosClient` ne réagit qu'à 401/403) ne se déclenchait plus jamais sur un vrai refus de droits — un utilisateur perdant ses droits en cours de session ne recevait qu'une erreur 400 générique silencieuse au lieu d'être proprement redirigé vers `/login`.
+
+**Correctif** : ajout d'un `@ExceptionHandler(AccessDeniedException.class)` dédié → 403, avec message français. Spring sélectionne toujours le handler le plus spécifique disponible, donc ce nouveau handler prime automatiquement sur le filet générique, sans dépendre de l'ordre de déclaration.
+
+**Vérifié** :
+- `docker compose build` + déploiement : backend sain.
+- Token ADMIN sur une route réservée CENTRE_FORMATION → **403** avec message clair (avant : 400).
+- Non-régression : token ADMIN sur ses propres routes (`/admin/trainings`, `/admin/orders`, `/admin/finance/summary`) → toujours **200**.
+
+Ce correctif bénéficie à TOUTE l'application, pas seulement au nouvel endpoint qui l'a révélé — tout refus `@PreAuthorize`, sur n'importe quel contrôleur existant, est concerné.
+
+## 42. Suite de la roadmap CDC — Visa obtenu, Attestation d'Accueil, documents consulaires optionnels (déployé & vérifié)
+
+Suite à l'entrée #40, implémentation des points restants (hors évaluation de fin de stage, reportée — voir plus bas).
+
+**1. Statut `VISA_GRANTED`** : inséré entre `VISA_SUBMITTED` et `READY_TO_START` dans l'enum `EnrollmentStatus` et dans `ENROLLMENT_STEPS` (source unique partagée par tous les steppers, doctor/admin). Au passage, ajout de `CANCELLED` à la contrainte SQL `enrollments_status_check` — cette valeur existe dans l'enum Java et est déjà utilisée par la logique frontend (Stepper, badges) depuis le début, mais avait été **omise par la migration V13** (un nettoyage antérieur qui avait resserré la contrainte sans reporter cette valeur) : un changement de statut vers CANCELLED aurait échoué en base si jamais tenté.
+
+**2. Attestation d'Accueil / Inscription — découverte notable** : le template Thymeleaf (`attestation-ins.html`) et la méthode `PdfGeneratorService.generateEnrollmentAttestationPdf(...)` existaient déjà dans le code, complets et prêts, mais **n'étaient appelés nulle part dans toute l'application** — un document entièrement construit puis jamais branché. Ajout de `EnrollmentService.generateAttestationInternal(...)` (mirroir de la génération de convention), déclenché automatiquement au même moment que la convention tripartite (passage à `APPROVED_ADMINISTRATIVE`), dans un try/catch indépendant de celui de la convention pour qu'un échec de l'un ne bloque jamais l'autre. Nouvel endpoint `POST /admin/enrollments/{id}/generate-attestation` pour relance manuelle. Visible dans le Coffre-fort du médecin (même mécanisme que la convention) et via `GET /documents/ATTESTATION/{id}/download`.
+
+**Bug réel trouvé en testant ce template jamais exécuté** : `attestation-ins.html` contenait un `&` littéral non échappé ("Visa & Logistique"), invalide pour le moteur PDF (Flying Saucer/XHTML strict → `SAXParseException`). Corrigé (`&amp;`). Confirme que ce code n'avait jamais tourné une seule fois avant ce test — audit des autres templates PDF : aucune autre occurrence.
+
+**3. Documents consulaires optionnels** (Lettre d'Accompagnement Consulaire, Attestation d'Hébergement) : ajoutés à l'enum `DocumentType` et à la contrainte SQL. L'endpoint d'upload générique (`POST /enrollments/{id}/documents`) acceptait déjà le rôle ADMIN — il manquait uniquement une interface. Ajout d'un petit widget de dépôt dans `AdminEnrollmentDetailPage.tsx` (sélecteur de type + dropzone), réutilisant `FileUploadDropzone` déjà existant.
+
+**Vérifié en conditions réelles** :
+- Migration V21 appliquée (schema version 21confirmé dans les logs).
+- Contraintes SQL vérifiées directement (`enrollments_status_check` inclut VISA_GRANTED + CANCELLED ; `enrollment_documents_document_type_check` inclut les 2 nouveaux types).
+- `POST /admin/enrollments/{id}/generate-attestation` sur une inscription réelle (`2b217961-...`, APPROVED_ADMINISTRATIVE) : 200, `attestation_s3_key` peuplé en base.
+- PDF téléchargé et validé directement : document PDF 1.5 valide, 2 pages, 3304 octets.
+
+**Reporté à un prochain tour** (nécessite un vrai travail de conception, pas juste du câblage) : évaluation de fin de stage / certificat d'assiduité — aucun template ni statut existant à réutiliser cette fois, contrairement à l'attestation d'accueil.

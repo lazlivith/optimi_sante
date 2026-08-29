@@ -1,0 +1,188 @@
+# Guide de Test Postman — API Optimi Santé
+**Dernière mise à jour : 26 août 2026 (post-correction bugs Sprint 2/4)**
+
+Ce guide remplace `plan_de_test1` et `plan_de_test2`. Les deux échecs qu'ils documentaient venaient de **3 bugs backend réels** (migration cassée, `totalAmount` jamais sauvegardé, chemins de templates PDF doublés) qui ont été corrigés. Ce document explique comment tester correctement à partir de maintenant, sans retomber dans les mêmes pièges.
+
+---
+
+## 0. Prérequis avant de tester
+
+```powershell
+docker ps
+```
+Vous devez voir 3 containers `Up` : `optimisante-backend`, `optimisante-postgres`, `optimisante-redis`.
+
+Si vous venez de modifier du code Java ou du SQL de migration, **un simple `docker restart` ne suffit pas** — l'image contient un `app.jar` figé au moment du build. Il faut reconstruire :
+```powershell
+cd docker
+docker compose build backend
+docker compose up -d --no-deps backend
+```
+Attendez ~15-20s, puis vérifiez que ça répond :
+```powershell
+curl http://localhost:8080/api/v1/catalog/products
+```
+
+---
+
+## 1. Configuration de l'environnement Postman
+
+Créez un environnement `optimi-dev` avec ces variables :
+
+| Variable | Valeur |
+|---|---|
+| `BASE_URL` | `http://localhost:8080` |
+| `TENANT_CODE` | `FR_MAIN` |
+| `B2B_TOKEN` | *(vide, rempli par le test de login)* |
+| `ADMIN_TOKEN` | *(vide)* |
+| `MEDECIN_TOKEN` | *(vide)* |
+
+⚠️ **Piège n°1 — ne copiez-collez JAMAIS un nom de header depuis un document Word/PDF/export.** Le fichier `plan_de_test1` contient `X‑Tenant‑Id` avec un tiret Unicode invisible (U+2011, tiret insécable) au lieu du tiret ASCII normal. Postman refuse alors la requête avec `Header name must be a valid HTTP token`, **avant même de l'envoyer**. Retapez toujours les noms de header au clavier, ou copiez-les depuis ce guide-ci (texte brut, testé).
+
+---
+
+## 2. Comptes de test disponibles
+
+Tous les comptes ci-dessous utilisent le mot de passe **`password123`** (hash vérifié en base) :
+
+| Email | Rôle | Tenant |
+|---|---|---|
+| `admin@optimi.com` | `ADMIN` | FR_MAIN |
+| `chu@optimi.com` | `CENTRE_FORMATION` | FR_MAIN |
+| `medecin@optimi.com` | `MEDECIN` | FR_MAIN |
+| `b2c@optimi.com` | `CLIENT_B2C` | FR_MAIN |
+| `b2b@optimi.com` | `CLIENT_B2B` | FR_MAIN |
+| `clientb2b@optimi.com` | `CLIENT_B2B` | FR_MAIN *(ancien compte, toujours valide)* |
+
+Produit de test **quote-only** (déjà configuré, stock à 50) :
+```
+a4ab3894-ec24-4c78-9696-01ac690f3dd1   (TENSIOMÈTRE PRECISA® N SHOCK-PROOF)
+```
+
+---
+
+## 3. Test A — Login
+
+**Requête**
+```
+POST {{BASE_URL}}/api/v1/auth/login
+Content-Type: application/json
+```
+**Body**
+```json
+{
+  "email": "b2b@optimi.com",
+  "password": "password123"
+}
+```
+**Attendu :** `200 OK` avec `accessToken`, `refreshToken`, `tokenType`.
+
+**Dans Postman**, ajoutez un onglet **Tests** sur cette requête pour remplir automatiquement la variable d'environnement :
+```javascript
+const body = pm.response.json();
+pm.environment.set("B2B_TOKEN", body.accessToken);
+```
+Ainsi vous n'avez plus jamais à copier-coller le token à la main.
+
+---
+
+## 4. Test B — Vérifier le profil (rôle + tenant)
+
+```
+GET {{BASE_URL}}/api/v1/auth/profile
+Authorization: Bearer {{B2B_TOKEN}}
+```
+**Attendu :** `200 OK`
+```json
+{ "role": "CLIENT_B2B", "tenantCode": "FR_MAIN", ... }
+```
+Si `role` n'est pas `CLIENT_B2B`, vous vous êtes trompé de compte — revenir au tableau §2.
+
+---
+
+## 5. Test C — Demande de devis B2B (quote-request)
+
+```
+POST {{BASE_URL}}/api/v1/orders/quote-request
+Authorization: Bearer {{B2B_TOKEN}}
+Content-Type: application/json
+X-Tenant-Id: FR_MAIN
+```
+**Body**
+```json
+{
+  "items": [
+    { "productId": "a4ab3894-ec24-4c78-9696-01ac690f3dd1", "quantity": 5 }
+  ],
+  "notes": "Demande de devis pour 5 Tensiometres - Urgent"
+}
+```
+**Attendu :** `200 OK`
+```json
+{
+  "totalAmount": 378.40,
+  "paymentStatus": "QUOTE_SENT",
+  "isQuote": true,
+  "documentS3Key": "docs/quotes/QUOTE-OPT-...",
+  ...
+}
+```
+`documentS3Key` **non nul** = le PDF du devis a bien été généré et uploadé. S'il est `null`, le devis a été créé mais la génération PDF a échoué en silence (l'ordre n'est jamais bloqué par un échec PDF, par design) — consultez les logs backend.
+
+> Note technique : le header `X-Tenant-Id` n'est en réalité pas indispensable ici — le JWT porte déjà le `tenant_id` en claim. Il ne sert de secours que pour les appels anonymes. Vous pouvez l'omettre sur les requêtes authentifiées si vous préférez un test minimal.
+
+---
+
+## 6. Test D — Checkout standard (bonus, même correctif que C)
+
+Utile pour confirmer que le bug `totalAmount` (qui touchait aussi `/checkout`, pas seulement les devis) est bien réglé partout.
+
+```
+POST {{BASE_URL}}/api/v1/orders/checkout
+Authorization: Bearer {{B2B_TOKEN}}
+Content-Type: application/json
+```
+**Body**
+```json
+{
+  "items": [
+    { "productId": "<un produit avec is_quote_only = false>", "quantity": 1 }
+  ],
+  "paymentMethod": "BANK_TRANSFER"
+}
+```
+**Attendu :** `200 OK` avec `totalAmount` non nul.
+
+---
+
+## 7. Tableau de dépannage
+
+| Code / symptôme | Cause probable | Action |
+|---|---|---|
+| `401` au login | Mauvais email (voir §2) ou compte inexistant si migration V11 pas appliquée | Vérifier `docker exec -i optimisante-postgres psql -U postgres -d optimisante_db -c "SELECT email FROM users;"` |
+| Postman : *"Header name must be a valid HTTP token"* | Tiret Unicode copié-collé dans un nom de header | Retaper le header au clavier |
+| `401` vide sur une requête POST authentifiée qui marchait en GET | Exception applicative non liée à l'auth (ex : contrainte SQL) mal renvoyée comme 401 par le dispatch d'erreur | Regarder les logs backend (`docker logs optimisante-backend --tail 50`) — chercher `ERROR`/`DataIntegrityViolationException`, pas un vrai problème de token |
+| `500` avec `Tenant context is required` | Ni JWT valide ni header `X-Tenant-Id` présent | Vérifier que `Authorization: Bearer ...` est bien envoyé |
+| `500` avec `Product ... can only be ordered via Quote Request` | Produit visé n'a pas `is_quote_only = TRUE` | `UPDATE products SET is_quote_only = TRUE WHERE id = '...'` |
+| `500`/`400` avec `Insufficient stock` | `stock_quantity` du produit trop bas pour la quantité demandée | `UPDATE products SET stock_quantity = 50 WHERE id = '...'` |
+| `documentS3Key` reste `null` | Erreur silencieuse dans `PdfGeneratorService` (template Thymeleaf) | Vérifier les logs pour `ERROR ... PdfGeneratorService` |
+
+---
+
+## 8. Checklist rapide avant de déclarer un test "cassé"
+
+1. Les 3 containers sont `Up` (§0).
+2. Si du code/SQL a changé : image **rebuild** (`docker compose build backend`), pas juste `restart`.
+3. Le header a été **retapé**, pas copié depuis un doc externe.
+4. Le token utilisé est **frais** (relancez le Test A si besoin, les tokens expirent après 24h).
+5. Avant d'accuser Postman ou le token, **regardez les logs backend** — la majorité des faux "401" cachent en réalité une autre exception (SQL, template, etc.) mal traduite en code HTTP.
+
+---
+
+## Changelog des correctifs (26 août 2026)
+
+| Bug | Symptôme observé | Fichier corrigé |
+|---|---|---|
+| Migration V11 référençait une colonne inexistante (`is_credit_approved`) + image Docker jamais reconstruite | Login `b2b@optimi.com` → 401 (compte inexistant) | `V11__insert_test_accounts.sql` |
+| `totalAmount` calculé mais jamais assigné à l'entité `Order` | Violation `NOT NULL` en base sur toute commande/devis (checkout **et** quote-request) | `OrderService.java` |
+| Fragments PDF référencés avec le préfixe du resolver doublé (`pdf/components/header` au lieu de `components/header`) + `item.description` au lieu de `item.name` | `documentS3Key` restait `null`, devis créé sans PDF | `devis-b2b.html`, `recu-paiement.html`, `attestation-ins.html`, `PdfConfig.java` (resolver, non modifié — juste identifié) |

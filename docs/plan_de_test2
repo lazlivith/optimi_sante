@@ -1,0 +1,117 @@
+Objectif immédiat
+Faire en sorte que une seule requête POST /api/v1/orders/quote-request renvoie HTTP 200 OK avec le PDF de devis généré.
+
+📋 Plan d’action ultra‑ciblé (3 tâches)
+1️⃣ Vérifier & corriger le compte B2B
+Login (POST /api/v1/auth/login) avec le compte B2B que vous utilisez (ex. clientb2b@optimi.com / password123).
+Copiez le accessToken complet (commence par eyJ…).
+Dans Postman :
+Créez/éditez l’environnement optimi.
+Ajoutez la variable B2B_TOKEN contenant exactement le token (sans espaces).
+Validez le rôle : ajoutez une requête GET /api/v1/auth/profile avec le header Authorization: Bearer {{B2B_TOKEN}}.
+Le JSON retourné DOIT contenir "role":"CLIENT_B2B" et "tenantCode":"FR_MAIN".
+Si ce n’est pas le cas, vous utilisez le mauvais compte — choisissez le bon e‑mail ou créez‑en un nouveau en suivant le script V11__insert_test_accounts.sql (déjà corrigé) puis refaites le login.
+2️⃣ Mettre à jour le produit pour qu’il soit quote‑only
+Le service OrderService refuse les devis sur les produits dont is_quote_only = FALSE.
+Action : une unique mise à jour SQL :
+
+sql
+UPDATE products
+SET is_quote_only = TRUE
+WHERE id = 'a4ab3894-ec24-4c78-9696-01ac690f3dd1';   -- ID du produit que vous utilisez
+Exécutez‑la depuis le conteneur PostgreSQL :
+
+powershell
+docker exec -i optimisante-postgres psql -U postgres -d optimisante_db -c "
+UPDATE products
+SET is_quote_only = TRUE
+WHERE id = 'a4ab3894-ec24-4c78-9696-01ac690f3dd1';
+"
+Pourquoi ?
+Cela rend le produit éligible à la voie « Quote », évitant l’exception IllegalStateException: Product … can only be ordered via Quote Request.
+
+3️⃣ Construire l’appel Quote B2B correctement
+Dans Postman créez une requête :
+
+Method : POST
+URL : http://localhost:8080/api/v1/orders/quote-request
+Headers (exactement !) :
+
+Header	Valeur
+Authorization	Bearer {{B2B_TOKEN}}
+Content-Type	application/json
+X-Tenant-Id	FR_MAIN
+Body (choisissez un produit quote‑only) :
+
+json
+{
+  "items": [
+    {
+      "productId": "a4ab3894-ec24-4c78-9696-01ac690f3dd1",
+      "quantity": 5
+    }
+  ],
+  "notes": "Devis test – 5 Tensiomètres"
+}
+Envoyez ! Vous devez obtenir :
+
+HTTP 200 OK
+Un objet JSON contenant, entre autres, le champ documentS3Key (URL Cloudinary du PDF devis).
+🛠️ Prompt d’exécution (à copier‑coller)
+Copiez‑collez chaque bloc dans votre terminal PowerShell (ou dans Postman) dans l’ordre.
+
+1️⃣ Login + extraction du token
+powershell
+# 1️⃣ Login B2B
+$response = Invoke-RestMethod -Method Post `
+  -Uri http://localhost:8080/api/v1/auth/login `
+  -Headers @{ "Content-Type" = "application/json" } `
+  -Body '{"email":"clientb2b@optimi.com","password":"password123"}'
+# 2️⃣ Stocker le token dans une variable d’environnement Postman (ou PowerShell)
+$env:B2B_TOKEN = $response.accessToken
+Write-Host "Token stocké dans $env:B2B_TOKEN"
+2️⃣ Vérifier le rôle (facultatif mais rassurant)
+powershell
+Invoke-RestMethod -Method Get `
+  -Uri http://localhost:8080/api/v1/auth/profile `
+  -Headers @{ "Authorization" = "Bearer $env:B2B_TOKEN" }
+Vous devez voir "role":"CLIENT_B2B".
+
+3️⃣ Mettre le produit en quote‑only
+powershell
+docker exec -i optimisante-postgres psql -U postgres -d optimisante_db -c "
+UPDATE products
+SET is_quote_only = TRUE
+WHERE id = 'a4ab3894-ec24-4c78-9696-01ac690f3dd1';
+"
+4️⃣ Appeler le endpoint de devis (cURL – vous pouvez copier‑coller dans PowerShell)
+powershell
+curl -X POST http://localhost:8080/api/v1/orders/quote-request `
+  -H "Authorization: Bearer $env:B2B_TOKEN" `
+  -H "Content-Type: application/json" `
+  -H "X-Tenant-Id: FR_MAIN" `
+  -d '{"items":[{"productId":"a4ab3894-ec24-4c78-9696-01ac690f3dd1","quantity":5}],"notes":"Devis test – 5 Tensiomètres"}'
+Résultat attendu : un JSON contenant documentS3Key (l’URL du PDF).
+
+📌 Checklist rapide (à cocher une fois terminé)
+ Token B2B valide : rôle = CLIENT_B2B, tenant = FR_MAIN.
+ Produit a4ab3894-ec24-4c78-9696-01ac690f3dd1 possède is_quote_only = TRUE.
+ Headers corrects dans la requête : Authorization, Content-Type, X‑Tenant‑Id.
+ Réponse : 200 OK + champ documentS3Key.
+🔎 Si vous obtenez encore une erreur …
+Code	Analyse rapide	Action corrective
+401	Le JWT n’est pas reconnu ou le rôle ne correspond pas.	Refaites le login, assurez‑vous d’utiliser le token complet, vérifiez le profil via /auth/profile.
+500 (ou 4xx avec message Tenant context is required)	Header X‑Tenant‑Id manquant ou claim tenant_id absent.	Ajoutez le header, ou assurez‑vous que le token contient bien le claim (tenant_id).
+500 (ou 4xx avec Product … can only be ordered via Quote Request)	Produit pas en quote_only.	Exécutez la requête SQL de l’étape 2.
+500 (ou 4xx avec Insufficient stock)	Stock disponible < quantité demandée.	Diminuez la quantité ou choisissez un autre produit.
+📚 Rappel des sources (pour votre documentation)
+Document	Section pertinente
+CDC – MATRICE DES RÔLES & ACCÈS (RBAC)	Rôle CLIENT_B2B possède le droit de créer un Quote Request.
+CDC – ARCHITECTURE BACKEND & FLUX DE DONNÉES – Devis B2B	End‑point POST /api/v1/orders/quote-request nécessite JWT + tenant_id.
+docu_technique – Sprint 2 (Engine Catalogue & Devis B2B)	Le produit doit être is_quote_only = TRUE pour passer par le flux de devis.
+SecurityConfig.java (ligne 52‑55)	Tout ce qui n’est pas /api/v1/auth/** ou /api/v1/catalog/** nécessite authentification.
+OrderService.processOrderCreation (ligne 78‑84)	Validation du rôle B2B et du flag is_quote_only.
+✅ En résumé
+Authentifiez‑vous avec le compte B2B → récupérez le token.
+Assurez‑vous que le produit ciblé est quote‑only (mise à jour SQL).
+Envoyez la requête avec les trois headers obligatoires (Authorization, Content‑Type, X‑Tenant‑Id).
