@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { authService, type User } from '../../api/authService';
+import { authService, FACILITY_TYPE_LABELS, type User, type FacilityType } from '../../api/authService';
+import { COUNTRIES } from '../../lib/countries';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { Save, User as UserIcon, Mail, Phone, MapPin, Stethoscope, Briefcase, FileText, KeyRound } from 'lucide-react';
 
@@ -22,7 +23,7 @@ export const ProfilePage = () => {
     }
   }, [user]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -238,14 +239,55 @@ export const ProfilePage = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700">SIRET / FINESS</label>
+                    <label className="block text-sm font-medium text-slate-700">
+                      Identifiant fiscal / N° d'immatriculation
+                    </label>
                     <input
                       type="text"
-                      name="siretFiness"
-                      value={formData.siretFiness || ''}
+                      name="taxId"
+                      value={formData.taxId || ''}
+                      onChange={handleChange}
+                      placeholder="Tax ID, N° TVA, ICE, SIRET, Registration No."
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700">Nom du contact référent</label>
+                    <input
+                      type="text"
+                      name="contactName"
+                      value={formData.contactName || ''}
                       onChange={handleChange}
                       className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700">Type d'établissement</label>
+                    <select
+                      name="facilityType"
+                      value={formData.facilityType || ''}
+                      onChange={handleChange}
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                    >
+                      <option value="">— Non renseigné —</option>
+                      {(Object.keys(FACILITY_TYPE_LABELS) as FacilityType[]).map((key) => (
+                        <option key={key} value={key}>{FACILITY_TYPE_LABELS[key]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700">Pays de domiciliation</label>
+                    <select
+                      name="country"
+                      value={formData.country || ''}
+                      onChange={handleChange}
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                    >
+                      <option value="">— Non renseigné —</option>
+                      {COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>{c.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </>
               )}

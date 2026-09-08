@@ -32,6 +32,17 @@ public class User {
     @Column(length = 30)
     private String phone;
 
+    /**
+     * Identité générique, renseignée à l'inscription B2C (et disponible pour tout rôle
+     * non-médecin). Les médecins gardent DoctorProfile comme source de vérité : ces
+     * deux colonnes restent alors NULL. Ajoutées en V23.
+     */
+    @Column(name = "first_name", length = 100)
+    private String firstName;
+
+    @Column(name = "last_name", length = 100)
+    private String lastName;
+
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 

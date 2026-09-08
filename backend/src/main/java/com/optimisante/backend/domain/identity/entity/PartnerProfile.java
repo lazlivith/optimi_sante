@@ -45,6 +45,15 @@ public class PartnerProfile {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String address;
 
+    /**
+     * Taux de commission d'agence retenu par OptimiSanté sur les frais de formation (V27).
+     * Copié sur chaque ligne de paiement à l'encaissement : le renégocier ne réécrit jamais
+     * l'historique comptable déjà constaté.
+     */
+    @Builder.Default
+    @Column(name = "commission_rate", nullable = false, precision = 5, scale = 2)
+    private java.math.BigDecimal commissionRate = new java.math.BigDecimal("15.00");
+
     @Column(name = "is_verified")
     private Boolean isVerified;
 

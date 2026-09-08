@@ -44,6 +44,20 @@ public class AuthService {
                 .build();
     }
 
+    /** Tenant par défaut appliqué quand le client n'envoie pas de tenantCode. */
+    private static final String DEFAULT_TENANT_CODE = "FR_MAIN";
+
+    /**
+     * Résout le tenant cible. `tenantCode` est devenu optionnel dans les formulaires
+     * d'inscription (V23) : on retombe alors sur le tenant par défaut. Les clients qui
+     * continuent de l'envoyer gardent exactement le comportement d'avant.
+     */
+    private Tenant resolveTenant(String tenantCode) {
+        String code = (tenantCode != null && !tenantCode.isBlank()) ? tenantCode : DEFAULT_TENANT_CODE;
+        return tenantRepository.findByCode(code)
+                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+    }
+
     @Transactional
     public void registerB2C(RegisterB2CRequestDTO request) {
         String email = request.getEmail() != null ? request.getEmail().trim().toLowerCase() : "";
@@ -51,8 +65,7 @@ public class AuthService {
             throw new RuntimeException("Un compte existe déjà avec cet email");
         }
 
-        Tenant tenant = tenantRepository.findByCode(request.getTenantCode())
-                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+        Tenant tenant = resolveTenant(request.getTenantCode());
 
         User user = User.builder()
                 .tenant(tenant)
@@ -60,6 +73,8 @@ public class AuthService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(Role.CLIENT_B2C)
                 .isActive(true)
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
                 .build();
 
         userRepository.save(user);
@@ -72,24 +87,29 @@ public class AuthService {
             throw new RuntimeException("Un compte existe déjà avec cet email");
         }
 
-        Tenant tenant = tenantRepository.findByCode(request.getTenantCode())
-                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+        Tenant tenant = resolveTenant(request.getTenantCode());
 
+        // Le téléphone professionnel est porté par `users.phone`, déjà utilisé et
+        // modifiable depuis "Mon Profil" pour tous les rôles non-médecin : on évite
+        // ainsi une seconde source de vérité qui divergerait dès la première édition.
         User user = User.builder()
                 .tenant(tenant)
                 .email(email)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(Role.CLIENT_B2B)
                 .isActive(true)
+                .phone(request.getPhone())
                 .build();
         userRepository.save(user);
 
         CompanyProfile companyProfile = CompanyProfile.builder()
                 .user(user)
                 .companyName(request.getCompanyName())
-                .siretFiness(request.getSiretFiness())
+                .taxId(request.getTaxId())
                 .vatNumber(request.getVatNumber())
-                .billingAddress(request.getBillingAddress())
+                .country(request.getCountry())
+                .facilityType(request.getFacilityType())
+                .contactName(request.getContactName())
                 .b2bDiscountRate(java.math.BigDecimal.ZERO)
                 .build();
         companyProfileRepository.save(companyProfile);
@@ -152,13 +172,19 @@ public class AuthService {
         } else {
             // Le champ "Téléphone" est affiché pour tous les rôles côté frontend ; en dehors
             // du cas MEDECIN (porté par DoctorProfile), il est stocké directement sur User.
-            builder.phoneWhatsapp(user.getPhone());
+            builder.phoneWhatsapp(user.getPhone())
+                    .firstName(user.getFirstName())
+                    .lastName(user.getLastName());
             if (user.getRole() == Role.CLIENT_B2B) {
                 companyProfileRepository.findByUserId(userId).ifPresent(profile -> builder
                         .companyName(profile.getCompanyName())
-                        .siretFiness(profile.getSiretFiness())
+                        .taxId(profile.getTaxId())
                         .vatNumber(profile.getVatNumber())
-                        .billingAddress(profile.getBillingAddress()));
+                        .billingAddress(profile.getBillingAddress())
+                        .country(profile.getCountry())
+                        .facilityType(profile.getFacilityType() != null
+                                ? profile.getFacilityType().name() : null)
+                        .contactName(profile.getContactName()));
             }
         }
 
@@ -183,15 +209,28 @@ public class AuthService {
             if (dto.currentHospital() != null) profile.setCurrentHospital(dto.currentHospital());
             doctorProfileRepository.save(profile);
         } else {
-            if (dto.phoneWhatsapp() != null) {
-                user.setPhone(dto.phoneWhatsapp());
-                userRepository.save(user);
-            }
+            boolean userChanged = false;
+            if (dto.phoneWhatsapp() != null) { user.setPhone(dto.phoneWhatsapp()); userChanged = true; }
+            if (dto.firstName() != null)     { user.setFirstName(dto.firstName()); userChanged = true; }
+            if (dto.lastName() != null)      { user.setLastName(dto.lastName());   userChanged = true; }
+            if (userChanged) userRepository.save(user);
+
             if (user.getRole() == Role.CLIENT_B2B) {
                 CompanyProfile profile = companyProfileRepository.findByUserId(userId)
                         .orElseThrow(() -> new RuntimeException("Company profile not found"));
                 if (dto.companyName() != null) profile.setCompanyName(dto.companyName());
-                if (dto.siretFiness() != null) profile.setSiretFiness(dto.siretFiness());
+                if (dto.taxId() != null)       profile.setTaxId(dto.taxId());
+                if (dto.country() != null)     profile.setCountry(dto.country());
+                if (dto.contactName() != null) profile.setContactName(dto.contactName());
+                if (dto.facilityType() != null && !dto.facilityType().isBlank()) {
+                    try {
+                        profile.setFacilityType(
+                                com.optimisante.backend.domain.identity.entity.FacilityType
+                                        .valueOf(dto.facilityType()));
+                    } catch (IllegalArgumentException ex) {
+                        throw new IllegalArgumentException("Type d'établissement invalide : " + dto.facilityType());
+                    }
+                }
                 companyProfileRepository.save(profile);
             }
         }

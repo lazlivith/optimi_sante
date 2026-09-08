@@ -17,7 +17,7 @@ public class UserProfileDTO {
     private String email;
     private Role role;
     private String tenantCode;
-    // Champs Médecin
+    // Identité (médecin via DoctorProfile, autres rôles via User — V23)
     private String firstName;
     private String lastName;
     private String phoneWhatsapp;
@@ -27,7 +27,11 @@ public class UserProfileDTO {
     private String currentHospital;
     // Champs B2B
     private String companyName;
-    private String siretFiness;
+    /** Identifiant fiscal générique (ex-siretFiness, renommé en V23 pour l'international). */
+    private String taxId;
     private String vatNumber;
     private String billingAddress;
+    private String country;
+    private String facilityType;
+    private String contactName;
 }

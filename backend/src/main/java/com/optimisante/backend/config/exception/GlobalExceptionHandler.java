@@ -9,6 +9,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.Arrays;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import tools.jackson.databind.exc.InvalidFormatException;
 
 /**
  * Gestionnaire d'exceptions global — absent depuis le début du projet, ce qui faisait qu'une
@@ -63,6 +67,30 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("message", "Vous n'avez pas les droits nécessaires pour effectuer cette action."));
+    }
+
+    /**
+     * Corps de requête illisible ou valeur d'enum inconnue (ex. facilityType invalide).
+     * Sans ce handler, Jackson renvoyait son message brut, exposant le nom de classe Java
+     * interne (`com.optimisante.backend.domain.identity.entity.FacilityType`) au client :
+     * message illisible pour l'utilisateur et divulgation inutile de la structure du code.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, String>> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        String message = "Requête invalide : une valeur envoyée n'est pas reconnue.";
+        Throwable cause = ex.getCause();
+        // NB : Spring Boot 4 embarque Jackson 3 (`tools.jackson`). Jackson 2
+        // (`com.fasterxml`) reste présent en transitif via JJWT : importer la mauvaise
+        // classe compile sans erreur mais ne matche jamais à l'exécution.
+        if (cause instanceof InvalidFormatException ife && ife.getTargetType() != null
+                && ife.getTargetType().isEnum()) {
+            String accepted = Arrays.stream(ife.getTargetType().getEnumConstants())
+                    .map(Object::toString)
+                    .collect(Collectors.joining(", "));
+            message = "Valeur non reconnue : \"" + ife.getValue() + "\". Valeurs acceptées : " + accepted + ".";
+        }
+        log.warn("Corps de requête illisible : {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", message));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
