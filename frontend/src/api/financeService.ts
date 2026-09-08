@@ -65,6 +65,8 @@ export interface PayoutDto {
   periodEnd: string | null;
   paidAt: string | null;
   createdAt: string;
+  /** Vrai lorsque le relevé PDF a été généré et peut être téléchargé. */
+  statementAvailable: boolean;
 }
 
 /**
@@ -102,6 +104,17 @@ export const financeService = {
     (await axiosClient.post<PayoutDto>(`/admin/partners/${partnerProfileId}/payouts`, null, {
       params: { periodStart: periodStart || undefined, periodEnd: periodEnd || undefined },
     })).data,
+
+  generateStatement: async (payoutId: string) =>
+    (await axiosClient.post<PayoutDto>(`/admin/payouts/${payoutId}/statement`)).data,
+
+  /** URL signée du relevé ; le contrôle des droits est fait par le serveur. */
+  getStatementUrl: async (payoutId: string) => {
+    const { data } = await axiosClient.get<{ downloadUrl?: string; url?: string }>(
+      `/documents/PAYOUT_STATEMENT/${payoutId}/download`,
+    );
+    return data.downloadUrl || data.url || null;
+  },
 
   markPayoutPaid: async (payoutId: string) =>
     (await axiosClient.post<PayoutDto>(`/admin/payouts/${payoutId}/mark-paid`)).data,

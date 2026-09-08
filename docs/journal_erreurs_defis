@@ -912,3 +912,21 @@ Livré : `AdminPayoutsPage` (4 KPI, onglet registre filtrable, onglet reversemen
 - non-régression espace partenaire (candidatures, synthèse, reversements) → 200 ; `tsc -b` et `vite build` propres.
 
 **Non fait, signalé** : le bouton de téléchargement PDF du relevé de virement demandé au prompt 3 — aucun gabarit ni génération n'existe pour les reversements. L'ajouter aurait signifié créer un document vide ou un bouton inerte ; il vaut mieux le traiter comme un vrai sujet (gabarit Thymeleaf + génération, sur le modèle des conventions).
+
+## 59. Relevé de reversement PDF (V29) — déployé & vérifié
+
+Dernier élément volontairement laissé de côté à l'entrée #58 : le partenaire disposait de ses chiffres à l'écran, mais d'aucun justificatif téléchargeable.
+
+**Livré** : migration `V29` (`partner_payouts.statement_s3_key`), gabarit Thymeleaf `releve-reversement.html`, `PdfGeneratorService.generatePayoutStatementPdf`, `PartnerPayoutService.generateStatement` (génération + dépôt sur le stockage), endpoint admin de génération, type `PAYOUT_STATEMENT` dans le contrôleur de téléchargement, boutons dans les deux espaces.
+
+### Confidentialité étendue au document
+
+Le relevé **ne mentionne ni le montant brut réglé par le médecin, ni la commission, ni son taux** — même règle que l'écran « Mes revenus ». Ce point ne pouvait pas être vérifié à l'œil : le PDF a été téléchargé et **son texte extrait puis audité** (décompression des flux, extraction des chaînes). Résultat : aucun des termes `commission`, `3200`, `480`, `brut` ; montant net `2 720,00 EUR` bien présent. C'est le seul contrôle qui prouve réellement l'absence de fuite dans un binaire.
+
+### Deux défauts d'affichage corrigés
+
+1. **Séparateur de milliers absent** (`2720,00` au lieu de `2 720,00`). Mon code normalisait `U+00A0`, mais `String.format(Locale.FRANCE, ...)` produit **`U+202F`** (espace fine insécable) sur les JDK récents : la police du PDF avalait le caractère et le séparateur disparaissait purement et simplement. Les deux variantes sont désormais normalisées.
+
+2. **`« Page  sur  »` vide — défaut pré-existant sur TOUS les PDF du projet.** Le fragment `components/footer.html` référence `#pagenumber` / `#pagecount`, mais aucune feuille de style ne déclarait les compteurs correspondants. Conventions, attestations, devis et reçus sont concernés depuis l'origine. Les deux règles CSS (`content: counter(page)` / `counter(pages)`) ont été ajoutées **au seul gabarit du relevé**, pour ne pas modifier un fragment partagé par cinq documents en production sans validation. Correctif prouvé : le relevé affiche désormais « Page 1 sur 1 ». **Les mêmes deux lignes règlent les cinq autres documents — à décider.**
+
+**Vérifié en conditions réelles** : PDF généré du premier coup (PDF 1.5, 1 page, ~3,2 Ko), accents corrects (`RELEVÉ`, `BÉNÉFICIAIRE`, `Échographie`), régénération idempotente, et contrôle des droits sur le téléchargement — partenaire bénéficiaire **200**, admin **200**, médecin tiers **403**, anonyme **401**. `tsc -b` et `vite build` propres.

@@ -80,6 +80,13 @@ public class PayoutResource {
         return ResponseEntity.ok(financeQueryService.getPartnersDue());
     }
 
+    /** Génère (ou régénère) le relevé PDF d'un reversement. */
+    @PostMapping("/admin/payouts/{payoutId}/statement")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<PayoutDto> generateStatement(@PathVariable UUID payoutId) {
+        return ResponseEntity.ok(toDto(payoutService.generateStatement(payoutId)));
+    }
+
     // ------------------------------------------------------------- PARTENAIRE ----
 
     @GetMapping("/partner/payouts")
@@ -116,11 +123,15 @@ public class PayoutResource {
         return new PayoutDto(
                 payout.getId(), payout.getReference(), payout.getTotalAmount(), payout.getCurrency(),
                 payout.getStatus().name(), payout.getPeriodStart(), payout.getPeriodEnd(),
-                payout.getPaidAt(), payout.getCreatedAt());
+                payout.getPaidAt(), payout.getCreatedAt(),
+                payout.getStatementS3Key() != null);
     }
 
+    /** `statementAvailable` évite d'exposer la clé de stockage au client : le téléchargement
+     *  passe par le endpoint signé, qui contrôle les droits. */
     public record PayoutDto(UUID id, String reference, BigDecimal totalAmount, String currency,
                             String status, LocalDate periodStart, LocalDate periodEnd,
-                            OffsetDateTime paidAt, OffsetDateTime createdAt) {
+                            OffsetDateTime paidAt, OffsetDateTime createdAt,
+                            boolean statementAvailable) {
     }
 }

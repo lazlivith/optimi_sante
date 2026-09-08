@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import com.optimisante.backend.domain.training.finance.PartnerPayout;
 
 @RestController
 @RequestMapping("/api/v1/documents")
@@ -32,6 +33,7 @@ public class DocumentController {
     private final OrderRepository orderRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentDocumentRepository enrollmentDocumentRepository;
+    private final com.optimisante.backend.domain.training.finance.PartnerPayoutRepository partnerPayoutRepository;
 
     @GetMapping("/{type}/{id}/download")
     public ResponseEntity<?> getDocumentDownloadUrl(
@@ -73,6 +75,15 @@ public class DocumentController {
                 return ResponseEntity.status(403).build();
             }
             publicId = enrollment.getAttestationS3Key();
+        } else if ("PAYOUT_STATEMENT".equalsIgnoreCase(type)) {
+            PartnerPayout payout = partnerPayoutRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Reversement introuvable"));
+            // Seul le partenaire beneficiaire (ou l'administration) peut telecharger son releve.
+            boolean isBeneficiary = payout.getPartnerProfile().getUser().getId().equals(currentUserId);
+            if (!isAdmin && !isBeneficiary) {
+                return ResponseEntity.status(403).build();
+            }
+            publicId = payout.getStatementS3Key();
         } else if (ENROLLMENT_DOCUMENT_TYPES.contains(type.toUpperCase())) {
             EnrollmentDocument document = enrollmentDocumentRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Document not found"));

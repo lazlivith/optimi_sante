@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Relevé de reversement</title>
+    <!--
+        Destinataire : l'établissement partenaire.
+        Ce document ne mentionne DÉLIBÉRÉMENT ni le montant brut réglé par le médecin, ni la
+        commission d'agence, ni son taux — même règle que l'écran « Mes revenus » du partenaire.
+        Faire figurer le brut à côté du net publierait la commission par simple soustraction.
+    -->
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 18mm;
+            @bottom-center { content: element(footer); }
+        }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 12px; color: #333; }
+        .footer { position: running(footer); }
+
+        .doc-title { text-align: center; margin-top: 28px; margin-bottom: 24px; }
+        .doc-title h2 { color: #004D40; margin: 0 0 4px 0; font-size: 20px; letter-spacing: 0.5px; }
+        .doc-title p { margin: 0; color: #666; font-size: 12px; }
+
+        .parties { width: 100%; margin-bottom: 24px; border-collapse: collapse; }
+        .parties td { vertical-align: top; width: 50%; padding: 0; }
+        .box { background-color: #f5f7f6; border-left: 3px solid #004D40; padding: 12px 14px; }
+        .box .label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #7a8a85; margin: 0 0 5px 0; }
+        .box .value { margin: 0; font-size: 12px; color: #1a2e29; }
+        .box .value strong { font-size: 13px; }
+
+        .amount-band {
+            background-color: #e0f2f1;
+            border: 1px solid #b2dfdb;
+            padding: 16px 18px;
+            margin-bottom: 26px;
+        }
+        .amount-band .caption { margin: 0 0 4px 0; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #00695C; }
+        .amount-band .amount { margin: 0; font-size: 26px; font-weight: bold; color: #004D40; }
+        .amount-band .status { margin: 6px 0 0 0; font-size: 11px; color: #00695C; }
+
+        .section-title { color: #004D40; font-size: 13px; border-bottom: 1px solid #cfd8d5; padding-bottom: 5px; margin: 0 0 10px 0; }
+
+        .items-table { width: 100%; border-collapse: collapse; }
+        .items-table th {
+            background-color: #f5f5f5; border-bottom: 2px solid #004D40;
+            text-align: left; padding: 7px 8px; color: #004D40; font-size: 10px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .items-table td { border-bottom: 1px solid #e4e9e7; padding: 7px 8px; font-size: 11px; }
+        .items-table .num { text-align: right; white-space: nowrap; }
+        .items-table tfoot td {
+            border-top: 2px solid #004D40; border-bottom: none;
+            font-weight: bold; color: #004D40; font-size: 12px; padding-top: 9px;
+        }
+
+        /* Alimente le pied de page partage : sans ces deux regles, les compteurs
+           restent vides et le document affiche « Page  sur  ». */
+        #pagenumber:before { content: counter(page); }
+        #pagecount:before  { content: counter(pages); }
+
+        .note { margin-top: 26px; font-size: 10px; color: #7a8a85; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+    <div th:replace="~{components/header :: header}"></div>
+
+    <div class="doc-title">
+        <h2>RELEVÉ DE REVERSEMENT</h2>
+        <p>Référence <span th:text="${reference}">REV-2026-09-A1B2C3</span>
+           &middot; Émis le <span th:text="${issuedDate}">01/09/2026</span></p>
+    </div>
+
+    <table class="parties">
+        <tr>
+            <td style="padding-right: 8px;">
+                <div class="box">
+                    <p class="label">Établissement bénéficiaire</p>
+                    <p class="value"><strong th:text="${partnerName}">CHU de Bordeaux</strong></p>
+                    <p class="value" th:if="${partnerAddress}" th:text="${partnerAddress}">Adresse</p>
+                </div>
+            </td>
+            <td style="padding-left: 8px;">
+                <div class="box">
+                    <p class="label">Période couverte</p>
+                    <p class="value"><strong th:text="${period}">Toutes inscriptions réglées</strong></p>
+                    <p class="value" th:text="'Émetteur : OptimiSanté SAS'">Émetteur</p>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="amount-band">
+        <p class="caption">Montant net vous revenant</p>
+        <p class="amount" th:text="${totalAmount}">2 720,00 EUR</p>
+        <p class="status" th:text="${statusLabel}">Virement effectué le 08/09/2026</p>
+    </div>
+
+    <h3 class="section-title">Détail des inscriptions réglées</h3>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>Médecin</th>
+                <th>Formation</th>
+                <th>Réglé le</th>
+                <th class="num">Montant net</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="line : ${lines}">
+                <td th:text="${line.doctorName}">Dr. Kofi Mensah</td>
+                <td th:text="${line.trainingTitle}">Échographie clinique appliquée</td>
+                <td th:text="${line.paidAt}">05/09/2026</td>
+                <td class="num" th:text="${line.netAmount}">2 720,00 EUR</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(lines)}">
+                <td colspan="4" style="text-align: center; color: #999; padding: 16px;">
+                    Aucune inscription rattachée à ce reversement.
+                </td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" style="text-align: right;">Total net reversé</td>
+                <td class="num" th:text="${totalAmount}">2 720,00 EUR</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <p class="note">
+        Les montants figurant sur ce relevé correspondent à la part nette revenant à
+        l'établissement au titre des inscriptions réglées sur la période, après application des
+        conditions de partenariat convenues. Document généré automatiquement par la plateforme
+        OptimiSanté&nbsp;: il ne constitue pas une facture et ne vaut pas justificatif fiscal.
+    </p>
+
+    <div th:replace="~{components/footer :: footer}"></div>
+
+</body>
+</html>

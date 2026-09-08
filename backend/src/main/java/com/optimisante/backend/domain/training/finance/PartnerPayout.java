@@ -56,6 +56,10 @@ public class PartnerPayout {
     @Column(name = "period_end")
     private LocalDate periodEnd;
 
+    /** Clé du relevé PDF déposé sur le stockage ; null tant qu'il n'a pas été généré. */
+    @Column(name = "statement_s3_key", length = 255)
+    private String statementS3Key;
+
     @Column(name = "paid_at")
     private OffsetDateTime paidAt;
 

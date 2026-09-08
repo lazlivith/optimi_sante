@@ -13,6 +13,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Génération des reversements dus aux partenaires.
@@ -30,6 +32,12 @@ public class PartnerPayoutService {
     private final EnrollmentPaymentRepository paymentRepository;
     private final PartnerPayoutRepository payoutRepository;
     private final PartnerProfileRepository partnerProfileRepository;
+    private final com.optimisante.backend.domain.identity.repository.DoctorProfileRepository doctorProfileRepository;
+    private final com.optimisante.backend.domain.document.service.PdfGeneratorService pdfGeneratorService;
+    private final com.optimisante.backend.common.storage.StorageService storageService;
+
+    private static final java.time.format.DateTimeFormatter DATE_FORMAT =
+            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     /**
      * Génère le reversement d'une période pour un partenaire.
@@ -95,6 +103,81 @@ public class PartnerPayoutService {
 
         log.info("Reversement {} marqué comme payé", payout.getReference());
         return payoutRepository.save(payout);
+    }
+
+    /**
+     * Produit le relevé PDF d'un reversement et le dépose sur le stockage.
+     *
+     * <p>Le document ne mentionne ni le montant brut réglé par le médecin, ni la commission
+     * d'agence : il est destiné au partenaire, et la même règle de confidentialité que
+     * l'écran « Mes revenus » s'y applique. Faire figurer le brut à côté du net publierait
+     * la commission par soustraction.</p>
+     *
+     * <p>Régénérable : relancer l'appel écrase le relevé précédent, ce qui permet de
+     * rattraper un dépôt échoué sans créer de doublon.</p>
+     */
+    @Transactional
+    public PartnerPayout generateStatement(UUID payoutId) {
+        PartnerPayout payout = payoutRepository.findById(payoutId)
+                .orElseThrow(() -> new IllegalArgumentException("Reversement introuvable"));
+
+        List<EnrollmentPayment> lines = paymentRepository.findByPartnerPayoutId(payoutId);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("reference", payout.getReference());
+        data.put("issuedDate", formatDate(payout.getCreatedAt()));
+        data.put("partnerName", payout.getPartnerProfile().getInstitutionName());
+        data.put("partnerAddress", payout.getPartnerProfile().getAddress());
+        data.put("period", formatPeriod(payout));
+        data.put("totalAmount", formatMoney(payout.getTotalAmount(), payout.getCurrency()));
+        data.put("statusLabel", payout.getStatus() == PayoutStatus.PAID
+                ? "Virement effectué le " + formatDate(payout.getPaidAt())
+                : "Virement en cours de traitement");
+
+        data.put("lines", lines.stream().map(l -> Map.of(
+                "doctorName", doctorName(l),
+                "trainingTitle", l.getEnrollment().getSession().getTraining().getTitle(),
+                "paidAt", formatDate(l.getPaidAt()),
+                "netAmount", formatMoney(l.getPartnerPayoutAmount(), l.getCurrency())
+        )).toList());
+
+        byte[] pdf = pdfGeneratorService.generatePayoutStatementPdf(data);
+        String publicId = storageService.uploadGeneratedPdf(
+                pdf, "docs/releves-reversement", "REV-" + payout.getId());
+
+        payout.setStatementS3Key(publicId);
+        log.info("Relevé de reversement {} généré ({} ligne(s))", payout.getReference(), lines.size());
+        return payoutRepository.save(payout);
+    }
+
+    private String doctorName(EnrollmentPayment payment) {
+        return doctorProfileRepository.findByUserId(payment.getEnrollment().getDoctor().getId())
+                .map(d -> "Dr. " + d.getFirstName() + " " + d.getLastName())
+                .orElse(payment.getEnrollment().getDoctor().getEmail());
+    }
+
+    private String formatPeriod(PartnerPayout payout) {
+        if (payout.getPeriodStart() == null && payout.getPeriodEnd() == null) {
+            return "Toutes inscriptions réglées";
+        }
+        return (payout.getPeriodStart() != null ? formatDate(payout.getPeriodStart()) : "origine")
+                + " au "
+                + (payout.getPeriodEnd() != null ? formatDate(payout.getPeriodEnd()) : "ce jour");
+    }
+
+    private String formatDate(java.time.temporal.TemporalAccessor value) {
+        return value == null ? "-" : DATE_FORMAT.format(value);
+    }
+
+    /** Format français, séparateur de milliers insécable — lisible dans le PDF. */
+    private String formatMoney(BigDecimal amount, String currency) {
+        if (amount == null) return "-";
+        // Le JDK produit U+202F (espace fine insecable) en Locale.FRANCE, pas U+00A0.
+        // Les deux doivent etre normalises : sinon la police du PDF avale le caractere
+        // et le separateur de milliers disparait (2720,00 au lieu de 2 720,00).
+        return String.format(java.util.Locale.FRANCE, "%,.2f", amount)
+                .replace('\u202F', ' ')
+                .replace('\u00A0', ' ') + " " + (currency != null ? currency : "EUR");
     }
 
     @Transactional(readOnly = true)
