@@ -84,7 +84,7 @@ Tous les comptes utilisent le mot de passe **`password123`**.
 
 ## 5. Espace Admin
 
-**Compte :** `admin@optimi.com`
+**Compte :** `mob.admin@optimi.com` (ou `superadmin@optimi.com`)
 
 | Étape | Action | Résultat attendu |
 |---|---|---|
@@ -101,7 +101,7 @@ Tous les comptes utilisent le mot de passe **`password123`**.
 2. Récupérez l'ID de la session créée (visible dans la réponse réseau, onglet DevTools)
 3. **Médecin** (`medecin@optimi.com`, un *nouveau* compte médecin si possible pour repartir d'un dossier vierge) → `/formations/a1b2c3d4-e5f6-7890-1234-56789abcdef1/enroll` → sélectionner la session → s'inscrire
 4. Uploader un document justificatif (type "Passeport")
-5. **Admin** (`admin@optimi.com`) → `/admin/enrollments/{id du nouveau dossier}` → faire avancer le statut étape par étape jusqu'à "Validé Administratif"
+5. **Admin mobilité** (`mob.admin@optimi.com`) → `/admin/enrollments/{id du nouveau dossier}` → faire avancer le statut étape par étape jusqu'à "Validé Administratif"
 6. Vérifier que la convention se génère **automatiquement** à cette étape
 7. **Médecin** → `/doctor/vault` → la nouvelle convention doit apparaître
 
