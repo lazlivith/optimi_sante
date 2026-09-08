@@ -1,7 +1,8 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { PageTransition } from '../components/common/PageTransition';
 import {
-  LayoutDashboard, Users, FileText, GraduationCap, Store, LogOut, ShieldCheck, Package, Building2, TrendingUp, Tag, ShoppingBag, BookOpen
+  LayoutDashboard, Users, FileText, GraduationCap, Store, LogOut, ShieldCheck, Package, Building2, TrendingUp, Tag, ShoppingBag, BookOpen, Mail, Banknote
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -15,6 +16,8 @@ const NAV_ITEMS = [
   { to: '/admin/trainings', label: 'Formations', icon: BookOpen },
   { to: '/admin/enrollments', label: 'Dossiers CHU', icon: GraduationCap },
   { to: '/admin/partnership-requests', label: 'Demandes Partenariat', icon: Building2 },
+  { to: '/admin/emails', label: 'Emails', icon: Mail },
+  { to: '/admin/payouts', label: 'Reversements', icon: Banknote },
 ];
 
 export function AdminLayout() {
@@ -86,7 +89,9 @@ export function AdminLayout() {
 
       {/* Main content */}
       <main className="flex-1 min-w-0 overflow-y-auto">
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </main>
     </div>
   );

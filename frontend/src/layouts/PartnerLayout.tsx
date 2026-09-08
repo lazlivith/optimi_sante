@@ -1,7 +1,8 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { PageTransition } from '../components/common/PageTransition';
 import {
-  LayoutDashboard, Users, CalendarPlus, UserCog, Store, LogOut, Building2, GraduationCap
+  LayoutDashboard, Users, CalendarPlus, UserCog, Store, LogOut, Building2, GraduationCap, Banknote
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -9,6 +10,7 @@ const NAV_ITEMS = [
   { to: '/partner/trainings', label: 'Mes Formations', icon: GraduationCap },
   { to: '/partner/enrollments', label: 'Candidatures', icon: Users },
   { to: '/partner/sessions', label: 'Sessions de formation', icon: CalendarPlus },
+  { to: '/partner/finance', label: 'Mes revenus', icon: Banknote },
   { to: '/partner/profile', label: 'Mon Profil', icon: UserCog },
 ];
 
@@ -77,7 +79,9 @@ export function PartnerLayout() {
       </aside>
 
       <main className="flex-1 min-w-0 overflow-y-auto">
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </main>
     </div>
   );

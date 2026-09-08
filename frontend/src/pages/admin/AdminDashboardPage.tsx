@@ -29,7 +29,12 @@ interface Alert {
   actionLabel: string;
 }
 
-const ACTIVE_ENROLLMENT_STATUSES = ['PENDING_REVIEW', 'APPROVED_ACADEMIC', 'APPROVED_ADMINISTRATIVE', 'CONVENTION_ISSUED', 'VISA_SUBMITTED'];
+// Dossiers encore en cours de traitement, tous acteurs confondus.
+const ACTIVE_ENROLLMENT_STATUSES = [
+  'UNDER_OPTIMI_REVIEW', 'ACTION_REQUIRED', 'SUBMITTED_TO_PARTNER',
+  'ACCEPTED_BY_PARTNER', 'PENDING_TUITION_FEE', 'CONFIRMED',
+  'CONVENTION_ISSUED', 'VISA_SUBMITTED',
+];
 
 export function AdminDashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);

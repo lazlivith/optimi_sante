@@ -6,6 +6,7 @@ import { TrainingBrochureModal } from '../../components/training/TrainingBrochur
 import { useAuth } from '../../context/AuthContext';
 import { trainingService, type TrainingSummaryDto } from '../../api/trainingService';
 import { ProductImage } from '../../components/common/ProductImage';
+import { usePageMeta } from '../../hooks/usePageMeta';
 
 const formatDuration = (durationDays: number, isLongStay: boolean): string => {
   if (isLongStay) {
@@ -16,6 +17,7 @@ const formatDuration = (durationDays: number, isLongStay: boolean): string => {
 };
 
 export function TrainingsPage() {
+  usePageMeta('Formations médicales', "Formations cliniques dans les CHU partenaires : programme de mobilité médicale Afrique → France avec accompagnement visa et logement inclus.");
   const [trainings, setTrainings] = useState<TrainingSummaryDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTraining, setSelectedTraining] = useState<{id: string, title: string} | null>(null);

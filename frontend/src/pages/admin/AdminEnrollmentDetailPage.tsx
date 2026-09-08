@@ -45,6 +45,7 @@ export function AdminEnrollmentDetailPage() {
       const { data: docsData } = await axiosClient.get(`/admin/enrollments/${id}/documents`);
       setDocuments(docsData);
     } catch (err) {
+      console.error('Erreur lors du chargement du dossier', err);
       setToast({ message: "Impossible de charger ce dossier.", type: 'error' });
     } finally {
       setIsLoading(false);
@@ -112,6 +113,7 @@ export function AdminEnrollmentDetailPage() {
       const url = await vaultService.getPresignedUrl(documentType, documentId);
       window.open(url, '_blank');
     } catch (err) {
+      console.error('Erreur lors de la récupération du lien sécurisé', err);
       setToast({ message: 'Erreur lors de la récupération du lien sécurisé.', type: 'error' });
     }
   };
@@ -164,7 +166,7 @@ export function AdminEnrollmentDetailPage() {
                   </button>
                 )}
                 
-                {enrollment.status === 'APPROVED_ADMINISTRATIVE' && (
+                {enrollment.status === 'CONFIRMED' && (
                   <>
                     <button
                       onClick={handleGenerateConvention}

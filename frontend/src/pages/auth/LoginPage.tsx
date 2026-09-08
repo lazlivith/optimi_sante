@@ -4,8 +4,10 @@ import { authService } from '../../api/authService';
 import { useAuth } from '../../context/AuthContext';
 import { User as UserIcon, Lock } from 'lucide-react';
 import { Toast } from '../../components/common/Toast';
+import { usePageMeta } from '../../hooks/usePageMeta';
 
 export const LoginPage = () => {
+  usePageMeta('Connexion');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');

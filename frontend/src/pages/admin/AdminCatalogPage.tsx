@@ -94,6 +94,7 @@ export function AdminCatalogPage() {
       setProducts(prev => prev.map(prod => prod.id === p.id ? updated : prod));
       setToast({ message: updated.isActive ? 'Produit réactivé.' : 'Produit désactivé.', type: 'success' });
     } catch (error) {
+      console.error('Erreur lors de la mise à jour du produit', error);
       setToast({ message: 'Erreur lors de la mise à jour.', type: 'error' });
     }
   };

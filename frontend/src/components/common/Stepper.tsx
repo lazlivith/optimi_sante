@@ -7,14 +7,24 @@ export interface StepperStep {
 
 /** Étapes du parcours de mobilité d'un médecin, partagées entre la liste et le détail d'un dossier. */
 export const ENROLLMENT_STEPS: StepperStep[] = [
-  { id: 'PENDING_REVIEW', label: 'En attente' },
-  { id: 'APPROVED_ACADEMIC', label: 'Validé Académique' },
-  { id: 'APPROVED_ADMINISTRATIVE', label: 'Validé Administratif' },
+  // Cycle commercial : OptimiSanté pré-qualifie, le CHU décide, le médecin paie.
+  { id: 'UNDER_OPTIMI_REVIEW', label: 'Dossier en revue' },
+  { id: 'SUBMITTED_TO_PARTNER', label: 'Transmis au CHU' },
+  { id: 'ACCEPTED_BY_PARTNER', label: 'Accepté par le CHU' },
+  { id: 'PENDING_TUITION_FEE', label: 'Paiement attendu' },
+  { id: 'CONFIRMED', label: 'Inscription confirmée' },
+  // Cycle de mobilité, inchangé.
   { id: 'CONVENTION_ISSUED', label: 'Convention émise' },
   { id: 'VISA_SUBMITTED', label: 'Visa soumis' },
   { id: 'VISA_GRANTED', label: 'Visa obtenu' },
   { id: 'READY_TO_START', label: 'Prêt à démarrer' },
 ];
+
+/**
+ * États hors parcours linéaire : ils n'apparaissent pas comme une étape du stepper.
+ * ACTION_REQUIRED renvoie le dossier à l'étape de revue, REJECTED/CANCELLED le terminent.
+ */
+export const ENROLLMENT_EXCEPTION_STATUSES = ['ACTION_REQUIRED', 'REJECTED', 'CANCELLED'];
 
 interface StepperProps {
   steps: StepperStep[];

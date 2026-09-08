@@ -6,8 +6,10 @@ import type { Product } from '../api/catalogService';
 import { Search, Mail, Plus, SlidersHorizontal } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { ProductImage } from '../components/common/ProductImage';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export function CatalogPage() {
+  usePageMeta('Catalogue médical', "Découvrez notre catalogue de dispositifs médicaux certifiés CE : équipements, consommables et matériel professionnel pour cabinets et structures de soin.");
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const { addToCart } = useCart();

@@ -39,6 +39,21 @@ export interface EnrollmentDetailDto {
   medicalBoardRegistrationUrl?: string;
   passportUrl?: string;
   conventionS3Key?: string;
+  attestationS3Key?: string;
+  /** Établissement d'accueil de la session. */
+  hostInstitution?: string | null;
+  /** Frais de formation à régler, en euros. */
+  tuitionAmount?: number | null;
+  /** Pièce ou correction réclamée, affichée au médecin en ACTION_REQUIRED. */
+  actionRequiredNote?: string | null;
+  /** Motif de refus ou d'annulation. */
+  rejectionReason?: string | null;
+}
+
+export interface TuitionCheckoutDto {
+  clientSecret: string;
+  amount: number;
+  currency: string;
 }
 
 export const enrollmentService = {
@@ -59,6 +74,25 @@ export const enrollmentService = {
 
   submitDocuments: async (enrollmentId: string, request: DocumentUploadRequestDto): Promise<EnrollmentResponseDto> => {
     const { data } = await axiosClient.put<EnrollmentResponseDto>(`/enrollments/${enrollmentId}/documents`, request);
+    return data;
+  },
+
+  /**
+   * Ouvre le paiement des frais de formation et renvoie le secret de la session Stripe.
+   * Crée une ligne de paiement côté serveur : à n'appeler que sur action explicite.
+   */
+  createTuitionCheckout: async (enrollmentId: string): Promise<TuitionCheckoutDto> => {
+    const { data } = await axiosClient.post<TuitionCheckoutDto>(
+      `/enrollments/${enrollmentId}/tuition-checkout`,
+    );
+    return data;
+  },
+
+  /** Resoumet le dossier après avoir déposé les pièces réclamées. */
+  resubmitAfterAction: async (enrollmentId: string): Promise<EnrollmentResponseDto> => {
+    const { data } = await axiosClient.post<EnrollmentResponseDto>(
+      `/enrollments/${enrollmentId}/resubmit`,
+    );
     return data;
   },
 

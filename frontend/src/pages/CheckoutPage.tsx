@@ -6,8 +6,10 @@ import { orderService, type CheckoutRequestDto } from '../api/orderService';
 import { StripeEmbeddedCheckout } from '../components/payment/StripeEmbeddedCheckout';
 import { Loader2, ArrowLeft, CreditCard, Building, Tag, X } from 'lucide-react';
 import { Toast, type ToastType } from '../components/common/Toast';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export const CheckoutPage = () => {
+  usePageMeta('Paiement sécurisé');
   const { items, totalPrice, clearCart } = useCart();
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();

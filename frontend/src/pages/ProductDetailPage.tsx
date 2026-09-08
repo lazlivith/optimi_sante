@@ -8,6 +8,7 @@ import { CountdownTimer } from '../components/common/CountdownTimer';
 import { Toast, type ToastType } from '../components/common/Toast';
 import { ProductImage } from '../components/common/ProductImage';
 import { orderService, type QuoteRequestDto } from '../api/orderService';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -23,6 +24,8 @@ export function ProductDetailPage() {
     queryFn: () => catalogService.getProductBySlug(slug as string),
     enabled: !!slug
   });
+
+  usePageMeta(product?.name ?? 'Produit', product?.description || undefined);
 
   if (isLoading) return <div className="py-20 text-center">Chargement...</div>;
   if (error || !product) return <div className="py-20 text-center text-red-500">Produit introuvable.</div>;
@@ -45,6 +48,7 @@ export function ProductDetailPage() {
       setToast({ message: 'Demande de devis envoyée avec succès.', type: 'success' });
       setQuoteForm({ companyName: '', siretIce: '', message: '' });
     } catch (err) {
+      console.error('Erreur lors de l\'envoi de la demande de devis', err);
       setToast({ message: 'Erreur lors de l\'envoi de la demande.', type: 'error' });
     } finally {
       setIsSubmittingQuote(false);

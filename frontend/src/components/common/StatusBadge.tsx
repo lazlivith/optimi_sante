@@ -29,7 +29,15 @@ interface StatusConfig {
  * Un statut absent de ce registre reste affiché correctement grâce au fallback `humanize`.
  */
 const STATUS_REGISTRY: Record<string, StatusConfig> = {
-  // Candidatures (Enrollment)
+  // Candidatures — cycle tripartite (V26)
+  UNDER_OPTIMI_REVIEW: { label: 'En revue OptimiSanté', tone: 'blue' },
+  ACTION_REQUIRED: { label: 'Pièces à fournir', tone: 'amber' },
+  SUBMITTED_TO_PARTNER: { label: 'Transmis au CHU', tone: 'blue' },
+  ACCEPTED_BY_PARTNER: { label: 'Accepté par le CHU', tone: 'emerald' },
+  PENDING_TUITION_FEE: { label: 'Paiement attendu', tone: 'purple' },
+  CONFIRMED: { label: 'Inscription confirmée', tone: 'emerald' },
+  // PENDING_REVIEW reste défini : il sert aussi au statut de validation des FORMATIONS
+  // (TrainingApprovalStatus), qui n'a rien à voir avec le cycle de candidature.
   PENDING_REVIEW: { label: 'En attente', tone: 'amber' },
   // Devis / partenariats / formations
   PENDING: { label: 'En attente', tone: 'amber' },
@@ -53,6 +61,9 @@ const STATUS_REGISTRY: Record<string, StatusConfig> = {
   PENDING_APPROVAL: { label: 'En validation', tone: 'blue' },
   QUOTE_SENT: { label: 'Devis envoyé', tone: 'amber' },
   QUOTE_REJECTED: { label: 'Devis rejeté', tone: 'rose' },
+  // Emails
+  SENT: { label: 'Envoyé', tone: 'emerald' },
+  FAILED: { label: 'Échec', tone: 'rose' },
   // Génériques (codes promo, comptes...)
   ACTIVE: { label: 'Actif', tone: 'emerald' },
   INACTIVE: { label: 'Inactif', tone: 'slate' },

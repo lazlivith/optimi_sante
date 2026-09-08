@@ -1,5 +1,6 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { PageTransition } from '../components/common/PageTransition';
 import {
   FileStack, ShieldCheck, UserCog, Store, LogOut, Stethoscope
 } from 'lucide-react';
@@ -75,7 +76,9 @@ export function DoctorLayout() {
       </aside>
 
       <main className="flex-1 min-w-0 overflow-y-auto">
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </main>
     </div>
   );
