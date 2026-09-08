@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+# Espaces privés (authentification requise) : inutile de les faire crawler
+Disallow: /admin
+Disallow: /partner
+Disallow: /doctor
+Disallow: /checkout
+Disallow: /cart
+Disallow: /profile
+Disallow: /my-orders
+
+Sitemap: https://www.optimisante.fr/sitemap.xml
