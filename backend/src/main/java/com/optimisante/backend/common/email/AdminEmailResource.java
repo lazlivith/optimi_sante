@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.UUID;
+import com.optimisante.backend.config.security.MobilityAdmin;
 
 /**
  * Espace « Emails » de l'administration : journal des envois, renvoi d'identifiants,
@@ -17,7 +18,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/admin/emails")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+@MobilityAdmin
 public class AdminEmailResource {
 
     private final AdminEmailService adminEmailService;

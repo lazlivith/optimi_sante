@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.UUID;
+import com.optimisante.backend.config.security.EcommerceAdmin;
 
 @Slf4j
 @RestController
@@ -28,13 +29,13 @@ public class AdminOrderResource {
     private final StorageService storageService;
 
     @GetMapping
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
+    @EcommerceAdmin
     public ResponseEntity<Page<OrderResponseDto>> getAllOrders(@PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(orderService.getAllOrders(pageable));
     }
 
     @GetMapping("/quotes")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
+    @EcommerceAdmin
     public ResponseEntity<Page<OrderResponseDto>> getAllQuotes(@PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(orderService.getAllQuotes(pageable));
     }
@@ -45,14 +46,14 @@ public class AdminOrderResource {
      * automatique via webhook (déduction de stock, génération du reçu), idempotente.
      */
     @PatchMapping("/{id}/confirm-payment")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
+    @EcommerceAdmin
     public ResponseEntity<Void> confirmPayment(@PathVariable UUID id) {
         orderService.confirmOrderPayment(id);
         return ResponseEntity.ok().build();
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
+    @EcommerceAdmin
     public ResponseEntity<OrderResponseDto> updateOrderStatus(
             @PathVariable UUID id,
             @RequestParam("status") OrderStatus status) {

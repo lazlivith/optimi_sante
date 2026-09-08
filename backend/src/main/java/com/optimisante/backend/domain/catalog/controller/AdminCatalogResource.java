@@ -16,11 +16,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import com.optimisante.backend.config.security.EcommerceAdmin;
 
 @RestController
 @RequestMapping("/api/v1/admin/catalog")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+@EcommerceAdmin
 public class AdminCatalogResource {
 
     private final AdminCatalogService adminCatalogService;

@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+import com.optimisante.backend.config.security.MobilityAdmin;
 
 /**
  * Reversements partenaires : génération et suivi côté administration, consultation en
@@ -34,7 +35,7 @@ public class PayoutResource {
     // ------------------------------------------------------------------ ADMIN ----
 
     @PostMapping("/admin/partners/{partnerProfileId}/payouts")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    @MobilityAdmin
     public ResponseEntity<PayoutDto> generatePayout(
             @PathVariable UUID partnerProfileId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate periodStart,
@@ -44,45 +45,45 @@ public class PayoutResource {
     }
 
     @PostMapping("/admin/payouts/{payoutId}/mark-paid")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    @MobilityAdmin
     public ResponseEntity<PayoutDto> markPaid(@PathVariable UUID payoutId) {
         return ResponseEntity.ok(toDto(payoutService.markAsPaid(payoutId)));
     }
 
     @GetMapping("/admin/partners/{partnerProfileId}/payouts")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    @MobilityAdmin
     public ResponseEntity<List<PayoutDto>> listPayoutsForAdmin(@PathVariable UUID partnerProfileId) {
         return ResponseEntity.ok(payoutService.getPayouts(partnerProfileId).stream().map(this::toDto).toList());
     }
 
     @GetMapping("/admin/partners/{partnerProfileId}/financial-summary")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    @MobilityAdmin
     public ResponseEntity<PartnerPayoutService.PartnerFinancialSummary> summaryForAdmin(
             @PathVariable UUID partnerProfileId) {
         return ResponseEntity.ok(payoutService.getSummary(partnerProfileId));
     }
 
     @GetMapping("/admin/payments")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    @MobilityAdmin
     public ResponseEntity<List<FinanceQueryService.AdminPaymentRow>> listAllPayments() {
         return ResponseEntity.ok(financeQueryService.getAllPayments());
     }
 
     @GetMapping("/admin/finance/kpis")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    @MobilityAdmin
     public ResponseEntity<FinanceQueryService.AdminFinanceKpis> financeKpis() {
         return ResponseEntity.ok(financeQueryService.getKpis());
     }
 
     @GetMapping("/admin/finance/partners-due")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    @MobilityAdmin
     public ResponseEntity<List<FinanceQueryService.PartnerDueRow>> partnersDue() {
         return ResponseEntity.ok(financeQueryService.getPartnersDue());
     }
 
     /** Génère (ou régénère) le relevé PDF d'un reversement. */
     @PostMapping("/admin/payouts/{payoutId}/statement")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    @MobilityAdmin
     public ResponseEntity<PayoutDto> generateStatement(@PathVariable UUID payoutId) {
         return ResponseEntity.ok(toDto(payoutService.generateStatement(payoutId)));
     }

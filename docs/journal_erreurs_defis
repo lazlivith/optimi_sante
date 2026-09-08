@@ -930,3 +930,64 @@ Le relevé **ne mentionne ni le montant brut réglé par le médecin, ni la comm
 2. **`« Page  sur  »` vide — défaut pré-existant sur TOUS les PDF du projet.** Le fragment `components/footer.html` référence `#pagenumber` / `#pagecount`, mais aucune feuille de style ne déclarait les compteurs correspondants. Conventions, attestations, devis et reçus sont concernés depuis l'origine. Les deux règles CSS (`content: counter(page)` / `counter(pages)`) ont été ajoutées **au seul gabarit du relevé**, pour ne pas modifier un fragment partagé par cinq documents en production sans validation. Correctif prouvé : le relevé affiche désormais « Page 1 sur 1 ». **Les mêmes deux lignes règlent les cinq autres documents — à décider.**
 
 **Vérifié en conditions réelles** : PDF généré du premier coup (PDF 1.5, 1 page, ~3,2 Ko), accents corrects (`RELEVÉ`, `BÉNÉFICIAIRE`, `Échographie`), régénération idempotente, et contrôle des droits sur le téléchargement — partenaire bénéficiaire **200**, admin **200**, médecin tiers **403**, anonyme **401**. `tsc -b` et `vite build` propres.
+
+## 60. Scission de l'administration en deux metiers (V30) — deploye & verifie
+
+Prompt 01 du plan de refonte. L'administration couvrait deux domaines sans rapport (negoce
+et mobilite), operes par deux personnes distinctes. La separation est portee par les ROLES,
+donc appliquee jusque dans l'API : un administrateur du negoce ne doit pas pouvoir ouvrir un
+dossier medical en connaissant l'URL.
+
+**Livre** : `V30` (roles `ADMIN_ECOMMERCE` et `ADMIN_MOBILITE`, index sur `role`), enum `Role`
+etendu avec `ADMIN` marque `@Deprecated`, et quatre annotations composees dans
+`config/security` : `@EcommerceAdmin`, `@MobilityAdmin`, `@PlatformAdmin`, `@AnyAdmin`.
+
+### Pourquoi des annotations plutot que des `@PreAuthorize` ecrits sur place
+
+La regle enumere trois roles et s'applique a une trentaine d'endpoints. Repetee a la main,
+elle finit par diverger — et un oubli ne se voit pas : il se traduit par un acces qui n'aurait
+pas du exister. La regle vit desormais a un seul endroit, et l'intention (`@MobilityAdmin`)
+est lisible sur chaque controleur.
+
+### Trois problemes trouves en appliquant la scission
+
+1. **`@PlatformAdmin` reserve au SUPER_ADMIN aurait verrouille la gestion des comptes.** La
+   plateforme ne compte **aucun compte `SUPER_ADMIN`** — seulement un `ADMIN`. Restreindre
+   immediatement aurait rendu la gestion des comptes inaccessible a tout le monde, y compris
+   pour creer le premier super administrateur. `ADMIN` y est donc conserve, comme dans les
+   deux annotations metier, avec l'etape de sortie documentee dans l'annotation.
+
+2. **Trois endpoints excluaient le SUPER_ADMIN** (`generateConvention`,
+   `generateAttestation`, `updateEnrollmentStatus`) : ecrits `hasRole('ADMIN')` seul. Un super
+   administrateur ne pouvait pas relancer une convention. Incoherence pre-existante, corrigee
+   par l'application uniforme de `@MobilityAdmin`.
+
+3. **`PayoutResource` manquait dans ma propre table de repartition** — 8 endpoints. Rattrape
+   en seconde passe, puis verifie par un audit automatique : plus aucun `@PreAuthorize`
+   mentionnant `ADMIN` hors des annotations composees, hormis quatre endpoints **mixtes**
+   (metier + secours admin) qui n'en relevent pas. Deux d'entre eux ont ete etendus a
+   `ADMIN_MOBILITE`, faute de quoi le nouveau role aurait perdu un acces que `ADMIN` avait.
+
+### Le compilateur comme garde-fou
+
+Ajouter deux valeurs a l'enum `Role` a fait echouer la compilation sur un `switch` exhaustif
+d'`AdminEmailService`. C'est exactement le service attendu d'un switch exhaustif : il a
+designe le seul endroit du code a mettre a jour, au lieu de laisser un `default` avaler
+silencieusement les nouveaux roles.
+
+### Bug pre-existant releve, non corrige
+
+`TrainingEnrollmentPage` (parcours d'un medecin deja titulaire d'un compte) televerse ses
+pieces via `/admin/storage/upload`, **endpoint reserve aux administrateurs**. Un medecin y
+recoit un 403 et voit « Le televersement du fichier a echoue ». Le correctif consiste a
+pointer cette page vers `POST /enrollments/{id}/documents`, deja utilise et eprouve par
+`MyEnrollmentDetailPage` — traite comme un sujet distinct pour ne pas melanger les chantiers.
+
+**Verifie en conditions reelles, 33 controles** : deux comptes de test crees (un par univers) ;
+chaque univers accede aux 4 (negoce) ou 6 (mobilite) routes du sien ; **chacun recoit 403 sur
+l'integralite de l'univers de l'autre** ; les deux sont refuses sur la gestion des comptes ; et
+**le compte `ADMIN` herite conserve l'acces aux 10 routes** — aucun compte existant ne perd
+d'acces au deploiement, ce qui etait la condition posee.
+
+**Aucun compte n'a ete reaffecte automatiquement** : decider qui gere quoi releve de
+l'organisation, pas d'une migration.

@@ -76,7 +76,7 @@ public class PartnerTrainingResource {
     }
 
     @PostMapping("/{id}/brochure")
-    @PreAuthorize("hasRole('CENTRE_FORMATION') or hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('CENTRE_FORMATION', 'ADMIN_MOBILITE', 'ADMIN', 'SUPER_ADMIN')")
     @Transactional
     public ResponseEntity<Map<String, String>> uploadBrochure(
             @PathVariable UUID id,

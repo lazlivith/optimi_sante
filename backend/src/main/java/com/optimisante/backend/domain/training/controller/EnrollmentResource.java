@@ -90,7 +90,7 @@ public class EnrollmentResource {
     }
 
     @PostMapping("/enrollments/{id}/documents")
-    @PreAuthorize("hasRole('MEDECIN') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('MEDECIN', 'ADMIN_MOBILITE', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<EnrollmentDocumentResponseDto> uploadEnrollmentDocument(
             @PathVariable UUID id,
             @RequestParam("file") MultipartFile file,
