@@ -991,3 +991,78 @@ d'acces au deploiement, ce qui etait la condition posee.
 
 **Aucun compte n'a ete reaffecte automatiquement** : decider qui gere quoi releve de
 l'organisation, pas d'une migration.
+
+## 61. Retrait de `admin@optimi.com` et navigation à deux univers (déployé & vérifié)
+
+La scission des rôles (#60) avait créé les deux rôles métier sans que l'interface en tienne
+compte : la sidebar affichait les dix entrées à tout le monde, et un administrateur négoce
+qui cliquait sur « Dossiers CHU » atterrissait sur un écran d'erreurs 403. Cette entrée
+règle les deux moitiés du problème — le compte hérité, puis l'interface.
+
+### Le compte hérité : désactivé, pas effacé
+
+`admin@optimi.com` a été retiré par `deleted_at` + `is_active = false` (sa connexion renvoie
+désormais 401), et non par un `DELETE`.
+
+**Ses deux traces `enrollments.optimi_reviewed_by` ont été délibérément conservées.** Les
+réécrire au nom du superadmin aurait produit une piste d'audit fausse : ces dossiers ont bien
+été pré-qualifiés par ce compte-là, à cette date-là. Un référentiel de décisions dont on
+réattribue les auteurs après coup ne vaut plus rien. Les références *documentaires*
+(`seed_recette.sql`, guides de test) ont en revanche été réaffectées au superadmin, puisqu'il
+s'agit d'instructions pour l'avenir et non d'une trace du passé.
+
+### Une seule définition de la répartition
+
+Sidebar, gardes de route et redirection post-connexion décrivaient la même répartition à
+trois endroits. Trois copies d'une même règle divergent toujours : un menu finit par montrer
+une entrée qu'une garde refuse. Tout est passé par `frontend/src/lib/adminUniverses.ts`, qui
+porte les trois univers (Négoce, Mobilité, Gouvernance) **et** les tableaux de rôles que
+consomment les `ProtectedRoute` d'`App.tsx`.
+
+Une première version exposait en plus un helper `rolesAllowedOn(path)` que personne
+n'appelait — un second chemin vers la même vérité, exactement ce que le fichier prétendait
+éviter. Remplacé par les quatre constantes réellement importées.
+
+⚠️ Ce fichier **aligne** l'interface sur les droits, il ne les crée pas. Masquer une entrée de
+menu ne protège rien : la séparation est appliquée par le serveur (#60).
+
+### Refus explicite au lieu d'une redirection muette
+
+`ProtectedRoute` renvoyait un `<Navigate to="/">` quand le rôle ne convenait pas. L'utilisateur
+se retrouvait sur l'accueil sans explication, croyait à un bug et réessayait. Il reçoit
+maintenant une page `AccessDeniedPage` qui nomme la restriction et propose le retour vers son
+propre tableau de bord.
+
+### Deux tableaux de bord au lieu d'un
+
+`AdminDashboardPage` interrogeait sept services répartis sur les deux univers : depuis la
+scission, un admin négoce l'ouvrait et recevait une pluie de 403. Scindé en
+`AdminSalesDashboardPage` (négoce) et `AdminMobilityDashboardPage` (mobilité), chacun
+n'appelant que les services de son métier. L'ancienne page, devenue orpheline, a été supprimée
+plutôt que laissée en place — un écran mort qui traverse les deux univers est un piège.
+
+Le bloc « Actions en attente » ne remonte que ce que l'utilisateur peut **réellement traiter** :
+un dossier déjà transmis au CHU, ou en attente du paiement du médecin, n'est pas de son
+ressort. L'y afficher créerait une charge fantôme qu'il ne peut pas résorber.
+
+`/admin` ne rend plus d'écran : `AdminHomeRedirect` renvoie chacun vers `adminHomeFor(role)`.
+
+### Renommages levant une ambiguïté
+
+« Finance » (négoce) et « Reversements » (mobilité) cohabitaient sans qu'on puisse les
+distinguer. Devenus **« Chiffre d'affaires »** et **« Reversements CHU »**.
+
+**Vérifié en conditions réelles** : les trois comptes (`superadmin`, `ecom.admin`,
+`mob.admin`) authentifiés contre le backend en cours d'exécution, puis sondés sur cinq
+endpoints couvrant les trois univers. Matrice obtenue, conforme point par point :
+
+| Compte | finance/summary | orders/quotes | enrollments | finance/kpis | users |
+|---|---|---|---|---|---|
+| superadmin | 200 | 200 | 200 | 200 | 200 |
+| ecom.admin | 200 | 200 | **403** | **403** | **403** |
+| mob.admin | **403** | **403** | 200 | 200 | **403** |
+
+`admin@optimi.com` : **401**. Chaque route du front a par ailleurs été confrontée à
+l'annotation du contrôleur qui la sert — y compris le piège `/admin/finance/*`, servi par
+**deux** contrôleurs distincts (`summary` en `@EcommerceAdmin` sur `AdminFinanceResource`,
+`kpis` et `partners-due` en `@MobilityAdmin` sur `PayoutResource`).

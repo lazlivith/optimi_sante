@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { AccessDeniedPage } from '../pages/AccessDeniedPage';
 
 interface ProtectedRouteProps {
   allowedRoles?: string[];
@@ -24,7 +25,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />; // Or /unauthorized if it existed
+    // Refus explicite plutôt que redirection silencieuse : renvoyer quelqu'un à l'accueil
+    // sans rien dire lui laisse croire à un bug, et il réessaie indéfiniment.
+    return <AccessDeniedPage />;
   }
 
   return children ? <>{children}</> : <Outlet />;

@@ -1,27 +1,24 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { PageTransition } from '../components/common/PageTransition';
-import {
-  LayoutDashboard, Users, FileText, GraduationCap, Store, LogOut, ShieldCheck, Package, Building2, TrendingUp, Tag, ShoppingBag, BookOpen, Mail, Banknote
-} from 'lucide-react';
+import { Store, LogOut, ShieldCheck } from 'lucide-react';
+import { universesFor } from '../lib/adminUniverses';
 
-const NAV_ITEMS = [
-  { to: '/admin', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
-  { to: '/admin/finance', label: 'Finance', icon: TrendingUp },
-  { to: '/admin/orders', label: 'Commandes', icon: ShoppingBag },
-  { to: '/admin/users', label: 'Utilisateurs', icon: Users },
-  { to: '/admin/catalog', label: 'Catalogue', icon: Package },
-  { to: '/admin/promo-codes', label: 'Codes Promo', icon: Tag },
-  { to: '/admin/quotes', label: 'Devis B2B', icon: FileText },
-  { to: '/admin/trainings', label: 'Formations', icon: BookOpen },
-  { to: '/admin/enrollments', label: 'Dossiers CHU', icon: GraduationCap },
-  { to: '/admin/partnership-requests', label: 'Demandes Partenariat', icon: Building2 },
-  { to: '/admin/emails', label: 'Emails', icon: Mail },
-  { to: '/admin/payouts', label: 'Reversements', icon: Banknote },
-];
+/** Libellé du rattachement, affiché sous l'email en pied de sidebar. */
+const ROLE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: 'Super Admin',
+  ADMIN_ECOMMERCE: 'Admin · Négoce',
+  ADMIN_MOBILITE: 'Admin · Mobilité',
+  ADMIN: 'Admin (rattachement à définir)',
+};
 
 export function AdminLayout() {
   const { user, logout } = useAuth();
+
+  // La navigation découle du rôle, elle n'est pas figée : un admin métier ne voit que son
+  // univers, le super admin voit les trois, groupés et intitulés.
+  const universes = universesFor(user?.role);
+  const isMultiUniverse = universes.length > 1;
 
   return (
     <div className="min-h-screen flex bg-slate-100">
@@ -33,27 +30,42 @@ export function AdminLayout() {
           </div>
           <div>
             <div className="text-sm font-bold text-white leading-none">Optimi Santé</div>
-            <div className="text-[10px] text-slate-400 leading-none mt-1">Espace Administration</div>
+            <div className="text-[10px] text-slate-400 leading-none mt-1">
+              {universes.length === 1 ? `Espace ${universes[0].label}` : 'Espace Administration'}
+            </div>
           </div>
         </div>
 
-        <nav className="flex-1 py-6 px-3 space-y-1">
-          {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-brand-green text-white'
-                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                }`
-              }
-            >
-              <Icon className="w-4 h-4" />
-              {label}
-            </NavLink>
+        <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+          {universes.map((universe) => (
+            <div key={universe.id} className={isMultiUniverse ? 'mb-5' : ''}>
+              {/* L'intitulé de groupe n'a de sens que si plusieurs univers coexistent :
+                  pour un admin métier, il ajouterait du bruit sans rien distinguer. */}
+              {isMultiUniverse && (
+                <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                  {universe.label}
+                </p>
+              )}
+              <div className="space-y-1">
+                {universe.items.map(({ to, label, icon: Icon, end }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={end}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-brand-green text-white'
+                          : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                      }`
+                    }
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
@@ -81,7 +93,7 @@ export function AdminLayout() {
           <div className="min-w-0">
             <div className="text-sm font-semibold text-white truncate">{user?.email}</div>
             <div className="text-[10px] font-bold text-brand-green uppercase tracking-wide">
-              {user?.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin'}
+              {ROLE_LABELS[user?.role ?? ''] ?? 'Admin'}
             </div>
           </div>
         </div>

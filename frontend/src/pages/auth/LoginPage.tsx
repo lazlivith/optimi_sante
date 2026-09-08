@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { User as UserIcon, Lock } from 'lucide-react';
 import { Toast } from '../../components/common/Toast';
 import { usePageMeta } from '../../hooks/usePageMeta';
+import { adminHomeFor } from '../../lib/adminUniverses';
 
 export const LoginPage = () => {
   usePageMeta('Connexion');
@@ -40,8 +41,11 @@ export const LoginPage = () => {
           navigate(location.state.from.pathname, { replace: true });
         } else {
           const role = profile.role;
-          if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
-            navigate('/admin/quotes', { replace: true });
+          // Chaque administrateur atterrit sur le tableau de bord de SON métier, déduit de
+          // la même source que la navigation — et non sur une page choisie au hasard.
+          if (role === 'SUPER_ADMIN' || role === 'ADMIN'
+              || role === 'ADMIN_ECOMMERCE' || role === 'ADMIN_MOBILITE') {
+            navigate(adminHomeFor(role), { replace: true });
           } else if (role === 'CENTRE_FORMATION') {
             navigate('/partner/sessions', { replace: true });
           } else if (role === 'MEDECIN') {

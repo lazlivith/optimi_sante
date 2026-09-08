@@ -3,6 +3,12 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PageTransition } from './components/common/PageTransition';
+// Rôles autorisés par univers, lus de la même définition que la sidebar : le layout n'est
+// accessible qu'aux administrateurs, chaque route interne restreint ensuite au métier
+// concerné, pour qu'un admin négoce tombe sur un refus explicite s'il vise une URL de mobilité.
+import {
+  ALL_ADMIN_ROLES, ECOM_ROLES, MOB_ROLES, GOV_ROLES,
+} from './lib/adminUniverses';
 
 // Découpage du bundle par route (code-splitting) : chaque page n'est chargée par le
 // navigateur qu'au moment où elle est visitée, au lieu d'un seul gros bundle initial.
@@ -30,7 +36,9 @@ const MyEnrollmentDetailPage = lazy(() => import('./pages/dashboard/MyEnrollment
 const MyEnrollmentsListPage = lazy(() => import('./pages/dashboard/MyEnrollmentsListPage').then(m => ({ default: m.MyEnrollmentsListPage })));
 const MyOrdersPage = lazy(() => import('./pages/dashboard/MyOrdersPage').then(m => ({ default: m.MyOrdersPage })));
 const AdminEnrollmentDetailPage = lazy(() => import('./pages/admin/AdminEnrollmentDetailPage').then(m => ({ default: m.AdminEnrollmentDetailPage })));
-const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })));
+const AdminSalesDashboardPage = lazy(() => import('./pages/admin/AdminSalesDashboardPage').then(m => ({ default: m.AdminSalesDashboardPage })));
+const AdminMobilityDashboardPage = lazy(() => import('./pages/admin/AdminMobilityDashboardPage').then(m => ({ default: m.AdminMobilityDashboardPage })));
+const AdminHomeRedirect = lazy(() => import('./pages/admin/AdminHomeRedirect').then(m => ({ default: m.AdminHomeRedirect })));
 const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage').then(m => ({ default: m.AdminUsersPage })));
 const AdminEnrollmentsListPage = lazy(() => import('./pages/admin/AdminEnrollmentsListPage').then(m => ({ default: m.AdminEnrollmentsListPage })));
 const AdminCatalogPage = lazy(() => import('./pages/admin/AdminCatalogPage').then(m => ({ default: m.AdminCatalogPage })));
@@ -87,22 +95,36 @@ export function App() {
     <BrowserRouter>
       <Suspense fallback={<PageFallback />}>
         <Routes>
-          {/* Espace Admin : layout dédié (sidebar), pas la navbar boutique */}
-          <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']} />}>
+            <Route element={<ProtectedRoute allowedRoles={ALL_ADMIN_ROLES} />}>
             <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboardPage />} />
-              <Route path="users" element={<AdminUsersPage />} />
-              <Route path="catalog" element={<AdminCatalogPage />} />
-              <Route path="quotes" element={<QuotesAdminPage />} />
-              <Route path="enrollments" element={<AdminEnrollmentsListPage />} />
-              <Route path="enrollments/:id" element={<AdminEnrollmentDetailPage />} />
-              <Route path="partnership-requests" element={<AdminPartnershipRequestsPage />} />
-              <Route path="trainings" element={<AdminTrainingsPage />} />
-              <Route path="finance" element={<AdminFinancePage />} />
-              <Route path="orders" element={<AdminOrdersPage />} />
-              <Route path="promo-codes" element={<AdminPromoCodesPage />} />
-              <Route path="emails" element={<AdminEmailsPage />} />
-              <Route path="payouts" element={<AdminPayoutsPage />} />
+              {/* L'accueil /admin renvoie chacun vers le tableau de bord de son métier. */}
+              <Route index element={<AdminHomeRedirect />} />
+
+              {/* --- Univers Négoce --- */}
+              <Route element={<ProtectedRoute allowedRoles={ECOM_ROLES} />}>
+                <Route path="ventes" element={<AdminSalesDashboardPage />} />
+                <Route path="finance" element={<AdminFinancePage />} />
+                <Route path="orders" element={<AdminOrdersPage />} />
+                <Route path="catalog" element={<AdminCatalogPage />} />
+                <Route path="promo-codes" element={<AdminPromoCodesPage />} />
+                <Route path="quotes" element={<QuotesAdminPage />} />
+              </Route>
+
+              {/* --- Univers Mobilité --- */}
+              <Route element={<ProtectedRoute allowedRoles={MOB_ROLES} />}>
+                <Route path="mobilite" element={<AdminMobilityDashboardPage />} />
+                <Route path="enrollments" element={<AdminEnrollmentsListPage />} />
+                <Route path="enrollments/:id" element={<AdminEnrollmentDetailPage />} />
+                <Route path="trainings" element={<AdminTrainingsPage />} />
+                <Route path="partnership-requests" element={<AdminPartnershipRequestsPage />} />
+                <Route path="payouts" element={<AdminPayoutsPage />} />
+                <Route path="emails" element={<AdminEmailsPage />} />
+              </Route>
+
+              {/* --- Gouvernance --- */}
+              <Route element={<ProtectedRoute allowedRoles={GOV_ROLES} />}>
+                <Route path="users" element={<AdminUsersPage />} />
+              </Route>
             </Route>
           </Route>
 
