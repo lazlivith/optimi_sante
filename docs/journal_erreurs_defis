@@ -1401,3 +1401,107 @@ prix de remplissage. **0 commande orpheline.** Confirmé via l'API : le catalogu
 - **5 groupes à écart inexpliqué**, à examiner un par un.
 - **141 produits à 100,00 €** — sujet bien plus large que les doublons : 9 % du catalogue est
   en vente à un prix de remplissage.
+
+## 65. Prix de remplissage (V35) et fusion des doublons au TTC (V36) — déployés & vérifiés
+
+Trois sujets laissés en suspens à l'entrée 64, traités dans l'ordre demandé : les fiches sans
+prix, puis l'arbitrage HT/TTC, puis les écarts inexpliqués.
+
+### V35 — 138 fiches en vente à un prix qui n'en est pas un
+
+138 produits vivants portaient exactement 100,00 €, quand le prix suivant le plus fréquent
+n'apparaît que 8 fois dans tout le catalogue. Les 1 513 fiches ayant été créées **à la même
+minute**, c'est la valeur par défaut d'un import.
+
+Ce ne sont pas des articles bon marché. Deux familles, toutes deux sans prix unitaire
+connaissable :
+
+1. **65 références `OPT-WC-…`** : cryostats, PCR en temps réel, microtomes rotatifs, automates
+   d'hématologie, scanners de lames, microscopes à fluorescence, centrifugeuses réfrigérées.
+   **Toute la famille est à 100,00 €** — minimum égal au maximum.
+2. **73 gammes multi-références** : le champ `sku` porte une *liste* de références (« Drap
+   housse standard » en couvre quinze). Une gamme n'a pas de prix unitaire. **97 % des fiches
+   à 100,00 € sont multi-références, contre 30 % pour le reste du catalogue.**
+
+**Ce que cela a déjà coûté** : un « Stérilisateur à air chaud DOF-HAS70A » a été vendu — 2
+unités à 100,00 € puis 18 à 95,00 €, soit **20 appareils pour 1 910 € au total**. La commande
+n'est pas retouchée : une pièce comptable ne se réécrit pas. Elle mesure le risque.
+
+**La correction ne devine aucun prix.** Personne ne déduit le tarif d'un cryostat d'une base de
+données. Les fiches basculent sur `is_quote_only` — un mécanisme **déjà présent et déjà
+appliqué** : `OrderService` refuse la commande directe d'un article sur devis, la boutique
+affiche « Tarif sur demande » à la place du prix et « Demander un devis » à la place de
+« Ajouter au panier ». **Aucun changement de code n'a été nécessaire** : le comportement
+correct existait, il n'était simplement pas appliqué à ces fiches.
+
+`base_price` reste à 100,00 € : la colonne est NOT NULL et l'écraser par 0 ferait passer un
+défaut pour une donnée. Le prix n'est plus ni montré ni facturable, voilà tout.
+
+**Toutes les fiches à 100,00 €, sans exception.** Un article pourrait réellement valoir 100 €
+et basculer à tort. Le risque est asymétrique : une bascule injustifiée se corrige d'un clic et
+oriente entre-temps le client vers un devis ; un cryostat laissé à 100 € se vend à 100 €.
+
+### V36 — la catégorie désigne la passe d'import de référence
+
+Arbitrage métier reçu : **le TTC fait foi**. Restait à savoir quelle fiche survit.
+
+Les doublons viennent de deux passes d'import : l'une range les articles dans leur catégorie
+métier, l'autre les verse dans un fourre-tout. **Mesure faite sur les 22 groupes à TVA : dans
+20 d'entre eux, le prix TTC est porté par la fiche rangée dans une catégorie métier.** C'est
+donc la spécificité de la catégorie — et non la longueur de la description, que j'avais
+d'abord retenue — qui identifie la passe de référence. Aucun libellé n'est écrit en dur : c'est
+la volumétrie de la catégorie qui départage.
+
+Classement et prix restent deux décisions distinctes, comme en V33 : dans les 2 groupes où la
+passe de référence portait le HT, le prix TTC est **reporté** sur la fiche conservée.
+
+**Ce qui est récupéré plutôt que perdu.** La fiche conservée reprend la description la plus
+fournie du groupe. Sans cela, « Accessoires pour contec » (catégorie métier, description vide)
+perdait les 305 caractères de son doublon, et « Adaptateur secteur Veroval » gardait 5
+caractères au lieu de 86. Ce n'est pas un arbitrage : deux fiches du même groupe décrivent le
+même article. Le prix, lui, n'est jamais mélangé.
+
+### Les 5 écarts inexpliqués : traités, mais signalés
+
+Leurs rapports de prix — 1,073 / 1,121 / 1,164 / 1,182 / 1,304 — **ne sont pas un taux de
+TVA**. Les cinq portent pourtant la même signature que les 22 autres : la fiche au prix le plus
+élevé est dans une catégorie métier, l'autre dans le fourre-tout. La même règle leur est donc
+appliquée, sans prétendre à une certitude qu'on n'a pas, et **les cinq tarifs sont listés
+nommément dans la migration** pour être confrontés au tarif fournisseur :
+
+| Article | Conservé | Fiche écartée |
+|---|---|---|
+| TENSIOMÈTRE BRAS OMRON M7 IT V2 | 117,25 € | 89,90 € |
+| SAC D'INTERVENTION À BANDOULIÈRE | 181,88 € | 156,28 € |
+| SAC À DOS D'INTERVENTION LÉGER | 168,24 € | 156,78 € |
+| CAPTEURS POUR NELLCOR | 117,22 € | 99,14 € |
+| ARMOIRE 1 PORTE MÉTAL | 78,80 € | 70,27 € |
+
+### Une erreur de SQL rattrapée par le garde-fou lui-même
+
+Le contrôle final devait vérifier qu'aucun groupe fusionnable ne subsiste. Écrit d'un jet, il
+plaçait une sous-requête corrélée sur `p.id` dans un `HAVING`, alors que `p.id` n'est pas dans
+le `GROUP BY` — et comptait les lignes du premier groupe au lieu du nombre de groupes. Deux
+fautes dans un contrôle censé garantir le reste. Le comptage des commandes est désormais
+calculé ligne par ligne **avant** le regroupement, et l'ensemble est enveloppé pour compter les
+groupes.
+
+### Vérification
+
+Rejouées sur une copie `pg_dump` avant la base réelle. **1 514 → 1 487 produits vivants**
+(27 doublons masqués : 22 TVA + 5 écarts ; les 2 groupes portant une commande restent exclus),
+**139 fiches sur devis**, **0 fiche encore achetable au prix de remplissage**, **0 commande
+orpheline**. Contrôles ponctuels : `Fauteuil releveur jules - 1 moteur` conservé à 987,10 €
+(TTC) en catégorie « Repos » ; `Accessoires pour contec` à 19,60 € avec sa description
+récupérée (0 → 305 caractères) ; `Adaptateur secteur Veroval` à 14,33 € (5 → 86 caractères).
+
+### Reste ouvert
+
+- **Les 2 groupes portant une commande** (`Fauteuil Releveur BORAS`, `Cardiomate pc-ecg`)
+  gardent leurs deux fiches : masquer une fiche commandée priverait l'historique de l'article
+  réellement vendu. Leur fusion demande de décider quoi faire de la commande — décision
+  humaine.
+- **Le catalogue est-il TTC partout ?** L'arbitrage porte sur les doublons. Pour les 1 400
+  produits en exemplaire unique, rien ne dit si leur prix est HT ou TTC ; seule une
+  confrontation au tarif fournisseur le dira.
+- **Renseigner les 138 tarifs** manquants, pour sortir ces fiches du régime « sur devis ».
