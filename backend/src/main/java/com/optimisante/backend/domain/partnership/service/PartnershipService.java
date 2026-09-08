@@ -22,19 +22,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.optimisante.backend.common.security.TemporaryPasswordGenerator;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PartnershipService {
 
-    private static final String PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final PartnershipRequestRepository partnershipRequestRepository;
     private final UserRepository userRepository;
@@ -101,7 +99,7 @@ public class PartnershipService {
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new RuntimeException("Tenant not found"));
 
-        String temporaryPassword = generateTemporaryPassword();
+        String temporaryPassword = TemporaryPasswordGenerator.generate();
 
         User user = User.builder()
                 .tenant(tenant)
@@ -129,8 +127,9 @@ public class PartnershipService {
         request.setReviewedAt(OffsetDateTime.now());
         request = partnershipRequestRepository.save(request);
 
+        // `user` transmis pour tracer le destinataire (renvoi possible depuis l'admin).
         emailService.sendCredentialsEmail(
-                request.getContactEmail(), request.getContactPersonName(), temporaryPassword, "Partenaire CHU");
+                request.getContactEmail(), request.getContactPersonName(), temporaryPassword, "Partenaire CHU", user);
 
         log.info("Demande de partenariat {} approuvée, compte {} créé", requestId, user.getEmail());
         return toDto(request);
@@ -149,14 +148,6 @@ public class PartnershipService {
         request.setRejectionReason(reason);
         request.setReviewedAt(OffsetDateTime.now());
         return toDto(partnershipRequestRepository.save(request));
-    }
-
-    private String generateTemporaryPassword() {
-        StringBuilder sb = new StringBuilder(12);
-        for (int i = 0; i < 12; i++) {
-            sb.append(PASSWORD_CHARS.charAt(RANDOM.nextInt(PASSWORD_CHARS.length())));
-        }
-        return sb.toString();
     }
 
     private UUID requireTenantId() {

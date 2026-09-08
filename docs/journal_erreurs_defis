@@ -629,3 +629,286 @@ Suite à l'entrée #40, implémentation des points restants (hors évaluation de
 - PDF téléchargé et validé directement : document PDF 1.5 valide, 2 pages, 3304 octets.
 
 **Reporté à un prochain tour** (nécessite un vrai travail de conception, pas juste du câblage) : évaluation de fin de stage / certificat d'assiduité — aucun template ni statut existant à réutiliser cette fois, contrairement à l'attestation d'accueil.
+
+## 43. Dérive de schéma majeure — `CREATE TABLE IF NOT EXISTS` silencieux + `ddl-auto: update` (déployé & vérifié)
+
+Découvert en instruisant un point que je pensais cosmétique : la doc affirmait `ddl-auto: validate` alors que le profil `dev` réel était sur `update`. En creusant, le réglage n'était pas le problème — il **masquait** le problème.
+
+**Méthode** (le point clé de cette entrée) : plutôt que de relire les migrations, j'ai créé une base vierge jetable, rejoué les 21 migrations dessus, et diffé le schéma obtenu contre la base de dev réelle. Une relecture de code n'aurait rien montré : chaque migration est individuellement correcte.
+
+**Résultat : 198 colonnes en dev, 189 sur un déploiement neuf.** 9 colonnes n'existaient que parce qu'Hibernate les avait créées lui-même :
+`enrollment_documents.cloudinary_public_id`/`file_url`, `enrollments.diploma_url`/`medical_board_registration_url`/`passport_url`/`submitted_at`, `training_sessions.location`/`price`/`created_at`.
+
+**Cause racine** : `V7` crée `training_sessions` et `enrollments` avec `CREATE TABLE IF NOT EXISTS`. Ces deux tables existaient déjà (créées par `V1`, design CDC d'origine) → **les deux `CREATE TABLE` de V7 n'ont jamais rien fait**, sans la moindre erreur. Preuve irréfutable : la contrainte `unique_doctor_session` déclarée dans V7 n'existe dans aucune base ; à sa place, en dev, une contrainte au nom haché `uk8i57xxbt1k6r3mbbkoes69t5d` — signature d'Hibernate.
+
+`ddl-auto: update` recréait le manque à chaque démarrage en dev. Personne n'a rien vu de tout le projet, y compris moi lors des audits précédents (V12/V13 avaient traité des symptômes du même phénomène — colonnes orphelines `NOT NULL` — sans jamais remonter à cette cause).
+
+**Impact réel évité** : en prod (`validate`), sur une base neuve, Flyway aurait produit un schéma amputé → Hibernate aurait refusé de démarrer (colonnes manquantes pour des champs mappés). **Crash au boot, pas à l'usage.** Et même en forçant : sans `cloudinary_public_id`/`file_url`, le coffre-fort documentaire n'a aucun moyen de référencer un fichier. La plateforme ne tenait debout que grâce à la réparation silencieuse d'Hibernate.
+
+**Correctif** :
+- `V22__realign_schema_with_hibernate_drift.sql`, strictement idempotente. Détail important : les contraintes ne sont recréées que si aucune équivalente n'existe, testé sur la **définition** (`pg_get_constraintdef`) et non sur le nom — sinon on aurait dupliqué celles qu'Hibernate a posées sous des noms hachés, qui diffèrent d'une machine à l'autre. Colonnes `NOT NULL` ajoutées en *nullable → backfill → SET NOT NULL*.
+- Profil `dev` : `ddl-auto: update` → `validate`, aligné sur `prod`, avec commentaire explicatif dans `application.yml` pour éviter toute régression future.
+
+**Vérifié** : 22 migrations OK sur base vierge ; diff dev vs neuf **nul** (198=198 colonnes, 41=41 contraintes) ; backend redémarré → `Successfully applied 1 migration ... now at version v22` puis `Started BackendApplication` en `validate` ; non-régression fonctionnelle (catalogue 200 / 1519 produits, formations 200, login B2B OK, route authentifiée 200) ; données intactes (3 inscriptions, 7 documents, 3 sessions).
+
+**Leçon générale** : `CREATE TABLE IF NOT EXISTS` dans une migration Flyway est un piège — il transforme une erreur bruyante (« la table existe déjà, votre migration est incohérente ») en no-op silencieux. Couplé à `ddl-auto: update`, le trou se referme tout seul en dev et n'apparaît qu'en production. **À proscrire dans toute nouvelle migration.**
+
+## 44. Refonte de l'inscription B2C / B2B à portée internationale (déployé & vérifié)
+
+Consigne : structurer les deux parcours d'inscription (particulier / professionnel), avec une portée internationale côté B2B, sans rien casser de l'existant.
+
+**Trois écarts entre la spec fournie et la réalité du code, relevés avant d'écrire une ligne** (chacun aurait produit un bug silencieux) :
+1. La spec proposait un `DO $$` renommant `ice_siret` → `tax_id`. **La colonne s'appelle en réalité `siret_finess`** (V1) : le bloc n'aurait rien fait, sans erreur — exactement la classe de no-op silencieux traitée en entrée #43. Renommage effectué sur le vrai nom.
+2. La spec retirait l'adresse de facturation du formulaire, mais `billing_address` est **`NOT NULL`** : toute inscription B2B aurait échoué en base. Colonne passée nullable (elle sera collectée au devis/commande, là où elle a du sens). Valeurs existantes conservées.
+3. La spec plaçait `phone` dans `company_profiles`, alors que **`users.phone` existe déjà** (V14) et est affiché/modifiable dans « Mon Profil » pour tous les rôles non-médecin. Créer un second champ aurait produit deux sources de vérité divergeant dès la première édition de profil. Le téléphone professionnel est donc porté par `users.phone`.
+
+**Livré** :
+- `V23` : `users.first_name`/`last_name` (le B2C ne collectait aucune identité jusque-là) ; `company_profiles` → renommage `siret_finess` → `tax_id`, ajout de `country`, `facility_type`, `contact_name`, `billing_address` rendue nullable, et CHECK sur `facility_type` posé **en même temps** que l'enum Java `FacilityType` (leçon de l'entrée #40 : enum et contrainte doivent naître ensemble).
+- Backend : `FacilityType`, DTOs d'inscription B2C/B2B réécrits avec messages de validation français, `tenantCode` rendu **optionnel** (`resolveTenant` retombe sur FR_MAIN) tout en restant rétrocompatible avec les clients qui l'envoient, `getProfile`/`updateProfile` étendus aux nouveaux champs.
+- Frontend : `/register` refondue (sélecteur de parcours, sections `fieldset` distinctes Établissement / Contact / Identifiants, listes déroulantes type d'établissement et pays, aides de saisie), `lib/countries.ts` (80 pays, couverture Afrique prioritaire), « Mon Profil » aligné sur les mêmes champs.
+
+### 45. Piège Jackson 2 vs Jackson 3 sur Spring Boot 4
+
+En nettoyant le message d'erreur d'un enum invalide (qui exposait au client le nom de classe Java interne `com.optimisante...FacilityType`), le handler ajouté ne se déclenchait jamais.
+
+**Cause** : **Spring Boot 4 embarque Jackson 3 (`tools.jackson`)**, mais Jackson 2 (`com.fasterxml`) reste présent en transitif via `jjwt-jackson`. Importer `com.fasterxml.jackson.databind.exc.InvalidFormatException` **compile sans le moindre avertissement** et le `instanceof` est simplement toujours faux à l'exécution. Corrigé en `tools.jackson.databind.exc.InvalidFormatException`.
+
+À retenir pour tout futur code touchant Jackson dans ce projet : **c'est `tools.jackson` qu'il faut importer**, jamais `com.fasterxml`.
+
+**Vérifié en conditions réelles** : inscriptions B2C et B2B (Maroc/clinique) → 200, connexion + profil complet ; **non-régression sur le compte B2B pré-existant** (`SIRET987654321` retrouvé intact dans `taxId`, adresse de facturation conservée, `/orders/my-orders` 200) ; 5 cas de validation (enum invalide, mot de passe court, champ manquant, email déjà pris, prénom manquant) → 400 avec messages français ; édition de profil B2B sur les nouveaux champs → OK ; contrainte SQL testée directement (INSERT d'un `facility_type` invalide rejeté) ; `mvn clean compile`, `tsc -b` et `vite build` propres ; comptes de test supprimés après recette.
+
+## 46. Espace « Emails » de l'administration + journalisation des envois (déployé & vérifié)
+
+Consigne : passer Mailtrap en envoi réel vers de vraies boîtes mail, et créer un espace d'administration pour piloter les emails. Périmètre d'emails confirmé par l'utilisateur : **uniquement les deux existants** (identifiants envoyés au partenaire CHU dont la convention est validée, et au médecin inscrit à une formation) — aucun nouvel email métier.
+
+**Constat de départ** : un seul type d'email, HTML en dur dans le code Java, **aucune trace en base**, échecs simplement logués en console. Un partenaire ou un médecin validé pouvait ne jamais recevoir ses identifiants sans que personne ne le sache.
+
+**Décision de conception — sécurité** : `email_logs` ne stocke **aucun corps de message**, car l'email d'identifiants transporte un mot de passe provisoire en clair. Conséquence assumée : « Renvoyer » ne rejoue pas l'ancien email (le mot de passe d'origine n'existe nulle part en clair, seul son hash bcrypt est en base) mais **régénère un nouveau mot de passe provisoire** et met à jour le compte. L'ancien cesse immédiatement de fonctionner — comportement explicitement confirmé à l'administrateur par une boîte de dialogue.
+
+**Livré** : migration `V24` (`email_logs`), enums `EmailType`/`EmailStatus` posés en même temps que leurs CHECK SQL, traçage de tout envoi (succès ET échec) avec le compte destinataire, endpoints `GET /admin/emails`, `GET /admin/emails/stats`, `POST /admin/emails/{id}/resend`, `POST /admin/emails/test`, page `AdminEmailsPage` (statistiques, envoi de test, journal filtrable par statut/type/destinataire, pagination, renvoi), entrée de sidebar. Statistiques Mailtrap via l'API derrière `MAILTRAP_API_TOKEN`/`MAILTRAP_ACCOUNT_ID` : **absentes = écran pleinement fonctionnel** avec les seules stats locales et un message explicatif, jamais une erreur.
+
+**Au passage** : `generateTemporaryPassword()` était dupliqué à l'identique dans `PartnershipService` et `DoctorApplicationService`. Plutôt que d'en écrire une 3ᵉ copie pour le renvoi, extraction dans `TemporaryPasswordGenerator`.
+
+### 47. Le journal des échecs était annulé par le rollback de l'échec qu'il documentait
+
+Bug trouvé **en testant réellement le chemin d'échec** (hôte SMTP volontairement injoignable via un override docker-compose temporaire), et non en relisant le code.
+
+**Symptôme** : envoi en échec correctement rejeté (409 avec le message SMTP exact), mais `0 échec` dans le journal.
+
+**Cause racine** : la trace `FAILED` était bien insérée, puis **annulée par le rollback de la transaction appelante**, déclenché par l'exception que cette trace était précisément censée documenter. La fonctionnalité aurait été silencieusement inutile en production : les échecs — sa seule raison d'être — n'auraient jamais été visibles.
+
+**Correctif** : extraction dans un bean dédié `EmailLogWriter` annoté `@Transactional(propagation = REQUIRES_NEW)`, pour que la trace soit commitée dans une transaction indépendante. Le bean séparé est obligatoire : `@Transactional` passe par un proxy Spring, un appel interne à une méthode privée de la même classe n'aurait eu aucun effet. Le correctif protège aussi les envois réussis dont le flux métier appelant échouerait plus loin.
+
+### 48. `function lower(bytea) does not exist` — paramètre nullable non typé sur PostgreSQL
+
+Le journal remontait une erreur JDBC dès qu'on l'ouvrait sans filtre. En JPQL, `(:search IS NULL OR LOWER(l.recipient) LIKE CONCAT('%', :search, '%'))` : quand `:search` vaut NULL, **PostgreSQL ne peut pas déduire son type et le suppose `bytea`**, ce qui fait échouer `LOWER()`. Corrigé par `CAST(:search AS string)`. À retenir pour tout futur filtre optionnel de type texte.
+
+**Vérifié en conditions réelles** : envoi de test → 200, tracé `SENT` ; les 4 combinaisons de filtres → 200 ; renvoi d'identifiants → 2ᵉ trace créée, hash bcrypt effectivement rotationné en base ; échec SMTP forcé → 409 avec message exact **et** trace `FAILED` visible avec son erreur ; statistiques locales cohérentes ; `mvn clean compile`, `tsc -b`, `vite build` propres ; non-régression catalogue/formations 200. Données de recette nettoyées, override docker-compose temporaire supprimé, et **mot de passe du compte de test `chu@optimi.com` restauré** après la rotation provoquée par le test de renvoi.
+
+**Faux positif écarté** : un message accentué semblait doublement encodé (`configurÃ©`) — c'était l'affichage `python3 -m json.tool` lisant le flux en cp1252 sous Git Bash/Windows, pas les données. Vérifié octet par octet dans le source (`c3a9`) et en sortie HTTP brute : encodage correct de bout en bout.
+
+## 49. Mailtrap Sending — token configuré, livraison réelle bloquée par le DNS (et deux erreurs de ma part corrigées)
+
+L'utilisateur a créé le domaine `optimisante.fr` dans Mailtrap et fourni le token SMTP Sending.
+
+**Vérification DNS faite côté serveur** (`nslookup` sur les 5 enregistrements) : aucun n'est posé. Le domaine existe bien et lui appartient (NS `ns1/ns2.dns-parking.com` → Hostinger), mais la zone est vide côté Mailtrap. Confirmé ensuite par un envoi réel : `550 5.7.1 Domain DNS records have not been verified`.
+
+**Le domaine de démo n'est pas une solution de repli ici** : `550 5.7.1 Sending from domain demomailtrap.co is not allowed`. L'API confirme que le compte ne déclare que `optimisante.fr` comme domaine d'envoi. La livraison réelle est donc strictement bloquée jusqu'à la pose des enregistrements DNS — aucun contournement possible côté code.
+
+### Deux erreurs de ma part, trouvées en testant pour de vrai
+
+1. **J'avais inventé l'endpoint de statistiques.** `GET /api/accounts/{id}/sending/stats`, écrit à l'entrée #46, renvoie **404** — il n'existe pas. Idem pour `/messages/stats` et `/sending_domains/{id}/stats`. Le seul endpoint réellement disponible pour ce jeton est `/api/accounts/{id}/sending_domains`. Il n'expose aucune métrique de délivrabilité, mais il donne **l'état de vérification du domaine, enregistrement DNS par enregistrement** — information nettement plus actionnable pendant la mise en place. `getStats` et l'écran d'administration ont été recâblés dessus : les tuiles « Délivrés / Bounces » (qui n'auraient jamais été alimentées) sont remplacées par « Domaine d'envoi » et « Enregistrements DNS (n/5) », plus un panneau listant chaque enregistrement manquant avec sa valeur exacte.
+
+2. **J'avais transmis une valeur DNS fausse.** En lisant la capture d'écran de l'utilisateur, j'avais donné le CNAME de tracking sous le nom `mt` : le vrai nom est **`mt-link`**. La capture était traduite automatiquement par Chrome, ce qui avait transformé `mt-link` en « lien mt ». L'API donne les valeurs brutes et fait foi — c'est désormais elle qui alimente l'écran d'administration, donc l'utilisateur lit toujours des valeurs exactes et non traduites.
+
+**Trois pièges de traduction automatique signalés à l'utilisateur** (Chrome traduisait aussi les valeurs à copier dans le DNS, ce qui aurait produit des enregistrements invalides) : type `SMS` au lieu de `TXT`, `p=aucun` au lieu de `p=none`, et le `mt-link` ci-dessus. Signalé également : ne PAS ajouter l'enregistrement MX proposé, qui redirigerait **tout le courrier entrant** de `optimisante.fr` vers Mailtrap (Mailtrap le signale lui-même) — inutile pour envoyer.
+
+### Décision de configuration
+
+`docker/.env` est **remis sur le Sandbox** en attendant la vérification : en mode live avec un domaine non vérifié, **tous** les emails de la plateforme échoueraient. La bascule est réduite à 4 lignes à décommenter, documentées dans le fichier. `MAILTRAP_ACCOUNT_ID=2823242` (récupéré via l'API) est renseigné : l'état du domaine s'affiche dans l'admin dès maintenant, sandbox ou pas.
+
+### 50. Piège `.gitignore` — la sauvegarde de `.env` n'était pas ignorée
+
+En basculant la configuration, j'ai créé `docker/.env.backup-avant-live` contenant les vrais secrets. `git check-ignore` a montré que **seul `.env` était couvert**, pas ses variantes : le fichier serait parti au prochain commit. `.gitignore` renforcé avec `.env.*` + `!.env.example` (vérifié : la sauvegarde est ignorée, `.env.example` reste versionné).
+
+**Rappel confirmé une fois de plus** : `docker compose up -d --force-recreate` ne suffit pas après un changement de code ou d'`application.yml` — le conteneur repart sur l'ancien jar. `docker compose build backend` est obligatoire. Symptôme observé ici : `mailtrapConnected: false` alors que les variables d'environnement étaient bien présentes dans le conteneur.
+
+**Vérifié** : `mailtrapConnected: true`, domaine `optimisante.fr` remonté avec ses 5 enregistrements en statut `missing` ; envoi sandbox de nouveau fonctionnel (200) ; échecs live correctement tracés dans le journal avec le message SMTP exact ; `tsc -b` et `vite build` propres ; traces de recette supprimées.
+
+## 51. RÉGRESSION que j'avais introduite : le correctif REQUIRES_NEW cassait la validation de partenariat
+
+Contexte : l'utilisateur a précisé qu'il n'a pas de nom de domaine et travaille en localhost — le Sandbox Mailtrap est donc le bon outil (configuration déjà en place). L'action restante était de **jouer réellement les deux parcours métier** qui envoient un email.
+
+**Bug découvert en jouant le vrai flux** (et invisible autrement) : la validation d'une demande de partenariat échouait en **400** :
+`insert or update on table "email_logs" violates foreign key constraint "email_logs_recipient_user_id_fkey" — Key (recipient_user_id)=(...) is not present in table "users"`.
+
+**Cause racine — effet de bord de mon propre correctif de l'entrée #47.** Pour qu'une trace d'ÉCHEC survive au rollback, `EmailLogWriter` écrit en `REQUIRES_NEW`. Mais une transaction indépendante **ne voit pas les données non commitées de la transaction appelante** : lors d'une validation de partenariat, le compte partenaire vient d'être créé dans la transaction externe et n'existe pas encore pour la transaction interne → la clé étrangère explose → **toute la validation échoue**. Le parcours « demande de partenariat → validation admin → identifiants » était donc entièrement cassé entre les entrées #47 et #51.
+
+**Leçon** : `REQUIRES_NEW` résout les problèmes de rollback mais introduit un problème de **visibilité**. Les deux faces doivent être évaluées ensemble.
+
+**Correctif (`V25`)** : suppression de la clé étrangère `email_logs.recipient_user_id → users`. Le journal ne référence plus `users` que par identifiant simple, résolu à la lecture. C'est le comportement attendu d'une table de journalisation : elle observe le métier sans jamais le contraindre, et reste lisible même si le compte est supprimé ensuite (`canResend` passe alors simplement à false). Côté Java : `EmailLog.recipientUser` (@ManyToOne) → `recipientUserId` (UUID), surcharge `sendCredentialsEmail(..., UUID)`, résolution du compte dans `AdminEmailService`.
+
+### 52. Rejeu local d'un webhook Stripe signé — piège de l'`api_version`
+
+Pour tester le parcours médecin sans paiement réel, j'ai rejoué un `checkout.session.completed` signé à la main (HMAC-SHA256 avec `STRIPE_WEBHOOK_SECRET`). Premier essai : **200 « Success » mais aucun effet**, avec en log `Stripe Event missing Data Object`.
+
+**Cause** : le SDK refuse de désérialiser un événement dont l'`api_version` ne correspond pas à la sienne, et le contrôleur retourne alors 200 sans rien faire. La version attendue par `stripe-java` 29.2.0 est **`2025-05-28.basil`** (extraite de `com/stripe/Stripe.class`). Avec la bonne valeur, le rejeu fonctionne parfaitement.
+
+À noter : ce comportement « 200 silencieux » n'est pas un bug en production (Stripe envoie des événements cohérents avec la version du compte, vérifié en conditions réelles à l'entrée #8), mais c'est un piège à connaître pour tout futur test local de webhook.
+
+**Vérifié de bout en bout, en conditions réelles :**
+- **Parcours partenaire** : dépôt de convention signée (formulaire public, multipart) → visible côté admin → validation → compte `CENTRE_FORMATION` + `PartnerProfile` créés, actifs → email `SENT` tracé avec le bon rôle et renvoyable.
+- **Parcours médecin** : candidature publique → session Stripe réelle créée (`cs_test_...`) → webhook signé rejoué → candidature `PAID`, compte `MEDECIN` + `DoctorProfile` + **1 inscription à la session** créés → email `SENT` tracé.
+- **Renvoi d'identifiants** après V25 : 200, 3ᵉ trace créée, résolution du compte OK.
+- **Non-régression** : catalogue 200, formations 200, login d'un compte CHU préexistant 200.
+
+Comptes de test laissés en base volontairement (`partenaire.test@optimisante.fr`, `medecin.test@optimisante.fr`) pour que l'utilisateur puisse parcourir l'écran « Emails » avec des données réelles ; les deux emails sont consultables dans sa boîte Sandbox Mailtrap.
+
+## 53. Cycle de candidature tripartite — Lot 1 : statuts, automate et inversion des décisions (déployé & vérifié)
+
+Mise en œuvre du modèle d'agence intermédiaire validé en spécification. Le CHU ne décide plus en premier : OptimiSanté pré-qualifie le dossier, puis le transmet.
+
+**Livré** : migration `V26` (contrainte élargie, reprise des 4 dossiers existants, colonnes de traçabilité `optimi_reviewed_at/by`, `partner_decided_at`, `action_required_note`, index sur `status`), enum `EnrollmentStatus` étendu (6 nouveaux états commerciaux + 3 hérités tolérés jusqu'à V28), automate `EnrollmentTransitions`, 6 méthodes métier explicites dans `EnrollmentService`, endpoints dédiés dans les 3 espaces, et synchronisation frontend (`ENROLLMENT_STEPS`, `StatusBadge`, filtres des tableaux de bord).
+
+### Trois trous fermés au passage
+
+1. **`updateEnrollmentStatus` écrivait n'importe quel statut sans contrôle.** Un admin pouvait faire passer un dossier de la revue initiale à « prêt à démarrer », sans décision du CHU ni paiement. Point important : il ne suffisait pas d'ajouter des méthodes métier gardées — l'écran d'administration continuait d'appeler l'ancien endpoint générique via son bouton « Passer à l'étape suivante ». La garde a donc été posée **aussi dans la méthode générique**, sinon toute l'interface aurait contourné l'automate.
+
+2. **`rejection_reason` existait en base depuis V1 mais n'était pas mappée dans l'entité** : aucun motif de rejet n'a jamais été conservé depuis le début du projet. Colonne mappée, motif rendu obligatoire pour tout refus ou annulation.
+
+3. **Isolation de l'espace partenaire appliquée côté serveur, pas à l'affichage.** `getPartnerEnrollments` retournait tous les dossiers des formations du partenaire, quel que soit leur statut. Filtrer uniquement dans le composant React aurait laissé les dossiers en pré-qualification exposés par l'API à tout appelant contournant l'interface. Le filtre `HIDDEN_FROM_PARTNER` est dans le service.
+
+### Déplacement du déclencheur documentaire
+
+La génération automatique de la convention et de l'attestation écoutait `APPROVED_ADMINISTRATIVE`, statut qui ne survient plus. Elle écoute désormais `CONFIRMED`, jonction entre cycle commercial et cycle de mobilité, en conservant ses deux `try/catch` indépendants et non bloquants.
+
+**Vérifié en conditions réelles** : V26 appliquée, démarrage en `ddl-auto: validate` ; parcours nominal complet (transmission admin → acceptation CHU → bascule automatique en `PENDING_TUITION_FEE`) ; 5 gardes rejetées avec message explicite listant les transitions possibles, y compris via l'ancien endpoint `/status` ; non-régression du cycle de mobilité (`VISA_GRANTED → READY_TO_START` → 200) ; **isolation prouvée sur un dossier réellement créé** : visible de l'admin, invisible du CHU en `UNDER_OPTIMI_REVIEW`, visible après transmission. `mvn clean compile`, `tsc -b` et `vite build` propres.
+
+**Remarque de conception à trancher plus tard** : un dossier en `SUBMITTED_TO_PARTNER` ne peut pas revenir en `ACTION_REQUIRED`. Si le CHU repère une pièce manquante, sa seule sortie est le refus. Un retour en correction depuis le partenaire mériterait d'être ouvert — non fait, car absent de la matrice validée.
+
+## 54. Ouverture du retour CHU vers ACTION_REQUIRED
+
+Point remonté à l'issue du Lot 1 puis arbitré : un CHU qui repérait une pièce illisible n'avait que le refus définitif comme sortie, obligeant le médecin à reconstituer une candidature entière et l'équipe à intervenir en base.
+
+Transition `SUBMITTED_TO_PARTNER → ACTION_REQUIRED` ajoutée à l'automate, avec `requestPartnerCorrection(...)` (note explicative obligatoire, préfixée « Demande du CHU : » pour que le médecin et l'admin sachent qui réclame la pièce), endpoint `POST /partner/enrollments/{id}/request-correction` et bouton « Pièce manquante » côté partenaire.
+
+Règle métier respectée : le dossier repasse sous la responsabilité d'OptimiSanté, puis revient en `UNDER_OPTIMI_REVIEW` avant re-transmission. **Le partenaire ne s'adresse jamais directement au médecin** — c'est ce qui distingue le modèle d'agence d'une simple mise en relation.
+
+## 55. Lot 2 — Registre financier et invariant comptable (déployé & vérifié)
+
+**Livré** : migration `V27` (`enrollment_payments`, `partner_payouts`, `commission_rate` sur `partner_profiles` avec défaut 15 %), entités JPA et repositories, `FinancialSplitCalculator` (fonction pure) et `EnrollmentPaymentService`.
+
+### Le point qui compte : pourquoi la part partenaire est une soustraction
+
+Arrondir séparément commission et part partenaire fait dériver leur somme du montant encaissé. Sur **3 333,33 € à 15 %** : la commission arrondit à 500,00 et un arrondi indépendant de la part partenaire donne 2 833,34 — soit 3 333,34 au total. La contrainte `enrollment_payments_split_coherent` rejette alors l'insertion.
+
+En dérivant la part partenaire par `brut − commission`, l'invariant est vrai **par construction**. Vérifié sur 6 montants piégeux (0,01 / 999,99 / 1 234,56 / 3 200 / 3 333,33 / 7 777,77) : somme exacte dans tous les cas.
+
+La contrainte SQL a été testée **en l'attaquant directement** : un INSERT volontairement faux d'un centime est bien rejeté par PostgreSQL. Le filet de sécurité existe donc réellement, il n'est pas seulement déclaré.
+
+### Décisions de conception
+
+- **Le taux est copié sur la ligne de paiement**, jamais relu depuis le partenaire : renégocier une commission ne doit pas réécrire l'historique comptable déjà constaté.
+- **Les frais de dossier restent encaissés par `doctor_applications`** (porte d'entrée éprouvée, inchangée) et sont simplement *reflétés* dans le registre, pour que l'administration ait un seul état financier au lieu de deux tables à réconcilier. La migration a rattrapé les encaissements historiques ; le branchement applicatif est idempotent et non bloquant — un échec d'écriture comptable ne doit jamais annuler un paiement déjà encaissé.
+- **Deux index uniques partiels** (`uq_enrollment_paid_tuition`, `uq_enrollment_paid_dossier`) : filet en base contre un webhook rejoué, en complément de l'idempotence applicative.
+- `PaymentStatus` du paquet `finance` est volontairement distinct de celui du domaine `orders` (e-commerce), dont les valeurs diffèrent : les deux ne doivent jamais être fusionnés.
+
+**Vérifié** : V27 appliquée, démarrage en `validate`, frais de dossier historiques reflétés (2 lignes à 50 €, 100 % plateforme), taux par défaut à 15 % sur les 3 partenaires, contrainte d'invariant testée en conditions d'échec, non-régression (catalogue, formations, dossiers admin, emails → 200), `mvn clean compile` / `tsc -b` / `vite build` propres.
+
+## 56. Lot 3 — Encaissement de la formation et aiguillage Stripe en Strategy (déployé & vérifié)
+
+**Livré** : `StripePaymentHandler` (interface) + `StripePaymentDispatcher` + 3 implémentations (`ProductCheckoutStripeHandler`, `DoctorApplicationStripeHandler`, `TuitionPaymentStripeHandler`), `TuitionPaymentService.createTuitionCheckoutSession(...)`, `EnrollmentService.confirmTuitionPayment(...)`, endpoint `POST /enrollments/{id}/tuition-checkout`.
+
+### Le point délicat : refactoriser un webhook qui porte deux flux en production
+
+Le contrôleur ne connaît plus aucun parcours métier. Mais la bascule ne pouvait pas se contenter d'introduire la nouvelle clé `payment_type` : **les sessions e-commerce ne portent aucune métadonnée**, et la candidature médecin pose `type=DOCTOR_APPLICATION` depuis la Phase 3. Une session déjà ouverte au moment du déploiement doit continuer d'aboutir.
+
+Ordre de résolution retenu dans `StripePaymentDispatcher` : `payment_type` (nouveau) → `type` (hérité) → `PRODUCT_CHECKOUT` par défaut. `DoctorApplicationStripeHandler` reconnaît les deux valeurs. Sans ce défaut, le parcours d'achat le plus utilisé de la plateforme aurait cessé d'être traité en silence.
+
+Choix volontaire : un type de paiement **inconnu** n'est plus traité par défaut comme une commande — il est journalisé en `ERROR`. Confirmer la mauvaise commande sur une métadonnée inattendue serait pire que ne rien faire.
+
+### Chaînage documentaire
+
+`issueEnrollmentDocuments(...)` mutualise le déclenchement entre le webhook et l'écran d'administration. Chaque génération vit dans son propre `try/catch` : un échec d'upload Cloudinary n'annule ni l'encaissement ni l'autre document. **Le dossier n'avance vers `CONVENTION_ISSUED` que si la convention a réellement été produite** — afficher « Convention émise » sans convention serait un mensonge affiché au médecin. Ce passage manquait : `generateConventionInternal` posait la clé du PDF sans jamais faire avancer le statut.
+
+### Deux constats de recette
+
+1. **Message d'erreur Stripe rendu actionnable.** L'ouverture du paiement échouait en `amount_too_small` (tarif de session à 0,01 € dans les données de test — Stripe exige 50 centimes minimum). Le message générique « service momentanément indisponible » aurait envoyé l'administrateur chercher une panne inexistante : une `InvalidRequestException` renvoie désormais le motif Stripe réel et invite à vérifier le tarif de la session.
+
+2. **Fausse alerte sur le reflet des frais de dossier** : la ligne était bien créée, c'est la requête de vérification du script de recette qui était fautive. Vérifié directement en base.
+
+**Vérifié en conditions réelles, avec de vraies clés Stripe** :
+- ouverture de paiement → `clientSecret` réel obtenu, répartition figée **3 200 € → 480 € de commission / 2 720 € au partenaire** (taux 15 %) ;
+- webhook `TUITION_FEE` → dossier `CONFIRMED` puis **`CONVENTION_ISSUED`**, convention **et** attestation générées ;
+- **idempotence** : webhook rejoué → 200, aucune ligne dupliquée, statut inchangé ;
+- **non-régression e-commerce** : webhook sans métadonnée → commande passée de `UNPAID` à `PAID` ;
+- **non-régression candidature médecin** : webhook avec la métadonnée héritée `type=DOCTOR_APPLICATION` → candidature `PAID`, compte créé, inscription ouverte en `UNDER_OPTIMI_REVIEW`, frais de dossier reflétés au registre ;
+- type de paiement inconnu → journalisé, aucune commande confirmée par erreur ;
+- endpoints admin (dossiers, emails, commandes), catalogue et formations → 200 ; `mvn clean compile`, `tsc -b`, `vite build` propres.
+
+Données de recette nettoyées.
+
+## 57. Lot 4 — Reversements partenaires et nettoyage des statuts hérités (déployé & vérifié)
+
+Dernier lot du chantier Campus France.
+
+**Livré** : `PartnerPayoutService` (génération par période, marquage du virement, synthèse financière), `PayoutResource` (4 endpoints admin + 2 endpoints partenaire), migration `V28`.
+
+### Ce qui empêche un double reversement
+
+Un reversement fige une dette : il agrège les parts nettes des encaissements réglés **et non encore rattachés**, puis les rattache définitivement via `partner_payout_id`. Une ligne déjà rattachée sort de l'assiette suivante — c'est le mécanisme qui garantit qu'un encaissement ne peut pas être payé deux fois au partenaire. Vérifié : une seconde génération immédiate renvoie « aucun encaissement à reverser » plutôt qu'un doublon.
+
+Le montant est figé à la génération, jamais recalculé à l'affichage : un remboursement postérieur se traite par un reversement correctif, pas par une réécriture d'un engagement déjà émis.
+
+### Cloisonnement
+
+Le partenaire ne fournit jamais son identifiant : `currentPartnerProfileId(...)` le résout depuis le compte connecté. Vérifié qu'un partenaire appelant une route admin reçoit bien **403**.
+
+### Leçon de l'entrée #48 réappliquée
+
+La requête d'assiette n'accepte **aucun paramètre date nullable** : en JPQL, un paramètre NULL fait échouer l'inférence de type PostgreSQL (`function lower(bytea) does not exist`, entrée #48). Le bornage de période se fait côté service, en Java.
+
+### V28 — nettoyage
+
+Prérequis traités **avant** de resserrer la contrainte, faute de quoi le code aurait planté à la première écriture : suppression de `reviewAcademic` (service + endpoint `/academic-review`), retrait de `PENDING_REVIEW` du filtre `HIDDEN_FROM_PARTNER`, suppression des 3 valeurs de l'enum Java, et migration du frontend (`partnerService.reviewAcademic` supprimé, `handleReject` bascule sur `decide(id, false, motif)`).
+
+**Effet de bord traité** : le refus exige désormais un motif côté serveur. L'invite du CHU rappelle explicitement que pour une simple pièce manquante, « Pièce manquante » est préférable au refus définitif — sinon la nouvelle boucle de correction (#54) resterait inutilisée par méconnaissance.
+
+La migration porte un **garde-fou** : elle échoue avec un message explicite s'il reste un dossier sur un statut hérité, plutôt que de laisser PostgreSQL rejeter la contrainte avec une erreur obscure. Au passage, suppression de `enrollments.tripartite_convention_s3_key` — colonne du CDC d'origine, vérifiée vide sur les 6 lignes et référencée nulle part (le code utilise `convention_s3_key`).
+
+**Vérifié en conditions réelles (8 contrôles)** : synthèse partenaire avant reversement (2 720 € à reverser) ; génération `REV-2026-09-C45B73` de 2 720 € en `PENDING` ; encaissement rattaché ; **double génération bloquée** (409) ; marquage payé, second appel refusé (409) ; synthèse après (0 à reverser, 2 720 € versés) ; **cloisonnement partenaire → route admin = 403** ; **contrainte V28 rejetant un UPDATE vers `APPROVED_ACADEMIC`**. Contrainte finale à 12 valeurs exactement. Non-régression : catalogue, formations, dossiers, emails, commandes, finance admin, espace partenaire → 200. `mvn clean compile`, `tsc -b`, `vite build` propres.
+
+### Bilan du chantier (Lots 1 à 4)
+
+Migrations `V26` → `V28`. Le cycle de candidature suit désormais le modèle d'agence : OptimiSanté pré-qualifie, le CHU décide (avec retour possible en correction), le médecin paie, la plateforme prélève sa commission et reverse la part nette. Les trois flux Stripe cohabitent derrière un aiguillage extensible sans toucher au point d'entrée.
+
+**Reste à faire, non couvert par ce chantier** : les écrans React du registre financier et des reversements (le backend expose tout, aucune interface ne le consomme encore côté admin et partenaire) et l'écran de paiement de la formation côté médecin (`POST /enrollments/{id}/tuition-checkout` renvoie un `clientSecret` exploitable par le composant `StripeEmbeddedCheckout` déjà en place).
+
+## 58. Interfaces du cycle tripartite : paiement médecin, finance admin, revenus partenaire (déployé & vérifié)
+
+Dernier chantier : habiller les trois espaces des données que le backend produisait déjà sans qu'aucun écran ne les consomme.
+
+### Écran médecin — deux manques bloquants trouvés avant d'écrire l'interface
+
+`EnrollmentDetailDto` ne portait ni le montant, ni l'établissement, ni — surtout — **`actionRequiredNote`**. La boucle de correction ouverte à l'entrée #54 était donc **invisible pour son unique destinataire** : un médecin dont le dossier passait en `ACTION_REQUIRED` voyait son dossier bloqué sans savoir ce qu'on lui réclamait. Même constat pour `rejectionReason` : une décision négative s'affichait sans motif. Les quatre champs ont été ajoutés au DTO avant de construire l'écran.
+
+Le montant est résolu via un helper volontairement tolérant : un tarif non configuré ne doit pas rendre le suivi de dossier inconsultable — c'est l'ouverture du paiement, et elle seule, qui doit alors échouer avec un message explicite.
+
+Livré : `TuitionPaymentCard` (récapitulatif, montant, mentions de sécurité, formulaire Stripe monté **uniquement après un geste explicite** — ouvrir une session crée une ligne en base, on ne le fait pas au simple affichage), bandeau de pièce réclamée avec bouton « Renvoyer mon dossier », et bandeau de motif sur décision négative.
+
+### Écrans financiers — 4 endpoints manquaient
+
+Les prompts supposaient des API inexistantes : registre global, KPI consolidés, liste des partenaires avec leur dû, et liste des inscriptions réglées côté partenaire. Ajoutés dans `FinanceQueryService` + `PayoutResource`.
+
+**Point de conception important — contradiction levée.** La consigne du tableau partenaire listait « Montant de la formation » ET « Part nette », tout en précisant « ne jamais afficher le taux de commission ». Or afficher brut et net côte à côte **publie la commission par simple soustraction**. La règle explicite l'emporte : la vue partenaire n'expose que la part nette. Cette restriction est portée par un **type distinct côté serveur** (`PartnerPaymentRow`), pas par un filtrage à l'affichage — la réponse JSON ne peut pas transporter la commission, même par erreur.
+
+Livré : `AdminPayoutsPage` (4 KPI, onglet registre filtrable, onglet reversements avec sélection d'établissement, génération par période et marquage du virement) et `PartnerFinancePage` (4 KPI, inscriptions réglées en net, relevés de virement).
+
+**Vérifié en conditions réelles** :
+- KPI cohérents : 3 350 € encaissés, **630 € de commission** (3 × 50 € de frais de dossier à 100 % + 480 € sur la formation), 2 720 € déjà virés, 4 transactions ;
+- **aucun champ de commission exposé** sur `/partner/payments` (champs servis : doctorName, trainingTitle, sessionStartDate, paidAt, netAmount, currency, payoutReference) ;
+- cloisonnement inverse : partenaire sur `/admin/payments` → **403**, médecin sur `/admin/finance/kpis` → **403** ;
+- DTO médecin enrichi vérifié sur un dossier réel (`hostInstitution`, `tuitionAmount` = 3 200 €) ;
+- non-régression espace partenaire (candidatures, synthèse, reversements) → 200 ; `tsc -b` et `vite build` propres.
+
+**Non fait, signalé** : le bouton de téléchargement PDF du relevé de virement demandé au prompt 3 — aucun gabarit ni génération n'existe pour les reversements. L'ajouter aurait signifié créer un document vide ou un bouton inerte ; il vaut mieux le traiter comme un vrai sujet (gabarit Thymeleaf + génération, sur le modèle des conventions).

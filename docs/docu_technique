@@ -1,5 +1,5 @@
 # Rapport Technique et Suivi de Projet - Optimi Santé
-**Dernière mise à jour : 28 Août 2026 — Refonte ERP (Admin/Partenaire/Médecin), infrastructure email, Partenariat CHU, Candidature médecin payante, Tunnel de paiement Stripe Elements**
+**Dernière mise à jour : 7 Septembre 2026 — Traçage de l'arbitrage stratégique sur le paiement différé B2B (§2.4). Précédemment : Refonte ERP (Admin/Partenaire/Médecin), infrastructure email, Partenariat CHU, Candidature médecin payante, Tunnel de paiement Stripe Elements**
 
 > 📋 Le détail de tous les bugs rencontrés, leur cause racine et leur correctif est tenu à jour dans `docs/journal_erreurs_defis` — à consulter avant de retoucher l'authentification, les inscriptions/formations, ou la génération de documents.
 
@@ -18,7 +18,7 @@ Ce document sert de journal de bord technique et d'audit de l'état d'avancement
 ### ✅ SPRINT 2 : Moteur E-Commerce, Devis B2B & Réservation Stock (Terminé)
 - **Transactionnel & E-Commerce :** Création des entités `Product`, `Order`, et implémentation du tunnel d'achat transactionnel (`POST /api/v1/orders/checkout`).
 - **Réservation de Stock :** Implémentation du lock optimiste et du nettoyage asynchrone des stocks (via `StockReservation` et Redis).
-- **Parcours B2B :** Implémentation du flux de "Demande de Devis" (`QUOTE_REQUEST`). Conformément à la V6.1, le paiement différé à 30 jours n'est pas géré par défaut.
+- **Parcours B2B :** Implémentation du flux de "Demande de Devis" (`QUOTE_REQUEST`). Le paiement différé à 30 jours (BC 30j) prévu par le CDC V6 a été **délibérément écarté** — décision stratégique documentée en section 2.4, à ne pas relire comme un reste à faire.
 
 ### ✅ SPRINT 3 : Lead Capture & Module CHU Partenaire (Terminé)
 - **Modèle de Données :** Implémentation des entités `Training`, `ProspectLead` et `PartnerProfile`.
@@ -42,8 +42,25 @@ Ce document sert de journal de bord technique et d'audit de l'état d'avancement
    - L'API Lead Capture ne bloque plus l'interface avec des pop-ups (`window.open`). Le bouton de succès du formulaire affiche directement le lien sécurisé généré par l'API afin de garantir la compatibilité avec tous les navigateurs.
 
 3. **Base de Données et Migrations**
-   - L'ORM Hibernate est configuré en `ddl-auto: validate`. La structure de la BDD est intégralement pilotée par les scripts **Flyway** (`classpath:db/migration`).
-   - Séquence actuelle : `V1` -> `V2` -> `V3` -> `V4` -> `V5`.
+   - L'ORM Hibernate est configuré en `ddl-auto: validate` **sur les deux profils (`dev` et `prod`)** depuis le 7 septembre 2026. La structure de la BDD est intégralement pilotée par les scripts **Flyway** (`classpath:db/migration`).
+   - ⚠️ **Ne jamais repasser le profil `dev` en `ddl-auto: update`** : c'est ce réglage qui a masqué pendant tout le projet une divergence de schéma majeure (voir §9). Avec `validate`, toute divergence entité/migration fait échouer le démarrage immédiatement en dev, au lieu d'être découverte en production.
+   - Séquence actuelle : `V1` -> ... -> `V22` (22 migrations).
+
+4. **Écart assumé au CDC V6 : abandon du paiement différé B2B (BC 30 jours)**
+
+   > ⚠️ **À l'attention de tout relecteur (audit, binôme, recette) : ce point est une décision stratégique, pas un reste à faire.** Il ne doit pas être remonté comme un écart ni ré-implémenté sans arbitrage de la direction.
+
+   - **Ce que prévoyait le CDC V6 :** la matrice RBAC (§1) accorde au rôle `CLIENT_B2B` un paiement « Carte / **BC 30j** / Devis », le schéma `orders` (§2) autorise la valeur `PURCHASE_ORDER_30D`, la table `company_profiles` porte `credit_limit`, `is_credit_approved` et `approved_by`, et la roadmap Sprint 2 (§5) liste « Bon de Commande » ainsi que « Dashboard Admin : Validation des crédits B2B ».
+
+   - **Décision prise :** cette fonctionnalité d'achat à crédit a été **délibérément écartée** pour une raison de trésorerie. Ouvrir une ligne de crédit ou un paiement différé à 30 jours à grande échelle, sans dispositif strict de contrôle du risque (scoring, encours, relance, recouvrement), aurait conduit une large part des clients B2B à privilégier systématiquement le différé — avec un risque élevé d'impayés et d'allongement des délais d'encaissement, au détriment direct de la trésorerie de l'entreprise.
+
+   - **Alternative retenue :** le flux B2B s'appuie sur la **Demande de Devis** (`QUOTE_REQUEST`). Chaque commande professionnelle est validée et négociée en amont, matérialisée par un devis PDF généré automatiquement, puis réglée **comptant ou par virement bancaire**. Résultat : la négociation commerciale B2B est préservée, et **100 % des flux financiers sont sécurisés avant expédition**.
+
+   - **Traductions concrètes dans le code (toutes cohérentes et volontaires) :**
+     - `PaymentMethod` (enum Java) expose `STRIPE_CARD`, `BANK_TRANSFER`, `QUOTE_REQUEST` — **pas** `PURCHASE_ORDER_30D` ;
+     - la contrainte SQL `orders_payment_method_check` reflète strictement ces 3 valeurs ;
+     - les colonnes `credit_limit`, `is_credit_approved` et `approved_by` n'ont **jamais** été créées dans les migrations Flyway (c'est d'ailleurs la cause de l'échec initial de `V11__insert_test_accounts.sql`, qui référençait `is_credit_approved` — voir §4) ;
+     - le Back-Office Admin gère l'activation/désactivation des comptes B2B (`AdminUsersPage`) et la modération des devis (`QuotesAdminPage`), mais **aucun écran d'approbation d'encours de crédit** — sans objet.
 
 ---
 
@@ -175,3 +192,54 @@ Vraies clés Stripe et identifiants Mailtrap fournis par l'utilisateur (stockés
 **Piège technique notable** : la version `stripe-java` figée au projet (`24.22.0`) ne supportait pas encore le mode formulaire intégré ni la sauvegarde de moyens de paiement — mise à jour vers `29.2.0`. Dans cette génération du SDK, l'option porte le nom `CUSTOM` (pas `ELEMENTS`, terminologie historique "Custom Checkout" cohérente entre le SDK Java et le SDK React stables), sans changement fonctionnel. Détail complet, y compris le faux positif de compilation locale qui a initialement masqué le problème, dans `docs/journal_erreurs_defis`.
 
 **Vérifié en conditions réelles, bout en bout, navigateur piloté + vraie carte de test Stripe (4242 4242 4242 4242)** : commande e-commerce payée avec succès (Payment Element intégré, webhook reçu, commande marquée payée en base, reçu PDF généré, stock décrémenté, Customer Stripe persisté) ; candidature médecin testée jusqu'à l'affichage du formulaire de paiement intégré (accessible sans compte).
+
+---
+
+## 9. Session du 7 Septembre 2026 : Réalignement du schéma Flyway — bloqueur de mise en production levé
+
+Point ouvert depuis les sessions des 27-28 août (« `ddl-auto` à repasser en `validate` une fois un audit plus large du schéma effectué ») enfin instruit et refermé. L'audit a révélé un problème nettement plus grave que le simple réglage de configuration attendu.
+
+### 9.1. Constat : la base de dev n'était pas reproductible depuis les migrations
+
+Méthode de vérification (et non simple relecture de code) : création d'une base vierge jetable, rejeu des 21 migrations Flyway dessus, puis diff du schéma obtenu contre la base de développement réelle.
+
+**Résultat : 198 colonnes en dev contre 189 sur un déploiement neuf — 9 colonnes d'écart**, existant uniquement parce qu'Hibernate les avait créées lui-même :
+
+| Table | Colonnes absentes d'un déploiement neuf |
+|---|---|
+| `enrollment_documents` | `cloudinary_public_id`, `file_url` |
+| `enrollments` | `diploma_url`, `medical_board_registration_url`, `passport_url`, `submitted_at` |
+| `training_sessions` | `location`, `price`, `created_at` |
+
+\+ 3 contraintes créées par Hibernate sous des noms hachés (`uk8i57xxbt1k6r3mbbkoes69t5d`, `fks9f7phbj8gipu5f6y5soafqlb`, doublon d'unicité sur `categories`).
+
+### 9.2. Cause racine
+
+`V7__add_training_sessions_and_enrollments.sql` crée ses deux tables avec `CREATE TABLE IF NOT EXISTS`. Or `enrollments` et `training_sessions` **existaient déjà**, créées par `V1` (design CDC d'origine). Les deux `CREATE TABLE` de V7 n'ont donc **jamais rien créé**, silencieusement et sans erreur.
+
+Preuve irréfutable : la contrainte `unique_doctor_session`, déclarée dans V7, n'existait dans **aucune** base — remplacée en dev par une contrainte au nom haché générée par Hibernate.
+
+`ddl-auto: update` rattrapait le trou à chaque démarrage en dev. Le défaut est ainsi resté invisible pendant tout le projet.
+
+### 9.3. Impact réel (avant correctif)
+
+En production, `ddl-auto` vaut `validate` — à raison. Sur une base neuve :
+1. Flyway aurait construit un schéma amputé de ces 9 colonnes ;
+2. Hibernate aurait détecté que `Enrollment.diplomaUrl` (entre autres) n'a pas de colonne correspondante ;
+3. **l'application aurait refusé de démarrer** — crash au boot, pas à l'usage.
+
+Plus grave encore : sans `enrollment_documents.cloudinary_public_id` / `file_url`, le coffre-fort documentaire (passeports, diplômes, conventions, attestations) n'aurait eu **aucun moyen de référencer un fichier stocké**. La plateforme ne fonctionnait donc que grâce à la réparation silencieuse d'Hibernate en dev.
+
+### 9.4. Correctif
+
+- **`V22__realign_schema_with_hibernate_drift.sql`** — strictement idempotente : `ADD COLUMN IF NOT EXISTS` pour les 9 colonnes, contraintes recréées uniquement en l'absence d'un équivalent (test sur la **définition** et non sur le nom, pour ne jamais dupliquer celles déjà posées par Hibernate), suppression du doublon d'unicité sur `categories`. Les colonnes `NOT NULL` (`location`, `price`) sont ajoutées selon le motif sûr *nullable → backfill → SET NOT NULL*, valable même si la table contient déjà des lignes.
+  - Sur la base de dev existante : **aucune donnée touchée**, la migration ne fait que constater l'existant.
+  - Sur une base neuve : produit enfin le schéma correct et complet.
+- **Profil `dev` basculé de `ddl-auto: update` vers `validate`** (`application.yml`), aligné sur `prod`. Toute divergence future entité/migration fera désormais échouer le démarrage **en dev**, immédiatement.
+
+### 9.5. Vérification (conditions réelles)
+
+- Les 22 migrations passent sur base vierge.
+- **Diff base de dev vs déploiement neuf : 198 colonnes = 198 colonnes, 41 contraintes = 41 contraintes, écart nul.** (Deux `CHECK` s'affichaient différemment — `training_sessions.status`, `trainings.approval_status` — simple différence de rendu Postgres entre une contrainte créée par Hibernate et une créée par SQL ; jeux de valeurs autorisées vérifiés identiques.)
+- Backend rebuild + redémarré : `Migrating schema "public" to version "22"` → `Successfully applied 1 migration`, puis **`Started BackendApplication`** en `ddl-auto: validate` — preuve que les entités JPA et les migrations sont enfin alignées.
+- Non-régression fonctionnelle : `GET /trainings` 200, `GET /catalog/products` 200 (1519 produits), login B2B OK, `GET /orders/my-orders` authentifié 200. Données intactes dans les 3 tables réalignées (3 inscriptions, 7 documents, 3 sessions).
