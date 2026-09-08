@@ -54,9 +54,33 @@ export function PartnerEnrollmentsPage() {
     fetchEnrollments(trainingId);
   };
 
+  const handleRequestCorrection = async (id: string) => {
+    const note = window.prompt(
+      "Quelle pièce manque ou doit être corrigée ?\n\n"
+      + "Le dossier repartira chez OptimiSanté, qui se chargera de la demande "
+      + "auprès du médecin puis vous le re-transmettra."
+    );
+    if (note === null) return;
+    if (!note.trim()) {
+      setToast({ message: 'Une note explicative est obligatoire.', type: 'error' });
+      return;
+    }
+    try {
+      await partnerService.requestCorrection(id, note.trim());
+      setToast({ message: 'Demande transmise à OptimiSanté.', type: 'success' });
+      fetchEnrollments();
+    } catch (err: any) {
+      console.error('Échec de la demande de correction', err);
+      setToast({
+        message: err.response?.data?.message || 'Erreur lors de la demande.',
+        type: 'error',
+      });
+    }
+  };
+
   const handleApprove = async (id: string) => {
     try {
-      await partnerService.reviewAcademic(id, 'APPROVED_ACADEMIC');
+      await partnerService.decide(id, true);
       setToast({ message: 'Candidature validée sur le plan académique.', type: 'success' });
       fetchEnrollments(trainingFilter || undefined);
     } catch (err: any) {
@@ -88,9 +112,19 @@ export function PartnerEnrollmentsPage() {
   };
 
   const handleReject = async (id: string) => {
+    const reason = window.prompt(
+      "Motif du refus (obligatoire) :\n\n"
+      + "S'il ne s'agit que d'une pièce manquante, préférez « Pièce manquante » : "
+      + "le dossier repart en correction au lieu d'être définitivement refusé."
+    );
+    if (reason === null) return;
+    if (!reason.trim()) {
+      setToast({ message: 'Un motif est obligatoire pour refuser une candidature.', type: 'error' });
+      return;
+    }
     if (!window.confirm("Êtes-vous sûr de vouloir rejeter cette candidature ?")) return;
     try {
-      await partnerService.reviewAcademic(id, 'REJECTED');
+      await partnerService.decide(id, false, reason.trim());
       setToast({ message: 'Candidature rejetée.', type: 'success' });
       fetchEnrollments(trainingFilter || undefined);
     } catch (err: any) {
@@ -164,10 +198,13 @@ export function PartnerEnrollmentsPage() {
                         >
                           <FolderOpen className="w-3.5 h-3.5 mr-1.5" /> Documents
                         </button>
-                        {e.status === 'PENDING_REVIEW' && (
+                        {e.status === 'SUBMITTED_TO_PARTNER' && (
                           <>
                             <button onClick={() => handleApprove(e.id)} className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
                               <CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Approuver
+                            </button>
+                            <button onClick={() => handleRequestCorrection(e.id)} className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-amber-700 bg-amber-100 rounded-lg hover:bg-amber-200 transition-colors">
+                              Pièce manquante
                             </button>
                             <button onClick={() => handleReject(e.id)} className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors">
                               Rejeter

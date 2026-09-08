@@ -28,6 +28,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import com.optimisante.backend.domain.training.entity.EnrollmentTransitions;
+import org.springframework.security.access.AccessDeniedException;
+import java.time.OffsetDateTime;
+import com.optimisante.backend.domain.training.finance.EnrollmentPayment;
+import com.optimisante.backend.domain.training.finance.EnrollmentPaymentRepository;
+import com.optimisante.backend.domain.training.finance.EnrollmentPaymentService;
+import com.optimisante.backend.domain.training.finance.PaymentStatus;
+import com.optimisante.backend.domain.training.finance.PaymentType;
 
 @Slf4j
 @Service
@@ -35,6 +43,8 @@ import java.util.UUID;
 public class EnrollmentService {
 
     private final EnrollmentRepository enrollmentRepository;
+    private final EnrollmentPaymentRepository paymentRepository;
+    private final EnrollmentPaymentService enrollmentPaymentService;
     private final TrainingSessionRepository trainingSessionRepository;
     private final UserRepository userRepository;
     private final DoctorProfileRepository doctorProfileRepository;
@@ -42,6 +52,11 @@ public class EnrollmentService {
     private final com.optimisante.backend.domain.document.service.PdfGeneratorService pdfGeneratorService;
     private final com.optimisante.backend.common.storage.StorageService storageService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    /** Statuts du suivi de mobilité, seuls pilotables via advanceMobility. */
+    private static final java.util.Set<EnrollmentStatus> MOBILITY_STATUSES = java.util.EnumSet.of(
+            EnrollmentStatus.CONVENTION_ISSUED, EnrollmentStatus.VISA_SUBMITTED,
+            EnrollmentStatus.VISA_GRANTED, EnrollmentStatus.READY_TO_START);
 
     @Transactional
     public EnrollmentResponseDto createEnrollment(EnrollmentRequestDto dto, UUID doctorId) {
@@ -66,10 +81,12 @@ public class EnrollmentService {
         }
 
         // Si la mise à jour a réussi, on crée l'inscription
+        // Statut d'entrée non repositionné ici : il est porté par @Builder.Default sur
+        // l'entité (UNDER_OPTIMI_REVIEW), source unique pour les deux portes d'entrée
+        // du médecin — candidature payante et inscription directe.
         Enrollment enrollment = Enrollment.builder()
                 .doctor(doctor)
                 .session(session)
-                .status(EnrollmentStatus.PENDING_REVIEW)
                 .build();
 
         return toResponseDto(enrollmentRepository.save(enrollment));
@@ -80,9 +97,11 @@ public class EnrollmentService {
         Enrollment enrollment = enrollmentRepository.findByIdAndDoctorId(enrollmentId, doctorId)
                 .orElseThrow(() -> new RuntimeException("Enrollment not found for this doctor"));
 
-        if (enrollment.getStatus() != EnrollmentStatus.PENDING_REVIEW) {
+        if (enrollment.getStatus() != EnrollmentStatus.UNDER_OPTIMI_REVIEW
+                && enrollment.getStatus() != EnrollmentStatus.ACTION_REQUIRED) {
             throw new IllegalStateException(
-                    "Documents can only be submitted when status is PENDING_REVIEW");
+                    "Les pièces ne peuvent être déposées que pendant la revue OptimiSanté "
+                            + "ou après une demande de correction.");
         }
 
         if (dto.diplomaUrl() != null)
@@ -114,9 +133,11 @@ public class EnrollmentService {
         Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
                 .orElseThrow(() -> new RuntimeException("Enrollment not found"));
 
-        if (enrollment.getStatus() != EnrollmentStatus.APPROVED_ADMINISTRATIVE) {
-            // Force status to APPROVED_ADMINISTRATIVE for the purpose of the flow if it's not already
-            enrollment.setStatus(EnrollmentStatus.APPROVED_ADMINISTRATIVE);
+        if (enrollment.getStatus() != EnrollmentStatus.CONFIRMED) {
+            // Relance manuelle : on repositionne le dossier sur la jonction du cycle, sans
+            // repasser par l'automate (c'est une action de rattrapage administratif assumée,
+            // pas une transition métier).
+            enrollment.setStatus(EnrollmentStatus.CONFIRMED);
         }
 
         // Fetching DoctorProfile to get valid profile data like names and specialty
@@ -208,12 +229,312 @@ public class EnrollmentService {
         return enrollmentRepository.save(enrollment);
     }
 
+    // =====================================================================================
+    // Cycle de candidature tripartite (V26) - une méthode par intention métier.
+    //
+    // Chacune passe par EnrollmentTransitions.assertAllowed(...) : l'automate est le seul
+    // arbitre des passages légaux, aucune méthode ne décide seule de ce qu'elle a le droit
+    // de faire. Ajouter un état ne se fait donc qu'à un seul endroit.
+    // =====================================================================================
+
+    /**
+     * Étape de pré-qualification : OptimiSanté a vérifié les pièces et transmet le dossier
+     * au partenaire pour décision pédagogique. Le partenaire ne voit rien avant ce passage.
+     */
+    @Transactional
+    public EnrollmentResponseDto submitToPartner(UUID enrollmentId, UUID adminId) {
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.SUBMITTED_TO_PARTNER);
+
+        enrollment.setStatus(EnrollmentStatus.SUBMITTED_TO_PARTNER);
+        enrollment.setOptimiReviewedAt(OffsetDateTime.now());
+        enrollment.setOptimiReviewedBy(adminId);
+        enrollment.setActionRequiredNote(null);
+
+        log.info("Dossier {} pré-qualifié par l'admin {} et transmis au partenaire", enrollmentId, adminId);
+        return toResponseDto(enrollmentRepository.save(enrollment));
+    }
+
+    /**
+     * Pièces manquantes ou non conformes : la main repasse au médecin, avec un motif qui lui
+     * est affiché. Le dossier n'est pas rejeté, il reste dans le tunnel.
+     */
+    @Transactional
+    public EnrollmentResponseDto requestAction(UUID enrollmentId, UUID adminId, String note) {
+        if (note == null || note.isBlank()) {
+            throw new IllegalArgumentException("Un motif est obligatoire pour demander des corrections.");
+        }
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.ACTION_REQUIRED);
+
+        enrollment.setStatus(EnrollmentStatus.ACTION_REQUIRED);
+        enrollment.setActionRequiredNote(note.trim());
+        enrollment.setOptimiReviewedAt(OffsetDateTime.now());
+        enrollment.setOptimiReviewedBy(adminId);
+
+        log.info("Corrections demandées sur le dossier {} par l'admin {}", enrollmentId, adminId);
+        return toResponseDto(enrollmentRepository.save(enrollment));
+    }
+
+    /** Le médecin a déposé les pièces demandées et resoumet son dossier à la revue. */
+    @Transactional
+    public EnrollmentResponseDto resubmitAfterAction(UUID enrollmentId, UUID doctorId) {
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+        if (!enrollment.getDoctor().getId().equals(doctorId)) {
+            throw new AccessDeniedException("Ce dossier ne vous appartient pas.");
+        }
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.UNDER_OPTIMI_REVIEW);
+
+        enrollment.setStatus(EnrollmentStatus.UNDER_OPTIMI_REVIEW);
+        enrollment.setActionRequiredNote(null);
+
+        log.info("Dossier {} resoumis par le médecin {} après corrections", enrollmentId, doctorId);
+        return toResponseDto(enrollmentRepository.save(enrollment));
+    }
+
+    /**
+     * Décision pédagogique du partenaire. Remplace reviewAcademic, dont elle reprend le
+     * contrôle de propriété de la formation, en y ajoutant la garde de transition, la
+     * traçabilité de la date et le motif obligatoire en cas de refus.
+     *
+     * <p>Une acceptation enchaîne automatiquement sur PENDING_TUITION_FEE : c'est une
+     * conséquence mécanique de la décision, pas une action administrative distincte.</p>
+     */
+    @Transactional
+    public EnrollmentResponseDto partnerDecision(UUID enrollmentId, UUID partnerUserId,
+                                                 boolean accept, String reason) {
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+
+        if (!enrollment.getSession().getTraining().getPartnerProfile().getUser().getId().equals(partnerUserId)) {
+            throw new AccessDeniedException("Vous n'êtes pas autorisé à examiner ce dossier.");
+        }
+
+        EnrollmentStatus target = accept ? EnrollmentStatus.ACCEPTED_BY_PARTNER : EnrollmentStatus.REJECTED;
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), target);
+
+        EnrollmentStatus previousStatus = enrollment.getStatus();
+
+        if (!accept && (reason == null || reason.isBlank())) {
+            throw new IllegalArgumentException("Un motif est obligatoire pour refuser une candidature.");
+        }
+
+        enrollment.setPartnerDecidedAt(OffsetDateTime.now());
+
+        if (accept) {
+            enrollment.setStatus(EnrollmentStatus.ACCEPTED_BY_PARTNER);
+            // Enchaînement mécanique vers l'attente de paiement, en repassant par l'automate.
+            EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.PENDING_TUITION_FEE);
+            enrollment.setStatus(EnrollmentStatus.PENDING_TUITION_FEE);
+            log.info("Dossier {} accepté par le partenaire {} - en attente du paiement de la formation",
+                    enrollmentId, partnerUserId);
+        } else {
+            enrollment.setStatus(EnrollmentStatus.REJECTED);
+            enrollment.setRejectionReason(reason.trim());
+            log.info("Dossier {} refusé par le partenaire {}", enrollmentId, partnerUserId);
+        }
+
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        if (previousStatus != saved.getStatus()) {
+            eventPublisher.publishEvent(
+                    new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentStatusChanged(
+                            saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
+                            previousStatus == null ? null : previousStatus.name(), saved.getStatus().name()));
+        }
+
+        return toResponseDto(saved);
+    }
+
+    /**
+     * Le partenaire réclame une pièce complémentaire au lieu de rejeter le dossier.
+     *
+     * <p>Sans cette sortie, un simple diplôme mal scanné forçait le CHU au refus définitif :
+     * le médecin aurait dû reconstituer une candidature entière, et l'équipe OptimiSanté
+     * intervenir en base. Le dossier repasse ici sous la responsabilité d'OptimiSanté —
+     * conformément au modèle d'agence, le partenaire ne s'adresse jamais directement au
+     * médecin. Après correction, le dossier revient en revue puis est re-transmis.</p>
+     */
+    @Transactional
+    public EnrollmentResponseDto requestPartnerCorrection(UUID enrollmentId, UUID partnerUserId,
+                                                          String correctionNote) {
+        if (correctionNote == null || correctionNote.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Une note explicative est requise pour demander des pièces complémentaires.");
+        }
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+
+        if (!enrollment.getSession().getTraining().getPartnerProfile().getUser().getId().equals(partnerUserId)) {
+            throw new AccessDeniedException("Vous n'êtes pas autorisé à examiner ce dossier.");
+        }
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.ACTION_REQUIRED);
+
+        enrollment.setStatus(EnrollmentStatus.ACTION_REQUIRED);
+        // Préfixe d'origine : le médecin et l'admin savent qui réclame la pièce.
+        enrollment.setActionRequiredNote("Demande du CHU : " + correctionNote.trim());
+        enrollment.setPartnerDecidedAt(OffsetDateTime.now());
+
+        log.info("Le partenaire {} demande des pièces complémentaires sur le dossier {}",
+                partnerUserId, enrollmentId);
+        return toResponseDto(enrollmentRepository.save(enrollment));
+    }
+
+    /**
+     * Avancement du cycle de mobilité par l'administration (convention, visa, départ).
+     * Volontairement bornée aux états post-CONFIRMED : les décisions commerciales ont leurs
+     * propres méthodes et ne doivent pas être atteignables par cette porte.
+     */
+    @Transactional
+    public EnrollmentResponseDto advanceMobility(UUID enrollmentId, EnrollmentStatus newStatus) {
+        if (!MOBILITY_STATUSES.contains(newStatus)) {
+            throw new IllegalArgumentException(
+                    "Le statut " + newStatus + " ne relève pas du cycle de mobilité. "
+                            + "Utilisez la méthode métier correspondante.");
+        }
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), newStatus);
+
+        enrollment.setStatus(newStatus);
+        log.info("Dossier {} avancé au statut de mobilité {}", enrollmentId, newStatus);
+        return toResponseDto(enrollmentRepository.save(enrollment));
+    }
+
+    /** Annulation administrative : possible depuis tout état non terminal, motif obligatoire. */
+    @Transactional
+    public EnrollmentResponseDto cancelEnrollment(UUID enrollmentId, String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("Un motif est obligatoire pour annuler un dossier.");
+        }
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.CANCELLED);
+
+        enrollment.setStatus(EnrollmentStatus.CANCELLED);
+        enrollment.setRejectionReason(reason.trim());
+
+        log.info("Dossier {} annulé : {}", enrollmentId, reason);
+        return toResponseDto(enrollmentRepository.save(enrollment));
+    }
+
+    /**
+     * Confirme l'encaissement des frais de formation (appelé par le webhook Stripe) :
+     * solde la ligne du registre, fait passer le dossier en CONFIRMED, puis déclenche
+     * l'émission des documents.
+     *
+     * <p><b>Idempotent</b> : un webhook rejoué par Stripe — ce qui arrive normalement en
+     * production — ne doit ni encaisser deux fois, ni régénérer les documents. Le contrôle
+     * applicatif ci-dessous est doublé en base par l'index unique partiel
+     * {@code uq_enrollment_paid_tuition}.</p>
+     */
+    @Transactional
+    public EnrollmentResponseDto confirmTuitionPayment(UUID enrollmentId, String checkoutSessionId,
+                                                       String paymentIntentId) {
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+
+        if (paymentRepository.findByEnrollmentIdAndPaymentTypeAndStatus(
+                enrollmentId, PaymentType.TUITION_FEE, PaymentStatus.PAID).isPresent()) {
+            log.info("Webhook rejoué pour le dossier {} : frais de formation déjà encaissés, ignoré.",
+                    enrollmentId);
+            return toResponseDto(enrollment);
+        }
+
+        EnrollmentPayment payment = paymentRepository
+                .findByEnrollmentIdAndPaymentTypeAndStatus(
+                        enrollmentId, PaymentType.TUITION_FEE, PaymentStatus.PENDING)
+                .orElseGet(() -> {
+                    // Filet : le paiement a abouti chez Stripe sans ligne en attente côté
+                    // plateforme (session ouverte puis base restaurée, par exemple). On
+                    // reconstruit la ligne plutôt que de perdre la trace d'un encaissement réel.
+                    log.warn("Aucune ligne de paiement en attente pour le dossier {} : reconstruction.",
+                            enrollmentId);
+                    return enrollmentPaymentService.openTuitionPayment(enrollmentId);
+                });
+
+        payment.setStatus(PaymentStatus.PAID);
+        payment.setPaidAt(OffsetDateTime.now());
+        payment.setStripeCheckoutSessionId(checkoutSessionId);
+        payment.setStripePaymentIntentId(paymentIntentId);
+        paymentRepository.save(payment);
+
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.CONFIRMED);
+        enrollment.setStatus(EnrollmentStatus.CONFIRMED);
+        enrollmentRepository.save(enrollment);
+
+        log.info("Formation réglée pour le dossier {} : {} EUR (commission {} EUR, partenaire {} EUR)",
+                enrollmentId, payment.getGrossAmount(), payment.getCommissionAmount(),
+                payment.getPartnerPayoutAmount());
+
+        return toResponseDto(issueEnrollmentDocuments(enrollmentId));
+    }
+
+    /**
+     * Émission des documents à la confirmation de l'inscription, puis avancement vers
+     * CONVENTION_ISSUED.
+     *
+     * <p><b>Isolation stricte</b> : chaque génération vit dans son propre {@code try/catch}.
+     * Un échec de rendu PDF ou d'upload Cloudinary ne doit jamais annuler l'encaissement
+     * déjà réalisé ni empêcher l'autre document d'être produit. Le dossier reste alors en
+     * CONFIRMED et l'administration relance la génération manuellement.</p>
+     */
+    private Enrollment issueEnrollmentDocuments(UUID enrollmentId) {
+        Enrollment result = requireEnrollment(enrollmentId);
+        boolean conventionOk = false;
+
+        try {
+            result = generateConventionInternal(enrollmentId);
+            conventionOk = true;
+        } catch (Exception e) {
+            log.error("Dossier {} confirmé, mais la génération de la convention tripartite a échoué "
+                    + "— à relancer depuis l'administration.", enrollmentId, e);
+        }
+
+        try {
+            result = generateAttestationInternal(enrollmentId);
+        } catch (Exception e) {
+            log.error("Dossier {} confirmé, mais la génération de l'attestation d'accueil a échoué "
+                    + "— à relancer depuis l'administration.", enrollmentId, e);
+        }
+
+        // Le dossier n'avance que si la convention existe réellement : afficher
+        // « Convention émise » sans convention serait un mensonge pour le médecin.
+        if (conventionOk && result.getStatus() == EnrollmentStatus.CONFIRMED) {
+            EnrollmentTransitions.assertAllowed(result.getStatus(), EnrollmentStatus.CONVENTION_ISSUED);
+            result.setStatus(EnrollmentStatus.CONVENTION_ISSUED);
+            result = enrollmentRepository.save(result);
+            log.info("Dossier {} avancé automatiquement à CONVENTION_ISSUED", enrollmentId);
+        }
+
+        return result;
+    }
+
+    /**
+     * Tarif de la formation, ou {@code null} s'il n'est pas configuré. Volontairement
+     * silencieux : l'écran de suivi doit rester consultable même si un tarif manque —
+     * c'est l'ouverture du paiement, et elle seule, qui doit alors échouer explicitement.
+     */
+    private java.math.BigDecimal resolveTuitionAmountQuietly(Enrollment enrollment) {
+        try {
+            return enrollmentPaymentService.resolveTuitionAmount(enrollment);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private Enrollment requireEnrollment(UUID enrollmentId) {
+        return enrollmentRepository.findById(enrollmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Dossier introuvable"));
+    }
+
     @Transactional
     public EnrollmentResponseDto updateEnrollmentStatus(UUID enrollmentId, EnrollmentStatus newStatus) {
         Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
                 .orElseThrow(() -> new RuntimeException("Enrollment not found"));
 
-        boolean wasNotAdministrative = enrollment.getStatus() != EnrollmentStatus.APPROVED_ADMINISTRATIVE;
+        // Cette méthode générique reste le point d'entrée de l'écran d'administration
+        // (bouton « Passer à l'étape suivante »). Elle est désormais soumise au MÊME
+        // automate que les méthodes métier : sans cette garde, l'interface aurait
+        // contourné toutes les règles posées par EnrollmentTransitions.
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), newStatus);
+
+        boolean wasNotConfirmed = enrollment.getStatus() != EnrollmentStatus.CONFIRMED;
         EnrollmentStatus previousStatus = enrollment.getStatus();
         enrollment.setStatus(newStatus);
 
@@ -238,34 +559,36 @@ public class EnrollmentService {
         // historique de gestionnaire d'exceptions global — sans que rien n'ait réellement changé
         // en base). L'admin peut relancer la génération manuellement une fois le problème résolu
         // via POST /admin/enrollments/{id}/generate-convention.
-        if (newStatus == EnrollmentStatus.APPROVED_ADMINISTRATIVE && wasNotAdministrative) {
-            log.info("Déclenchement automatique de la génération de la convention tripartite pour l'inscription {}", enrollmentId);
-            try {
-                savedEnrollment = generateConventionInternal(enrollmentId);
-            } catch (Exception e) {
-                log.error("Statut de l'inscription {} mis à jour vers APPROVED_ADMINISTRATIVE, mais la génération " +
-                        "automatique de la convention a échoué — à relancer manuellement.", enrollmentId, e);
-            }
-
-            // --- Génération automatique de l'Attestation d'Accueil / Inscription ---
-            // Même déclencheur que la convention ("dès la validation du dossier" côté CDC), mais
-            // dans un try/catch séparé et indépendant : un échec de l'un ne doit jamais empêcher
-            // la génération de l'autre.
-            log.info("Déclenchement automatique de la génération de l'attestation d'accueil pour l'inscription {}", enrollmentId);
-            try {
-                savedEnrollment = generateAttestationInternal(enrollmentId);
-            } catch (Exception e) {
-                log.error("Statut de l'inscription {} mis à jour vers APPROVED_ADMINISTRATIVE, mais la génération " +
-                        "automatique de l'attestation d'accueil a échoué — à relancer manuellement.", enrollmentId, e);
-            }
+        if (newStatus == EnrollmentStatus.CONFIRMED && wasNotConfirmed) {
+            savedEnrollment = issueEnrollmentDocuments(enrollmentId);
         }
 
         return toResponseDto(savedEnrollment);
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Dossiers visibles par un partenaire.
+     *
+     * <p>Le filtrage est fait ICI, côté serveur, et non à l'affichage : un dossier encore en
+     * pré-qualification chez OptimiSanté ne doit pas être exposé au CHU par l'API, même à un
+     * appelant qui contournerait l'interface. C'est la traduction technique du modèle
+     * d'agence — le partenaire ne voit que ce qui lui a été transmis.</p>
+     */
     public List<Enrollment> getPartnerEnrollments(UUID partnerUserId) {
-        return enrollmentRepository.findBySessionTrainingPartnerProfileUserId(partnerUserId);
+        return filterVisibleToPartner(
+                enrollmentRepository.findBySessionTrainingPartnerProfileUserId(partnerUserId));
+    }
+
+    /** Étapes encore internes à OptimiSanté : jamais exposées au partenaire. */
+    private static final java.util.Set<EnrollmentStatus> HIDDEN_FROM_PARTNER = java.util.EnumSet.of(
+            EnrollmentStatus.UNDER_OPTIMI_REVIEW,
+            EnrollmentStatus.ACTION_REQUIRED);
+
+    private List<Enrollment> filterVisibleToPartner(List<Enrollment> enrollments) {
+        return enrollments.stream()
+                .filter(e -> !HIDDEN_FROM_PARTNER.contains(e.getStatus()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -273,35 +596,9 @@ public class EnrollmentService {
         if (trainingId == null) {
             return getPartnerEnrollments(partnerUserId);
         }
-        return enrollmentRepository.findBySessionTrainingPartnerProfileUserIdAndSessionTrainingId(partnerUserId, trainingId);
-    }
-
-    @Transactional
-    public Enrollment reviewAcademic(UUID enrollmentId, UUID partnerUserId, EnrollmentStatus status) {
-        Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
-                .orElseThrow(() -> new RuntimeException("Dossier introuvable"));
-
-        // Vérifier que ce partenaire est bien propriétaire de la formation
-        if (!enrollment.getSession().getTraining().getPartnerProfile().getUser().getId().equals(partnerUserId)) {
-            throw new RuntimeException("Vous n'êtes pas autorisé à examiner ce dossier");
-        }
-
-        if (status != EnrollmentStatus.APPROVED_ACADEMIC && status != EnrollmentStatus.REJECTED) {
-            throw new IllegalArgumentException("Statut invalide pour une révision académique");
-        }
-
-        EnrollmentStatus previousStatus = enrollment.getStatus();
-        enrollment.setStatus(status);
-        log.info("Enrollment {} academic review status updated to {} by partner {}", enrollmentId, status, partnerUserId);
-        Enrollment saved = enrollmentRepository.save(enrollment);
-
-        if (previousStatus != status) {
-            eventPublisher.publishEvent(
-                    new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentStatusChanged(
-                            saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
-                            previousStatus == null ? null : previousStatus.name(), status.name()));
-        }
-        return saved;
+        return filterVisibleToPartner(
+                enrollmentRepository.findBySessionTrainingPartnerProfileUserIdAndSessionTrainingId(
+                        partnerUserId, trainingId));
     }
 
     @Transactional
@@ -421,7 +718,13 @@ public class EnrollmentService {
                 .medicalBoardRegistrationUrl(enrollment.getMedicalBoardRegistrationUrl())
                 .passportUrl(enrollment.getPassportUrl())
                 .conventionS3Key(enrollment.getConventionS3Key())
-                .attestationS3Key(enrollment.getAttestationS3Key());
+                .attestationS3Key(enrollment.getAttestationS3Key())
+                .hostInstitution(enrollment.getSession().getLocation())
+                .actionRequiredNote(enrollment.getActionRequiredNote())
+                .rejectionReason(enrollment.getRejectionReason())
+                // Montant résolu depuis la session (ou le tarif de la formation) : c'est ce
+                // que le médecin devra régler, affiché avant même l'ouverture du paiement.
+                .tuitionAmount(resolveTuitionAmountQuietly(enrollment));
 
         if (includeDoctorName) {
             String doctorEmail = enrollment.getDoctor().getEmail();

@@ -59,7 +59,7 @@ public class NotificationAlertJob {
                     + "WHERE payment_status = 'UNPAID' AND COALESCE(is_quote, false) = false "
                     + "AND created_at < now() - (? || ' hours')::interval";
             case "ENROLLMENT_STALE" -> "SELECT COUNT(*) FROM enrollments "
-                    + "WHERE status = 'PENDING_REVIEW' AND submitted_at < now() - (? || ' hours')::interval";
+                    + "WHERE status = 'UNDER_OPTIMI_REVIEW' AND submitted_at < now() - (? || ' hours')::interval";
             default -> null;
         };
         if (sql == null) {

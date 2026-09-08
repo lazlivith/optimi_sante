@@ -1,6 +1,10 @@
 node_modules/
 target/
 .env
+# Variantes et sauvegardes de fichiers d'environnement (contiennent des secrets).
+# `.env.example` reste versionne : il ne contient que des valeurs factices.
+.env.*
+!.env.example
 .idea/
 .vscode/
 dist/

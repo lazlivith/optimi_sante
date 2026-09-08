@@ -52,7 +52,8 @@ public interface AnalyticsRepository extends JpaRepository<Order, UUID> {
                  JOIN training_sessions s ON s.id = e.session_id
                  JOIN trainings tr ON tr.id = s.training_id
                  WHERE tr.tenant_id = :t
-                   AND e.status IN ('PENDING_REVIEW','APPROVED_ACADEMIC','APPROVED_ADMINISTRATIVE',
+                   AND e.status IN ('UNDER_OPTIMI_REVIEW','ACTION_REQUIRED','SUBMITTED_TO_PARTNER',
+                                    'ACCEPTED_BY_PARTNER','PENDING_TUITION_FEE','CONFIRMED',
                                     'CONVENTION_ISSUED','VISA_SUBMITTED','VISA_GRANTED')) AS enrollmentsActive
             """, nativeQuery = true)
     OverviewRow overview(@Param("t") UUID tenantId);

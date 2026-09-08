@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -25,20 +23,11 @@ services:
       - optimisante-redisdata:/data
     restart: unless-stopped
 
-  localstack:
-    image: localstack/localstack:latest
-    container_name: optimisante-localstack
-    ports:
-      - "4566:4566" # LocalStack Gateway
-      - "4510-4559:4510-4559" # external services port range
-    environment:
-      - SERVICES=s3,kms
-      - DEBUG=1
-      - DOCKER_HOST=unix:///var/run/docker.sock
-    volumes:
-      - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
-      - "/var/run/docker.sock:/var/run/docker.sock"
-    restart: unless-stopped
+  # Service localstack (émulation AWS S3/KMS) retiré : le backend n'a jamais utilisé
+  # le SDK AWS (vérifié : aucune dépendance, aucun appel S3Client/KmsClient dans le
+  # code), le stockage réel passe entièrement par Cloudinary. Le service ne faisait
+  # que crash-looper (l'image :latest exige désormais une licence LocalStack) sans
+  # jamais être sollicité par l'application.
 
   backend:
     build:
@@ -66,6 +55,9 @@ services:
       - MAIL_USERNAME=${MAIL_USERNAME:-}
       - MAIL_PASSWORD=${MAIL_PASSWORD:-}
       - MAIL_FROM=${MAIL_FROM:-no-reply@optimisante.fr}
+      # Statistiques de délivrabilité dans l'espace « Emails » de l'admin (facultatif).
+      - MAILTRAP_API_TOKEN=${MAILTRAP_API_TOKEN:-}
+      - MAILTRAP_ACCOUNT_ID=${MAILTRAP_ACCOUNT_ID:-}
       - FRONTEND_BASE_URL=http://localhost:5173
       - DOCTOR_APPLICATION_FEE=${DOCTOR_APPLICATION_FEE:-50.00}
       # Clés Stripe à renseigner une fois disponibles (dashboard.stripe.com, mode Test) —

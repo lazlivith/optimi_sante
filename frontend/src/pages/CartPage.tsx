@@ -4,8 +4,10 @@ import { orderService, type QuoteRequestDto } from '../api/orderService';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Box, Trash2, ArrowLeft, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export function CartPage() {
+  usePageMeta('Mon panier');
   const { items, removeFromCart, clearCart, totalPrice, addToCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Download, UploadCloud, CheckCircle2, Building2, ShieldCheck } from 'lucide-react';
 import { partnershipService } from '../../api/partnershipService';
 import { Toast, type ToastType } from '../../components/common/Toast';
+import { usePageMeta } from '../../hooks/usePageMeta';
 
 const CONDITIONS = [
   "Structure de santé agréée (numéro FINESS requis), capable d'accueillir des stagiaires cliniques encadrés.",
@@ -25,6 +26,7 @@ const STEP_BADGE_STYLES: Record<(typeof STEPS)[number]['tone'], string> = {
 };
 
 export function BecomePartnerPage() {
+  usePageMeta('Devenir centre partenaire', "Rejoignez le réseau de CHU et centres de formation partenaires d'Optimi Santé pour accueillir des stagiaires cliniques dans le cadre de conventions tripartites.");
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -43,6 +45,7 @@ export function BecomePartnerPage() {
       const url = await partnershipService.getConventionTemplateUrl();
       window.open(url, '_blank');
     } catch (err) {
+      console.error('Erreur lors de la génération du modèle de convention', err);
       setToast({ message: "Impossible de générer le modèle pour le moment.", type: 'error' });
     } finally {
       setIsDownloading(false);

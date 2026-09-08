@@ -31,10 +31,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
+import com.optimisante.backend.common.security.TemporaryPasswordGenerator;
 
 /**
  * Candidature médecin payante : remplace l'ancienne auto-inscription médecin. Un candidat sans
@@ -48,8 +48,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DoctorApplicationService {
 
-    private static final String PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final DoctorApplicationRepository doctorApplicationRepository;
     private final TrainingSessionRepository trainingSessionRepository;
@@ -59,6 +57,7 @@ public class DoctorApplicationService {
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentService enrollmentService;
     private final StripePaymentService stripePaymentService;
+    private final com.optimisante.backend.domain.training.finance.EnrollmentPaymentService enrollmentPaymentService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
@@ -145,7 +144,7 @@ public class DoctorApplicationService {
             return;
         }
 
-        String temporaryPassword = generateTemporaryPassword();
+        String temporaryPassword = TemporaryPasswordGenerator.generate();
 
         // Le Customer Stripe a été créé automatiquement par Stripe pendant le paiement
         // (customer_creation=always, cf. submitApplication) — on le rattache au compte tout
@@ -177,6 +176,20 @@ public class DoctorApplicationService {
             EnrollmentResponseDto enrollmentDto = enrollmentService.createEnrollment(
                     new EnrollmentRequestDto(application.getSession().getId()), user.getId());
             application.setCreatedEnrollment(enrollmentRepository.getReferenceById(enrollmentDto.getId()));
+
+            // Reflet comptable des frais de dossier déjà encaissés par Stripe sur cette
+            // candidature. L'encaissement reste porté par doctor_applications (porte d'entrée
+            // inchangée) ; le registre en garde une trace pour que l'administration dispose
+            // d'un état financier unique plutôt que de deux tables à réconcilier.
+            // Idempotent, et volontairement non bloquant : un échec d'écriture comptable ne
+            // doit jamais annuler un paiement déjà encaissé ni la création du compte.
+            try {
+                enrollmentPaymentService.reflectDossierFee(
+                        enrollmentDto.getId(), application.getFeeAmount(), application.getPaidAt());
+            } catch (Exception reflectError) {
+                log.error("Frais de dossier non reflétés au registre pour la candidature {} — "
+                        + "à régulariser manuellement.", applicationId, reflectError);
+            }
         } catch (Exception e) {
             // Edge case rare : les places se sont épuisées entre la soumission de la candidature
             // et la confirmation du paiement. Le paiement a bien eu lieu, le compte est créé quand
@@ -192,8 +205,10 @@ public class DoctorApplicationService {
         application.setPaidAt(OffsetDateTime.now());
         doctorApplicationRepository.save(application);
 
+        // `user` est transmis pour tracer le destinataire dans email_logs : c'est ce qui
+        // permet à l'admin de renvoyer les identifiants depuis l'espace « Emails ».
         emailService.sendCredentialsEmail(application.getEmail(),
-                application.getFirstName() + " " + application.getLastName(), temporaryPassword, "Médecin");
+                application.getFirstName() + " " + application.getLastName(), temporaryPassword, "Médecin", user);
 
         eventPublisher.publishEvent(
                 new com.optimisante.backend.domain.notification.event.NotificationEvents.DoctorAccountValidated(
@@ -220,14 +235,6 @@ public class DoctorApplicationService {
         DoctorApplication application = doctorApplicationRepository.findByStripeCheckoutSessionId(stripeCheckoutSessionId)
                 .orElseThrow(() -> new RuntimeException("Doctor application not found for Stripe session: " + stripeCheckoutSessionId));
         return toDto(application, null);
-    }
-
-    private String generateTemporaryPassword() {
-        StringBuilder sb = new StringBuilder(12);
-        for (int i = 0; i < 12; i++) {
-            sb.append(PASSWORD_CHARS.charAt(RANDOM.nextInt(PASSWORD_CHARS.length())));
-        }
-        return sb.toString();
     }
 
     private DoctorApplicationResponseDto toDto(DoctorApplication application, String clientSecret) {

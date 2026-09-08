@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
+import com.optimisante.backend.domain.training.finance.TuitionPaymentService;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -25,6 +26,7 @@ import java.util.UUID;
 public class EnrollmentResource {
 
     private final EnrollmentService enrollmentService;
+    private final com.optimisante.backend.domain.training.finance.TuitionPaymentService tuitionPaymentService;
 
     @GetMapping("/trainings/{trainingId}/sessions")
     public ResponseEntity<List<TrainingSessionResponseDto>> getAvailableSessions(@PathVariable UUID trainingId) {
@@ -54,6 +56,27 @@ public class EnrollmentResource {
             Authentication auth) {
         UUID doctorId = UUID.fromString(auth.getPrincipal().toString());
         return ResponseEntity.ok(enrollmentService.createEnrollment(request, doctorId));
+    }
+
+    /**
+     * Ouvre le paiement des frais de formation. Accessible uniquement lorsque le dossier
+     * a été accepté par l'établissement et attend le règlement.
+     */
+    @PostMapping("/enrollments/{id}/tuition-checkout")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public ResponseEntity<TuitionPaymentService.TuitionCheckoutDto> createTuitionCheckout(
+            @PathVariable UUID id, Authentication auth) {
+        UUID doctorId = UUID.fromString(auth.getPrincipal().toString());
+        return ResponseEntity.ok(tuitionPaymentService.createTuitionCheckoutSession(id, doctorId));
+    }
+
+    /** Le médecin resoumet son dossier après avoir déposé les pièces demandées. */
+    @PostMapping("/enrollments/{id}/resubmit")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public ResponseEntity<EnrollmentResponseDto> resubmitAfterAction(@PathVariable UUID id,
+                                                                     Authentication auth) {
+        UUID doctorId = UUID.fromString(auth.getPrincipal().toString());
+        return ResponseEntity.ok(enrollmentService.resubmitAfterAction(id, doctorId));
     }
 
     @PutMapping("/enrollments/{id}/documents")

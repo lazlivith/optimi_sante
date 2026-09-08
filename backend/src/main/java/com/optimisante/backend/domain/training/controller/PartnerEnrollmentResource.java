@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.optimisante.backend.domain.training.dto.EnrollmentResponseDto;
 
 @RestController
 @RequestMapping("/api/v1/partner/enrollments")
@@ -67,27 +68,33 @@ public class PartnerEnrollmentResource {
         return ResponseEntity.ok(documents);
     }
 
-    @PatchMapping("/{id}/academic-review")
-    @PreAuthorize("hasRole('CENTRE_FORMATION') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Map<String, String>> reviewAcademic(
-            @PathVariable UUID id,
-            @RequestBody Map<String, String> request,
-            Authentication auth) {
-        UUID partnerUserId = UUID.fromString(auth.getPrincipal().toString());
-        
-        String statusStr = request.get("status");
-        if (statusStr == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Status is required"));
-        }
-        
-        EnrollmentStatus status;
-        try {
-            status = EnrollmentStatus.valueOf(statusStr);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Invalid status value"));
-        }
-
-        enrollmentService.reviewAcademic(id, partnerUserId, status);
-        return ResponseEntity.ok(Map.of("message", "Academic review updated successfully"));
+    /**
+     * Décision pédagogique du partenaire : accepte ou refuse la candidature.
+     * Une acceptation bascule automatiquement le dossier en attente de paiement.
+     */
+    /**
+     * Demande de pièce complémentaire : alternative au refus quand le dossier est
+     * incomplet plutôt qu'irrecevable. Renvoie le dossier à OptimiSanté.
+     */
+    @PostMapping("/{id}/request-correction")
+    @PreAuthorize("hasRole('CENTRE_FORMATION')")
+    public ResponseEntity<EnrollmentResponseDto> requestCorrection(@PathVariable UUID id,
+                                                                   @RequestBody Map<String, String> body,
+                                                                   Authentication auth) {
+        UUID partnerId = UUID.fromString(auth.getPrincipal().toString());
+        return ResponseEntity.ok(
+                enrollmentService.requestPartnerCorrection(id, partnerId, body.get("note")));
     }
+
+    @PostMapping("/{id}/decision")
+    @PreAuthorize("hasRole('CENTRE_FORMATION')")
+    public ResponseEntity<EnrollmentResponseDto> decide(@PathVariable UUID id,
+                                                        @RequestBody Map<String, Object> body,
+                                                        Authentication auth) {
+        UUID partnerId = UUID.fromString(auth.getPrincipal().toString());
+        boolean accept = Boolean.TRUE.equals(body.get("accept"));
+        String reason = body.get("reason") != null ? String.valueOf(body.get("reason")) : null;
+        return ResponseEntity.ok(enrollmentService.partnerDecision(id, partnerId, accept, reason));
+    }
+
 }

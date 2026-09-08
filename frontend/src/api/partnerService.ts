@@ -73,11 +73,30 @@ export const partnerService = {
     return data;
   },
 
-  reviewAcademic: async (enrollmentId: string, status: string = 'APPROVED_ACADEMIC') => {
-    // Uses the PATCH endpoint for status update
-    const { data } = await axiosClient.patch(`/partner/enrollments/${enrollmentId}/academic-review`, { status });
+  /**
+   * Décision pédagogique du partenaire. Une acceptation bascule automatiquement le
+   * dossier en attente de paiement côté serveur — le front n'a rien à enchaîner.
+   */
+  decide: async (enrollmentId: string, accept: boolean, reason?: string) => {
+    const { data } = await axiosClient.post(
+      `/partner/enrollments/${enrollmentId}/decision`,
+      { accept, reason },
+    );
     return data;
   },
+
+  /**
+   * Demande de pièce complémentaire : renvoie le dossier à OptimiSanté plutôt que de
+   * le refuser. Le CHU ne s'adresse jamais directement au médecin.
+   */
+  requestCorrection: async (enrollmentId: string, note: string) => {
+    const { data } = await axiosClient.post(
+      `/partner/enrollments/${enrollmentId}/request-correction`,
+      { note },
+    );
+    return data;
+  },
+
 
   getEnrollments: async (trainingId?: string): Promise<EnrollmentDto[]> => {
     const { data } = await axiosClient.get<EnrollmentDto[]>('/partner/enrollments', {

@@ -1,7 +1,8 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { PageTransition } from '../components/common/PageTransition';
 import {
-  LayoutDashboard, Users, FileText, GraduationCap, Store, LogOut, ShieldCheck, Package, Building2, TrendingUp, Tag, ShoppingBag, BookOpen, BarChart3, FileSpreadsheet, ScrollText, BellRing, Bot
+  LayoutDashboard, Users, FileText, GraduationCap, Store, LogOut, ShieldCheck, Package, Building2, TrendingUp, Tag, ShoppingBag, BookOpen, BarChart3, FileSpreadsheet, ScrollText, BellRing, Bot, Mail, Banknote
 } from 'lucide-react';
 import { NotificationBell } from '../components/common/NotificationBell';
 
@@ -22,6 +23,8 @@ const NAV_ITEMS = [
   { to: '/admin/ai', label: 'Intelligence artificielle', icon: Bot },
   { to: '/admin/audit', label: "Journal d'audit", icon: ScrollText },
   { to: '/admin/governance', label: 'Gouvernance / RGPD', icon: ShieldCheck },
+  { to: '/admin/emails', label: 'Emails', icon: Mail },
+  { to: '/admin/payouts', label: 'Reversements', icon: Banknote },
 ];
 
 export function AdminLayout() {
@@ -96,7 +99,9 @@ export function AdminLayout() {
         <div className="h-14 border-b border-slate-200 bg-white flex items-center justify-end px-6 sticky top-0 z-30">
           <NotificationBell />
         </div>
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </main>
     </div>
   );

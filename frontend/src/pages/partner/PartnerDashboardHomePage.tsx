@@ -35,10 +35,10 @@ export function PartnerDashboardHomePage() {
     fetchStats();
   }, []);
 
-  const pendingCount = enrollments.filter(e => e.status === 'PENDING_REVIEW').length;
+  const pendingCount = enrollments.filter(e => e.status === 'SUBMITTED_TO_PARTNER').length;
   const rejectedCount = enrollments.filter(e => e.status === 'REJECTED').length;
   const approvedCount = enrollments.filter(e =>
-    ['APPROVED_ACADEMIC', 'APPROVED_ADMINISTRATIVE', 'READY_TO_START'].includes(e.status)
+    ['ACCEPTED_BY_PARTNER', 'PENDING_TUITION_FEE', 'CONFIRMED', 'READY_TO_START'].includes(e.status)
   ).length;
   const decidedCount = approvedCount + rejectedCount;
   const acceptanceRate = decidedCount > 0 ? `${Math.round((approvedCount / decidedCount) * 100)}%` : '—';

@@ -15,9 +15,49 @@ export interface User {
   currentHospital?: string;
   // B2B fields
   companyName?: string;
-  siretFiness?: string;
+  /** Identifiant fiscal générique (ex-siretFiness, renommé pour l'international). */
+  taxId?: string;
   vatNumber?: string;
   billingAddress?: string;
+  country?: string;
+  facilityType?: FacilityType;
+  contactName?: string;
+}
+
+/** Types d'établissement B2B — aligné sur l'enum Java `FacilityType`. */
+export type FacilityType =
+  | 'CLINIC'
+  | 'HOSPITAL'
+  | 'MEDICAL_PRACTICE'
+  | 'LABORATORY'
+  | 'DISTRIBUTOR'
+  | 'OTHER';
+
+export const FACILITY_TYPE_LABELS: Record<FacilityType, string> = {
+  CLINIC: 'Clinique privée',
+  HOSPITAL: 'Hôpital public',
+  MEDICAL_PRACTICE: 'Cabinet médical',
+  LABORATORY: 'Laboratoire',
+  DISTRIBUTOR: 'Revendeur / Grossiste',
+  OTHER: 'Autre',
+};
+
+export interface RegisterB2CPayload {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+}
+
+export interface RegisterB2BPayload {
+  companyName: string;
+  facilityType: FacilityType;
+  country: string;
+  taxId: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  password: string;
 }
 
 export interface JwtResponse {
@@ -31,10 +71,10 @@ export const authService = {
     const { data } = await axiosClient.post<JwtResponse>('/auth/login', credentials);
     return data;
   },
-  registerB2C: async (payload: any) => {
+  registerB2C: async (payload: RegisterB2CPayload) => {
     await axiosClient.post('/auth/register/b2c', payload);
   },
-  registerB2B: async (payload: any) => {
+  registerB2B: async (payload: RegisterB2BPayload) => {
     await axiosClient.post('/auth/register/b2b', payload);
   },
   registerDoctor: async (payload: any) => {

@@ -3,7 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { axiosClient } from '../../api/axiosClient';
 import { enrollmentService } from '../../api/enrollmentService';
 import { Toast, type ToastType } from '../../components/common/Toast';
-import { ArrowLeft, UploadCloud, FileText, Loader2, XCircle } from 'lucide-react';
+import { ArrowLeft, UploadCloud, FileText, Loader2, XCircle, AlertTriangle, Send } from 'lucide-react';
+import { TuitionPaymentCard } from '../../components/training/TuitionPaymentCard';
 import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
 
 export function MyEnrollmentDetailPage() {
@@ -30,9 +31,30 @@ export function MyEnrollmentDetailPage() {
       const { data } = await axiosClient.get(`/enrollments/${id}`);
       setEnrollment(data);
     } catch (err) {
+      console.error('Erreur lors du chargement du dossier', err);
       setToast({ message: "Impossible de charger ce dossier.", type: 'error' });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const [isResubmitting, setIsResubmitting] = useState(false);
+
+  const handleResubmit = async () => {
+    if (!id) return;
+    setIsResubmitting(true);
+    try {
+      await enrollmentService.resubmitAfterAction(id);
+      setToast({ message: 'Dossier renvoyé à Optimi Santé pour vérification.', type: 'success' });
+      fetchEnrollment();
+    } catch (err: any) {
+      console.error('Échec de la resoumission', err);
+      setToast({
+        message: err.response?.data?.message || 'Le dossier n\'a pas pu être renvoyé.',
+        type: 'error',
+      });
+    } finally {
+      setIsResubmitting(false);
     }
   };
 
@@ -94,6 +116,59 @@ export function MyEnrollmentDetailPage() {
 
           <Stepper steps={ENROLLMENT_STEPS} currentStepId={enrollment.status} isFailed={isFailed} size="full" />
         </div>
+
+        {/* Pièce réclamée : la note vient de l'admin ou du CHU, elle doit être lue par
+            le médecin — sans elle, son dossier semblerait bloqué sans raison. */}
+        {enrollment.status === 'ACTION_REQUIRED' && (
+          <div className="bg-amber-50 border border-amber-200 rounded-3xl p-8 mb-8">
+            <div className="flex gap-4">
+              <AlertTriangle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-amber-900 mb-2">
+                  Une pièce complémentaire est attendue
+                </h2>
+                <p className="text-amber-900 whitespace-pre-line">
+                  {enrollment.actionRequiredNote || 'Merci de compléter votre dossier.'}
+                </p>
+                <p className="text-sm text-amber-800 mt-3">
+                  Déposez le document ci-dessous, puis renvoyez votre dossier pour vérification.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleResubmit}
+                  disabled={isResubmitting}
+                  className="mt-5 inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-70 transition-colors"
+                >
+                  {isResubmitting
+                    ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    : <Send className="w-4 h-4 mr-2" />}
+                  Renvoyer mon dossier
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Décision négative : toujours accompagnée de son motif. */}
+        {isFailed && enrollment.rejectionReason && (
+          <div className="bg-rose-50 border border-rose-200 rounded-3xl p-8 mb-8">
+            <h2 className="text-lg font-bold text-rose-900 mb-2">Motif de la décision</h2>
+            <p className="text-rose-900 whitespace-pre-line">{enrollment.rejectionReason}</p>
+          </div>
+        )}
+
+        {/* Règlement des frais de formation */}
+        {enrollment.status === 'PENDING_TUITION_FEE' && (
+          <div className="mb-8">
+            <TuitionPaymentCard
+              enrollmentId={enrollment.id}
+              trainingTitle={enrollment.trainingTitle}
+              hostInstitution={enrollment.hostInstitution}
+              amount={enrollment.tuitionAmount}
+              onError={(message) => setToast({ message, type: 'error' })}
+            />
+          </div>
+        )}
 
         {/* Upload Zone */}
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">

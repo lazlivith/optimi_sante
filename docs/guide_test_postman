@@ -1,5 +1,5 @@
 # Guide de Test Postman — API Optimi Santé
-**Dernière mise à jour : 26 août 2026 (post-correction bugs Sprint 2/4)**
+**Dernière mise à jour : 8 septembre 2026 — Partie II ajoutée (cycle tripartite, finance, emails).**
 
 Ce guide remplace `plan_de_test1` et `plan_de_test2`. Les deux échecs qu'ils documentaient venaient de **3 bugs backend réels** (migration cassée, `totalAmount` jamais sauvegardé, chemins de templates PDF doublés) qui ont été corrigés. Ce document explique comment tester correctement à partir de maintenant, sans retomber dans les mêmes pièges.
 
@@ -186,3 +186,314 @@ Content-Type: application/json
 | Migration V11 référençait une colonne inexistante (`is_credit_approved`) + image Docker jamais reconstruite | Login `b2b@optimi.com` → 401 (compte inexistant) | `V11__insert_test_accounts.sql` |
 | `totalAmount` calculé mais jamais assigné à l'entité `Order` | Violation `NOT NULL` en base sur toute commande/devis (checkout **et** quote-request) | `OrderService.java` |
 | Fragments PDF référencés avec le préfixe du resolver doublé (`pdf/components/header` au lieu de `components/header`) + `item.description` au lieu de `item.name` | `documentS3Key` restait `null`, devis créé sans PDF | `devis-b2b.html`, `recu-paiement.html`, `attestation-ins.html`, `PdfConfig.java` (resolver, non modifié — juste identifié) |
+
+
+---
+---
+
+# Partie II — Cycle de candidature tripartite, finance et emails
+**Ajoutée le 8 septembre 2026 — couvre les migrations V22 à V28.**
+
+Cette partie couvre les endpoints apparus avec le modèle d'agence (OptimiSanté pré-qualifie,
+le CHU décide, la plateforme encaisse et reverse). La Partie I ci-dessus reste valable pour
+l'e-commerce B2B/B2C.
+
+---
+
+## A. Préparer un jeu de données rejouable
+
+Sans cette étape, la recette dépend de l'état laissé par la précédente : après un premier
+passage, plus aucun dossier n'est en attente de décision et la moitié des appels renvoient
+`409 Transition interdite`.
+
+```powershell
+docker exec -i optimisante-postgres psql -U postgres -d optimisante_db < docker/seed_recette.sql
+```
+
+Le script **est rejouable autant de fois que voulu** et **ne touche jamais vos données
+existantes** : il ne supprime que ce qu'il a lui-même créé (comptes préfixés `recette-`).
+
+Il produit cinq dossiers, un par étape du cycle :
+
+| Compte médecin | Statut du dossier | Sert à tester |
+|---|---|---|
+| `recette-revue@optimisante.test` | `UNDER_OPTIMI_REVIEW` | Pré-qualification, demande de pièce |
+| `recette-correction@optimisante.test` | `ACTION_REQUIRED` | Boucle de correction et resoumission |
+| `recette-transmis@optimisante.test` | `SUBMITTED_TO_PARTNER` | Décision du CHU |
+| `recette-paiement@optimisante.test` | `PENDING_TUITION_FEE` | Paiement de la formation |
+| `recette-confirme@optimisante.test` | `CONFIRMED` | Cycle de mobilité, documents |
+
+Mot de passe de tous ces comptes : `password123`.
+
+Notez les identifiants de dossier affichés en fin de script : ils changent à chaque exécution.
+
+---
+
+## B. Variables Postman à ajouter
+
+| Variable | Valeur |
+|---|---|
+| `token_partner` | JWT de `chu@optimi.com` |
+| `token_medecin_paiement` | JWT de `recette-paiement@optimisante.test` |
+| `enrollment_revue` | UUID affiché par le script |
+| `enrollment_transmis` | UUID affiché par le script |
+| `enrollment_paiement` | UUID affiché par le script |
+| `partner_profile_id` | voir §F |
+
+---
+
+## C. Parcours nominal — de la candidature au paiement
+
+Chaque appel ci-dessous **doit** être joué dans cet ordre : l'automate refuse tout saut
+d'étape, y compris pour un administrateur.
+
+### C1. L'admin transmet un dossier pré-qualifié au CHU
+```
+POST {{base_url}}/admin/enrollments/{{enrollment_revue}}/submit-to-partner
+Authorization: Bearer {{token_admin}}
+```
+**Attendu `200`** — statut `SUBMITTED_TO_PARTNER`, et `optimi_reviewed_at`/`optimi_reviewed_by`
+renseignés en base.
+
+### C2. Le CHU accepte la candidature
+```
+POST {{base_url}}/partner/enrollments/{{enrollment_transmis}}/decision
+Authorization: Bearer {{token_partner}}
+Content-Type: application/json
+
+{ "accept": true }
+```
+**Attendu `200`** — statut `PENDING_TUITION_FEE`. L'acceptation enchaîne automatiquement sur
+l'attente de paiement : c'est une conséquence mécanique de la décision, il n'y a pas de second
+appel à faire.
+
+### C3. Le médecin ouvre le paiement de sa formation
+```
+POST {{base_url}}/enrollments/{{enrollment_paiement}}/tuition-checkout
+Authorization: Bearer {{token_medecin_paiement}}
+```
+**Attendu `200`** — `{ clientSecret, amount: 3200.00, currency: "EUR" }`.
+
+Le `clientSecret` est consommé par le formulaire Stripe intégré du frontend ; il n'est pas
+exploitable directement depuis Postman. Pour aller jusqu'au bout, deux options : payer depuis
+l'interface (`/doctor/enrollments/{id}`, carte de test `4242 4242 4242 4242`), ou rejouer le
+webhook (§D).
+
+### C4. Confirmation du paiement (webhook)
+Voir §D. Résultat attendu : `CONFIRMED`, puis **`CONVENTION_ISSUED`** automatiquement, avec
+convention et attestation générées.
+
+---
+
+## D. Rejouer un webhook Stripe en local
+
+Utile pour confirmer un paiement sans passer par une vraie carte.
+
+**Piège à connaître** : le SDK refuse de désérialiser un événement dont l'`api_version` ne
+correspond pas à la sienne, et le webhook répond alors **`200` sans rien faire**. La version
+attendue par `stripe-java` 29.2.0 est **`2025-05-28.basil`**.
+
+Script prêt à l'emploi (remplacez `ENROLLMENT_ID`) :
+
+```python
+import json, time, hmac, hashlib, urllib.request
+
+SECRET = "<valeur de STRIPE_WEBHOOK_SECRET dans docker/.env>"
+ENROLLMENT_ID = "..."
+
+payload = json.dumps({
+    "id": "evt_local", "object": "event",
+    "type": "checkout.session.completed",
+    "api_version": "2025-05-28.basil", "created": int(time.time()),
+    "data": {"object": {
+        "id": "cs_local", "object": "checkout.session",
+        "client_reference_id": ENROLLMENT_ID,
+        "payment_intent": "pi_local", "payment_status": "paid", "status": "complete",
+        "metadata": {"payment_type": "TUITION_FEE", "enrollment_id": ENROLLMENT_ID}}},
+}, separators=(",", ":"))
+
+ts = str(int(time.time()))
+sig = hmac.new(SECRET.encode(), f"{ts}.{payload}".encode(), hashlib.sha256).hexdigest()
+req = urllib.request.Request("http://localhost:8080/api/v1/payments/webhook",
+    data=payload.encode(),
+    headers={"Content-Type": "application/json", "Stripe-Signature": f"t={ts},v1={sig}"})
+print(urllib.request.urlopen(req).status)
+```
+
+Le webhook est **idempotent** : le rejouer une seconde fois répond `200` sans créer de doublon
+ni modifier le statut. C'est un test à faire.
+
+Métadonnées reconnues : `payment_type` = `TUITION_FEE` | `APPLICATION_FEE` | `PRODUCT_CHECKOUT`.
+Une session **sans métadonnée** est traitée comme une commande e-commerce (comportement
+historique préservé) ; la clé `type` = `DOCTOR_APPLICATION` reste également reconnue.
+
+---
+
+## E. Contrôles de l'automate — ce qui DOIT échouer
+
+Ces appels ne sont pas des cas d'erreur à éviter : ce sont les garde-fous à vérifier.
+
+| Appel | Attendu |
+|---|---|
+| `PATCH /admin/enrollments/{{enrollment_revue}}/mobility?status=READY_TO_START` | **`409`** — saut d'étape refusé, la réponse liste les transitions possibles |
+| `PATCH /admin/enrollments/{{enrollment_paiement}}/mobility?status=CONVENTION_ISSUED` | **`409`** — pas de convention avant paiement |
+| `PATCH /admin/enrollments/{{enrollment_revue}}/status?status=READY_TO_START` | **`409`** — l'ancien endpoint générique est soumis au même automate |
+| `POST /admin/enrollments/{{enrollment_revue}}/request-action` avec `{"note": ""}` | **`400`** — motif obligatoire |
+| `POST /admin/enrollments/{id}/cancel` avec `{"reason": ""}` | **`400`** — motif obligatoire |
+| `POST /partner/enrollments/{{enrollment_revue}}/decision` (dossier non transmis) | **`409`** |
+
+**Isolation de l'espace partenaire** — le contrôle le plus important :
+```
+GET {{base_url}}/partner/enrollments
+Authorization: Bearer {{token_partner}}
+```
+
+⚠️ **Rejouez le script de seed juste avant ce test.** Si vous venez d'exécuter §C1, le dossier
+`{{enrollment_revue}}` a été transmis au CHU : il apparaît alors légitimement, et vous
+concluriez à tort à une fuite.
+
+Sur un jeu de données frais, le résultat attendu est :
+
+| Dossier | Statut | Visible du CHU ? |
+|---|---|---|
+| `recette-revue` | `UNDER_OPTIMI_REVIEW` | **non** |
+| `recette-correction` | `ACTION_REQUIRED` | **non** |
+| `recette-transmis` | `SUBMITTED_TO_PARTNER` | **oui** |
+
+Le filtrage est fait côté serveur : un dossier encore sous la responsabilité d'OptimiSanté
+n'est jamais exposé au CHU, même à un appelant qui contournerait l'interface.
+
+---
+
+## F. Boucle de correction CHU → médecin
+
+### F1. Le CHU réclame une pièce plutôt que de refuser
+```
+POST {{base_url}}/partner/enrollments/{{enrollment_transmis}}/decision
+```
+… ou, pour une pièce manquante :
+```
+POST {{base_url}}/partner/enrollments/{{enrollment_transmis}}/request-correction
+Authorization: Bearer {{token_partner}}
+Content-Type: application/json
+
+{ "note": "Attestation de l'Ordre non traduite." }
+```
+**Attendu `200`** — statut `ACTION_REQUIRED`, note préfixée « Demande du CHU : ».
+
+### F2. Le médecin voit la demande et resoumet
+```
+GET  {{base_url}}/enrollments/{id}          → champ `actionRequiredNote` renseigné
+POST {{base_url}}/enrollments/{id}/resubmit → 200, retour en UNDER_OPTIMI_REVIEW
+```
+
+Le dossier repasse par OptimiSanté avant d'être re-transmis : **le CHU ne s'adresse jamais
+directement au médecin**.
+
+---
+
+## G. Registre financier et reversements
+
+### G1. Indicateurs et registre (admin)
+```
+GET {{base_url}}/admin/finance/kpis          → totalCollected, totalCommission, awaitingPayout, totalPaidOut
+GET {{base_url}}/admin/payments              → registre complet, avec répartition
+GET {{base_url}}/admin/finance/partners-due  → une ligne par partenaire (récupérez `partnerProfileId` ici)
+```
+
+### G2. Générer puis solder un reversement
+```
+POST {{base_url}}/admin/partners/{{partner_profile_id}}/payouts
+POST {{base_url}}/admin/payouts/{payoutId}/mark-paid
+```
+Contrôles attendus :
+- une **seconde génération immédiate** → `409` « aucun encaissement à reverser » : un
+  encaissement déjà rattaché ne peut pas être payé deux fois ;
+- un **second `mark-paid`** → `409`.
+
+Bornage optionnel : `?periodStart=2026-09-01&periodEnd=2026-10-01` (fin **exclue**).
+
+### G3. Confidentialité du modèle économique
+```
+GET {{base_url}}/partner/payments
+Authorization: Bearer {{token_partner}}
+```
+La réponse **ne doit contenir aucun** de ces champs : `grossAmount`, `commissionAmount`,
+`commissionRate`. Seule `netAmount` est servie. À vérifier dans l'onglet **Body** brut, pas
+seulement à l'écran : la restriction est appliquée par le serveur, une fuite ici serait un bug.
+
+### G4. Cloisonnement des rôles
+| Appel | Attendu |
+|---|---|
+| `GET /admin/payments` avec `{{token_partner}}` | **`403`** |
+| `GET /admin/finance/kpis` avec un token médecin | **`403`** |
+| `GET /partner/payments` avec `{{token_admin}}` | **`403`** |
+
+---
+
+## H. Espace Emails
+
+```
+GET  {{base_url}}/admin/emails?status=FAILED&type=CREDENTIALS&search=optimi
+GET  {{base_url}}/admin/emails/stats
+POST {{base_url}}/admin/emails/test          { "recipient": "vous@exemple.com" }
+POST {{base_url}}/admin/emails/{id}/resend
+```
+
+Points à vérifier :
+- l'**envoi de test** apparaît immédiatement dans le journal avec le statut `SENT` ;
+- **un échec est tracé, pas perdu** : coupez temporairement le SMTP
+  (`MAIL_HOST=smtp-inexistant.invalid` dans `docker/.env`, puis recréez le conteneur) et
+  relancez un envoi de test → `409` avec le message SMTP exact, **et** une ligne `FAILED`
+  dans le journal avec son erreur. Pensez à restaurer `docker/.env` ensuite ;
+- le **renvoi d'identifiants génère un nouveau mot de passe** : l'ancien cesse de fonctionner,
+  c'est volontaire (le mot de passe d'origine n'existe nulle part en clair côté serveur).
+
+`GET /admin/emails/stats` remonte aussi l'état du domaine d'envoi Mailtrap et de chacun de ses
+enregistrements DNS — utile pour diagnostiquer un envoi qui n'arrive pas.
+
+---
+
+## I. Inscription B2B internationale
+
+```
+POST {{base_url}}/auth/register/b2b
+Content-Type: application/json
+
+{
+  "companyName": "Clinique Al Madina",
+  "facilityType": "CLINIC",
+  "country": "MA",
+  "taxId": "ICE001234567890",
+  "contactName": "Youssef Benali",
+  "phone": "+212 6 12 34 56 78",
+  "email": "achats.recette@example.com",
+  "password": "password123"
+}
+```
+
+`facilityType` accepte : `CLINIC`, `HOSPITAL`, `MEDICAL_PRACTICE`, `LABORATORY`,
+`DISTRIBUTOR`, `OTHER`. Toute autre valeur → `400` listant les valeurs acceptées.
+
+`tenantCode` est devenu **optionnel** (défaut `FR_MAIN`) ; les clients qui l'envoient encore
+fonctionnent à l'identique.
+
+---
+
+## J. Pièges rencontrés en recette
+
+1. **`docker compose up -d` ne suffit pas** après un changement de code ou d'`application.yml` :
+   le conteneur repart sur l'ancien `app.jar`. Toujours `docker compose build backend` d'abord.
+   Symptôme typique : une variable d'environnement bien présente dans le conteneur mais ignorée
+   par l'application.
+
+2. **Accents dans un payload `curl` sous Windows** : la console peut produire de l'UTF-8 invalide,
+   et le serveur répond `400 « une valeur envoyée n'est pas reconnue »`. Ce n'est pas un bug de
+   l'API. Utilisez Postman, ou un script Python avec `json.dumps(...).encode("utf-8")`.
+
+3. **Le catalogue répond `409 « Tenant context is required »`** si l'en-tête `X-Tenant-Id` est
+   absent. Le frontend l'envoie systématiquement ; pensez-y dans Postman.
+
+4. **Un tarif de session inférieur à 0,50 €** fait échouer l'ouverture du paiement
+   (`amount_too_small` côté Stripe). Le message renvoyé le dit explicitement et invite à vérifier
+   le tarif — le script de seed le fixe déjà à 3 200 €.

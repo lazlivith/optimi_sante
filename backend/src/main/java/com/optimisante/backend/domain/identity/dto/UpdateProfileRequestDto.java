@@ -9,6 +9,9 @@ public record UpdateProfileRequestDto(
         String medicalCouncilNumber,
         String currentHospital,
         String companyName,
-        String siretFiness
+        String taxId,
+        String country,
+        String facilityType,
+        String contactName
 ) {
 }

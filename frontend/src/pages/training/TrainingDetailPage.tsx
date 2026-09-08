@@ -5,6 +5,7 @@ import { trainingService, type LeadCaptureRequestDto, type TrainingSummaryDto } 
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
 import { ProductImage } from '../../components/common/ProductImage';
+import { usePageMeta } from '../../hooks/usePageMeta';
 
 const formatDuration = (durationDays: number, isLongStay: boolean): string => {
   if (isLongStay) {
@@ -20,6 +21,8 @@ export function TrainingDetailPage() {
 
   const [training, setTraining] = useState<TrainingSummaryDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  usePageMeta(training?.title ?? 'Formation médicale', training?.description || undefined);
 
   useEffect(() => {
     const fetchTraining = async () => {

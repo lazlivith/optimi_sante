@@ -6,6 +6,7 @@ import { catalogService } from '../api/catalogService';
 import type { Product } from '../api/catalogService';
 import { useCart } from '../context/CartContext';
 import { ProductImage } from '../components/common/ProductImage';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const HOMEPAGE_CATALOG_PREVIEW_COUNT = 8;
 
@@ -507,6 +508,7 @@ function PartnersSection() {
 // Main Page
 // ──────────────────────────────────────────────────
 export function HomePage() {
+  usePageMeta('');
   const { data: productsData } = useQuery({
     queryKey: ['products-home'],
     queryFn: () => catalogService.getProducts({ size: 48 }),

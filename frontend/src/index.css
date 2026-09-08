@@ -83,3 +83,27 @@
     @apply bg-brand-cream text-brand-dark;
   }
 }
+
+/* Transition d'entrée appliquée au contenu de page à chaque navigation (voir
+   PageTransition.tsx). Ne touche jamais les sidebars/navbar, seulement la zone
+   de contenu — elles ne sont pas remontées lors d'un changement de route. */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.page-transition {
+  animation: page-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    animation: none;
+  }
+}

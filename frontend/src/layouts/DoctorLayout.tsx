@@ -1,5 +1,6 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { PageTransition } from '../components/common/PageTransition';
 import {
   FileStack, ShieldCheck, UserCog, Store, LogOut, Stethoscope
 } from 'lucide-react';
@@ -79,7 +80,9 @@ export function DoctorLayout() {
         <div className="h-14 border-b border-slate-200 bg-white flex items-center justify-end px-6 sticky top-0 z-30">
           <NotificationBell />
         </div>
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </main>
     </div>
   );
