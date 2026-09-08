@@ -118,6 +118,10 @@ export function App() {
                 <Route path="trainings" element={<AdminTrainingsPage />} />
                 <Route path="partnership-requests" element={<AdminPartnershipRequestsPage />} />
                 <Route path="payouts" element={<AdminPayoutsPage />} />
+              </Route>
+
+              {/* --- Supervision : transverse aux deux métiers --- */}
+              <Route element={<ProtectedRoute allowedRoles={ALL_ADMIN_ROLES} />}>
                 <Route path="emails" element={<AdminEmailsPage />} />
               </Route>
 

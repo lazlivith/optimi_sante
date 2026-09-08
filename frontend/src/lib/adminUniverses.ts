@@ -26,7 +26,7 @@ export interface AdminNavItem {
 }
 
 export interface AdminUniverse {
-  id: 'ecommerce' | 'mobilite' | 'gouvernance';
+  id: 'ecommerce' | 'mobilite' | 'gouvernance' | 'supervision';
   label: string;
   home: string;
   items: AdminNavItem[];
@@ -59,6 +59,20 @@ export const MOBILITE_UNIVERSE: AdminUniverse = {
     { to: '/admin/partnership-requests', label: 'Partenariats', icon: Building2 },
     // Renommé pour lever l'ambiguïté avec le chiffre d'affaires du négoce.
     { to: '/admin/payouts', label: 'Reversements CHU', icon: Banknote },
+  ],
+};
+
+/**
+ * Transverse aux deux métiers : le journal des envois relève de la supervision de
+ * l'infrastructure, pas d'un métier. Un administrateur du négoce doit pouvoir vérifier qu'un
+ * email est bien parti sans dépendre de son homologue mobilité. Univers distinct plutôt que
+ * doublon dans les deux : le super admin le verrait alors deux fois dans sa sidebar.
+ */
+export const SUPERVISION_UNIVERSE: AdminUniverse = {
+  id: 'supervision',
+  label: 'Supervision',
+  home: '/admin/emails',
+  items: [
     { to: '/admin/emails', label: 'Emails', icon: Mail },
   ],
 };
@@ -81,12 +95,12 @@ export const GOUVERNANCE_UNIVERSE: AdminUniverse = {
 export function universesFor(role: string | undefined): AdminUniverse[] {
   switch (role) {
     case 'ADMIN_ECOMMERCE':
-      return [ECOMMERCE_UNIVERSE];
+      return [ECOMMERCE_UNIVERSE, SUPERVISION_UNIVERSE];
     case 'ADMIN_MOBILITE':
-      return [MOBILITE_UNIVERSE];
+      return [MOBILITE_UNIVERSE, SUPERVISION_UNIVERSE];
     case 'SUPER_ADMIN':
     case 'ADMIN':
-      return [ECOMMERCE_UNIVERSE, MOBILITE_UNIVERSE, GOUVERNANCE_UNIVERSE];
+      return [ECOMMERCE_UNIVERSE, MOBILITE_UNIVERSE, GOUVERNANCE_UNIVERSE, SUPERVISION_UNIVERSE];
     default:
       return [];
   }

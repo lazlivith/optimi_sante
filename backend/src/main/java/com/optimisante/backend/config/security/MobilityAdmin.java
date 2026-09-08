@@ -6,7 +6,7 @@ import java.lang.annotation.*;
 
 /**
  * Réservé à l'administration de la mobilité : dossiers de candidature, validation des
- * formations, demandes de partenariat, reversements aux CHU, journal des emails.
+ * formations, demandes de partenariat, reversements aux CHU.
  *
  * <p>C'est le périmètre le plus sensible de la plateforme : il donne accès aux pièces
  * médicales et consulaires des candidats. Un administrateur du négoce n'a rien à y faire,

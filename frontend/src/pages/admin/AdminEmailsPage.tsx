@@ -10,6 +10,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { StatCard } from '../../components/common/StatCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
+import { useAuth } from '../../context/AuthContext';
 import { Toast, type ToastType } from '../../components/common/Toast';
 
 const PAGE_SIZE = 25;
@@ -30,6 +31,11 @@ export function AdminEmailsPage() {
   const [testRecipient, setTestRecipient] = useState('');
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  // Le renvoi d'identifiants regenere un mot de passe : c'est une operation d'identite,
+  // reservee a la gouvernance cote serveur (@PlatformAdmin). Afficher le bouton aux
+  // administrateurs metier reviendrait a promettre une action qui repondrait 403.
+  const { user } = useAuth();
+  const canResetPasswords = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
 
   const fetchData = useCallback(async () => {
     try {
@@ -321,7 +327,7 @@ export function AdminEmailsPage() {
                         {formatDate(log.sentAt)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {log.canResend ? (
+                        {log.canResend && canResetPasswords ? (
                           <button
                             onClick={() => handleResend(log)}
                             disabled={resendingId === log.id}
