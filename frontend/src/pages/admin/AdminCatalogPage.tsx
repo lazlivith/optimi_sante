@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Loader2, Plus, Pencil, Trash2, Package, X, RotateCcw, Tag } from 'lucide-react';
-import { adminCatalogService, type AdminProductDto, type AdminProductRequestDto, type AdminCategoryDto } from '../../api/adminCatalogService';
+import { useCallback, useEffect, useState } from 'react';
+import { Loader2, Plus, Pencil, Trash2, Package, X, RotateCcw, Tag, Search, SlidersHorizontal, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { adminCatalogService, type AdminProductDto, type AdminProductRequestDto, type AdminCategoryDto, type CatalogFilters } from '../../api/adminCatalogService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -19,35 +19,76 @@ function isPromoCurrentlyActive(p: AdminProductDto): boolean {
   return true;
 }
 
+const PAGE_SIZE = 25;
+const NO_FILTER: CatalogFilters = {};
+
 export function AdminCatalogPage() {
   const [products, setProducts] = useState<AdminProductDto[]>([]);
   const [categories, setCategories] = useState<AdminCategoryDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
+  // Filtrage et pagination cote serveur. La page chargeait auparavant les 100 premiers
+  // produits d'un catalogue qui en compte plus de 1 500 : 93 % du catalogue etait
+  // inatteignable depuis cet ecran, sans que rien ne l'indique.
+  const [filters, setFilters] = useState<CatalogFilters>(NO_FILTER);
+  const [searchInput, setSearchInput] = useState('');
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<AdminProductRequestDto>(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
 
-  const fetchData = async () => {
+  const hasActiveFilter = Boolean(
+    filters.search || filters.categoryId || filters.activeState || filters.lowStock);
+
+  // La saisie est temporisee : sans cela, taper « compresse » declencherait neuf requetes
+  // et la reponse de la plus lente pourrait ecraser celle de la plus recente.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFilters((prev) => (prev.search === searchInput ? prev : { ...prev, search: searchInput }));
+      setPage(0);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const fetchProducts = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [productsPage, categoriesData] = await Promise.all([
-        adminCatalogService.listProducts(0, 100),
-        adminCatalogService.listCategories(),
-      ]);
+      const productsPage = await adminCatalogService.listProducts(page, PAGE_SIZE, filters);
       setProducts(productsPage.content);
-      setCategories(categoriesData);
+      setTotalPages(productsPage.totalPages);
+      setTotalElements(productsPage.totalElements);
     } catch (error) {
       console.error('Failed to fetch catalog data', error);
       setToast({ message: "Impossible de charger le catalogue.", type: 'error' });
     } finally {
       setIsLoading(false);
     }
+  }, [page, filters]);
+
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  // Les categories ne changent pas au fil du filtrage : une seule fois suffit.
+  useEffect(() => {
+    adminCatalogService.listCategories()
+      .then(setCategories)
+      .catch((error) => console.error('Failed to fetch categories', error));
+  }, []);
+
+  const updateFilter = (patch: CatalogFilters) => {
+    setFilters((prev) => ({ ...prev, ...patch }));
+    setPage(0);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  const resetFilters = () => {
+    setSearchInput('');
+    setFilters(NO_FILTER);
+    setPage(0);
+  };
 
   const openCreateModal = () => {
     setEditingId(null);
@@ -71,15 +112,17 @@ export function AdminCatalogPage() {
     setIsSaving(true);
     try {
       if (editingId) {
-        const updated = await adminCatalogService.updateProduct(editingId, form);
-        setProducts(prev => prev.map(p => p.id === editingId ? updated : p));
+        await adminCatalogService.updateProduct(editingId, form);
         setToast({ message: 'Produit mis à jour.', type: 'success' });
       } else {
-        const created = await adminCatalogService.createProduct(form);
-        setProducts(prev => [created, ...prev]);
+        await adminCatalogService.createProduct(form);
         setToast({ message: 'Produit créé.', type: 'success' });
       }
       setIsModalOpen(false);
+      // Rechargement plutot que mutation locale : la liste est filtree et paginee par le
+      // serveur, un produit insere en tete du tableau y apparaitrait meme s'il ne
+      // correspond pas au filtre courant.
+      fetchProducts();
     } catch (error: any) {
       setToast({ message: error.response?.data?.message || 'Erreur lors de l\'enregistrement.', type: 'error' });
     } finally {
@@ -91,8 +134,10 @@ export function AdminCatalogPage() {
     if (p.isActive && !window.confirm(`Désactiver "${p.name}" ? Il ne sera plus visible sur la boutique (mais restera visible ici, réactivable à tout moment).`)) return;
     try {
       const updated = await adminCatalogService.setProductActive(p.id, !p.isActive);
-      setProducts(prev => prev.map(prod => prod.id === p.id ? updated : prod));
       setToast({ message: updated.isActive ? 'Produit réactivé.' : 'Produit désactivé.', type: 'success' });
+      // Le statut fait partie des filtres : garder la ligne en place la ferait apparaitre
+      // dans une liste « Actifs » alors qu'elle vient d'etre desactivee.
+      fetchProducts();
     } catch (error) {
       console.error('Erreur lors de la mise à jour du produit', error);
       setToast({ message: 'Erreur lors de la mise à jour.', type: 'error' });
@@ -114,13 +159,112 @@ export function AdminCatalogPage() {
         }
       />
 
+      {/* Barre de filtres. Tout est applique par le serveur : filtrer dans le navigateur
+          n'aurait porte que sur la page affichee, donnant l'illusion d'un catalogue vide
+          des que le produit cherche se trouve plus loin. */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Rechercher par nom ou référence…"
+              aria-label="Rechercher un produit par nom ou référence"
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+            />
+          </div>
+
+          <select
+            value={filters.categoryId ?? ''}
+            onChange={(e) => updateFilter({ categoryId: e.target.value || undefined })}
+            aria-label="Filtrer par catégorie"
+            className="py-2 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none max-w-[260px]"
+          >
+            <option value="">Toutes les catégories</option>
+            {categories.map((cat) => (
+              /* Le compteur evite de choisir une categorie vide et de croire a un bug. */
+              <option key={cat.id} value={cat.id}>
+                {cat.name} ({cat.productCount})
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filters.activeState ?? ''}
+            onChange={(e) => updateFilter({ activeState: (e.target.value || undefined) as CatalogFilters['activeState'] })}
+            aria-label="Filtrer par statut"
+            className="py-2 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+          >
+            <option value="">Tous les statuts</option>
+            <option value="ACTIVE">Actifs</option>
+            <option value="INACTIVE">Désactivés</option>
+          </select>
+
+          <select
+            value={filters.sort ?? ''}
+            onChange={(e) => updateFilter({ sort: (e.target.value || undefined) as CatalogFilters['sort'] })}
+            aria-label="Trier les résultats"
+            className="py-2 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+          >
+            <option value="">Tri par défaut</option>
+            <option value="name_asc">Nom (A → Z)</option>
+            <option value="price_asc">Prix croissant</option>
+            <option value="price_desc">Prix décroissant</option>
+          </select>
+
+          <button
+            type="button"
+            onClick={() => updateFilter({ lowStock: !filters.lowStock })}
+            aria-pressed={Boolean(filters.lowStock)}
+            className={`inline-flex items-center gap-1.5 py-2 px-3 text-sm font-medium rounded-lg border transition-colors ${
+              filters.lowStock
+                ? 'bg-rose-50 border-rose-300 text-rose-700'
+                : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <AlertTriangle className="w-4 h-4" />
+            Stock bas
+          </button>
+
+          {hasActiveFilter && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="inline-flex items-center gap-1.5 py-2 px-3 text-sm text-slate-500 hover:text-brand-dark transition-colors"
+            >
+              <X className="w-4 h-4" />
+              Réinitialiser
+            </button>
+          )}
+        </div>
+
+        <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          {isLoading
+            ? 'Chargement…'
+            : hasActiveFilter
+              ? `${totalElements} produit${totalElements > 1 ? 's' : ''} correspondent aux filtres`
+              : `${totalElements} produit${totalElements > 1 ? 's' : ''} au catalogue`}
+        </div>
+      </div>
+
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="p-12 flex justify-center items-center">
             <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
           </div>
         ) : products.length === 0 ? (
-          <EmptyState icon={Package} title="Aucun produit. Créez-en un pour commencer." />
+          hasActiveFilter ? (
+            <EmptyState
+              icon={Search}
+              title="Aucun produit ne correspond à ces filtres."
+              description="Élargissez la recherche ou réinitialisez les filtres."
+            />
+          ) : (
+            <EmptyState icon={Package} title="Aucun produit. Créez-en un pour commencer." />
+          )
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -185,6 +329,32 @@ export function AdminCatalogPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50">
+            <span className="text-sm text-slate-600">
+              Page <span className="font-semibold text-brand-dark">{page + 1}</span> sur {totalPages}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((prev) => Math.max(0, prev - 1))}
+                disabled={page === 0 || isLoading}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" /> Précédent
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage((prev) => Math.min(totalPages - 1, prev + 1))}
+                disabled={page >= totalPages - 1 || isLoading}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Suivant <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>

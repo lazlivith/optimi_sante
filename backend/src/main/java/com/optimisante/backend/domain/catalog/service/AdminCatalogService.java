@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.catalog.service;
 
 import com.optimisante.backend.config.tenant.TenantContext;
+import com.optimisante.backend.domain.catalog.dto.AdminCategoryDto;
 import com.optimisante.backend.domain.catalog.dto.AdminProductRequestDto;
 import com.optimisante.backend.domain.catalog.dto.AdminProductResponseDto;
 import com.optimisante.backend.domain.catalog.entity.Category;
@@ -30,11 +31,27 @@ public class AdminCatalogService {
     private final TenantRepository tenantRepository;
 
     @Transactional(readOnly = true)
-    public Page<AdminProductResponseDto> listProducts(Pageable pageable) {
-        // Requête native (voir ProductRepository.findAllForAdmin) : contourne volontairement
+    /**
+     * Liste filtrée du catalogue. Les filtres vides sont normalisés en {@code null} : une
+     * chaîne vide envoyée par un champ de recherche que l'utilisateur vient de vider doit
+     * signifier « pas de filtre », pas « chercher la chaîne vide ».
+     */
+    public Page<AdminProductResponseDto> listProducts(String search,
+                                                      UUID categoryId,
+                                                      String activeState,
+                                                      boolean lowStock,
+                                                      String sortBy,
+                                                      Pageable pageable) {
+        // Requête native (voir ProductRepository.searchForAdmin) : contourne volontairement
         // @SQLRestriction("deleted_at IS NULL AND is_active = true") pour que l'admin voie
         // aussi les produits désactivés (et puisse les réactiver).
-        Page<AdminProductRow> rows = productRepository.findAllForAdmin(pageable);
+        Page<AdminProductRow> rows = productRepository.searchForAdmin(
+                blankToNull(search),
+                categoryId != null ? categoryId.toString() : null,
+                blankToNull(activeState),
+                lowStock,
+                whitelistSort(sortBy),
+                pageable);
 
         Map<UUID, String> categoryNames = categoryRepository.findAllById(
                 rows.getContent().stream()
@@ -190,5 +207,37 @@ public class AdminCatalogService {
                 .promoStartsAt(row.getPromoStartsAt())
                 .promoEndsAt(row.getPromoEndsAt())
                 .build();
+    }
+
+    /**
+     * Catégories proposées comme filtre, avec leur nombre de produits.
+     *
+     * <p>Le compteur accompagne chaque entrée parce que le catalogue comporte une part
+     * importante de catégories sans aucun produit : sans ce chiffre, l'administrateur en
+     * choisit une et obtient une liste vide sans savoir si c'est le filtre ou les données qui
+     * sont en cause.</p>
+     */
+    public java.util.List<AdminCategoryDto> listCategoriesWithCounts() {
+        return categoryRepository.findAllWithProductCount(requireTenantId()).stream()
+                .map(row -> new AdminCategoryDto(
+                        row.getId(), row.getName(), row.getSlug(), row.getProductCount()))
+                .toList();
+    }
+
+    /**
+     * N'accepte que les tris connus. Une valeur inattendue est ignorée au lieu d'être
+     * refusée : le tri est un confort d'affichage, pas une donnée — renvoyer une erreur
+     * priverait l'utilisateur de sa liste pour une virgule mal placée dans l'URL.
+     */
+    private static String whitelistSort(String sortBy) {
+        String value = blankToNull(sortBy);
+        return switch (value == null ? "" : value) {
+            case "name_asc", "price_asc", "price_desc" -> value;
+            default -> null;
+        };
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

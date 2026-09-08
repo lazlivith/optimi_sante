@@ -1066,3 +1066,115 @@ endpoints couvrant les trois univers. Matrice obtenue, conforme point par point 
 l'annotation du contrôleur qui la sert — y compris le piège `/admin/finance/*`, servi par
 **deux** contrôleurs distincts (`summary` en `@EcommerceAdmin` sur `AdminFinanceResource`,
 `kpis` et `partners-due` en `@MobilityAdmin` sur `PayoutResource`).
+
+## 62. Catalogue : nettoyage des catégories (V31), recherche et filtres — déployé & vérifié
+
+### Le vrai défaut n'était pas l'absence de filtre
+
+`AdminCatalogPage` appelait `listProducts(0, 100)` sur un catalogue de **1 519 produits**, sans
+pagination ni indication. **93 % du catalogue était inatteignable depuis cet écran**, en
+silence. Ajouter une recherche sans rétablir la pagination aurait déplacé le problème :
+filtrer côté navigateur n'aurait porté que sur ces 100 lignes, et un produit absent du résultat
+aurait été déclaré inexistant.
+
+### V31 — deux défauts d'import, un seul nettoyage
+
+Le catalogue comptait 273 catégories pour 130 réellement utilisées :
+
+1. **95 noms portaient `&amp;`** au lieu de `&` — l'import a stocké du HTML échappé sans le
+   décoder. « Accessoires &amp; tabliers » s'affichait tel quel.
+2. **Le même nom existait en 2 ou 3 exemplaires**, distingués par un suffixe de slug (`-2`),
+   l'import ayant tourné plusieurs fois. Les produits s'étaient répartis entre les copies :
+   « Cannes de marche » en comptait 7 d'un côté, 2 de l'autre, 0 de la troisième. Aucun filtre
+   par catégorie ne pouvait fonctionner sur cette base.
+
+La migration décode, normalise les espaces, puis fusionne les noms identiques en rattachant les
+produits à la copie canonique — celle qui porte le plus de produits, à égalité le slug le plus
+court (l'import numérote les copies), à égalité encore le plus petit `id` pour que le résultat
+soit déterministe.
+
+**Ce qu'elle ne fait pas, délibérément :**
+- Elle ne supprime pas les 93 catégories restées vides. Une catégorie vide est peut-être un
+  rayon à approvisionner : la supprimer relève d'une décision commerciale.
+- Elle ne fusionne que les noms **strictement** identiques. Les quasi-doublons
+  (« Accessoires pré-opératoire » singulier vs pluriel) sont laissés en place : les rapprocher
+  demande un arbitrage humain, et une migration qui devine se trompe sans le dire.
+
+**`ON COMMIT DROP` écarté.** La table de travail est une table ordinaire, supprimée
+explicitement. Une table temporaire `ON COMMIT DROP` suppose que Flyway enveloppe la migration
+dans une transaction : c'est le cas aujourd'hui, mais si la configuration changeait, la table
+disparaîtrait avant les `UPDATE` qui la lisent et **la fusion ne ferait rien, en silence**.
+
+**Vérifiée sur une copie de la base avant d'approcher la vraie** (`pg_dump` → base jetable) :
+273 → 223 catégories, 0 entité HTML, 0 doublon, **1 519 produits intacts**, et les totaux par
+catégorie identiques avant/après (`Cannes de marche` 9, `Sparadrap` 13, `Gels & huiles` 18).
+Puis rejouée par Flyway sur la base réelle, mêmes chiffres.
+
+### Le piège du `@SQLRestriction` sur le comptage
+
+Le menu de filtre affiche le nombre de produits par catégorie. Écrit en JPQL, ce comptage
+aurait été faux : `Product` porte `@SQLRestriction("deleted_at IS NULL AND is_active = true")`,
+qu'Hibernate applique à **toute** requête touchant l'entité, jointures comprises. Une catégorie
+ne contenant que des produits désactivés se serait affichée comme vide — et l'administrateur
+l'aurait crue inutilisée. Requête native, comme `AdminProductRow` l'avait déjà imposé ailleurs.
+
+Le `LEFT JOIN` porte sa condition dans le `ON` et non le `WHERE` : dans un `WHERE`, elle
+annulerait l'effet du `LEFT JOIN` et ferait disparaître les catégories vides, précisément
+celles qu'il faut pouvoir repérer.
+
+### L'erreur : un nom de paramètre déjà réservé par Spring
+
+J'ai exposé le tri sous le paramètre `sort`. La compilation passe, la requête part, et
+PostgreSQL répond `syntax error at or near "order"` — **uniquement quand un tri est demandé**.
+
+Cause : Spring lit lui-même le paramètre de requête `sort` pour alimenter le `Pageable`, et
+ajoute l'`ORDER BY` correspondant à la fin de la requête native. La requête se retrouvait avec
+**deux** clauses `ORDER BY` concaténées :
+
+```sql
+ORDER BY CASE WHEN ... END ASC, p.is_active DESC, p.created_at DESC
+ order by p.price_desc asc fetch first ? rows only
+```
+
+Renommé en `sortBy`. Et le `Pageable` est désormais reconstruit sans son tri
+(`PageRequest.of(page, size)`) : un tri fourni par le client était recopié tel quel dans
+l'`ORDER BY` d'une requête native. Le tri passe exclusivement par une liste blanche de trois
+valeurs ; toute autre est ignorée plutôt que refusée — le tri est un confort d'affichage, pas
+une donnée, et renvoyer une erreur priverait l'utilisateur de sa liste pour une virgule mal
+placée dans l'URL.
+
+**Cette erreur n'était détectable qu'à l'exécution.** Elle n'apparaît ni à la compilation, ni
+sur un appel sans tri, ni dans les tests d'un filtre isolé.
+
+### Le piège du paramètre nul, à nouveau
+
+Tous les filtres passent en `String` avec `CAST(:param AS text)`, y compris l'identifiant de
+catégorie. PostgreSQL ne peut pas inférer le type d'un paramètre nul et le transmet en
+`bytea` : la requête échoue alors sur `function lower(bytea) does not exist`, à l'exécution et
+**seulement quand le filtre est vide** — c'est-à-dire au premier chargement de la page. Un
+seul type de paramètre pour tous les filtres évite d'avoir à se rappeler lequel est concerné.
+
+### Vérifié en conditions réelles, 9 contrôles sur l'API déployée
+
+| Contrôle | Résultat |
+|---|---|
+| Aucun filtre | 1 519 produits, 507 pages |
+| Tri prix décroissant / croissant | 8 677 € en tête / 0,40 € en tête |
+| Tri nom A → Z | ordre alphabétique respecté |
+| Tri invalide (`DROP TABLE`) | ignoré, ordre par défaut |
+| Ancien paramètre `sort=p.injection` | ignoré, aucune erreur |
+| Recherche « compresse » | 18 résultats |
+| Recherche par référence exacte | 1 résultat |
+| Recherche + tri combinés | 18 résultats, triés |
+| Filtre catégorie + recherche | 359 résultats |
+
+Deux filtres renvoient 0 — c'est **exact et non un défaut** : la base ne contient aujourd'hui
+aucun produit désactivé ni aucun produit sous son seuil de stock (vérifié en SQL direct).
+
+### Défaut relevé, non corrigé
+
+**32 produits portent un mojibake dans leur nom** : `3M‚™ LITTMANN®`, `micropore‚™`, où `‚™`
+remplace `™`. C'est un double encodage cp1252/UTF-8 du même import que les `&amp;`, mais il ne
+se corrige pas de la même façon — il faut retrouver l'octet d'origine, ce qui n'est fiable que
+sur une liste de séquences vérifiée une à une. Traité comme un sujet distinct pour ne pas
+glisser une conversion approximative dans une migration par ailleurs vérifiée.

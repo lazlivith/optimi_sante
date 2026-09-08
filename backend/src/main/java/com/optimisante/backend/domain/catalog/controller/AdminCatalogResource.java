@@ -1,17 +1,16 @@
 package com.optimisante.backend.domain.catalog.controller;
 
+import com.optimisante.backend.domain.catalog.dto.AdminCategoryDto;
 import com.optimisante.backend.domain.catalog.dto.AdminProductRequestDto;
 import com.optimisante.backend.domain.catalog.dto.AdminProductResponseDto;
-import com.optimisante.backend.domain.catalog.dto.CategoryResponseDto;
 import com.optimisante.backend.domain.catalog.service.AdminCatalogService;
-import com.optimisante.backend.domain.catalog.service.CatalogService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,11 +24,39 @@ import com.optimisante.backend.config.security.EcommerceAdmin;
 public class AdminCatalogResource {
 
     private final AdminCatalogService adminCatalogService;
-    private final CatalogService catalogService;
 
+    /**
+     * Liste filtrée du catalogue.
+     *
+     * <p>Tous les filtres sont facultatifs et se combinent. Absents, la réponse est celle
+     * d'avant l'ajout de la recherche : le catalogue entier, paginé.</p>
+     *
+     * @param search      terme cherché dans le nom ou la référence du produit
+     * @param categoryId  restreint à une catégorie
+     * @param activeState {@code ACTIVE} ou {@code INACTIVE} ; absent, les deux
+     * @param lowStock    ne remonte que les produits sous leur seuil de réapprovisionnement
+     * @param sortBy      {@code name_asc}, {@code price_asc} ou {@code price_desc}
+     *
+     * <p><b>Pourquoi {@code sortBy} et non {@code sort}.</b> Spring lit lui-même le paramètre
+     * de requête {@code sort} pour alimenter le {@link Pageable}, et ajoute l'{@code ORDER BY}
+     * correspondant à la fin de la requête. Nommer notre tri {@code sort} produisait donc deux
+     * clauses {@code ORDER BY} concaténées et une erreur de syntaxe SQL — visible seulement à
+     * l'exécution, et uniquement lorsqu'un tri était demandé.</p>
+     */
     @GetMapping("/products")
-    public ResponseEntity<Page<AdminProductResponseDto>> listProducts(@PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(adminCatalogService.listProducts(pageable));
+    public ResponseEntity<Page<AdminProductResponseDto>> listProducts(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) String activeState,
+            @RequestParam(defaultValue = "false") boolean lowStock,
+            @RequestParam(required = false) String sortBy,
+            @PageableDefault(size = 20) Pageable pageable) {
+        // Seules la page et sa taille sont retenues : un tri fourni par le client serait
+        // recopié tel quel dans l'ORDER BY de la requête native. Le tri passe exclusivement
+        // par `sortBy`, dont les valeurs sont validées par une liste blanche.
+        Pageable unsorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        return ResponseEntity.ok(adminCatalogService.listProducts(
+                search, categoryId, activeState, lowStock, sortBy, unsorted));
     }
 
     @PostMapping("/products")
@@ -51,8 +78,15 @@ public class AdminCatalogResource {
         return ResponseEntity.ok(adminCatalogService.setProductActive(id, active));
     }
 
+    /**
+     * Catégories du filtre, avec leur nombre de produits.
+     *
+     * <p>Charge utile distincte de celle de la boutique ({@code CategoryResponseDto}, qui
+     * porte l'arborescence) : l'administration a besoin du compteur, la boutique n'a que
+     * faire de savoir combien de produits une catégorie contient.</p>
+     */
     @GetMapping("/categories")
-    public ResponseEntity<List<CategoryResponseDto>> listCategories() {
-        return ResponseEntity.ok(catalogService.getCategories());
+    public ResponseEntity<List<AdminCategoryDto>> listCategories() {
+        return ResponseEntity.ok(adminCatalogService.listCategoriesWithCounts());
     }
 }

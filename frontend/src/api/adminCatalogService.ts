@@ -39,11 +39,32 @@ export interface AdminCategoryDto {
   id: string;
   name: string;
   slug: string;
+  /** Nombre de produits vivants (supprimes exclus, desactives inclus). */
+  productCount: number;
+}
+
+/** Filtres du catalogue admin. Tout champ absent ou vide signifie « pas de filtre ». */
+export interface CatalogFilters {
+  search?: string;
+  categoryId?: string;
+  activeState?: 'ACTIVE' | 'INACTIVE';
+  lowStock?: boolean;
+  sort?: 'name_asc' | 'price_asc' | 'price_desc';
 }
 
 export const adminCatalogService = {
-  listProducts: async (page = 0, size = 20): Promise<Page<AdminProductDto>> => {
-    const { data } = await axiosClient.get<Page<AdminProductDto>>(`/admin/catalog/products?page=${page}&size=${size}`);
+  listProducts: async (page = 0, size = 20, filters: CatalogFilters = {}): Promise<Page<AdminProductDto>> => {
+    // URLSearchParams plutot qu'une concatenation : les noms de produits contiennent des
+    // esperluettes et des accents, qu'une interpolation manuelle casserait dans l'URL.
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (filters.search?.trim()) params.set('search', filters.search.trim());
+    if (filters.categoryId) params.set('categoryId', filters.categoryId);
+    if (filters.activeState) params.set('activeState', filters.activeState);
+    if (filters.lowStock) params.set('lowStock', 'true');
+    // `sortBy` et non `sort` : Spring reserve `sort` au Pageable et ajouterait un second
+    // ORDER BY a la requete, qui deviendrait invalide.
+    if (filters.sort) params.set('sortBy', filters.sort);
+    const { data } = await axiosClient.get<Page<AdminProductDto>>(`/admin/catalog/products?${params}`);
     return data;
   },
 
