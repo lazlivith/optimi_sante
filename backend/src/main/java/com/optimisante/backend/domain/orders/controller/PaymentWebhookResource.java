@@ -1,7 +1,5 @@
 package com.optimisante.backend.domain.orders.controller;
 
-import com.optimisante.backend.domain.doctorapplication.service.DoctorApplicationService;
-import com.optimisante.backend.domain.orders.service.OrderService;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
@@ -16,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import com.optimisante.backend.domain.orders.webhook.StripePaymentDispatcher;
 
 @Slf4j
 @RestController
@@ -23,8 +22,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PaymentWebhookResource {
 
-    private final OrderService orderService;
-    private final DoctorApplicationService doctorApplicationService;
+    private final StripePaymentDispatcher stripePaymentDispatcher;
 
     @Value("${stripe.webhook-secret}")
     private String endpointSecret;
@@ -55,21 +53,15 @@ public class PaymentWebhookResource {
                 if (stripeObject instanceof Session session) {
                     
                     String clientReferenceId = session.getClientReferenceId();
-                    // "type" en métadonnée distingue les différents usages de Stripe Checkout sur
-                    // la plateforme (commande e-commerce par défaut, candidature médecin payante...)
-                    // sans jamais réinterpréter client_reference_id, qui reste l'identifiant "brut".
-                    String referenceType = session.getMetadata() != null ? session.getMetadata().get("type") : null;
 
                     if (clientReferenceId != null) {
                         try {
                             UUID referenceId = UUID.fromString(clientReferenceId);
-                            if ("DOCTOR_APPLICATION".equals(referenceType)) {
-                                log.info("Received checkout.session.completed for Doctor Application ID: {}", referenceId);
-                                doctorApplicationService.confirmPayment(referenceId, session.getCustomer());
-                            } else {
-                                log.info("Received checkout.session.completed for Order ID: {}", referenceId);
-                                orderService.confirmOrderPayment(referenceId);
-                            }
+                            // Le contrôleur ne connaît plus aucun parcours métier : l'usage est
+                            // résolu depuis les métadonnées de la session et aiguillé vers le
+                            // StripePaymentHandler correspondant. Ajouter un mode de paiement
+                            // n'impose plus de modifier ce point d'entrée.
+                            stripePaymentDispatcher.dispatch(referenceId, session);
                         } catch (IllegalArgumentException e) {
                             log.error("Invalid clientReferenceId format received from Stripe: {}", clientReferenceId);
                         } catch (Exception e) {

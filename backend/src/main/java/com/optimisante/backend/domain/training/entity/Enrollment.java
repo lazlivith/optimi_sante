@@ -36,8 +36,14 @@ public class Enrollment {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
+    /**
+     * Statut d'entrée du cycle : l'entité en est la source unique (le service ne le repose
+     * plus explicitement à la création). Modèle d'agence — tout dossier commence par la
+     * pré-qualification OptimiSanté, quelle que soit la porte d'entrée du médecin
+     * (candidature payante ou inscription directe d'un médecin déjà titulaire d'un compte).
+     */
     @Builder.Default
-    private EnrollmentStatus status = EnrollmentStatus.PENDING_REVIEW;
+    private EnrollmentStatus status = EnrollmentStatus.UNDER_OPTIMI_REVIEW;
 
     @Column(name = "diploma_url", length = 512)
     private String diplomaUrl;
@@ -57,4 +63,24 @@ public class Enrollment {
 
     @Column(name = "attestation_s3_key", length = 255)
     private String attestationS3Key;
+
+    // ---- Traçabilité des décisions (V26) --------------------------------------------
+
+    /** Motif de rejet. La colonne existait depuis V1 mais n'avait jamais été mappée. */
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
+    @Column(name = "optimi_reviewed_at")
+    private OffsetDateTime optimiReviewedAt;
+
+    /** Admin ayant pré-qualifié le dossier. Simple identifiant, sans clé étrangère (V26). */
+    @Column(name = "optimi_reviewed_by")
+    private UUID optimiReviewedBy;
+
+    @Column(name = "partner_decided_at")
+    private OffsetDateTime partnerDecidedAt;
+
+    /** Pièces ou corrections demandées au médecin lors d'un passage en ACTION_REQUIRED. */
+    @Column(name = "action_required_note", columnDefinition = "TEXT")
+    private String actionRequiredNote;
 }
