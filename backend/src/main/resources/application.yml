@@ -29,7 +29,14 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: update
+      # `validate` (et non `update`) : le schéma est piloté EXCLUSIVEMENT par Flyway.
+      # Historique : `update` laissait Hibernate corriger lui-même la base à chaque
+      # démarrage, masquant le fait que V7 (CREATE TABLE IF NOT EXISTS sur des tables
+      # déjà créées par V1) n'avait jamais rien créé — 9 colonnes n'existaient qu'en dev
+      # et l'application n'aurait pas démarré sur une base neuve. Réaligné par V22.
+      # Garder `validate` : toute divergence entité/migration doit échouer ICI, au
+      # démarrage en dev, et non silencieusement jusqu'en production.
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
@@ -67,6 +74,12 @@ app:
   mail:
     from: ${MAIL_FROM:no-reply@optimisante.fr}
     frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+    mailtrap:
+      # Facultatifs : alimentent les statistiques de délivrabilité de l'espace
+      # « Emails » de l'admin. Sans eux, l'écran fonctionne avec les seules
+      # statistiques du journal local (aucune erreur, message explicite affiché).
+      api-token: ${MAILTRAP_API_TOKEN:}
+      account-id: ${MAILTRAP_ACCOUNT_ID:}
   doctor-application:
     fee-amount: ${DOCTOR_APPLICATION_FEE:50.00} # Frais de dossier fixes, indépendants du prix de la formation
   aws:
