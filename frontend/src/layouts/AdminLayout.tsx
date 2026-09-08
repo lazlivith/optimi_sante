@@ -1,11 +1,13 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  LayoutDashboard, Users, FileText, GraduationCap, Store, LogOut, ShieldCheck, Package, Building2, TrendingUp, Tag, ShoppingBag, BookOpen
+  LayoutDashboard, Users, FileText, GraduationCap, Store, LogOut, ShieldCheck, Package, Building2, TrendingUp, Tag, ShoppingBag, BookOpen, BarChart3, FileSpreadsheet, ScrollText, BellRing, Bot
 } from 'lucide-react';
+import { NotificationBell } from '../components/common/NotificationBell';
 
 const NAV_ITEMS = [
   { to: '/admin', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
+  { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/admin/finance', label: 'Finance', icon: TrendingUp },
   { to: '/admin/orders', label: 'Commandes', icon: ShoppingBag },
   { to: '/admin/users', label: 'Utilisateurs', icon: Users },
@@ -15,6 +17,11 @@ const NAV_ITEMS = [
   { to: '/admin/trainings', label: 'Formations', icon: BookOpen },
   { to: '/admin/enrollments', label: 'Dossiers CHU', icon: GraduationCap },
   { to: '/admin/partnership-requests', label: 'Demandes Partenariat', icon: Building2 },
+  { to: '/admin/reports', label: 'Rapports', icon: FileSpreadsheet },
+  { to: '/admin/alerts', label: 'Alertes', icon: BellRing },
+  { to: '/admin/ai', label: 'Intelligence artificielle', icon: Bot },
+  { to: '/admin/audit', label: "Journal d'audit", icon: ScrollText },
+  { to: '/admin/governance', label: 'Gouvernance / RGPD', icon: ShieldCheck },
 ];
 
 export function AdminLayout() {
@@ -86,6 +93,9 @@ export function AdminLayout() {
 
       {/* Main content */}
       <main className="flex-1 min-w-0 overflow-y-auto">
+        <div className="h-14 border-b border-slate-200 bg-white flex items-center justify-end px-6 sticky top-0 z-30">
+          <NotificationBell />
+        </div>
         <Outlet />
       </main>
     </div>

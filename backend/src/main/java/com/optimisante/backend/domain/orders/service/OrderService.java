@@ -50,6 +50,7 @@ public class OrderService {
     private final StripePaymentService stripePaymentService;
     private final PdfGeneratorService pdfGeneratorService;
     private final PromoCodeService promoCodeService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @org.springframework.beans.factory.annotation.Value("${app.mail.frontend-base-url}")
     private String frontendBaseUrl;
@@ -332,6 +333,11 @@ public class OrderService {
         }
 
         log.info("Order {} payment confirmed. Stock deducted.", orderId);
+
+        // Notification in-app + e-mail au client (traité après commit, hors chemin critique).
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.OrderPaid(
+                order.getId(), order.getUser().getId(), order.getUser().getEmail(),
+                order.getOrderNumber(), order.getTotalAmount()));
     }
 
     /**

@@ -69,6 +69,14 @@ app:
     frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   doctor-application:
     fee-amount: ${DOCTOR_APPLICATION_FEE:50.00} # Frais de dossier fixes, indépendants du prix de la formation
+  reporting:
+    # Worker Python FastAPI de reporting analytique. Vide => fonctionnalité "Rapports" désactivée
+    # proprement (message explicite côté admin). docker-compose fournit http://analytics:8100.
+    worker-base-url: ${REPORTING_WORKER_URL:}
+  ai:
+    # Service IA Python (extraction documentaire Gemini, assistant Mistral). Vide => toutes les
+    # fonctions IA sont désactivées proprement. docker-compose fournit http://ai:8200.
+    worker-base-url: ${AI_WORKER_URL:}
   aws:
     s3:
       endpoint: ${AWS_S3_ENDPOINT:http://localhost:4566}

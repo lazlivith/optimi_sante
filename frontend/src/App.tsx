@@ -32,6 +32,14 @@ import { AdminTrainingsPage } from './pages/admin/AdminTrainingsPage';
 import { AdminFinancePage } from './pages/admin/AdminFinancePage';
 import { AdminOrdersPage } from './pages/admin/AdminOrdersPage';
 import { AdminPromoCodesPage } from './pages/admin/AdminPromoCodesPage';
+import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage';
+import { AdminReportsPage } from './pages/admin/AdminReportsPage';
+import { AdminAuditLogPage } from './pages/admin/AdminAuditLogPage';
+import { AdminGovernancePage } from './pages/admin/AdminGovernancePage';
+import { AdminAlertsPage } from './pages/admin/AdminAlertsPage';
+import { AdminAiPage } from './pages/admin/AdminAiPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { NotificationSettingsPage } from './pages/NotificationSettingsPage';
 import { BecomePartnerPage } from './pages/partnership/BecomePartnerPage';
 import { PartnerDashboardHomePage } from './pages/partner/PartnerDashboardHomePage';
 import { PartnerEnrollmentsPage } from './pages/partner/PartnerEnrollmentsPage';
@@ -42,6 +50,7 @@ import { PartnerLayout } from './layouts/PartnerLayout';
 import { DoctorLayout } from './layouts/DoctorLayout';
 import { Navbar } from './components/Navbar';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { ChatWidget } from './components/ai/ChatWidget';
 
 const Layout = ({ children }: { children: ReactNode }) => {
   return (
@@ -76,6 +85,12 @@ export function App() {
         <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']} />}>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboardPage />} />
+            <Route path="analytics" element={<AdminAnalyticsPage />} />
+            <Route path="reports" element={<AdminReportsPage />} />
+            <Route path="audit" element={<AdminAuditLogPage />} />
+            <Route path="governance" element={<AdminGovernancePage />} />
+            <Route path="alerts" element={<AdminAlertsPage />} />
+            <Route path="ai" element={<AdminAiPage />} />
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="catalog" element={<AdminCatalogPage />} />
             <Route path="quotes" element={<QuotesAdminPage />} />
@@ -137,12 +152,18 @@ export function App() {
                 <Route element={<ProtectedRoute />}>
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/my-orders" element={<MyOrdersPage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
+                  <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
                 </Route>
               </Routes>
             </Layout>
           }
         />
       </Routes>
+
+      {/* Assistant conversationnel — disponible sur tous les espaces, y compris hors connexion
+          (catalogue et formations uniquement dans ce cas). */}
+      <ChatWidget />
     </BrowserRouter>
   );
 }

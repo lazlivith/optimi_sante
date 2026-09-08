@@ -57,6 +57,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/trainings/*/lead-capture").permitAll()
                         .requestMatchers("/api/v1/partnership/**").permitAll()
                         .requestMatchers("/api/v1/doctor-applications/**").permitAll()
+                        // Assistant conversationnel : le widget du site vitrine doit répondre à un
+                        // visiteur non connecté (catalogue / formations uniquement). Le jeton reste
+                        // transmis quand il existe, et les outils personnels (commandes, dossiers)
+                        // restent protégés par les règles ci-dessous.
+                        .requestMatchers("/api/v1/ai/chat", "/api/v1/ai/chat/stream").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ai/tools/catalog/search").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ai/tools/trainings").permitAll()
                         .anyRequest().authenticated()
                 );
 

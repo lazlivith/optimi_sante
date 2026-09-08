@@ -61,6 +61,7 @@ public class DoctorApplicationService {
     private final StripePaymentService stripePaymentService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Value("${app.doctor-application.fee-amount}")
     private BigDecimal feeAmount;
@@ -118,6 +119,10 @@ public class DoctorApplicationService {
 
             application.setStripeCheckoutSessionId(stripeSession.getId());
             doctorApplicationRepository.save(application);
+
+            eventPublisher.publishEvent(
+                    new com.optimisante.backend.domain.notification.event.NotificationEvents.DoctorApplicationSubmitted(
+                            dto.getFirstName() + " " + dto.getLastName(), dto.getMedicalSpecialty(), email));
 
             return toDto(application, stripeSession.getClientSecret());
         } catch (StripeException e) {
@@ -189,6 +194,11 @@ public class DoctorApplicationService {
 
         emailService.sendCredentialsEmail(application.getEmail(),
                 application.getFirstName() + " " + application.getLastName(), temporaryPassword, "Médecin");
+
+        eventPublisher.publishEvent(
+                new com.optimisante.backend.domain.notification.event.NotificationEvents.DoctorAccountValidated(
+                        user.getId(), user.getEmail(),
+                        application.getFirstName() + " " + application.getLastName()));
 
         log.info("Candidature {} payée, compte {} créé et inscrit à la session {}",
                 applicationId, user.getEmail(), application.getSession().getId());

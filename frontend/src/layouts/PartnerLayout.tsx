@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, CalendarPlus, UserCog, Store, LogOut, Building2, GraduationCap
 } from 'lucide-react';
+import { NotificationBell } from '../components/common/NotificationBell';
 
 const NAV_ITEMS = [
   { to: '/partner', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
@@ -77,6 +78,9 @@ export function PartnerLayout() {
       </aside>
 
       <main className="flex-1 min-w-0 overflow-y-auto">
+        <div className="h-14 border-b border-slate-200 bg-white flex items-center justify-end px-6 sticky top-0 z-30">
+          <NotificationBell />
+        </div>
         <Outlet />
       </main>
     </div>

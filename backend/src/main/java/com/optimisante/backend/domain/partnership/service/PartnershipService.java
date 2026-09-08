@@ -44,6 +44,7 @@ public class PartnershipService {
     private final PdfGeneratorService pdfGeneratorService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     /**
      * Génère (à la volée, comme les autres documents du projet) le modèle vierge de convention
@@ -74,7 +75,11 @@ public class PartnershipService {
                 .status(PartnershipStatus.PENDING)
                 .build();
 
-        return toDto(partnershipRequestRepository.saveAndFlush(request));
+        PartnershipRequestResponseDto dto = toDto(partnershipRequestRepository.saveAndFlush(request));
+        eventPublisher.publishEvent(
+                new com.optimisante.backend.domain.notification.event.NotificationEvents.PartnershipRequestSubmitted(
+                        institutionName, contactEmail));
+        return dto;
     }
 
     @Transactional(readOnly = true)
@@ -131,6 +136,10 @@ public class PartnershipService {
 
         emailService.sendCredentialsEmail(
                 request.getContactEmail(), request.getContactPersonName(), temporaryPassword, "Partenaire CHU");
+
+        eventPublisher.publishEvent(
+                new com.optimisante.backend.domain.notification.event.NotificationEvents.PartnerAccountValidated(
+                        user.getId(), user.getEmail(), request.getContactPersonName(), request.getInstitutionName()));
 
         log.info("Demande de partenariat {} approuvée, compte {} créé", requestId, user.getEmail());
         return toDto(request);

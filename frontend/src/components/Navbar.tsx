@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, Settings, Search, Home, Briefcase } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { NotificationBell } from './common/NotificationBell';
 
 export const Navbar = () => {
   const { totalItems } = useCart();
@@ -94,6 +95,9 @@ export const Navbar = () => {
               </span>
             )}
           </Link>
+
+          {/* Notifications */}
+          {isAuthenticated && user && <NotificationBell />}
 
           {/* User */}
           {isAuthenticated && user ? (

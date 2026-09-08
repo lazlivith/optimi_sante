@@ -41,6 +41,7 @@ public class EnrollmentService {
     private final EnrollmentDocumentRepository enrollmentDocumentRepository;
     private final com.optimisante.backend.domain.document.service.PdfGeneratorService pdfGeneratorService;
     private final com.optimisante.backend.common.storage.StorageService storageService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public EnrollmentResponseDto createEnrollment(EnrollmentRequestDto dto, UUID doctorId) {
@@ -213,10 +214,19 @@ public class EnrollmentService {
                 .orElseThrow(() -> new RuntimeException("Enrollment not found"));
 
         boolean wasNotAdministrative = enrollment.getStatus() != EnrollmentStatus.APPROVED_ADMINISTRATIVE;
+        EnrollmentStatus previousStatus = enrollment.getStatus();
         enrollment.setStatus(newStatus);
 
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
         log.info("Enrollment {} status updated to {}", enrollmentId, newStatus);
+
+        if (previousStatus != newStatus) {
+            eventPublisher.publishEvent(
+                    new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentStatusChanged(
+                            savedEnrollment.getId(), savedEnrollment.getDoctor().getId(),
+                            savedEnrollment.getDoctor().getEmail(),
+                            previousStatus == null ? null : previousStatus.name(), newStatus.name()));
+        }
 
         // --- SPRINT 4: Génération automatique de la convention tripartite ---
         // Volontairement non bloquant : le changement de statut est une décision administrative
@@ -280,9 +290,18 @@ public class EnrollmentService {
             throw new IllegalArgumentException("Statut invalide pour une révision académique");
         }
 
+        EnrollmentStatus previousStatus = enrollment.getStatus();
         enrollment.setStatus(status);
         log.info("Enrollment {} academic review status updated to {} by partner {}", enrollmentId, status, partnerUserId);
-        return enrollmentRepository.save(enrollment);
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        if (previousStatus != status) {
+            eventPublisher.publishEvent(
+                    new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentStatusChanged(
+                            saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
+                            previousStatus == null ? null : previousStatus.name(), status.name()));
+        }
+        return saved;
     }
 
     @Transactional

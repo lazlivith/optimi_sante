@@ -175,3 +175,103 @@ Vraies clés Stripe et identifiants Mailtrap fournis par l'utilisateur (stockés
 **Piège technique notable** : la version `stripe-java` figée au projet (`24.22.0`) ne supportait pas encore le mode formulaire intégré ni la sauvegarde de moyens de paiement — mise à jour vers `29.2.0`. Dans cette génération du SDK, l'option porte le nom `CUSTOM` (pas `ELEMENTS`, terminologie historique "Custom Checkout" cohérente entre le SDK Java et le SDK React stables), sans changement fonctionnel. Détail complet, y compris le faux positif de compilation locale qui a initialement masqué le problème, dans `docs/journal_erreurs_defis`.
 
 **Vérifié en conditions réelles, bout en bout, navigateur piloté + vraie carte de test Stripe (4242 4242 4242 4242)** : commande e-commerce payée avec succès (Payment Element intégré, webhook reçu, commande marquée payée en base, reçu PDF généré, stock décrémenté, Customer Stripe persisté) ; candidature médecin testée jusqu'à l'affichage du formulaire de paiement intégré (accessible sans compte).
+
+---
+
+## 9. Sprint 5 : Interfaces spécifiques, Audits & Dashboard Governance
+
+Complétion du **Sprint 5** du CDC. Les deux « espaces dédiés » (Médecin coffre-fort, CHU) et
+la validation académique existaient déjà (Sprints 3-4 + refonte ERP §6). Restaient à livrer :
+le **Dashboard Governance** (Analytics + Audits RGPD + séparation Dual-Admin) et le **worker
+Python FastAPI** de reporting batch/analytique. Aucune modification destructive de l'existant.
+
+### 9.1. Séparation Dual-Admin (matérialisée, pas seulement nominale)
+
+Les rôles `ADMIN` et `SUPER_ADMIN` étaient jusqu'ici strictement interchangeables. Désormais :
+- **ADMIN — administration opérationnelle** : analytics, journal d'audit (lecture + export),
+  rapports, recherche et export des données d'une personne (droit d'accès RGPD).
+- **SUPER_ADMIN — gouvernance** : en plus de tout ce qui précède, seul habilité à déclencher
+  l'**anonymisation irréversible** d'une personne (`@PreAuthorize("hasRole('SUPER_ADMIN')")`
+  sur `POST /api/v1/admin/governance/rgpd/subject/anonymize`, doublé d'un garde-fou UI).
+
+### 9.2. Journal d'audit (`domain/audit/`)
+
+- Migration `V22` : table `audit_logs` (acteur, rôle, tenant, action, entité, méthode/chemin/
+  statut HTTP, IP, user-agent, résumé, metadata, horodatage) + index.
+- `AuditTrailInterceptor` (HandlerInterceptor sur `/api/**`) journalise **automatiquement**
+  toute écriture (POST/PUT/PATCH/DELETE) aboutie sur les périmètres sensibles
+  (`/api/v1/admin/**`, `/api/v1/partner/**`, actions RGPD, inscriptions). Écriture en
+  transaction indépendante (`REQUIRES_NEW` via `AuditLogWriter`), jamais bloquante (toute
+  exception d'audit est avalée, comme l'envoi d'email).
+- Les actions particulièrement sensibles ajoutent un enregistrement métier explicite
+  (`RGPD_EXPORT`, `RGPD_ANONYMIZE`).
+- API : `GET /api/v1/admin/audit/logs` (filtres action / type / acteur / dates, paginé),
+  `/audit/stats` (agrégats 30 j), `/audit/logs/export` (CSV). Page `AdminAuditLogPage.tsx`.
+
+### 9.3. Analytics (`domain/analytics/`)
+
+Reporting direction, **lecture seule**, requêtes SQL natives cloisonnées par tenant (même
+approche que l'espace Finance existant). `GET /api/v1/admin/analytics/*` :
+`overview` (KPI), `revenue-timeseries`, `user-growth`, `sales-by-category`,
+`acquisition-funnel` (brochure → candidature → paiement → inscription → convention → visa),
+`enrollments-by-status`, `top-trainings`, `segments` (B2B/B2C), plus `export` CSV par jeu de
+données. Page `AdminAnalyticsPage.tsx` (KPI + graphiques `recharts`, palette Okabe-Ito
+lisible en vision des couleurs déficiente, une échelle par graphe, info-bulles).
+
+### 9.4. Gouvernance / RGPD (`domain/governance/`)
+
+- Migration `V22` : `rgpd_requests` (trace des exports/anonymisations), `users.gdpr_consent_at`
+  (rétro-rempli à `created_at`) et `users.anonymized_at`.
+- **Vérification Soft Delete** (`GET /governance/soft-delete-report`) : pour `users` et
+  `products`, comptes actifs / effacés logiquement / anonymisés + confirmation que le filtre
+  global `@SQLRestriction` est bien appliqué ; verdict de conformité.
+- **Rétention** (`/governance/retention-report`) : comptes inactifs > 24 mois sans commande ni
+  dossier, leads anciens, comptes anonymisés, consentements manquants + échantillon traitable.
+- **Droit d'accès** (`/governance/rgpd/subject` + `/export`) : agrège compte, profil, commandes,
+  inscriptions, leads, candidatures d'une personne en un JSON téléchargeable.
+- **Droit à l'effacement** (`POST /governance/rgpd/subject/anonymize`, SUPER_ADMIN) : brouille
+  irréversiblement toutes les PII (users, doctor/company/partner_profiles, prospect_leads,
+  doctor_applications), pose `deleted_at` + `anonymized_at`, **conserve** commandes et
+  inscriptions (intégrité référentielle + obligations comptables) rattachées à un compte
+  anonyme. Refuse un compte d'administration ou déjà anonymisé. SQL natif (`JdbcTemplate`)
+  pour agir sur des lignes que `@SQLRestriction` masque et sans effet de bord d'entités JPA.
+  Page `AdminGovernancePage.tsx`.
+
+### 9.5. Worker Python FastAPI — reporting batch & exports (`workers/analytics_service/`)
+
+Nouveau service Python (`FastAPI` + `SQLAlchemy` + `pandas` + `openpyxl` + `APScheduler`),
+consommé **uniquement** par le backend Spring (`/api/v1/admin/reporting/**`, RBAC appliqué ;
+le worker n'est pas exposé publiquement). Migration `V22` : table `report_runs` (partagée —
+le worker y trace ses exécutions, le backend les expose).
+- Catalogue de 7 rapports (`revenue_daily`, `sales_by_category`, `acquisition_funnel`,
+  `enrollment_pipeline`, `rgpd_compliance`, `catalog_stock_alert`, `b2b_activity`), chacun =
+  une requête SQL en lecture seule.
+- Runner : exécute → écrit `CSV` + `XLSX` dans le volume `optimisante-exports` (`/exports`) →
+  trace dans `report_runs`. Copies `*_latest.*` écrasées pour le téléchargement direct.
+- Batch nocturne APScheduler (02:00 UTC) qui rejoue tous les rapports.
+- API : `/health`, `/reports`, `/reports/{key}/preview`, `/reports/{key}/runs`,
+  `/reports/{key}/run`, `/reports/{key}/download/latest?format=csv|xlsx`.
+- `docker-compose` : service `analytics` (build `workers/analytics_service`, port 8100,
+  volume `optimisante-exports`, `depends_on: postgres`). Backend : `REPORTING_WORKER_URL=
+  http://analytics:8100`. **Optionnel** : worker absent/injoignable => onglet « Rapports »
+  affiche un message explicite, le reste de l'admin n'est pas impacté (même philosophie que
+  Stripe/Mailtrap non configurés).
+- Page `AdminReportsPage.tsx` : statut du worker, lancement, historique des exécutions,
+  aperçu tabulaire, téléchargement CSV/Excel.
+
+### 9.6. Frontend
+
+`AdminLayout` : 4 entrées de menu ajoutées (Analytics, Rapports, Journal d'audit,
+Gouvernance / RGPD) ; routes correspondantes sous `/admin/*`. Dépendance ajoutée :
+`recharts@2.15.4`. Helper `lib/download.ts` (téléchargement de fichier API en respectant le
+JWT — un `<a href>` ne porterait pas l'en-tête `Authorization`).
+
+### 9.7. État de vérification
+
+- Frontend : `tsc -b` + `vite build` **OK**.
+- Worker Python : `py_compile` **OK**.
+- Backend : à recompiler via le build Docker (Java 21 requis ; l'environnement local est en
+  Java 11). Migration `V22` conçue pour s'appliquer sur une base déjà à `V21` sans dérive
+  (`ddl-auto: update` ignore les tables déjà créées par Flyway).
+- Reste à vérifier en conditions réelles après rebuild : application de `V22`, endpoints
+  analytics/audit/governance, démarrage du conteneur `analytics` et batch de rapports.
