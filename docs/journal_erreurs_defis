@@ -1178,3 +1178,125 @@ remplace `™`. C'est un double encodage cp1252/UTF-8 du même import que les `&
 se corrige pas de la même façon — il faut retrouver l'octet d'origine, ce qui n'est fiable que
 sur une liste de séquences vérifiée une à une. Traité comme un sujet distinct pour ne pas
 glisser une conversion approximative dans une migration par ailleurs vérifiée.
+
+## 63. Mojibake Mac OS Roman (V32) et quasi-doublons de catégories (V33) — déployés & vérifiés
+
+Deux nettoyages de données demandés après le Prompt 03. Dans les deux cas, ce que j'avais
+annoncé s'est révélé sous-estimé une fois les données réellement examinées.
+
+### J'avais annoncé 32 produits. Il y en avait 677.
+
+Mon rapport du Prompt 03 disait « 32 produits portent un mojibake dans leur nom ». J'avais
+regardé une seule séquence (`‚™`) dans une seule colonne. L'inventaire complet des caractères
+non-ASCII a donné : **57 noms, 619 descriptions, 1 catégorie**. Les descriptions sont visibles
+des clients sur la fiche produit — c'était la partie la plus exposée, et je l'avais manquée en
+ne cherchant que ce que j'avais déjà vu.
+
+### Le diagnostic : une seule cause, pas une liste de cas
+
+La corruption est systématique : du texte UTF-8 relu comme du **Mac OS Roman**. `™` (U+2122)
+s'écrit `E2 84 A2` en UTF-8 ; lus en Mac Roman ces trois octets donnent `‚Ñ¢`. Idem pour
+`®` (C2 AE → `¬Æ`), `°` (C2 B0 → `¬∞`), `Ø` (C3 98 → `√ò`), `€` (E2 82 AC → `‚Ç¨`),
+`’` (E2 80 99 → `‚Äô`).
+
+Une fois la cause identifiée, la table de réparation **se calcule** : pour chaque caractère
+Unicode dont l'encodage UTF-8 est lisible en Mac Roman, on connaît sa forme abîmée. 50 des 52
+entrées de V32 sont dérivées mécaniquement, pas transcrites à la main.
+
+### La transformation inverse, élégante, ne marchait pas
+
+Le réflexe correct devant ce genre de corruption est de la défaire : ré-encoder en Mac Roman,
+relire en UTF-8. J'ai essayé. **Elle échoue ici, et c'est le point important : elle échoue en
+silence.**
+
+`B√ÇTONNET SÉCURITÉ BÉBÉ` mélange `√Ç` (abîmé) et `É` (intact) — la corruption est **partielle
+à l'intérieur d'une même chaîne**. Ré-encoder l'ensemble produit une suite d'octets qui n'est
+pas de l'UTF-8 valide : la conversion lève une erreur, la ligne est laissée telle quelle, et
+rien ne le signale. La moitié des lignes seraient restées abîmées avec un rapport
+« migration réussie ». D'où le remplacement séquence par séquence.
+
+### Deux garde-fous qui ont servi
+
+**Le premier balayage était incomplet.** J'avais dérivé la table sur quelques plages Unicode
+choisies. Le garde-fou de fin de migration a refusé la migration : « 2 produit(s) portent
+encore du mojibake ». C'étaient deux `‚åÄ` — le signe diamètre `⌀` (U+2300), juste hors des
+plages retenues. Corrigé en balayant **tout le plan multilingue de base** : 44 → 50 séquences,
+0 résidu. Sans ce garde-fou, deux descriptions seraient restées abîmées sans que personne ne
+le sache.
+
+**Deux séquences ne sont dérivables d'aucun codec** et sont donc vérifiées à la main,
+occurrence par occurrence :
+- `‚™` → `™` : une troncature, pas un décodage (aucun des 14 codecs testés ne la produit).
+  34 lignes, toujours accolée à une marque (`3m‚™`, `coban‚™`, `nexcare‚™`).
+- `Â ` → `À ` : 17 occurrences, **toutes** des prépositions (`POT Â EAU`, `6 Â 8 PERSONNES`,
+  `SAC Â DOS`, `ARMOIRE Â PHARMACIE`). La condition porte sur `Â` **suivi d'une espace** :
+  suivi d'une lettre, c'est du français correct qu'il ne faut surtout pas toucher
+  (`BÂTONNET`, `LAIT D'ÂNESSE`, `PURE PÂTE`). C'est l'inventaire du caractère suivant qui a
+  permis de séparer les deux, pas une intuition.
+
+### V33 — la condition de rapprochement des quasi-doublons
+
+V31 n'avait fusionné que les noms strictement identiques, et je l'avais justifié par « une
+migration qui devine se trompe ». C'était une paresse déguisée en prudence : la bonne réponse
+n'est pas de renoncer, c'est de **rendre la règle explicite et de vérifier ce qu'elle produit
+avant de l'appliquer**.
+
+`category_norm(text)` réduit un libellé à une clé comparable : minuscules, décomposition
+Unicode et suppression des accents, `&` → `et`, ponctuation → espace, `s` final retiré des
+mots de plus de trois lettres.
+
+**La règle a été comparée niveau par niveau avant d'être retenue** — 3 groupes avec la casse
+et les accents seuls, 9 en ajoutant l'esperluette et la ponctuation, 12 en ajoutant le
+pluriel. Les 12 groupes ont été lus un par un ; les 3 que seul le pluriel rapproche sont
+« Accessoires pré-opératoire(s) », « Échelle(s) de lecture » et « Produit(s) de ventilation de
+laboratoire » — trois fusions correctes. **223 → 211 catégories.**
+
+Un groupe méritait le détour : deux `Bandes plâtrées & accessoires` visuellement identiques,
+qui ne différaient que par la **forme de normalisation Unicode** de leur accent (`â` précomposé
+contre `a` + accent combinant). Aucune comparaison de chaînes ne les rapprochait ; la
+décomposition NFD, si.
+
+### Ligne survivante et libellé conservé : deux décisions distinctes
+
+Une subtilité qui change le résultat. Si l'on garde le libellé de la ligne la plus utilisée,
+« Equipements divers » (8 produits, sans accent) l'emporte sur « Équipements divers »
+(0 produit, correctement accentué) — et la plateforme conserve la moins bonne des deux
+graphies. Les deux décisions sont donc séparées :
+
+- la **ligne** qui survit est celle qui porte le plus de produits (moins de rattachements à
+  réécrire) ;
+- le **libellé** affiché est celui de la variante la mieux orthographiée : le plus d'accents,
+  puis le plus long.
+
+Résultat vérifié : `Équipements divers` (8), `Accessoires pré-opératoires` (7),
+`Autour du lit & Canapé` (33), `Échelles de lecture` (2).
+
+### Ce qui empêche le problème de revenir
+
+Fusionner ne suffit pas : sans contrainte, le prochain import recrée les mêmes doublons et
+V31/V33 sont à refaire. Un **index unique sur `(tenant_id, category_norm(name))`** est donc
+posé. C'est la base, et non le code applicatif, qui refuse le doublon — aucun chemin d'écriture
+ne peut le contourner.
+
+`IMMUTABLE` est obligatoire pour indexer une expression, d'où la table de correspondance
+explicite via `translate` plutôt que `unaccent()`, qui ne l'est pas.
+
+**Testé :** l'insertion de `GANTS D'EXAMEN & DE CHIRURGIES` (casse, esperluette et pluriel
+différents) est **rejetée** par la contrainte ; `Rayon totalement inédit` est acceptée.
+
+### Vérification
+
+Les deux migrations ont été rejouées sur une copie `pg_dump` de la base réelle avant d'y
+toucher, puis appliquées par Flyway. État final : **211 catégories, 0 doublon normalisé,
+1 519 produits intacts, 0 mojibake restant**, confirmé aussi par l'API déployée
+(`3M™ LITTMANN®`, `Ø 18 mm`, `±10%`, `°C` s'affichent correctement).
+
+### Défauts relevés, non corrigés
+
+- **59 groupes de produits en double** (64 lignes surnuméraires) portent le même libellé.
+  C'est le même import rejoué que pour les catégories, mais au niveau produit : chaque ligne a
+  son propre SKU, son stock et potentiellement ses commandes. Les fusionner touche à
+  `order_items` — c'est un chantier à part, pas une variante de celui-ci.
+- **20 fautes d'accent de la source** : 14 `CRÉME` / `modéle` / `CUILLÉRE` (aigu au lieu de
+  grave) et 6 `TÂTE` / `tàte` pour `TÊTE`. Ce sont des erreurs de saisie du fournisseur, pas
+  d'encodage : les corriger relève de la qualité du catalogue, pas d'une migration technique.
