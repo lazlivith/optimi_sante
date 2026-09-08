@@ -1300,3 +1300,104 @@ toucher, puis appliquées par Flyway. État final : **211 catégories, 0 doublon
 - **20 fautes d'accent de la source** : 14 `CRÉME` / `modéle` / `CUILLÉRE` (aigu au lieu de
   grave) et 6 `TÂTE` / `tàte` pour `TÊTE`. Ce sont des erreurs de saisie du fournisseur, pas
   d'encodage : les corriger relève de la qualité du catalogue, pas d'une migration technique.
+
+## 64. Doublons de produits (V34) : 59 annoncés, 5 fusionnés — et un bug d'historique découvert en route
+
+Suite demandée du nettoyage. Le résultat n'est pas celui attendu, et c'est le sujet de cette
+entrée : **l'analyse a invalidé la prémisse**.
+
+### « 59 groupes en double » était faux
+
+Le relevé initial détectait les doublons sur le **libellé**. Le libellé n'est pas l'identité
+d'un produit :
+
+- « Siège de douche rabattable SOLO » désigne **quatre références** distinctes (VB544W, VB544,
+  1820041020, 1820041010) à quatre prix : 66,08 / 64,22 / 90,77 / 93,41 €.
+- « BLOUSE VISITEUR » désigne deux articles à **9,43 €** et **74,66 €**.
+
+Fusionner sur le nom aurait supprimé de vraies fiches et imposé un prix arbitraire.
+**32 des 59 groupes étaient des faux positifs.**
+
+L'identité réelle est le SKU — qui n'est d'ailleurs pas une référence mais une **liste** de
+références, saisie tantôt avec des espaces, tantôt avec des retours à la ligne, tantôt avec un
+zéro de tête (`0411150010` et `411150010` désignent le même article). Sur ce critère
+normalisé : **34 groupes**, pas 59.
+
+### Puis le prix a invalidé la suite
+
+Sur les 34 groupes, un rapport de prix revenait : 987,10 / 822,58 = **1,2000**. Vérification
+sur l'ensemble : **22 groupes présentent un rapport de exactement 1,20**. Un passage d'import a
+enregistré du **HT**, l'autre du **TTC**. Et le code ne gère aucune TVA — `base_price` est
+utilisé tel quel.
+
+Fusionner, c'est choisir quelle fiche reste en vente, donc **quel prix le client paie**.
+Trancher HT contre TTC modifierait le prix de vente de 20 % sur 22 produits. Une migration n'a
+pas à décider cela. Cinq autres groupes présentent un écart inexpliqué (117,25 contre 89,90 ;
+78,80 contre 70,27) — même traitement.
+
+### La condition retenue
+
+V34 ne fusionne que les groupes où **la fusion n'arbitre aucun prix** : une fois le prix de
+remplissage écarté, il ne subsiste qu'un seul prix distinct dans le groupe. **5 groupes.**
+
+Cette condition s'appuie sur un constat mesuré : **141 produits portent exactement 100,00 €**
+quand le prix suivant le plus fréquent n'apparaît que 8 fois. Ce n'est pas une alternative
+commerciale, c'est une case non remplie — la fiche au vrai prix l'emporte.
+
+Un détail d'ordre a compté : mon premier classement plaçait la longueur de description avant
+le prix. Résultat, l'ÉTHYLOTEST à **100,00 € avec une description fournie** l'emportait sur la
+même fiche à **926,20 €**. Le critère de prix passe donc en premier : une fiche bavarde au
+prix de remplissage ne vaut pas mieux qu'une fiche brève au vrai prix.
+
+### Le bug découvert en chemin, et prouvé
+
+Avant de masquer quoi que ce soit, j'ai vérifié ce que devient une commande dont le produit
+disparaît. `order_items` conserve `unit_price` mais **pas le libellé** : celui-ci vient de
+l'association `Product`, qui porte `@SQLRestriction("deleted_at IS NULL AND is_active = true")`.
+`mapToResponseDto` faisait `item.getProduct().getName()` sans protection.
+
+**Test sur la plateforme en fonctionnement** — désactivation d'un seul produit déjà commandé,
+via le bouton « Désactiver » de l'écran catalogue :
+
+| Étape | Résultat |
+|---|---|
+| `GET /admin/orders` avant | **200** |
+| `PATCH .../status?active=false` | 200 |
+| `GET /admin/orders` après | **400** — `No row with the given identifier exists for entity Product` |
+| après restauration | **200** |
+
+Ce n'est pas un effet de bord de la fusion : **le bouton « Désactiver » du catalogue rendait
+déjà toute la liste des commandes de l'administration inaccessible** dès qu'il portait sur un
+article commandé. Trois déréférencements ont été protégés dans `OrderService` (liste des
+commandes, devis PDF, reçu PDF) ; l'article absent s'affiche désormais « Article retiré du
+catalogue » au lieu de faire échouer la page. **Rejoué après correctif : 200 dans les quatre
+étapes**, les autres lignes affichant toujours leur libellé réel.
+
+Le correctif de fond serait de figer le libellé dans `order_items` au moment de la commande,
+comme `unit_price` l'est déjà — un produit renommé après coup fait aujourd'hui mentir
+l'historique. Sujet distinct : il touche au parcours de commande.
+
+### On masque, on ne supprime pas
+
+Les doublons sont marqués `deleted_at` / `is_active = false`. `order_items` référence
+`products` sans `ON DELETE` et une commande est une pièce comptable. Par surcroît, **tout
+groupe dont une fiche porte une commande est exclu** de la fusion — volontairement plus strict
+que nécessaire : il suffirait d'exclure les groupes où la fiche *écartée* est commandée, mais
+la fiche retenue dépend d'un classement, et une règle indépendante de ce classement se vérifie
+d'un coup d'œil. Deux groupes sont concernés (`Fauteuil Releveur BORAS`, `Cardiomate pc-ecg`).
+
+### Vérification
+
+Rejouée sur une copie `pg_dump` avant la base réelle. **1 519 → 1 514 produits vivants**, les
+5 fiches retenues portant bien le vrai prix (926,20 / 444,76 / 38,86 / 27,54 / 24,79) et non le
+prix de remplissage. **0 commande orpheline.** Confirmé via l'API : le catalogue admin annonce
+1 514 produits.
+
+### Ce qui attend une décision, pas un correctif
+
+- **22 groupes HT/TTC** : quel prix fait foi ? La réponse détermine à la fois la fusion et,
+  plus largement, si le catalogue affiche des prix TTC ou HT. La migration est prête à être
+  paramétrée dès que la règle est connue.
+- **5 groupes à écart inexpliqué**, à examiner un par un.
+- **141 produits à 100,00 €** — sujet bien plus large que les doublons : 9 % du catalogue est
+  en vente à un prix de remplissage.

@@ -211,7 +211,7 @@ public class OrderService {
                 // Préparation des items
                 List<java.util.Map<String, Object>> itemsList = savedOrder.getItems().stream().map(i -> {
                     java.util.Map<String, Object> map = new java.util.HashMap<>();
-                    map.put("name", i.getProduct().getName());
+                    map.put("name", libelleLigne(i));
                     map.put("quantity", i.getQuantity());
                     map.put("unitPrice", i.getUnitPrice().toString());
                     map.put("subtotal", i.getSubtotal().toString());
@@ -315,7 +315,7 @@ public class OrderService {
             
             List<java.util.Map<String, Object>> itemsList = order.getItems().stream().map(i -> {
                 java.util.Map<String, Object> map = new java.util.HashMap<>();
-                map.put("name", i.getProduct().getName());
+                map.put("name", libelleLigne(i));
                 map.put("quantity", i.getQuantity());
                 map.put("unitPrice", i.getUnitPrice().toString());
                 map.put("subtotal", i.getSubtotal().toString());
@@ -376,12 +376,47 @@ public class OrderService {
         return "OPT-" + datePart + "-" + randomPart;
     }
 
+
+    /**
+     * Libellé d'une ligne de commande, résistant à la disparition du produit.
+     *
+     * <p>{@code Product} porte {@code @SQLRestriction("deleted_at IS NULL AND is_active = true")} :
+     * dès qu'un produit est désactivé ou supprimé, l'association n'est plus résolvable et
+     * {@code getProduct().getName()} leve une {@code EntityNotFoundException}. Vérifié : désactiver
+     * un seul produit déjà commandé faisait échouer <b>toute</b> la liste des commandes de
+     * l'administration (HTTP 400, « No row with the given identifier exists for entity Product »).
+     * Une commande est une pièce comptable : elle doit rester lisible même si l'article a quitté
+     * le catalogue.</p>
+     *
+     * <p>Correctif minimal. Le correctif de fond consiste à figer le libellé dans
+     * {@code order_items} au moment de la commande, comme {@code unit_price} l'est déjà — un
+     * produit renommé après coup fait aujourd'hui mentir l'historique. Traité comme un sujet
+     * distinct pour ne pas toucher au parcours de commande.</p>
+     */
+    private static String libelleLigne(OrderItem item) {
+        try {
+            Product produit = item.getProduct();
+            return produit != null ? produit.getName() : "Article retiré du catalogue";
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return "Article retiré du catalogue";
+        }
+    }
+
+    private static java.util.UUID identifiantLigne(OrderItem item) {
+        try {
+            Product produit = item.getProduct();
+            return produit != null ? produit.getId() : null;
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return null;
+        }
+    }
+
     private OrderResponseDto mapToResponseDto(Order order) {
         List<OrderItemDto> itemDtos = order.getItems().stream()
                 .map(item -> new OrderItemDto(
                         item.getId(),
-                        item.getProduct().getId(),
-                        item.getProduct().getName(),
+                        identifiantLigne(item),
+                        libelleLigne(item),
                         item.getUnitPrice(),
                         item.getQuantity(),
                         item.getSubtotal()
