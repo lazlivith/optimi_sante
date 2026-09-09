@@ -148,13 +148,16 @@ export function CatalogPage() {
                   key={product.id}
                   className="group flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all relative overflow-hidden"
                 >
-                  <Link to={`/product/${product.slug}`} className="block relative aspect-square bg-slate-50 overflow-hidden">
+                  {/* `contain` et non `cover` : les visuels du catalogue sont des packshots
+                      aux cadrages variables, et un recadrage automatique amputait l'article —
+                      or c'est sur cette vignette que l'acheteur le reconnaît. */}
+                  <Link to={`/product/${product.slug}`} className="block relative aspect-square bg-white overflow-hidden p-4">
                     <ProductImage
                       src={product.imageUrl}
                       alt={product.name}
                       className="w-full h-full group-hover:scale-105 transition-transform duration-500"
                       iconClassName="w-10 h-10"
-                      objectFit="cover"
+                      objectFit="contain"
                     />
                     {product.isOnPromo && (
                       <div className="absolute top-3 left-3">

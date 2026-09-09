@@ -64,13 +64,16 @@ export function ProductDetailPage() {
       
       <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-12">
         <div className="grid md:grid-cols-2 gap-12 lg:gap-20">
-          <div className="aspect-square bg-slate-50 rounded-2xl overflow-hidden relative group">
+          {/* Visuel principal en `contain` : c'est l'image sur laquelle on décide d'acheter,
+              elle doit montrer l'article entier. En `cover`, un équipement large était
+              tronqué à gauche et à droite sans que rien ne l'indique. */}
+          <div className="aspect-square bg-white border border-slate-100 rounded-2xl overflow-hidden relative group p-6">
             <ProductImage
               src={product.imageUrl}
               alt={product.name}
               className="w-full h-full group-hover:scale-105 transition-transform duration-700"
               iconClassName="w-32 h-32 opacity-50"
-              objectFit="cover"
+              objectFit="contain"
             />
           </div>
           
