@@ -32,7 +32,8 @@ export interface PaginatedResponse<T> {
 }
 
 export const catalogService = {
-  getProducts: async (params: { page?: number; size?: number; search?: string; categoryId?: string }) => {
+  /** `promo: true` ne remonte que les produits dont la promotion est active maintenant. */
+  getProducts: async (params: { page?: number; size?: number; search?: string; categoryId?: string; promo?: boolean }) => {
     const { data } = await axiosClient.get<PaginatedResponse<Product>>('/catalog/products', { params });
     return data;
   },

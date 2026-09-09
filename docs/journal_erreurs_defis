@@ -1905,3 +1905,68 @@ ne s'active jamais.
 
 `position: sticky` plutôt que `fixed` : le contenu principal n'a alors aucun décalage à
 compenser, et la mise en page reste celle d'origine.
+
+## 71. Le motif « promotion » existait à moitié : trois morceaux qui ne se parlaient pas
+
+### Ce que l'inspection a révélé avant d'écrire quoi que ce soit
+
+Trois constats, tous vérifiables en une minute et tous décourageants :
+
+1. **Le menu proposait « Promotions » avec un badge NEW**, vers `/catalog?promo=true`. Or
+   `CatalogPage` **ne lisait pas ce paramètre** : l'entrée menait au catalogue entier. Une
+   fonctionnalité annoncée dans la navigation et absente de la page.
+2. **Le backend n'avait aucun filtre promotion** sur le catalogue public, alors que
+   `ProductResponseDto` exposait déjà `isOnPromo` et `promoEndsAt`, et que
+   `AdminCatalogPage` proposait déjà les trois champs de promotion à la saisie.
+3. **Aucun produit n'était en promotion** en base — donc même un filtre correct n'aurait rien
+   montré.
+
+Le motif était construit aux deux extrémités (saisie côté admin, affichage du drapeau) et
+manquait entièrement au milieu.
+
+### La condition de promotion vit à un seul endroit
+
+`ProductSpecification.onPromoOnly` ne se contente pas de « un prix promo est renseigné » : une
+promotion porte une fenêtre de validité, et une remise terminée ou pas encore commencée ne
+doit pas remonter. Les bornes nulles valent « depuis toujours » et « sans fin ».
+
+C'est **exactement la règle de `Product.getEffectiveBasePrice()`**, qui décide du prix
+réellement facturé. Les deux doivent dire la même chose : sinon la boutique afficherait une
+promotion qui ne s'appliquerait pas au paiement — un écart de prix entre la vitrine et la
+caisse, c'est-à-dire le pire défaut possible sur un site marchand.
+
+### Le carrousel d'accueil
+
+Il portait trois diapositives écrites en dur, avec des images pointant vers un Cloudinary de
+démonstration. Il affiche désormais les vraies promotions : image du produit, remise calculée,
+prix barré, prix promotionnel, date de fin.
+
+**Il retombe sur les bannières statiques quand aucune promotion n'est active.** Un carrousel
+vide serait pire que des diapositives figées : la page d'accueil s'ouvrirait sur un cadre noir.
+Le repli n'est pas une précaution théorique — c'est l'état actuel de la base.
+
+Deux détails qui évitent des bugs visibles :
+- **Une seule promotion ne défile pas.** Faire clignoter un carrousel à une diapositive donne
+  l'impression d'un défaut.
+- **L'index est ramené dans les bornes** si le nombre de promotions diminue pendant que la
+  page est ouverte — sinon le composant rendrait du vide.
+
+### « Nos promos du mois » n'en montrait aucune
+
+La section recevait `products.slice(0, 10)` : les dix premiers produits du catalogue, sans
+aucun rapport avec une remise. Le titre mentait depuis le début. Elle reçoit maintenant les
+promotions réelles.
+
+### La page « Promotions » se présente comme telle
+
+Un bandeau la nomme, et l'état vide est distinct de celui d'une recherche infructueuse : une
+liste vide en mode promotions ne veut pas dire « aucun résultat », mais « aucune remise en
+cours ». Le dire évite de chercher un filtre fautif qui n'existe pas.
+
+### Reste à faire : les offres liées
+
+L'idée d'associer une formation à l'achat d'un équipement (apprendre à utiliser la machine
+acquise) n'est pas traitée ici. Ce n'est pas un réglage d'affichage mais une **relation de
+domaine** entre `products` et `trainings` : migration, exposition dans les DTO, sélection côté
+administration, présentation sur la fiche produit. C'est un lot à part entière, et le mélanger
+au motif « promotion » aurait produit deux fonctionnalités à moitié faites.

@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 /** Logo servi depuis `frontend/public/`. Doit avoir un FOND TRANSPARENT :
  *  la version sur fond bleu degrade afficherait un rectangle bleu dans une
  *  barre blanche. */
-const LOGO_SRC = '/logo-optimi-sante.png';
+const LOGO_SRC = '/optimi.webp';
 
 export const Navbar = () => {
   const { totalItems } = useCart();

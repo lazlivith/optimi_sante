@@ -62,6 +62,14 @@ public class CatalogService {
 
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> searchProducts(String search, UUID categoryId, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
+        return searchProducts(search, categoryId, minPrice, maxPrice, null, pageable);
+    }
+
+    /**
+     * @param promoOnly ne remonter que les produits dont la promotion est active maintenant.
+     *                  {@code null} ou {@code false} laisse le catalogue entier.
+     */
+    public Page<ProductResponseDto> searchProducts(String search, UUID categoryId, BigDecimal minPrice, BigDecimal maxPrice, Boolean promoOnly, Pageable pageable) {
         UUID tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             throw new IllegalStateException("Tenant context is required");
@@ -71,7 +79,8 @@ public class CatalogService {
                 .and(ProductSpecification.fetchCategory())
                 .and(ProductSpecification.search(search))
                 .and(ProductSpecification.withCategoryId(categoryId))
-                .and(ProductSpecification.priceBetween(minPrice, maxPrice));
+                .and(ProductSpecification.priceBetween(minPrice, maxPrice))
+                .and(ProductSpecification.onPromoOnly(promoOnly));
 
         Page<Product> products = productRepository.findAll(spec, pageable);
         

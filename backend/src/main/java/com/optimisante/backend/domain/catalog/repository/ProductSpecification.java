@@ -48,6 +48,30 @@ public class ProductSpecification {
         };
     }
     
+    /**
+     * Produits dont la promotion est <b>active maintenant</b>.
+     *
+     * <p>La condition ne se resume pas a « un prix promo est renseigne » : une promotion porte
+     * une fenetre de validite, et une promotion terminee ou pas encore commencee ne doit pas
+     * remonter. Les bornes nulles valent « depuis toujours » et « sans fin » — c'est la meme
+     * regle que {@code Product.getEffectiveBasePrice()}, qui decide du prix reellement
+     * facture. Les deux doivent dire la meme chose, sans quoi la boutique afficherait une
+     * promotion qui ne s'appliquerait pas au paiement.</p>
+     */
+    public static Specification<Product> onPromoOnly(Boolean promoOnly) {
+        return (root, query, cb) -> {
+            if (!Boolean.TRUE.equals(promoOnly)) return null;
+            var maintenant = java.time.OffsetDateTime.now();
+            return cb.and(
+                    cb.isNotNull(root.get("promoPrice")),
+                    cb.or(cb.isNull(root.get("promoStartsAt")),
+                          cb.lessThanOrEqualTo(root.get("promoStartsAt"), maintenant)),
+                    cb.or(cb.isNull(root.get("promoEndsAt")),
+                          cb.greaterThanOrEqualTo(root.get("promoEndsAt"), maintenant))
+            );
+        };
+    }
+
     public static Specification<Product> fetchCategory() {
         return (root, query, cb) -> {
             // Check if it's a count query, we don't want to fetch if it's a count query

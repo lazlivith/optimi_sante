@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { catalogService } from '../api/catalogService';
 import type { Product } from '../api/catalogService';
 import { Search, Mail, Plus, SlidersHorizontal } from 'lucide-react';
@@ -10,6 +10,11 @@ import { usePageMeta } from '../hooks/usePageMeta';
 
 export function CatalogPage() {
   usePageMeta('Catalogue médical', "Découvrez notre catalogue de dispositifs médicaux certifiés CE : équipements, consommables et matériel professionnel pour cabinets et structures de soin.");
+  // Le menu propose « Promotions » vers /catalog?promo=true depuis le depart, mais la page
+  // ignorait ce parametre : l'entree menait au catalogue entier. Elle le lit desormais.
+  const [searchParams] = useSearchParams();
+  const promoOnly = searchParams.get('promo') === 'true';
+
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const { addToCart } = useCart();
@@ -31,8 +36,10 @@ export function CatalogPage() {
   });
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['products', { search, selectedCategory }],
-    queryFn: () => catalogService.getProducts({ search, categoryId: selectedCategory, size: 20 })
+    queryKey: ['products', { search, selectedCategory, promoOnly }],
+    queryFn: () => catalogService.getProducts({
+      search, categoryId: selectedCategory, promo: promoOnly || undefined, size: 20,
+    })
   });
 
   const selectedCategoryName = categories?.find(c => c.id === selectedCategory)?.name;
@@ -86,6 +93,25 @@ export function CatalogPage() {
       </div>
 
       <div className="container mx-auto px-6 py-8 max-w-6xl">
+        {/* En mode promotions, la page doit se presenter comme telle : sans ce bandeau, le
+            visiteur venu du menu voit une liste courte sans comprendre pourquoi. */}
+        {promoOnly && (
+          <div className="mb-6 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-white px-6 py-5 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold">Promotions en cours</h1>
+              <p className="text-sm text-white/90 mt-0.5">
+                Uniquement les produits dont la remise est active aujourd'hui.
+              </p>
+            </div>
+            <Link
+              to="/catalog"
+              className="shrink-0 bg-white/15 hover:bg-white/25 backdrop-blur px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+            >
+              Voir tout le catalogue
+            </Link>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -100,7 +126,19 @@ export function CatalogPage() {
         ) : error ? (
           <div className="text-center py-20 text-red-500 bg-red-50 rounded-2xl border border-red-100">Erreur lors du chargement du catalogue.</div>
         ) : data?.content?.length === 0 ? (
-          <div className="text-center py-20 text-slate-500">Aucun produit ne correspond à votre recherche.</div>
+          promoOnly ? (
+            // Une liste vide en mode promotions n'est pas une recherche infructueuse : c'est
+            // qu'aucune remise n'est active. Le dire evite de chercher un filtre fautif.
+            <div className="text-center py-20">
+              <p className="text-slate-700 font-semibold">Aucune promotion en cours.</p>
+              <p className="text-slate-500 text-sm mt-1">Revenez bientôt, ou parcourez le catalogue complet.</p>
+              <Link to="/catalog" className="inline-block mt-5 bg-brand-green text-white px-5 py-2.5 rounded-full font-bold text-sm hover:bg-[#0f3c35] transition-colors">
+                Voir le catalogue
+              </Link>
+            </div>
+          ) : (
+            <div className="text-center py-20 text-slate-500">Aucun produit ne correspond à votre recherche.</div>
+          )
         ) : (
           <>
             <p className="text-sm text-slate-500 mb-5">{data?.totalElements ?? 0} produit{(data?.totalElements ?? 0) > 1 ? 's' : ''}</p>
