@@ -2070,3 +2070,105 @@ n'est pas un doublon, et sans cette exclusion tout réenregistrement d'un produi
 Plus le cloisonnement : `trainings-lookup` répond 200 au négoce et **403 à la mobilité**, tandis
 que `/admin/trainings` reste **403 au négoce**. Chaque univers accède au strict nécessaire, sans
 que l'ouverture nouvelle en élargisse un autre.
+
+## 73. « Mes données personnelles » : droit d'accès et de portabilité (RGPD, art. 15 et 20)
+
+### Le seul point qui compte vraiment
+
+`PersonalDataService` ne prend **jamais** d'identifiant d'utilisateur en paramètre : toutes ses
+méthodes lisent l'identité authentifiée. Exposer `/personal-data/{userId}` aurait suffi à
+transformer une page de conformité en **outil d'extraction de la base** — il suffit d'une
+boucle sur des UUID. Le contrôle d'accès ne peut pas reposer sur la discrétion de l'appelant.
+
+L'endpoint est ouvert à tout compte authentifié, et pas seulement aux clients : le droit
+d'accès ne dépend pas du rôle. Un médecin ou un partenaire y a droit autant qu'un acheteur.
+
+### L'export rend ce qui est détenu, pas ce qui a été saisi
+
+Un export limité aux champs du formulaire d'inscription ne répond pas à l'article 15. Le
+recensement des tables portant une donnée du client a donné : `users`, `company_profiles`,
+`orders` (avec le nombre d'articles), et `email_logs` — **les emails reçus font partie des
+données détenues sur la personne**, même si elle ne les a pas saisis.
+
+Deux absences délibérées :
+- **L'empreinte du mot de passe.** Ce n'est pas une donnée exploitable par la personne, et la
+  restituer reviendrait à en multiplier les copies hors du système.
+- **Le contenu des emails** — il n'est pas conservé (V24, décision prise parce que l'email
+  d'identifiants transporte un mot de passe en clair). La page le dit explicitement : sans
+  cette phrase, on peut croire que les messages sont stockés.
+
+`stripe_customer_id` est en revanche restitué : c'est un pseudonyme, mais bien une donnée
+concernant la personne.
+
+### La recherche des emails porte sur l'adresse, pas sur l'identifiant
+
+`recipientUserId` n'est plus une clé étrangère depuis la V25 et reste nul pour les emails émis
+**avant que le compte n'existe** — typiquement l'envoi des identifiants, le premier message
+qu'une personne reçoit. Chercher par identifiant aurait omis précisément ces messages-là.
+
+### Deux détails de format qui décident si l'export est utilisable
+
+- **Séparateur point-virgule et BOM UTF-8.** Sans eux, Excel en configuration française ouvre
+  le fichier sur une seule colonne et affiche « Ã© » à la place des accents. Un export
+  illisible ne satisfait pas le droit d'accès — la conformité ne s'arrête pas à l'envoi d'un
+  fichier.
+- **Échappement systématique.** Une adresse de facturation contient des retours à la ligne et
+  des points-virgules : sans guillemets, chacun décalerait toutes les colonnes suivantes, et
+  l'export deviendrait faux à partir de la première adresse un peu longue.
+
+Le format retenu est long — `Rubrique;Champ;Valeur` — plutôt qu'un tableau par entité : les
+données d'un compte sont hétérogènes et ne partagent aucune colonne. Un seul fichier lisible
+vaut mieux que quatre à assembler.
+
+### Le téléchargement ne peut pas être un simple lien
+
+L'endpoint exige un jeton d'authentification, qu'un `<a href>` n'enverrait pas : le navigateur
+recevrait un 401 et afficherait une page blanche. Le fichier est récupéré en mémoire par axios
+puis remis au navigateur via un objet URL, révoqué aussitôt — sans révocation, le blob reste
+en mémoire tant que l'onglet est ouvert.
+
+### Ce que la page annonce, et ce qu'elle ne promet pas
+
+Elle affiche le contenu **avant** de proposer de le télécharger : un bouton d'export seul
+obligerait à ouvrir un fichier pour savoir ce qu'il contient.
+
+Et elle précise que certaines données de commande doivent être conservées pour des raisons
+comptables même après une demande d'effacement. Promettre un effacement total serait une
+promesse qu'on ne pourrait pas tenir.
+
+### Le déploiement fantôme, troisième fois — et cette fois j'ai perdu du temps
+
+Le premier déploiement a renvoyé un **500** sur `/me/personal-data`. Le journal donnait
+`No static resource api/v1/me/personal-data` : le contrôleur n'était pas enregistré. Inspection
+du jar : **ni `PersonalDataResource` ni `PersonalDataService`**, alors que le build s'était fait
+avec `--no-cache`.
+
+Reconstruit avec `--progress plain` pour voir ce qui se passait vraiment : `Compiling 196 source
+files`, `BUILD SUCCESS`, image renommée. Le conteneur recréé, la classe était là.
+
+La cause exacte reste indéterminée — le premier build avait sa sortie tronquée par un `tail -2`
+qui masquait précisément l'étape utile. **La leçon porte sur mon outillage, pas sur Docker :
+tronquer la sortie d'un build fait gagner trois lignes de lecture et coûte un diagnostic.**
+
+Deuxième leçon du même épisode : `./mvnw … | tail -12 && echo "COMPILE OK"` affiche
+« COMPILE OK » même quand Maven échoue, parce que c'est `tail` qui décide du code de retour.
+J'ai affiché ce message sur une compilation en échec avant de m'en apercevoir.
+
+### Vérifié en conditions réelles
+
+| Contrôle | Résultat |
+|---|---|
+| Sans authentification | **401** |
+| Chaque compte reçoit ses propres données | B2C 13 commandes, B2B profil « KDS », médecin 0 |
+| `?userId=<autre compte>` | **le paramètre est ignoré**, l'appelant reçoit ses propres données |
+| En-têtes du fichier | `text/csv;charset=UTF-8`, `Content-Disposition: attachment` |
+| BOM | `ef bb bf` présent |
+| Contenu | 87 lignes, accents corrects, valeurs échappées |
+| Empreinte du mot de passe | **absente** (contrôlé sur tout le fichier) |
+
+### Ce que cela ne règle pas
+
+Le droit d'accès est couvert, l'effacement ne l'est pas : la page renvoie vers un contact
+humain. C'est acceptable et courant, mais **les mentions légales et les CGV n'existent
+toujours pas** — et pour un site marchand français, elles sont obligatoires. Cette page rend
+le manque plus visible qu'avant, puisqu'elle en occupe la place naturelle dans le menu.

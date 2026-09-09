@@ -25,5 +25,15 @@ public interface EmailLogRepository extends JpaRepository<EmailLog, UUID> {
             """)
     Page<EmailLog> search(EmailStatus status, EmailType emailType, String search, Pageable pageable);
 
+    /**
+     * Emails adressés à une personne, pour son export de données personnelles (RGPD).
+     *
+     * <p>La recherche porte sur l'adresse et non sur {@code recipientUserId} : depuis la V25,
+     * ce dernier n'est plus une clé étrangère et reste nul pour les emails émis avant que le
+     * compte n'existe — typiquement l'envoi des identifiants. Chercher par identifiant
+     * omettrait précisément ces messages-là.</p>
+     */
+    java.util.List<EmailLog> findByRecipientIgnoreCaseOrderBySentAtDesc(String recipient);
+
     long countByStatus(EmailStatus status);
 }

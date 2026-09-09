@@ -36,6 +36,7 @@ const TrainingDetailPage = lazy(() => import('./pages/training/TrainingDetailPag
 const MyEnrollmentDetailPage = lazy(() => import('./pages/dashboard/MyEnrollmentDetailPage').then(m => ({ default: m.MyEnrollmentDetailPage })));
 const MyEnrollmentsListPage = lazy(() => import('./pages/dashboard/MyEnrollmentsListPage').then(m => ({ default: m.MyEnrollmentsListPage })));
 const MyOrdersPage = lazy(() => import('./pages/dashboard/MyOrdersPage').then(m => ({ default: m.MyOrdersPage })));
+const MyPersonalDataPage = lazy(() => import('./pages/dashboard/MyPersonalDataPage').then(m => ({ default: m.MyPersonalDataPage })));
 const AdminEnrollmentDetailPage = lazy(() => import('./pages/admin/AdminEnrollmentDetailPage').then(m => ({ default: m.AdminEnrollmentDetailPage })));
 const AdminSalesDashboardPage = lazy(() => import('./pages/admin/AdminSalesDashboardPage').then(m => ({ default: m.AdminSalesDashboardPage })));
 const AdminMobilityDashboardPage = lazy(() => import('./pages/admin/AdminMobilityDashboardPage').then(m => ({ default: m.AdminMobilityDashboardPage })));
@@ -171,6 +172,7 @@ export function App() {
                   <Route element={<ProtectedRoute />}>
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/my-orders" element={<MyOrdersPage />} />
+                    <Route path="/mes-donnees" element={<MyPersonalDataPage />} />
                   </Route>
                 </Routes>
               </Layout>

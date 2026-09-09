@@ -78,6 +78,7 @@ export const Footer = () => {
                 <FooterLink to="/my-orders">
                   {user.role === 'CLIENT_B2B' ? 'Mes devis' : 'Mes commandes'}
                 </FooterLink>
+                <FooterLink to="/mes-donnees">Mes données personnelles</FooterLink>
               </>
             ) : (
               <>

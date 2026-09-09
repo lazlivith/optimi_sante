@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { adminHomeFor, ALL_ADMIN_ROLES } from '../lib/adminUniverses';
-import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, Settings, Search, Home, Briefcase } from 'lucide-react';
+import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, Settings, Search, Home, Briefcase, Database as DatabaseIcon } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -184,6 +184,11 @@ export const Navbar = () => {
                       <Briefcase className="w-4 h-4 mr-3 text-gray-400" /> Espace Partenaire
                     </Link>
                   )}
+                  {/* Droit d'acces (RGPD art. 15) : propose a tout compte authentifie, pas
+                      seulement aux clients — le droit ne depend pas du role. */}
+                  <Link to="/mes-donnees" onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    <DatabaseIcon className="w-4 h-4 mr-3 text-gray-400" /> Mes données personnelles
+                  </Link>
                   <div className="border-t border-gray-100 mt-1 pt-1">
                     <button
                       onClick={() => { setIsDropdownOpen(false); logout(); }}
