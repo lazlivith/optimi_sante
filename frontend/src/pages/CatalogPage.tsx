@@ -40,7 +40,11 @@ export function CatalogPage() {
   return (
     <div className="bg-slate-50 min-h-screen">
       {/* Barre de filtres — sticky sous la navbar, comme une vraie boutique en ligne */}
-      <div className="sticky top-16 z-30 bg-white border-b border-slate-200 shadow-sm">
+      {/* `top-32` = hauteur totale de l'en-tete collante : 80px de rangee principale +
+          48px de navigation secondaire, toutes deux dans le meme <header sticky>.
+          La valeur precedente (top-16, 64px) etait deja fausse — la barre de filtres
+          se glissait sous la navigation secondaire au defilement. */}
+      <div className="sticky top-32 z-30 bg-white border-b border-slate-200 shadow-sm">
         <div className="container mx-auto px-6 py-4 max-w-6xl">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">

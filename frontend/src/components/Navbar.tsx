@@ -5,6 +5,11 @@ import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, 
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
+/** Logo servi depuis `frontend/public/`. Doit avoir un FOND TRANSPARENT :
+ *  la version sur fond bleu degrade afficherait un rectangle bleu dans une
+ *  barre blanche. */
+const LOGO_SRC = '/logo-optimi-sante.png';
+
 export const Navbar = () => {
   const { totalItems } = useCart();
   const { user, isAuthenticated, logout } = useAuth();
@@ -32,6 +37,9 @@ export const Navbar = () => {
   };
 
   const ADMIN_ROLES: string[] = ALL_ADMIN_ROLES;
+
+  // Deposer le fichier dans frontend/public/ sous ce nom suffit a l'activer.
+  const [logoDisponible, setLogoDisponible] = useState(true);
 
   const getRoleLabel = (role: string) => {
     switch (role) {
@@ -65,17 +73,33 @@ export const Navbar = () => {
   return (
     <header className="bg-white sticky top-0 z-50 border-b border-gray-100 shadow-sm">
       {/* Main Header Row */}
-      <div className="container mx-auto px-4 h-16 flex items-center gap-4">
+      <div className="container mx-auto px-4 h-20 flex items-center gap-5">
 
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 shrink-0">
-          <div className="bg-brand-green text-white font-bold rounded-lg flex items-center justify-center w-9 h-9 text-sm">
-            OS
-          </div>
-          <div className="hidden sm:block">
-            <span className="text-lg font-bold text-brand-dark tracking-tight block leading-none">Optimi Santé</span>
-            <span className="text-[10px] text-slate-400 leading-none">Santé & Confort</span>
-          </div>
+        {/* Logo.
+            Le vrai logo est servi depuis /public. Tant qu'il n'y est pas, `onError` fait
+            basculer sur le monogramme d'origine : l'en-tete reste correcte au lieu d'afficher
+            une image cassee, et le logo apparait de lui-meme le jour ou le fichier est depose.
+            Quand il s'affiche, le texte « Optimi Santé » disparait — le logo est deja un
+            logotype, le repeter a cote ferait doublon. */}
+        <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="Optimi Santé — accueil">
+          {logoDisponible ? (
+            <img
+              src={LOGO_SRC}
+              alt="Optimi Santé"
+              onError={() => setLogoDisponible(false)}
+              className="h-12 w-auto max-w-[190px] object-contain"
+            />
+          ) : (
+            <>
+              <div className="bg-brand-green text-white font-bold rounded-xl flex items-center justify-center w-11 h-11 text-base">
+                OS
+              </div>
+              <div className="hidden sm:block">
+                <span className="text-xl font-bold text-brand-dark tracking-tight block leading-none">Optimi Santé</span>
+                <span className="text-[11px] text-slate-400 leading-none">soutenir le handicap et le soin</span>
+              </div>
+            </>
+          )}
         </Link>
 
         {/* Search Bar — Central */}
@@ -181,7 +205,7 @@ export const Navbar = () => {
 
       {/* Secondary Navigation */}
       <div className="border-t border-gray-100 bg-white">
-        <div className="container mx-auto px-4 flex items-center h-11 gap-1">
+        <div className="container mx-auto px-4 flex items-center h-12 gap-1">
           {/* Client Type Switcher */}
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 mr-3">
             <button
