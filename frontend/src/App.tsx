@@ -1,6 +1,7 @@
 import { type ReactNode, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PageTransition } from './components/common/PageTransition';
 // Rôles autorisés par univers, lus de la même définition que la sidebar : le layout n'est
@@ -74,18 +75,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
         <PageTransition>{children}</PageTransition>
       </main>
 
-      <footer className="border-t border-gray-100 text-xs text-gray-500 py-8 mt-4 bg-white">
-        <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p>© 2026 Optimi Santé · SAS, Bordeaux</p>
-          <div className="flex items-center gap-4">
-            <span>Négoce B2B/B2C</span>
-            <span>·</span>
-            <span>Formations médicales</span>
-            <span>·</span>
-            <span>Mobilité Afrique → France</span>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

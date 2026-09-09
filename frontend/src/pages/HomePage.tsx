@@ -571,8 +571,6 @@ export function HomePage() {
         </div>
       </section>
 
-      <PartnersSection />
-
       {/* All Products Grid */}
       <section className="container mx-auto px-4 md:px-8 py-12 bg-white rounded-t-3xl border-t border-gray-100 shadow-sm mt-8">
         <div className="flex items-center justify-between mb-8">
@@ -597,6 +595,10 @@ export function HomePage() {
           </Link>
         </div>
       </section>
+
+      {/* Placee apres le catalogue : la preuve sociale a plus de poids une fois l'offre vue
+          qu'avant, ou elle interrompait le parcours entre deux blocs de produits. */}
+      <PartnersSection />
 
       {/* WhatsApp Floating Button */}
       <a
