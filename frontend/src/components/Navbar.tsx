@@ -176,7 +176,10 @@ export const Navbar = () => {
                   )}
                   {(user.role === 'CLIENT_B2B' || user.role === 'CLIENT_B2C' || user.role === 'MEDECIN' || user.role === 'CENTRE_FORMATION') && (
                     <Link to="/my-orders" onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                      <FileText className="w-4 h-4 mr-3 text-gray-400" /> {user.role === 'CLIENT_B2B' ? 'Mes Devis' : 'Mes Commandes'}
+                      {/* « Mes Devis » seul faisait croire aux comptes professionnels qu'aucun
+                          historique de commande n'existait : la page destinataire s'intitule
+                          « Mes Commandes & Devis » et contient bien les deux. */}
+                      <FileText className="w-4 h-4 mr-3 text-gray-400" /> {user.role === 'CLIENT_B2B' ? 'Mes commandes et devis' : 'Mes commandes'}
                     </Link>
                   )}
                   {user.role === 'CENTRE_FORMATION' && (

@@ -21,6 +21,35 @@ export const Footer = () => {
 
   return (
     <footer className="bg-brand-dark text-slate-300 mt-16">
+      {/* Nos trois metiers, presentes et cliquables. Ils n'apparaissaient qu'en texte inerte
+          dans la barre du bas : un visiteur arrive en pied de page ne pouvait ni comprendre
+          l'etendue de l'offre, ni y acceder. Chaque carte vise un public distinct — un
+          acheteur, un medecin, un etablissement — et mene a une page differente. */}
+      <div className="border-b border-white/10">
+        <div className="container mx-auto px-6 py-10">
+          <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-5">
+            Nos services
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <ServiceCard
+              to="/catalog" icon={ShoppingBag} titre="Négoce médical"
+              texte="Équipements, consommables et mobilier de soin, pour les professionnels comme pour les particuliers."
+              cta="Voir le catalogue"
+            />
+            <ServiceCard
+              to="/formations" icon={GraduationCap} titre="Formations & mobilité"
+              texte="Stages cliniques en CHU français, avec accompagnement administratif et constitution du dossier de visa."
+              cta="Voir les formations"
+            />
+            <ServiceCard
+              to="/devenir-partenaire" icon={Plane} titre="Partenariat établissement"
+              texte="Accueillez des médecins en formation et publiez vos sessions auprès de candidats pré-qualifiés."
+              cta="Devenir partenaire"
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="container mx-auto px-6 py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 lg:gap-10">
 
@@ -74,7 +103,7 @@ export const Footer = () => {
               <>
                 <FooterLink to="/profile">Mon profil</FooterLink>
                 <FooterLink to="/my-orders">
-                  {user.role === 'CLIENT_B2B' ? 'Mes devis' : 'Mes commandes'}
+                  {user.role === 'CLIENT_B2B' ? 'Mes commandes et devis' : 'Mes commandes'}
                 </FooterLink>
                 <FooterLink to="/mes-donnees">Mes données personnelles</FooterLink>
               </>
@@ -100,18 +129,37 @@ export const Footer = () => {
             <Link to="/cgv" className="text-slate-400 hover:text-white transition-colors">CGV / CGU</Link>
             <Link to="/politique-confidentialite" className="text-slate-400 hover:text-white transition-colors">Confidentialité</Link>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-slate-500">
-            <span>Négoce B2B/B2C</span>
-            <span aria-hidden="true">·</span>
-            <span>Formations médicales</span>
-            <span aria-hidden="true">·</span>
-            <span>Mobilité Afrique → France</span>
-          </div>
+          <p className="text-xs text-slate-500">
+            Négoce B2B/B2C · Formations médicales · Mobilité Afrique → France
+          </p>
         </div>
       </div>
     </footer>
   );
 };
+
+function ServiceCard({
+  to, icon: Icon, titre, texte, cta,
+}: { to: string; icon: typeof ShoppingBag; titre: string; texte: string; cta: string }) {
+  return (
+    <Link
+      to={to}
+      className="group block rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 p-5 transition-colors"
+    >
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className="w-9 h-9 rounded-xl bg-brand-green/25 text-white flex items-center justify-center shrink-0">
+          <Icon className="w-4 h-4" />
+        </div>
+        <h3 className="font-bold text-white">{titre}</h3>
+      </div>
+      <p className="text-sm text-slate-400 leading-relaxed">{texte}</p>
+      <span className="inline-flex items-center gap-1 mt-3 text-sm font-semibold text-white">
+        {cta}
+        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+      </span>
+    </Link>
+  );
+}
 
 function FooterColumn({
   icon: Icon, title, children,
