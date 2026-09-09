@@ -14,9 +14,7 @@ const WHATSAPP = 'https://wa.me/33600000000';
  * cherche un lien quand la barre de navigation n'a pas répondu : il porte donc de la
  * navigation réelle, pas seulement une mention légale.</p>
  *
- * <p><b>Aucun lien mort.</b> Chaque destination correspond à une route qui existe : les pages
- * légales (mentions, CGV) ne sont pas listées tant qu'elles ne sont pas écrites — un lien qui
- * ne mène nulle part coûte plus de confiance qu'une absence.</p>
+ * <p><b>Aucun lien mort.</b> Chaque destination correspond à une route qui existe.</p>
  */
 export const Footer = () => {
   const { user } = useAuth();
@@ -94,7 +92,14 @@ export const Footer = () => {
 
       <div className="border-t border-white/10">
         <div className="container mx-auto px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-slate-500">© 2026 Optimi Santé · SAS, Bordeaux</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
+            <p className="text-slate-500">© 2026 Optimi Santé · SAS</p>
+            <span aria-hidden="true" className="text-slate-600">·</span>
+            {/* Obligatoires et donc placees dans la barre du bas, la ou on les cherche. */}
+            <Link to="/mentions-legales" className="text-slate-400 hover:text-white transition-colors">Mentions légales</Link>
+            <Link to="/cgv" className="text-slate-400 hover:text-white transition-colors">CGV / CGU</Link>
+            <Link to="/politique-confidentialite" className="text-slate-400 hover:text-white transition-colors">Confidentialité</Link>
+          </div>
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-slate-500">
             <span>Négoce B2B/B2C</span>
             <span aria-hidden="true">·</span>

@@ -52,6 +52,9 @@ const AdminPromoCodesPage = lazy(() => import('./pages/admin/AdminPromoCodesPage
 const AdminEmailsPage = lazy(() => import('./pages/admin/AdminEmailsPage').then(m => ({ default: m.AdminEmailsPage })));
 const AdminPayoutsPage = lazy(() => import('./pages/admin/AdminPayoutsPage').then(m => ({ default: m.AdminPayoutsPage })));
 const BecomePartnerPage = lazy(() => import('./pages/partnership/BecomePartnerPage').then(m => ({ default: m.BecomePartnerPage })));
+const LegalNoticePage = lazy(() => import('./pages/legal/LegalNoticePage').then(m => ({ default: m.LegalNoticePage })));
+const TermsPage = lazy(() => import('./pages/legal/TermsPage').then(m => ({ default: m.TermsPage })));
+const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
 const PartnerDashboardHomePage = lazy(() => import('./pages/partner/PartnerDashboardHomePage').then(m => ({ default: m.PartnerDashboardHomePage })));
 const PartnerEnrollmentsPage = lazy(() => import('./pages/partner/PartnerEnrollmentsPage').then(m => ({ default: m.PartnerEnrollmentsPage })));
 const PartnerSessionsPage = lazy(() => import('./pages/partner/PartnerSessionsPage').then(m => ({ default: m.PartnerSessionsPage })));
@@ -168,6 +171,12 @@ export function App() {
                   <Route path="/candidature/success" element={<CandidatureSuccessPage />} />
                   <Route path="/candidature/cancel" element={<CandidatureCancelPage />} />
                   <Route path="/devenir-partenaire" element={<BecomePartnerPage />} />
+
+                  {/* Pages juridiques : publiques par obligation — elles doivent etre
+                      consultables sans compte, y compris par un visiteur qui hesite. */}
+                  <Route path="/mentions-legales" element={<LegalNoticePage />} />
+                  <Route path="/cgv" element={<TermsPage />} />
+                  <Route path="/politique-confidentialite" element={<PrivacyPolicyPage />} />
 
                   <Route element={<ProtectedRoute />}>
                     <Route path="/profile" element={<ProfilePage />} />

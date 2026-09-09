@@ -2172,3 +2172,84 @@ Le droit d'accès est couvert, l'effacement ne l'est pas : la page renvoie vers 
 humain. C'est acceptable et courant, mais **les mentions légales et les CGV n'existent
 toujours pas** — et pour un site marchand français, elles sont obligatoires. Cette page rend
 le manque plus visible qu'avant, puisqu'elle en occupe la place naturelle dans le menu.
+
+## 74. Pages juridiques : mentions légales, CGV/CGU et politique de confidentialité
+
+### Vérifier le code avant d'écrire le contrat
+
+Les CGV sont un **document opposable**. Avant d'en rédiger la clause financière, j'ai vérifié
+ce que la plateforme facture réellement.
+
+La consigne annonçait « acompte de 60 % à la confirmation d'admission ». Or
+`EnrollmentPaymentService.openTuitionPayment` ouvre **un encaissement unique du montant
+total** au passage en `PENDING_TUITION_FEE` : il n'existe ni échéancier, ni solde, ni second
+prélèvement. Écrire 60 % dans les CGV aurait annoncé au candidat un barème que le code ne
+respecte pas — et facturer 100 % quand le contrat annonce 60 % n'est pas un écart de
+documentation, c'est un manquement contractuel.
+
+Les CGV décrivent donc **ce qui est appliqué aujourd'hui**, et la part exigée est une valeur de
+configuration (`CONDITIONS_MOBILITE.partExigeeALAdmission`) plutôt qu'un nombre écrit dans la
+phrase. Le jour où le paiement échelonné sera développé, le contrat suivra le code au lieu de
+diverger silencieusement.
+
+### Les valeurs manquantes sont visibles, pas masquées
+
+Le SIREN, le RCS, l'adresse du siège et l'hébergeur ne sont pas encore connus. Deux mauvaises
+solutions : les écrire en dur avec une valeur provisoire, ou masquer la ligne quand elle est
+vide. La première se corrige par un redéploiement applicatif — le plus sûr moyen de la laisser
+fausse. La seconde produit une page qui **paraît complète alors qu'elle ne l'est pas**.
+
+Les champs vides s'affichent donc « ⚠️ à compléter » en évidence sur la page publique. C'est
+inélégant, et c'est le but : une mention légale incomplète est une infraction (LCEN, art.
+6-III) ; incomplète **et silencieuse**, c'est une infraction que personne ne verra.
+
+Tout est surchargeable par variable d'environnement `VITE_LEGAL_*`, documentées dans
+`.env.example`.
+
+### « AWS / OVHcloud / Scaleway » n'est pas une mention d'hébergeur
+
+La loi impose de nommer **celui qui héberge réellement**, avec sa raison sociale, son adresse
+et son téléphone. Une liste d'options ne satisfait pas l'obligation. Les trois champs sont donc
+distincts et explicitement à renseigner, avec ce rappel dans `.env.example`.
+
+### Ce que les CGV disent parce que le code le fait
+
+Plusieurs clauses n'ont pas été recopiées d'un modèle mais tirées du comportement réel :
+
+- **« Aucun règlement de frais de formation n'est demandé avant que l'établissement n'ait
+  accepté la candidature »** — c'est l'automate qui le garantit : `PENDING_TUITION_FEE` n'est
+  atteignable que depuis `ACCEPTED_BY_PARTNER`.
+- **« Un dossier non transmis reste invisible de l'établissement »** — isolation appliquée par
+  le serveur, mesurée à la recette (9 dossiers visibles sur 11).
+- **« Aucune donnée de carte bancaire ne transite par nos serveurs »** — vrai, le paiement est
+  délégué de bout en bout.
+- **« Le contenu des courriels n'est pas conservé »** — décision de la V24, prise parce que le
+  message d'identifiants transporte un mot de passe en clair.
+
+Une politique de confidentialité qui décrirait autre chose que le système est une déclaration
+inexacte, pas une formalité.
+
+### Ce que j'ai ajouté sans qu'on me le demande, parce que c'est obligatoire
+
+- **Droit de rétractation de quatorze jours** (art. L221-18 du Code de la consommation), avec
+  son exception pour les produits descellés pour raisons d'hygiène (art. L221-28) — laquelle
+  concerne une part importante des consommables médicaux.
+- **Médiation de la consommation** : l'adhésion à un médiateur est obligatoire pour vendre aux
+  particuliers. Le champ est vide et signalé.
+- **Durée de conservation comptable de dix ans** (art. L123-22 du Code de commerce), présentée
+  comme s'imposant à l'entreprise — elle survit à une demande d'effacement, et la page « Mes
+  données personnelles » l'annonçait déjà.
+
+### Structure retenue
+
+Pas de fichiers JSON ni d'internationalisation : le site est monolingue, et introduire une
+couche i18n pour trois pages ajouterait un mécanisme sans usage. Un module TypeScript typé
+(`config/legal.ts`) porte l'identité et les conditions financières ; les trois pages le lisent.
+Une seule source, vérifiée par le compilateur.
+
+### La limite de ce lot
+
+Ces textes sont des **projets sérieux et structurés, pas un avis juridique**. Ils couvrent les
+obligations formelles et décrivent fidèlement le fonctionnement de la plateforme, mais l'objet
+social — intermédiation, formation médicale, mobilité internationale — mérite une relecture par
+un professionnel avant la mise en ligne. Le dire fait partie du travail.
