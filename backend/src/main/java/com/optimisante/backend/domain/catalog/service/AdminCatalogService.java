@@ -2,6 +2,7 @@ package com.optimisante.backend.domain.catalog.service;
 
 import com.optimisante.backend.config.tenant.TenantContext;
 import com.optimisante.backend.domain.catalog.dto.AdminCategoryDto;
+import com.optimisante.backend.domain.catalog.dto.TrainingLookupDto;
 import com.optimisante.backend.domain.catalog.dto.AdminProductRequestDto;
 import com.optimisante.backend.domain.catalog.dto.AdminProductResponseDto;
 import com.optimisante.backend.domain.catalog.entity.Category;
@@ -28,6 +29,7 @@ public class AdminCatalogService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final com.optimisante.backend.domain.training.repository.TrainingRepository trainingRepository;
     private final TenantRepository tenantRepository;
 
     @Transactional(readOnly = true)
@@ -73,6 +75,8 @@ public class AdminCatalogService {
                 ? categoryRepository.findById(dto.categoryId()).orElse(null)
                 : null;
 
+        var formation = resolveTraining(dto.trainingId(), null);
+
         String slug = generateUniqueSlug(tenantId, dto.name());
 
         Product product = Product.builder()
@@ -87,6 +91,7 @@ public class AdminCatalogService {
                 .isQuoteOnly(Boolean.TRUE.equals(dto.isQuoteOnly()))
                 .isActive(true)
                 .category(category)
+                .training(formation)
                 .imageUrl(dto.imageUrl())
                 .promoPrice(dto.promoPrice())
                 .promoStartsAt(dto.promoStartsAt())
@@ -110,6 +115,11 @@ public class AdminCatalogService {
         if (dto.stockThreshold() != null) product.setStockThreshold(dto.stockThreshold());
         if (dto.isQuoteOnly() != null) product.setIsQuoteOnly(dto.isQuoteOnly());
         if (dto.imageUrl() != null) product.setImageUrl(dto.imageUrl());
+        // Le rattachement se pose ET se retire : `null` signifie « plus de formation liée »,
+        // contrairement à la catégorie, où null veut dire « ne change rien ». La différence est
+        // voulue — sans elle, une offre liée posée par erreur serait indéfaisable.
+        product.setTraining(resolveTraining(dto.trainingId(), product.getId()));
+
         if (dto.categoryId() != null) {
             categoryRepository.findById(dto.categoryId()).ifPresent(product::setCategory);
         }
@@ -185,6 +195,7 @@ public class AdminCatalogService {
                 .promoPrice(p.getPromoPrice())
                 .promoStartsAt(p.getPromoStartsAt())
                 .promoEndsAt(p.getPromoEndsAt())
+                .trainingId(p.getTraining() != null ? p.getTraining().getId() : null)
                 .build();
     }
 
@@ -206,6 +217,7 @@ public class AdminCatalogService {
                 .promoPrice(row.getPromoPrice())
                 .promoStartsAt(row.getPromoStartsAt())
                 .promoEndsAt(row.getPromoEndsAt())
+                .trainingId(row.getTrainingId())
                 .build();
     }
 
@@ -235,6 +247,59 @@ public class AdminCatalogService {
             case "name_asc", "price_asc", "price_desc" -> value;
             default -> null;
         };
+    }
+
+    /**
+     * Résout la formation à rattacher, et refuse **avec un message lisible** si elle accompagne
+     * déjà un autre équipement.
+     *
+     * <p>L'index unique {@code uq_products_training} (V38) fait autorité — lui seul tient si
+     * deux administrateurs enregistrent en même temps. Mais sa violation remonte telle quelle :
+     * « duplicate key value violates unique constraint ». Ce contrôle existe uniquement pour
+     * que l'utilisateur lise une phrase, pas une erreur PostgreSQL.</p>
+     *
+     * @param productId produit en cours d'édition, exclu du contrôle — se rattacher à la
+     *                  formation qu'on porte déjà n'est pas un doublon. {@code null} à la
+     *                  création.
+     */
+    private com.optimisante.backend.domain.training.entity.Training resolveTraining(UUID trainingId, UUID productId) {
+        if (trainingId == null) {
+            return null;
+        }
+        var formation = trainingRepository.findById(trainingId)
+                .orElseThrow(() -> new IllegalArgumentException("Formation introuvable : " + trainingId));
+
+        productRepository.findProductIdLinkedToTraining(trainingId).ifPresent(dejaLie -> {
+            if (!dejaLie.equals(productId)) {
+                throw new IllegalStateException(
+                        "La formation « " + formation.getTitle() + " » accompagne déjà un autre "
+                        + "équipement. Retirez-la de ce produit avant de la rattacher ici.");
+            }
+        });
+        return formation;
+    }
+
+    /**
+     * Formations proposées au rattachement d'un produit.
+     *
+     * <p>Une formation déjà liée à un autre produit reste dans la liste mais porte
+     * {@code alreadyLinked} : la masquer laisserait l'utilisateur chercher une formation qu'il
+     * sait exister, sans comprendre pourquoi elle a disparu. La relation étant 1:1, l'interface
+     * la signale et la base la refuse — deux barrières, un seul message compréhensible.</p>
+     */
+    @Transactional(readOnly = true)
+    public java.util.List<TrainingLookupDto> listTrainingsForLinking() {
+        java.util.Set<UUID> dejaLiees = productRepository.findLinkedTrainingIds();
+        return trainingRepository.findAll().stream()
+                .filter(t -> Boolean.TRUE.equals(t.getIsPublished()))
+                .filter(t -> t.getApprovalStatus() != null && "APPROVED".equals(t.getApprovalStatus().name()))
+                .sorted(java.util.Comparator.comparing(t -> t.getTitle() == null ? "" : t.getTitle()))
+                .map(t -> new TrainingLookupDto(
+                        t.getId(), t.getTitle(),
+                        t.getPartnerProfile() != null ? t.getPartnerProfile().getInstitutionName() : null,
+                        t.getPrice(), t.getDurationDays(),
+                        dejaLiees.contains(t.getId())))
+                .toList();
     }
 
     private static String blankToNull(String value) {

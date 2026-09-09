@@ -18,5 +18,7 @@ public record ProductResponseDto(
         String imageUrl,
         CategorySummaryDto category,
         Boolean isOnPromo,
-        OffsetDateTime promoEndsAt
+        OffsetDateTime promoEndsAt,
+        /** Formation qui apprend a utiliser l'equipement, {@code null} si aucune. */
+        RelatedTrainingDto relatedTraining
 ) {}

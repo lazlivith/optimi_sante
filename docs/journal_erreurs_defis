@@ -1970,3 +1970,103 @@ acquise) n'est pas traitée ici. Ce n'est pas un réglage d'affichage mais une *
 domaine** entre `products` et `trainings` : migration, exposition dans les DTO, sélection côté
 administration, présentation sur la fiche produit. C'est un lot à part entière, et le mélanger
 au motif « promotion » aurait produit deux fonctionnalités à moitié faites.
+
+## 72. Offre liée (V38) : quel côté porte la clé, et pourquoi ce n'est pas symétrique
+
+« Une formation ne peut avoir qu'un produit, et un produit qu'une formation. » Une relation
+**un à un** : en apparence, peu importe quelle table porte la clé étrangère. En pratique, non.
+
+### Ce sont les auteurs qui décident du côté
+
+- Une **formation est créée et modifiée par le CHU partenaire** (`CENTRE_FORMATION`).
+  L'administration de la mobilité ne fait qu'**approuver ou refuser** — vérifié :
+  `AdminTrainingResource` n'expose que `GET`, `approve` et `reject`. Il n'existe aucun chemin
+  d'édition de formation côté administration.
+- Un **produit est édité par l'administration du négoce**, via un formulaire et un endpoint
+  qui existent déjà.
+
+Or rattacher une formation à un équipement est une **décision commerciale d'OptimiSanté**, pas
+une décision du CHU : un partenaire ne doit pas pouvoir désigner lui-même le produit que sa
+formation accompagne. Porter la clé côté `trainings` aurait donc obligé soit à ouvrir ce choix
+au partenaire — ce qui est faux métier — soit à construire tout un chemin d'édition de
+formation côté administration, pour une seule colonne.
+
+**La clé est donc portée par `products`.** Ce n'est pas un choix de commodité technique : c'est
+le seul côté dont l'auteur a le droit de décider.
+
+### L'unicité fait le 1:1, pas l'annotation
+
+La colonne seule ne dirait que « un produit renvoie à au plus une formation ». L'index unique
+partiel ajoute la réciproque. `@ManyToOne` plutôt que `@OneToOne` côté Hibernate :
+un `@OneToOne` facultatif est chargé de façon anticipée même déclaré paresseux, ce qui ferait
+une requête par produit sur les listes de catalogue. **L'unicité appartient à la base, le
+mapping n'a pas à la porter.**
+
+Vérifié sur une copie : premier rattachement accepté, second rattachement de la même formation
+à un autre produit **refusé**, retrait accepté.
+
+### Le rattachement doit pouvoir se défaire
+
+`updateProduct` traite `trainingId = null` comme « plus de formation liée », alors que
+`categoryId = null` signifie « ne change rien » dans le même service. La différence est
+volontaire et commentée : sans elle, une offre liée posée par erreur serait **indéfaisable**
+depuis l'interface.
+
+### Le cloisonnement des univers, encore
+
+Pour choisir une formation, l'administrateur du négoce doit pouvoir les lister. Or
+`/admin/trainings` est `@MobilityAdmin` et lui répond 403 — à juste titre.
+
+Plutôt que de percer ce cloisonnement, un endpoint `trainings-lookup` sous le périmètre du
+négoce expose le **strict minimum** : identifiant, titre, établissement, prix, durée. Ni
+candidatures, ni pièces, ni modération. C'est la troisième fois que ce cloisonnement se pose
+(entrées 68, 69, 70) et la première où la réponse n'est **pas** d'élargir un droit existant.
+
+Deux filtres implicites qui évitent des offres mortes :
+- Seules les formations **publiées et approuvées** sont proposées au rattachement, et le DTO
+  client ne renvoie l'offre que si elle l'est toujours. Annoncer une formation en attente de
+  validation enverrait le client vers une page indisponible.
+- `findLinkedTrainingIds` est une requête **native** : `Product` porte `@SQLRestriction`, et un
+  produit désactivé conserve son rattachement. En JPQL, la formation qu'il occupe apparaîtrait
+  comme libre — et la base refuserait ensuite l'enregistrement, avec une violation de contrainte
+  incompréhensible pour l'utilisateur.
+
+### L'interface signale plutôt que de masquer
+
+Une formation déjà rattachée reste visible dans le sélecteur, désactivée et marquée « (déjà
+rattachée) ». La faire disparaître laisserait l'utilisateur chercher une formation qu'il sait
+exister.
+
+### Le test a démenti ma propre affirmation
+
+J'avais écrit « deux barrières, un seul message compréhensible ». Le premier passage du cycle
+complet a renvoyé, sur la tentative de doublon :
+
+```
+HTTP 400 · could not execute statement [ERROR: duplicate key value violates
+unique constraint "uq_products_training"]
+```
+
+Ce n'est pas un message compréhensible, c'est une erreur PostgreSQL. La contrainte protégeait
+bien la donnée, mais l'affirmation sur l'expérience était fausse. Ajout d'un contrôle applicatif
+— l'index reste l'autorité, lui seul tient si deux administrateurs enregistrent simultanément —
+qui produit désormais un **409** avec : « La formation « … » accompagne déjà un autre
+équipement. Retirez-la de ce produit avant de la rattacher ici. »
+
+Le contrôle exclut le produit en cours d'édition : se rattacher à la formation qu'on porte déjà
+n'est pas un doublon, et sans cette exclusion tout réenregistrement d'un produit lié aurait
+échoué.
+
+### Vérifié en conditions réelles, 5 étapes
+
+| # | Contrôle | Résultat |
+|---|---|---|
+| 1 | Rattachement d'une formation à un produit | 200 |
+| 2 | La formation est signalée « déjà rattachée » dans le sélecteur | oui |
+| 3 | La même formation sur un second produit | **409**, message lisible |
+| 4 | Ce que voit le client sur la fiche produit | l'offre, sa durée et son prix |
+| 5 | Retrait du rattachement | l'offre disparaît de la fiche |
+
+Plus le cloisonnement : `trainings-lookup` répond 200 au négoce et **403 à la mobilité**, tandis
+que `/admin/trainings` reste **403 au négoce**. Chaque univers accède au strict nécessaire, sans
+que l'ouverture nouvelle en élargisse un autre.

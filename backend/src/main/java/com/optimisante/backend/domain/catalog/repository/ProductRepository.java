@@ -60,7 +60,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
             SELECT p.id, p.sku, p.name, p.slug, p.description, p.base_price AS basePrice,
                    p.stock_quantity AS stockQuantity, p.stock_threshold AS stockThreshold,
                    p.is_quote_only AS isQuoteOnly, p.is_active AS isActive, p.image_url AS imageUrl,
-                   p.category_id AS categoryId, p.promo_price AS promoPrice,
+                   p.category_id AS categoryId, p.training_id AS trainingId, p.promo_price AS promoPrice,
                    p.promo_starts_at AS promoStartsAt, p.promo_ends_at AS promoEndsAt
             FROM products p
             WHERE p.deleted_at IS NULL
@@ -105,13 +105,30 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
             SELECT p.id, p.sku, p.name, p.slug, p.description, p.base_price AS basePrice,
                    p.stock_quantity AS stockQuantity, p.stock_threshold AS stockThreshold,
                    p.is_quote_only AS isQuoteOnly, p.is_active AS isActive, p.image_url AS imageUrl,
-                   p.category_id AS categoryId, p.promo_price AS promoPrice,
+                   p.category_id AS categoryId, p.training_id AS trainingId, p.promo_price AS promoPrice,
                    p.promo_starts_at AS promoStartsAt, p.promo_ends_at AS promoEndsAt
             FROM products p
             WHERE p.id = :id AND p.deleted_at IS NULL
             """,
             nativeQuery = true)
     Optional<AdminProductRow> findByIdForAdmin(@Param("id") UUID id);
+
+    /**
+     * Formations déjà rattachées à un produit.
+     *
+     * <p>Requête native : {@code Product} porte {@code @SQLRestriction}, et un produit
+     * désactivé conserve son rattachement. En JPQL, la formation qu'il occupe apparaîtrait
+     * comme libre — et la base refuserait ensuite l'enregistrement.</p>
+     */
+    @Query(value = "SELECT training_id FROM products WHERE training_id IS NOT NULL AND deleted_at IS NULL",
+           nativeQuery = true)
+    java.util.Set<UUID> findLinkedTrainingIds();
+
+    /** Produit qui occupe deja cette formation, s'il existe. Native pour la meme raison que
+     *  {@link #findLinkedTrainingIds()} : un produit desactive garde son rattachement. */
+    @Query(value = "SELECT id FROM products WHERE training_id = :trainingId AND deleted_at IS NULL LIMIT 1",
+           nativeQuery = true)
+    Optional<UUID> findProductIdLinkedToTraining(@Param("trainingId") UUID trainingId);
 
     @Modifying
     @Transactional

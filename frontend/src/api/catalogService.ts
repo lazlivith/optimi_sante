@@ -21,6 +21,14 @@ export interface Product {
   category?: Category;
   isOnPromo?: boolean;
   promoEndsAt?: string;
+  /** Formation qui apprend a utiliser l'equipement, absente si aucune. */
+  relatedTraining?: {
+    id: string;
+    title: string;
+    slug: string;
+    price: number;
+    durationDays: number;
+  } | null;
 }
 
 export interface PaginatedResponse<T> {

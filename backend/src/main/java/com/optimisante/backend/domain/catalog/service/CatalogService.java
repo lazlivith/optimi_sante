@@ -3,6 +3,7 @@ package com.optimisante.backend.domain.catalog.service;
 import com.optimisante.backend.config.tenant.TenantContext;
 import com.optimisante.backend.domain.catalog.dto.CategoryResponseDto;
 import com.optimisante.backend.domain.catalog.dto.CategorySummaryDto;
+import com.optimisante.backend.domain.catalog.dto.RelatedTrainingDto;
 import com.optimisante.backend.domain.catalog.dto.ProductResponseDto;
 import com.optimisante.backend.domain.catalog.entity.Category;
 import com.optimisante.backend.domain.catalog.entity.Product;
@@ -150,6 +151,18 @@ public class CatalogService {
             );
         }
 
+        // Seule une formation approuvee et publiee est proposee au client : annoncer une offre
+        // liee vers une formation en attente de validation enverrait vers une page vide.
+        RelatedTrainingDto formationLiee = null;
+        var formation = product.getTraining();
+        if (formation != null && Boolean.TRUE.equals(formation.getIsPublished())
+                && formation.getApprovalStatus() != null
+                && "APPROVED".equals(formation.getApprovalStatus().name())) {
+            formationLiee = new RelatedTrainingDto(
+                    formation.getId(), formation.getTitle(), formation.getSlug(),
+                    formation.getPrice(), formation.getDurationDays());
+        }
+
         return new ProductResponseDto(
                 product.getId(),
                 product.getSku(),
@@ -164,7 +177,8 @@ public class CatalogService {
                 product.getImageUrl(),
                 categoryDto,
                 product.isPromoActive(),
-                product.isPromoActive() ? product.getPromoEndsAt() : null
+                product.isPromoActive() ? product.getPromoEndsAt() : null,
+                formationLiee
         );
     }
 }

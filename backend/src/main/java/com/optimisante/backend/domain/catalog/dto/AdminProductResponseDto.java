@@ -26,4 +26,9 @@ public class AdminProductResponseDto {
     private BigDecimal promoPrice;
     private OffsetDateTime promoStartsAt;
     private OffsetDateTime promoEndsAt;
+
+    /** Formation rattachée (offre liée). Sans elle, le formulaire d'édition rouvrirait
+     *  toujours sur « Aucune formation liée » et effacerait le rattachement au premier
+     *  enregistrement. */
+    private java.util.UUID trainingId;
 }

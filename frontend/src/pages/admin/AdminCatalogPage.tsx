@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Pencil, Trash2, Package, X, RotateCcw, Tag, Search, SlidersHorizontal, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
-import { adminCatalogService, type AdminProductDto, type AdminProductRequestDto, type AdminCategoryDto, type CatalogFilters } from '../../api/adminCatalogService';
+import { Loader2, Plus, Pencil, Trash2, Package, X, RotateCcw, Tag, Search, SlidersHorizontal, ChevronLeft, ChevronRight, AlertTriangle, GraduationCap } from 'lucide-react';
+import { adminCatalogService, type AdminProductDto, type AdminProductRequestDto, type AdminCategoryDto, type CatalogFilters, type TrainingLookupDto } from '../../api/adminCatalogService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -8,7 +8,8 @@ import { EmptyState } from '../../components/common/EmptyState';
 
 const EMPTY_FORM: AdminProductRequestDto = {
   sku: '', name: '', description: '', basePrice: 0, stockQuantity: 0, stockThreshold: 5, isQuoteOnly: false,
-  categoryId: undefined, imageUrl: '', promoPrice: undefined, promoStartsAt: undefined, promoEndsAt: undefined
+  categoryId: undefined, imageUrl: '', promoPrice: undefined, promoStartsAt: undefined, promoEndsAt: undefined,
+  trainingId: undefined
 };
 
 function isPromoCurrentlyActive(p: AdminProductDto): boolean {
@@ -72,6 +73,15 @@ export function AdminCatalogPage() {
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
+  // Formations proposées au rattachement. Chargées une fois : elles ne dépendent d'aucun
+  // filtre, et la liste est courte.
+  const [formations, setFormations] = useState<TrainingLookupDto[]>([]);
+  useEffect(() => {
+    adminCatalogService.listTrainingsForLinking()
+      .then(setFormations)
+      .catch((error) => console.error('Chargement des formations impossible', error));
+  }, []);
+
   // Les categories ne changent pas au fil du filtrage : une seule fois suffit.
   useEffect(() => {
     adminCatalogService.listCategories()
@@ -102,7 +112,8 @@ export function AdminCatalogPage() {
       sku: p.sku, name: p.name, description: p.description || '', basePrice: p.basePrice,
       stockQuantity: p.stockQuantity, stockThreshold: p.stockThreshold, isQuoteOnly: p.isQuoteOnly,
       categoryId: p.categoryId || undefined, imageUrl: p.imageUrl || '',
-      promoPrice: p.promoPrice ?? undefined, promoStartsAt: p.promoStartsAt ?? undefined, promoEndsAt: p.promoEndsAt ?? undefined
+      promoPrice: p.promoPrice ?? undefined, promoStartsAt: p.promoStartsAt ?? undefined, promoEndsAt: p.promoEndsAt ?? undefined,
+      trainingId: p.trainingId ?? undefined
     });
     setIsModalOpen(true);
   };
@@ -447,6 +458,43 @@ export function AdminCatalogPage() {
                   </div>
                 </div>
                 <p className="text-xs text-slate-400 mt-2">Sans date de début/fin, la promotion est active immédiatement et indéfiniment. Laissez le prix promo vide pour retirer la promotion.</p>
+              </div>
+
+              {/* Offre liée : l'équipement et la formation qui apprend à s'en servir.
+                  La relation est un à un — une formation déjà rattachée reste visible mais
+                  désactivée, plutôt que masquée : la faire disparaître laisserait chercher une
+                  formation qu'on sait exister. */}
+              <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+                <div className="flex items-center gap-2 mb-3">
+                  <GraduationCap className="w-4 h-4 text-brand-green" />
+                  <h3 className="text-sm font-bold text-slate-700">Offre liée (facultatif)</h3>
+                </div>
+                <label htmlFor="form-training" className="block text-xs font-medium text-slate-600 mb-1">
+                  Formation à l'utilisation de cet équipement
+                </label>
+                <select
+                  id="form-training"
+                  value={form.trainingId ?? ''}
+                  onChange={e => setForm({ ...form, trainingId: e.target.value || undefined })}
+                  className="w-full rounded-md border-slate-300 shadow-sm p-2 border bg-white"
+                >
+                  <option value="">Aucune formation liée</option>
+                  {formations.map(f => (
+                    <option
+                      key={f.id}
+                      value={f.id}
+                      disabled={f.alreadyLinked && f.id !== form.trainingId}
+                    >
+                      {f.title}
+                      {f.institutionName ? ` — ${f.institutionName}` : ''}
+                      {f.alreadyLinked && f.id !== form.trainingId ? ' (déjà rattachée)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-400 mt-2">
+                  Le client verra cette formation proposée sur la fiche produit. Une formation ne
+                  peut accompagner qu'un seul équipement.
+                </p>
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">

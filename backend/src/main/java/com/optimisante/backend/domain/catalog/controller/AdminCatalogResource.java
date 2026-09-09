@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.catalog.controller;
 
 import com.optimisante.backend.domain.catalog.dto.AdminCategoryDto;
+import com.optimisante.backend.domain.catalog.dto.TrainingLookupDto;
 import com.optimisante.backend.domain.catalog.dto.AdminProductRequestDto;
 import com.optimisante.backend.domain.catalog.dto.AdminProductResponseDto;
 import com.optimisante.backend.domain.catalog.service.AdminCatalogService;
@@ -76,6 +77,26 @@ public class AdminCatalogResource {
             @PathVariable UUID id,
             @RequestParam boolean active) {
         return ResponseEntity.ok(adminCatalogService.setProductActive(id, active));
+    }
+
+    /**
+     * Formations proposées au rattachement, pour le formulaire produit.
+     *
+     * <p>Rattacher une formation à un équipement est une décision du négoce, mais les
+     * formations relèvent de la mobilité : {@code /admin/trainings} répond 403 à un
+     * administrateur du négoce, et c'est voulu. Plutôt que de percer ce cloisonnement, cet
+     * endpoint expose le <b>strict minimum</b> nécessaire au choix — identifiant, titre,
+     * établissement — sous le périmètre du négoce. Il ne donne accès ni aux candidatures, ni
+     * aux pièces, ni à la modération des formations.</p>
+     *
+     * <p>Seules les formations publiées et approuvées sont proposées : rattacher un produit à
+     * une formation encore en attente de validation afficherait au client une offre menant à
+     * une page indisponible.</p>
+     */
+    @GetMapping("/trainings-lookup")
+    @EcommerceAdmin
+    public ResponseEntity<List<TrainingLookupDto>> lookupTrainings() {
+        return ResponseEntity.ok(adminCatalogService.listTrainingsForLinking());
     }
 
     /**

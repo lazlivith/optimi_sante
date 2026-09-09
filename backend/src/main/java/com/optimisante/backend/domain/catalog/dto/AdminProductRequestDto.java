@@ -19,6 +19,8 @@ public record AdminProductRequestDto(
         String imageUrl,
         BigDecimal promoPrice,
         OffsetDateTime promoStartsAt,
-        OffsetDateTime promoEndsAt
+        OffsetDateTime promoEndsAt,
+        /** Formation a rattacher, ou {@code null} pour retirer le rattachement. */
+        UUID trainingId
 ) {
 }

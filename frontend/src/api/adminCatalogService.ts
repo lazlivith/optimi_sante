@@ -18,6 +18,19 @@ export interface AdminProductDto {
   promoPrice?: number | null;
   promoStartsAt?: string | null;
   promoEndsAt?: string | null;
+  /** Formation rattachee (offre liee), null si aucune. */
+  trainingId?: string | null;
+  trainingTitle?: string | null;
+}
+
+export interface TrainingLookupDto {
+  id: string;
+  title: string;
+  institutionName: string | null;
+  price: number;
+  durationDays: number;
+  /** Deja rattachee a un autre produit : la relation est 1:1. */
+  alreadyLinked: boolean;
 }
 
 export interface AdminProductRequestDto {
@@ -33,6 +46,7 @@ export interface AdminProductRequestDto {
   promoPrice?: number | null;
   promoStartsAt?: string | null;
   promoEndsAt?: string | null;
+  trainingId?: string | null;
 }
 
 export interface AdminCategoryDto {
@@ -80,6 +94,12 @@ export const adminCatalogService = {
 
   setProductActive: async (id: string, active: boolean): Promise<AdminProductDto> => {
     const { data } = await axiosClient.patch<AdminProductDto>(`/admin/catalog/products/${id}/status?active=${active}`);
+    return data;
+  },
+
+  /** Formations proposees au rattachement. Perimetre negoce, contenu minimal. */
+  listTrainingsForLinking: async (): Promise<TrainingLookupDto[]> => {
+    const { data } = await axiosClient.get<TrainingLookupDto[]>('/admin/catalog/trainings-lookup');
     return data;
   },
 
