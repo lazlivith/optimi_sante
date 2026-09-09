@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { adminHomeFor, ALL_ADMIN_ROLES } from '../lib/adminUniverses';
 import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, Settings, Search, Home, Briefcase } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +31,8 @@ export const Navbar = () => {
     }
   };
 
+  const ADMIN_ROLES: string[] = ALL_ADMIN_ROLES;
+
   const getRoleLabel = (role: string) => {
     switch (role) {
       case 'CLIENT_B2C': return 'PARTICULIER';
@@ -37,6 +40,10 @@ export const Navbar = () => {
       case 'MEDECIN': return 'MÉDECIN';
       case 'ADMIN':
       case 'SUPER_ADMIN': return 'ADMIN';
+      // Sans ces deux cas, le `default` renvoyait l'enum brute et l'ecran affichait
+      // « ADMIN_MOBILITE » a l'utilisateur.
+      case 'ADMIN_ECOMMERCE': return 'ADMIN NÉGOCE';
+      case 'ADMIN_MOBILITE': return 'ADMIN MOBILITÉ';
       case 'CENTRE_FORMATION': return 'PARTENAIRE';
       default: return role;
     }
@@ -48,7 +55,9 @@ export const Navbar = () => {
       case 'CLIENT_B2B': return 'text-purple-600';
       case 'MEDECIN': return 'text-emerald-600';
       case 'ADMIN':
-      case 'SUPER_ADMIN': return 'text-red-600';
+      case 'SUPER_ADMIN':
+      case 'ADMIN_ECOMMERCE':
+      case 'ADMIN_MOBILITE': return 'text-red-600';
       default: return 'text-gray-600';
     }
   };
@@ -126,8 +135,13 @@ export const Navbar = () => {
                   <Link to="/profile" onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                     <UserIcon className="w-4 h-4 mr-3 text-gray-400" /> Mon Profil
                   </Link>
-                  {(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
-                    <Link to="/admin" onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  {/* ADMIN_ECOMMERCE et ADMIN_MOBILITE manquaient ici : la barre laterale
+                      d'administration propose « Retour a la boutique », mais aucun chemin ne
+                      ramenait ensuite vers l'espace — l'administrateur restait bloque sur la
+                      vitrine. `adminHomeFor` renvoie chacun vers le tableau de bord de son
+                      metier, la meme source que la redirection de connexion. */}
+                  {ADMIN_ROLES.includes(user.role) && (
+                    <Link to={adminHomeFor(user.role)} onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                       <Settings className="w-4 h-4 mr-3 text-gray-400" /> Espace Admin
                     </Link>
                   )}

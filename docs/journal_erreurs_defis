@@ -1838,3 +1838,70 @@ Aucune notification n'est envoyée au médecin lorsqu'une pièce lui est réclam
 découvre en consultant son dossier. Le service d'emails existe et le brancher est direct, mais
 c'est un choix de communication (fréquence, regroupement des demandes) qui appartient au
 métier, pas une évidence technique.
+
+## 70. Les deux administrateurs métier étaient enfermés dehors, et la barre latérale mesurait la page
+
+Deux défauts signalés au moment de la recette. Le second n'était pas cosmétique.
+
+### « Espace Admin » n'existait pas pour eux
+
+`Navbar.tsx` n'affichait le lien vers l'administration que pour `ADMIN` et `SUPER_ADMIN` :
+
+```js
+{(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
+  <Link to="/admin">Espace Admin</Link>
+)}
+```
+
+`ADMIN_ECOMMERCE` et `ADMIN_MOBILITE` en étaient absents. **Troisième occurrence exacte du
+même oubli** après `uploadEnrollmentDocument` (entrée 68) et `DocumentController`
+(entrée 69) : à chaque fois, un test de rôle écrit avant la scission V30 et jamais relu.
+
+La conséquence était sévère parce qu'elle se combinait à une autre fonctionnalité : la barre
+latérale d'administration propose « Retour à la boutique ». Un administrateur métier qui
+cliquait dessus se retrouvait sur la vitrine **sans aucun chemin de retour**. La connexion le
+redirigeait bien vers son tableau de bord, mais un seul clic suffisait à l'en sortir
+définitivement — jusqu'à ce qu'il pense à taper l'URL à la main.
+
+Le lien pointe désormais vers `adminHomeFor(user.role)`, la même source que la redirection de
+connexion et que la barre latérale : trois chemins, une seule définition.
+
+**Vérifié avant de conclure** que rien ne bloquait côté serveur : les sept appels des deux
+tableaux de bord répondent 200, et `/auth/profile` renvoie bien `ADMIN_MOBILITE` et
+`ADMIN_ECOMMERCE`. Le blocage était entièrement dans la navigation.
+
+### Le rôle s'affichait en langage de base de données
+
+Faute de cas dans `getRoleLabel`, le `default` renvoyait l'énumération brute : l'écran
+souhaitait la bienvenue à Marc sous l'étiquette **`ADMIN_MOBILITE`**. Devenu
+« ADMIN MOBILITÉ » / « ADMIN NÉGOCE ». Un `switch` sans cas par défaut sûr transforme une
+valeur technique en texte d'interface, sans que rien ne le signale.
+
+### La barre latérale mesurait la page, pas l'écran
+
+Les trois espaces (admin, partenaire, médecin) partageaient le même défaut :
+
+```html
+<div class="min-h-screen flex">
+  <aside class="w-64 shrink-0 flex flex-col">   <!-- aucune hauteur -->
+    <nav class="flex-1">…</nav>
+    <div>Se déconnecter</div>
+```
+
+Dans un conteneur `min-h-screen flex`, l'`aside` s'étire à la hauteur **totale de la page**.
+Sur un catalogue de 60 pages ou un long dossier, elle mesurait plusieurs milliers de pixels :
+le `flex-1` du menu repoussait « Se déconnecter » tout en bas de cette hauteur, et la barre
+défilait avec le contenu.
+
+Le symptôme décrit — « trop de distance, je trouve les boutons tout en bas alors qu'il n'y a
+pas autant d'éléments » — décrivait exactement cela : le pied de la barre n'était pas en bas
+de l'écran, il était en bas de la page.
+
+`sticky top-0 h-screen` borne la barre à la fenêtre : elle reste immobile et son pied revient
+à sa place. `overflow-y-auto min-h-0` sur le menu couvre le seul cas où les entrées peuvent
+dépasser un petit écran — le super admin et ses quatre groupes. `min-h-0` est indispensable :
+sans lui, un enfant flex refuse de rétrécir sous sa taille de contenu et le défilement interne
+ne s'active jamais.
+
+`position: sticky` plutôt que `fixed` : le contenu principal n'a alors aucun décalage à
+compenser, et la mise en page reste celle d'origine.
