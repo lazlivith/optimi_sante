@@ -21,4 +21,14 @@ public interface TrainingSessionRepository extends JpaRepository<TrainingSession
     @Modifying
     @Query("UPDATE TrainingSession s SET s.availableSeats = s.availableSeats - 1 WHERE s.id = :id AND s.availableSeats > 0")
     int decrementAvailableSeats(@Param("id") UUID id);
+
+    /**
+     * Rend une place a la session, sans jamais depasser la capacite declaree. Le plafond est
+     * pose en SQL et non dans le service : deux retraits concurrents pourraient sinon rendre
+     * la meme place deux fois et afficher plus de places libres que la salle n'en contient.
+     */
+    @Modifying
+    @Query("UPDATE TrainingSession s SET s.availableSeats = s.availableSeats + 1 "
+            + "WHERE s.id = :id AND s.availableSeats < s.capacity")
+    int incrementAvailableSeats(@Param("id") UUID id);
 }

@@ -101,6 +101,18 @@ public class AdminEnrollmentResource {
         return ResponseEntity.ok(enrollmentService.cancelEnrollment(id, body.get("reason")));
     }
 
+    /**
+     * Retrait definitif d'une candidature. Refuse des que le dossier est parti au CHU :
+     * l'annulation motivee prend alors le relais, en conservant la trace du dossier.
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Void> deleteEnrollment(@PathVariable UUID id, Authentication auth) {
+        UUID adminId = UUID.fromString(auth.getPrincipal().toString());
+        enrollmentService.deleteEnrollment(id, adminId, true);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<EnrollmentResponseDto> updateEnrollmentStatus(

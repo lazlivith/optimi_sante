@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { axiosClient } from '../../api/axiosClient';
 import { enrollmentService } from '../../api/enrollmentService';
 import { Toast, type ToastType } from '../../components/common/Toast';
-import { ArrowLeft, UploadCloud, FileText, Loader2, XCircle, AlertTriangle, Send } from 'lucide-react';
+import { ArrowLeft, UploadCloud, FileText, Loader2, XCircle, AlertTriangle, Send, Trash2 } from 'lucide-react';
 import { TuitionPaymentCard } from '../../components/training/TuitionPaymentCard';
 import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
 
 export function MyEnrollmentDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   
   const [enrollment, setEnrollment] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Upload state
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -84,11 +86,35 @@ export function MyEnrollmentDetailPage() {
     }
   };
 
+  /**
+   * Retrait de sa candidature. Le bouton disparait des que le dossier part au CHU, mais
+   * c'est bien le serveur qui tranche : il repond 409 si la fenetre est passee.
+   */
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!window.confirm(
+      "Retirer définitivement votre candidature ?\n\n"
+      + "Les pièces déjà déposées seront supprimées et votre place rendue. "
+      + "Cette action est irréversible.",
+    )) return;
+    setIsDeleting(true);
+    try {
+      await enrollmentService.deleteMyEnrollment(id);
+      navigate('/doctor');
+    } catch (err: any) {
+      setToast({ message: err.response?.data?.message || 'Retrait impossible.', type: 'error' });
+      setIsDeleting(false);
+    }
+  };
+
   if (isLoading || !enrollment) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-green" /></div>;
   }
 
   const isFailed = enrollment.status === 'REJECTED' || enrollment.status === 'CANCELLED';
+  // Meme fenetre que le serveur : au-dela de la revue OptimiSante, le dossier est entre les
+  // mains du CHU qui doit statuer dessus — il n'est plus retirable ni modifiable.
+  const isWithdrawable = ['UNDER_OPTIMI_REVIEW', 'ACTION_REQUIRED'].includes(enrollment.status);
 
   return (
     <div className="min-h-screen bg-slate-50 py-10">
@@ -146,6 +172,30 @@ export function MyEnrollmentDetailPage() {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Retrait de la candidature : ouvert tant que le dossier releve d'OptimiSante.
+            Une fois transmis au CHU, un tiers l'examine — il ne peut plus etre retire. */}
+        {isWithdrawable && (
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 mb-8 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="font-bold text-brand-dark">Retirer ma candidature</h2>
+              <p className="text-sm text-slate-500 mt-1">
+                Possible tant que votre dossier n'a pas été transmis à l'établissement d'accueil.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-bold text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 disabled:opacity-60 transition-colors"
+            >
+              {isDeleting
+                ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                : <Trash2 className="w-4 h-4 mr-2" />}
+              Retirer ma candidature
+            </button>
           </div>
         )}
 

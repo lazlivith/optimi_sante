@@ -28,6 +28,14 @@ export const adminService = {
     return data;
   },
 
+  /**
+   * Retrait definitif d'une candidature. Le serveur refuse des que le dossier est parti au
+   * CHU — l'interface masque deja le bouton, la garde serveur reste la reference.
+   */
+  deleteEnrollment: async (enrollmentId: string) => {
+    await axiosClient.delete(`/admin/enrollments/${enrollmentId}`);
+  },
+
   generateConvention: async (enrollmentId: string) => {
     const { data } = await axiosClient.post(`/admin/enrollments/${enrollmentId}/generate-convention`);
     return data;

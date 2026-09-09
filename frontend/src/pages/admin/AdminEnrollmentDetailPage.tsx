@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { axiosClient } from '../../api/axiosClient';
 import { adminService } from '../../api/adminService';
-import { vaultService, type DocumentItemDto } from '../../api/vaultService';
+import { vaultService, getDocumentLabel, type DocumentItemDto } from '../../api/vaultService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { StatusBadge, getStatusLabel } from '../../components/common/StatusBadge';
 import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
 import { EmptyState } from '../../components/common/EmptyState';
 import { FileUploadDropzone } from '../../components/common/FileUploadDropzone';
-import { ArrowLeft, Loader2, CheckCircle, FileText, Download, Lock, FileSignature, Stamp, Upload, Send, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle, FileText, Download, Lock, FileSignature, Stamp, Upload, Send, AlertTriangle, Trash2 } from 'lucide-react';
 
 const STEPS = ENROLLMENT_STEPS.map(s => s.id);
 
@@ -20,6 +20,7 @@ const OPTIONAL_DOCUMENT_TYPES = [
 
 export function AdminEnrollmentDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   
   const [enrollment, setEnrollment] = useState<any>(null);
@@ -110,6 +111,24 @@ export function AdminEnrollmentDetailPage() {
     }
   };
 
+  /** Retrait definitif. Le serveur refuse au-dela de la revue OptimiSante, quoi qu'affiche l'UI. */
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!window.confirm(
+      "Supprimer définitivement ce dossier ?\n\n"
+      + "Les pièces déposées seront effacées et la place rendue à la session. "
+      + "Cette action est irréversible.",
+    )) return;
+    setIsProcessing(true);
+    try {
+      await adminService.deleteEnrollment(id);
+      navigate('/admin/enrollments');
+    } catch (err: any) {
+      setToast({ message: err.response?.data?.message || 'Suppression impossible.', type: 'error' });
+      setIsProcessing(false);
+    }
+  };
+
   const handleGenerateConvention = async () => {
     if (!id) return;
     setIsProcessing(true);
@@ -171,6 +190,9 @@ export function AdminEnrollmentDetailPage() {
   // Étape d'instruction OptimiSanté : c'est la seule où l'admin arbitre entre transmettre
   // au CHU et renvoyer le dossier au médecin. Ailleurs, l'avancement reste linéaire.
   const isUnderReview = enrollment.status === 'UNDER_OPTIMI_REVIEW';
+  // Meme regle que le serveur : passe la transmission au CHU, le dossier engage un tiers
+  // et ne peut plus disparaitre — seule l'annulation motivee reste ouverte.
+  const isDeletable = ['UNDER_OPTIMI_REVIEW', 'ACTION_REQUIRED'].includes(enrollment.status);
 
   return (
     <div className="min-h-screen bg-slate-50 py-10">
@@ -230,6 +252,17 @@ export function AdminEnrollmentDetailPage() {
                       Demander une correction
                     </button>
                   </>
+                )}
+
+                {isDeletable && (
+                  <button
+                    onClick={handleDelete}
+                    disabled={isProcessing}
+                    className="flex items-center px-6 py-3 bg-white text-rose-600 border border-rose-200 font-bold rounded-xl hover:bg-rose-50 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-5 h-5 mr-2" />
+                    Supprimer le dossier
+                  </button>
                 )}
 
                 {nextStep && !isUnderReview && (
@@ -327,7 +360,7 @@ export function AdminEnrollmentDetailPage() {
                         <td className="px-6 py-4">
                           <div className="flex items-center font-semibold text-brand-dark">
                             <FileText className="w-4 h-4 mr-2 text-slate-400" />
-                            {doc.title || doc.type}
+                            {getDocumentLabel(doc.type || doc.title)}
                           </div>
                         </td>
                         <td className="px-6 py-4 text-slate-500">

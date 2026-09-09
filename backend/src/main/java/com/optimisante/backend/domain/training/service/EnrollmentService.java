@@ -119,10 +119,37 @@ public class EnrollmentService {
         if (dto.passportUrl() != null)
             enrollment.setPassportUrl(dto.passportUrl());
 
-        // enrollment.setStatus(EnrollmentStatus.UNDER_REVIEW); // L'Admin changera le statut manuellement
+        // Les trois pieces de la candidature etaient jusqu'ici ecrites UNIQUEMENT dans ces
+        // colonnes, alors que le coffre-fort (admin, CHU, medecin) ne lit que la table
+        // enrollment_documents : diplome, passeport et attestation d'ordre etaient donc
+        // invisibles et non telechargeables pour ceux qui doivent instruire le dossier.
+        // On les inscrit desormais aussi comme pieces du coffre-fort, seule source consultee.
+        registerVaultDocument(enrollment, DocumentType.DIPLOMA, dto.diplomaUrl());
+        registerVaultDocument(enrollment, DocumentType.MEDICAL_COUNCIL_CERT, dto.medicalBoardRegistrationUrl());
+        registerVaultDocument(enrollment, DocumentType.PASSPORT, dto.passportUrl());
 
         log.info("Documents submitted for enrollment {} by doctor {}", enrollmentId, doctorId);
         return toResponseDto(enrollmentRepository.save(enrollment));
+    }
+
+    /**
+     * Inscrit une piece de candidature au coffre-fort, ou met a jour la reference existante
+     * si le medecin redepose la meme piece apres une demande de correction — sans quoi un
+     * dossier corrige plusieurs fois accumulerait des doublons dans la liste de l'admin.
+     */
+    private void registerVaultDocument(Enrollment enrollment, DocumentType type, String publicId) {
+        if (publicId == null || publicId.isBlank()) {
+            return;
+        }
+        EnrollmentDocument document = enrollmentDocumentRepository
+                .findFirstByEnrollmentIdAndDocumentType(enrollment.getId(), type)
+                .orElseGet(() -> EnrollmentDocument.builder()
+                        .enrollment(enrollment)
+                        .documentType(type)
+                        .isVerified(false)
+                        .build());
+        document.setCloudinaryPublicId(publicId);
+        enrollmentDocumentRepository.save(document);
     }
 
     @Transactional(readOnly = true)
@@ -548,6 +575,46 @@ public class EnrollmentService {
     }
 
     /**
+     * Retrait d'une candidature, par le medecin lui-meme ou par l'administration.
+     *
+     * <p>Le retrait n'est possible que tant que le dossier releve encore d'OptimiSante. Une
+     * fois transmis au CHU, il engage un tiers qui l'examine : le faire disparaitre sous ses
+     * yeux n'est pas un cas d'usage, et les etapes suivantes (acceptation, paiement, convention)
+     * s'appuient dessus. Passe ce point, la sortie legitime est l'annulation motivee, qui
+     * conserve la trace du dossier.</p>
+     *
+     * <p>La place reservee dans la session est rendue : sans cela, chaque retrait amputerait
+     * definitivement la capacite de la session.</p>
+     *
+     * @param requesterId auteur de la demande ; ignore si {@code isAdmin}, sinon doit etre le
+     *                    medecin proprietaire du dossier.
+     */
+    @Transactional
+    public void deleteEnrollment(UUID enrollmentId, UUID requesterId, boolean isAdmin) {
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+
+        if (!isAdmin && !enrollment.getDoctor().getId().equals(requesterId)) {
+            throw new AccessDeniedException("Ce dossier ne vous appartient pas.");
+        }
+
+        if (!DOCTOR_EDITABLE_STATUSES.contains(enrollment.getStatus())) {
+            throw new IllegalStateException(
+                    "Ce dossier a deja ete transmis a l'etablissement : il ne peut plus etre "
+                            + "supprime. Utilisez l'annulation, qui en conserve la trace.");
+        }
+
+        UUID sessionId = enrollment.getSession().getId();
+        enrollmentRepository.delete(enrollment);
+        // Force l'ordre : la suppression doit atteindre la base avant que la place ne soit
+        // rendue, sinon le plafond de capacite refuserait l'increment.
+        enrollmentRepository.flush();
+        trainingSessionRepository.incrementAvailableSeats(sessionId);
+
+        log.info("Dossier {} supprime par {} ({})", enrollmentId, requesterId,
+                isAdmin ? "administration" : "le medecin");
+    }
+
+    /**
      * Nom affichable d'un medecin pour les notifications destinees a l'equipe admin.
      * Repli sur l'e-mail : un dossier tout juste cree peut ne pas encore avoir de profil.
      */
@@ -557,6 +624,14 @@ public class EnrollmentService {
                 .map(p -> "Dr. " + p.getFirstName() + " " + p.getLastName())
                 .orElse(doctor.getEmail());
     }
+
+    /**
+     * Etats dans lesquels le dossier est encore entre les mains du medecin et d'OptimiSante :
+     * il peut y etre complete, corrige, ou retire. Des qu'il part au CHU, il devient une piece
+     * sur laquelle un tiers doit statuer, et se fige.
+     */
+    private static final java.util.Set<EnrollmentStatus> DOCTOR_EDITABLE_STATUSES =
+            java.util.EnumSet.of(EnrollmentStatus.UNDER_OPTIMI_REVIEW, EnrollmentStatus.ACTION_REQUIRED);
 
     /** Etablissement d'accueil de la session, pour situer le dossier dans les messages. */
     private String institutionName(Enrollment enrollment) {
@@ -660,6 +735,15 @@ public class EnrollmentService {
                 || user.getRole() == com.optimisante.backend.domain.identity.entity.Role.SUPER_ADMIN;
         if (!isAdmin && !enrollment.getDoctor().getId().equals(userId)) {
             throw new RuntimeException("Unauthorized to upload documents for this enrollment");
+        }
+
+        // Une fois le dossier transmis au CHU, son contenu est fige pour le candidat : le
+        // partenaire doit statuer sur les pieces exactes qui lui ont ete presentees.
+        // L'administration conserve le droit d'ajouter des pieces (lettre consulaire,
+        // attestation d'hebergement), qui relevent d'etapes posterieures.
+        if (!isAdmin && !DOCTOR_EDITABLE_STATUSES.contains(enrollment.getStatus())) {
+            throw new IllegalStateException(
+                    "Votre dossier a ete transmis a l'etablissement : il n'est plus modifiable.");
         }
 
         String publicId = storageService.uploadFile(file, "docs/enrollments");
