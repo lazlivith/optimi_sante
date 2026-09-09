@@ -30,6 +30,7 @@ const CONSENTEMENT =
  */
 export const Footer = () => {
   const { user } = useAuth();
+  const [logoOk, setLogoOk] = useState(true);
 
   return (
     <footer className="bg-brand-dark text-slate-300 mt-16">
@@ -38,17 +39,31 @@ export const Footer = () => {
 
           {/* Marque */}
           <div>
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="bg-brand-green text-white font-bold rounded-lg flex items-center justify-center w-10 h-10 text-sm shrink-0">
-                OS
-              </div>
-              <div>
-                <div className="text-base font-bold text-white leading-tight">Optimi Santé</div>
-                <div className="text-[11px] text-slate-400 leading-tight">
-                  soutenir le handicap et le soin
-                </div>
-              </div>
-            </div>
+            {/* Declinaison claire, sur fond transparent : le pied de page est sombre.
+                `onError` conserve le monogramme si le fichier venait a manquer — une image
+                cassee en pied de page passerait longtemps inapercue. */}
+            <Link to="/" aria-label="Optimi Santé — accueil" className="inline-block mb-4">
+              {logoOk ? (
+                <img
+                  src="/logo-optimi-clair.png"
+                  alt="Optimi Santé — soutenir le handicap et le soin"
+                  onError={() => setLogoOk(false)}
+                  className="h-14 w-auto max-w-[220px] object-contain"
+                />
+              ) : (
+                <span className="flex items-center gap-2.5">
+                  <span className="bg-brand-green text-white font-bold rounded-lg flex items-center justify-center w-10 h-10 text-sm shrink-0">
+                    OS
+                  </span>
+                  <span>
+                    <span className="block text-base font-bold text-white leading-tight">Optimi Santé</span>
+                    <span className="block text-[11px] text-slate-400 leading-tight">
+                      soutenir le handicap et le soin
+                    </span>
+                  </span>
+                </span>
+              )}
+            </Link>
             <p className="text-sm text-slate-400 leading-relaxed">
               Équipements médicaux, formations cliniques et mobilité médicale internationale.
             </p>

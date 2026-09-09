@@ -5,10 +5,13 @@ import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, 
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
-/** Logo servi depuis `frontend/public/`. Doit avoir un FOND TRANSPARENT :
- *  la version sur fond bleu degrade afficherait un rectangle bleu dans une
- *  barre blanche. */
-const LOGO_SRC = '/optimi.webp';
+/**
+ * Logo de l'en-tete : declinaison coloree, decoupee de la planche de marque et detouree.
+ *
+ * `optimi.webp` ne convenait pas — son degrade bleu est incruste dans l'image, ce qui
+ * affichait un rectangle bleu dans une barre blanche. Le PNG transparent le remplace.
+ */
+const LOGO_SRC = '/logo-optimi-sombre.png';
 
 export const Navbar = () => {
   const { totalItems } = useCart();
