@@ -1760,3 +1760,81 @@ Les écrans. La liste, le formulaire de demande, l'espace « Mon dossier visa »
 relèvent du lot suivant. Le service expose déjà le récapitulatif dont ils auront besoin :
 total, acceptées, en attente du médecin, en attente de vérification, et un drapeau `complete`
 — avec la règle qu'un dossier **sans aucune demande n'est pas complet**, il n'a pas commencé.
+
+## 69. Prompt 06 — Les écrans du dossier de pièces, et un second cloisonnement à réparer
+
+### Un bug découvert avant d'écrire une ligne d'interface
+
+Le panneau d'administration devait porter un bouton « Voir la pièce ». Avant de le dessiner,
+j'ai vérifié qu'un administrateur mobilité pouvait ouvrir un document : **403**.
+
+`DocumentController` testait, comme `uploadEnrollmentDocument` la veille, `ADMIN` et
+`SUPER_ADMIN` seulement. Même reliquat de la scission V30, même conséquence : le rôle qui
+instruit les dossiers ne pouvait pas lire les pièces qu'il réclame.
+
+**Mais le correctif ne pouvait pas être le même.** Ce contrôleur sert *aussi* les devis et
+factures des commandes, qui relèvent du négoce. Ajouter `ADMIN_MOBILITE` au drapeau unique
+`isAdmin` lui aurait ouvert les factures clients — on aurait réparé un cloisonnement en
+perçant l'autre.
+
+Le drapeau unique est donc devenu deux, appliqués branche par branche :
+`isEcommerceAdmin` pour les devis et factures, `isMobilityAdmin` pour les conventions,
+attestations, pièces de dossier et relevés de reversement. **Un contrôleur qui sert deux
+métiers ne peut pas avoir une seule notion d'« administrateur ».**
+
+### Ce que les écrans montrent, et pourquoi ce n'est pas le coffre-fort
+
+La page d'administration comportait déjà un « coffre-fort documentaire » listant les fichiers
+présents. Le nouveau panneau est placé **avant** lui, et répond à une autre question : le
+coffre-fort dit *ce qu'on a*, les pièces réclamées disent *ce qu'il manque*. C'est cette
+seconde question qui restait sans réponse, et sans laquelle on ne peut pas préparer une
+demande de visa.
+
+Un bandeau d'avancement partagé par les deux écrans (`DossierProgress`) affiche la progression
+et surtout **qui doit agir** : « 2 en attente du médecin », « 1 à vérifier ». C'est
+l'information qui manque le plus souvent quand un dossier semble bloqué sans qu'on sache par
+qui.
+
+### Le refus passe par une saisie obligatoire
+
+Refuser une pièce ouvre une invite qui rappelle *pourquoi* le motif est exigé : « Le médecin
+lira ce motif : sans lui, il redéposera la même pièce. » Un motif vide est refusé côté
+interface, côté service et côté base — trois barrières pour un cas qui, s'il passait, ferait
+tourner le dossier en rond sans que personne comprenne pourquoi.
+
+Côté médecin, un refus s'affiche en « **À refaire :** motif » avec un bouton « Déposer un
+nouveau fichier » — l'action suit immédiatement l'explication.
+
+### Pas d'entrée « Mon dossier visa » dans le menu du médecin
+
+C'était le réflexe attendu, et il aurait été faux : les pièces appartiennent à **un dossier
+précis**, et un médecin peut avoir plusieurs candidatures. Une entrée de menu au niveau du
+compte poserait aussitôt la question « lequel ? ». Le panneau vit donc sur le détail de la
+candidature, là où le contexte est déjà établi.
+
+Quand rien n'est réclamé, le panneau ne disparaît pas : il l'écrit. L'absence de demande est
+une information rassurante — un écran vide ressemble à un chargement qui n'a pas abouti.
+
+### Détail d'implémentation qui évite un bug classique
+
+L'input de fichier est réinitialisé (`e.target.value = ''`) après chaque envoi. Sans cela, un
+médecin dont la pièce est refusée et qui redépose **le même fichier corrigé sous le même nom**
+ne déclencherait aucun événement `change` : le navigateur considère que la valeur n'a pas
+changé, et rien ne se passerait — sans message d'erreur.
+
+### Le déploiement fantôme, deuxième fois — mais détecté d'emblée
+
+`docker compose up --build` a de nouveau réutilisé une couche de cache : le conteneur affichait
+27 minutes d'ancienneté après une commande censée le recréer. Cette fois je n'ai pas mesuré le
+comportement pour en déduire un problème — **j'ai directement inspecté le jar déployé**, qui ne
+contenait pas `isMobilityAdmin`. Reconstruction `--no-cache --force-recreate`.
+
+L'entrée 67 avait coûté trois allers-retours à comprendre ce symptôme ; celle-ci, une
+commande. C'est ce que vaut une leçon écrite.
+
+### Ce qui reste ouvert
+
+Aucune notification n'est envoyée au médecin lorsqu'une pièce lui est réclamée : il la
+découvre en consultant son dossier. Le service d'emails existe et le brancher est direct, mais
+c'est un choix de communication (fréquence, regroupement des demandes) qui appartient au
+métier, pas une évidence technique.
