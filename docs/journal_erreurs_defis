@@ -1552,3 +1552,113 @@ partenaires fictifs. Il n'est pas écrit : le faire maintenant priverait les tes
 leurs données. À traiter comme un chantier à part entière — l'ordre de suppression compte
 (`order_items` avant `orders`, réservations de stock, journaux d'emails, candidatures), et
 c'est exactement le genre d'opération qui doit être rejouée sur une copie avant la vraie base.
+
+## 67. Prompt 04 — Filtrage des dossiers CHU et remplacement du stepper à 9 points
+
+### Le filtre demandé n'était pas affichable : la donnée n'existait pas
+
+La consigne était de « filtrer les candidatures des médecins par partenaire ou CHU ».
+`EnrollmentDetailDto` ne portait **aucune référence au partenaire**. La seule information
+approchante, `hostInstitution`, est le champ `location` de la session — un texte libre
+(« Amphithéâtre B »), pas une identité d'établissement. Filtrer dessus aurait produit un
+regroupement par lieu de cours.
+
+Le CHU se trouve au bout de `Enrollment → session → training → partnerProfile`. Deux champs
+ont été ajoutés au DTO : `partnerProfileId`, sur lequel le filtre s'appuie, et `partnerName`,
+que l'interface affiche. **L'identifiant et le libellé sont distincts à dessein** : deux CHU
+peuvent porter un nom voisin, et filtrer sur une chaîne aurait rejoué au niveau des dossiers
+le problème que V33 venait de régler au niveau des catégories.
+
+### Une jointure ajoutée pour ne pas empirer un N+1 existant
+
+`getAllEnrollmentsForAdmin` faisait `findAll()` puis lisait, pour chaque dossier, le médecin,
+la session et la formation — en chargement paresseux, donc une requête par association et par
+ligne. Y ajouter le CHU partenaire aurait ajouté un quatrième aller-retour par dossier.
+
+`findAllForAdmin()` charge désormais les quatre associations d'un coup (`JOIN FETCH`).
+Indolore sur douze dossiers, indispensable ensuite — et c'est précisément parce que c'est
+indolore aujourd'hui qu'il fallait le corriger en passant, plutôt que de laisser une ligne de
+plus s'ajouter à la boucle.
+
+**Mesuré plutôt que supposé.** `pg_stat_user_tables` remis à zéro, un appel à
+`/admin/enrollments`, puis relevé des accès par table :
+
+| Table | Avant | Après |
+|---|---|---|
+| `training_sessions` | 1 | 1 |
+| `trainings` | 1 | 1 |
+| `partner_profiles` | 1 | 1 |
+| `users` | 1 | 1 |
+| `enrollments` | 3 | 3 |
+| **`doctor_profiles`** | **12** | **1** |
+
+La jointure tient : un seul accès là où le CHU en aurait coûté douze. Mais la mesure a
+**révélé un N+1 que je n'avais pas vu** — le nom du médecin vit dans `doctor_profiles`, hors
+du graphe des dossiers, et était résolu par un `findByUserId` appelé dans la boucle de
+mapping. Aucune jointure sur `Enrollment` ne pouvait l'atteindre.
+
+Corrigé par un chargement groupé (`findByUserIdIn`) et une carte passée au mapper. Le
+paramètre est facultatif : les trois autres appels à `toDetailDto` passent `null` et
+conservent exactement leur comportement d'origine. **Sans cette mesure, j'aurais annoncé avoir
+fermé le N+1 alors qu'il en restait douze requêtes sur treize.**
+
+### Et la deuxième mesure a rattrapé un déploiement fantôme
+
+Après correction et redéploiement, le relevé affichait **toujours 12 accès**. Plutôt que de
+conclure à un correctif inefficace, j'ai activé `log_statement='all'` sur PostgreSQL et lu le
+SQL réellement exécuté : douze `where dp1_0.user_id=$1`, c'est-à-dire l'**ancien** chemin —
+un chargement groupé aurait produit un `user_id in (…)`.
+
+Le code source portait bien la correction, la compilation locale aussi. Mais le jar embarqué
+dans l'image, extrait et inspecté, ne contenait **ni `findByUserIdIn` ni `nomsMedecins`** : le
+`docker compose up --build` avait réutilisé une couche de cache et redéployé l'image
+précédente. Reconstruction forcée (`build --no-cache`).
+
+La leçon n'est pas sur Docker : **« j'ai corrigé, compilé et redéployé » n'est pas une preuve
+que le correctif tourne.** Ici, deux vérifications indépendantes — le SQL journalisé, puis le
+contenu du jar déployé — ont été nécessaires pour distinguer « le correctif ne marche pas » de
+« le correctif n'est pas là ». Sans elles, j'aurais soit annoncé un succès inexistant, soit
+défait un code correct en cherchant un bug qui n'existait pas.
+
+### Le stepper à 9 points : neuf pastilles de 8 pixels, sans libellé
+
+La liste affichait le parcours sous forme de neuf points reliés. Pour situer un dossier, il
+fallait **compter les points** — et rien ne distinguait la 6e étape de la 7e. Le libellé
+n'existait que dans l'attribut `title`, invisible sans survol.
+
+Remplacé par une variante `inline` : le **libellé de l'étape en cours**, un compteur
+« 3/9 » aligné à droite, et une barre de progression. Le nom de l'étape est lisible
+immédiatement, et le compteur donne la position sans avoir à l'énumérer.
+
+**`ACTION_REQUIRED` n'avait aucune position.** Ce statut ne figure pas dans les neuf étapes :
+`findIndex` renvoyait `-1`, et le dossier s'affichait avec une progression entièrement vide,
+comme si rien n'avait commencé — alors qu'il s'agit d'un dossier déjà instruit, renvoyé au
+médecin pour une pièce. Il est désormais situé à l'étape de revue, en ambre, avec le libellé
+« Pièce demandée ». La règle est isolée dans `stepIndexForStatus`, partagée par les trois
+variantes du composant.
+
+### Filtrer par « qui doit agir » plutôt que par statut brut
+
+Le cycle compte onze statuts. Les proposer tels quels dans un menu déroulant aurait demandé à
+l'utilisateur de connaître la machine à états pour s'en servir. Le filtre porte donc sur cinq
+vues métier — *à traiter par OptimiSanté*, *chez le CHU*, *en attente du médecin*, *clos* —
+qui répondent à la seule question utile : **de qui dépend l'avancement ?** Le statut exact
+reste affiché sur chaque ligne par la `StatusBadge`.
+
+Un raccourci signale en permanence le nombre de dossiers en attente de revue et bascule sur la
+vue correspondante d'un clic.
+
+### La liste des CHU est déduite des dossiers, pas de la table des partenaires
+
+La base compte 5 profils partenaires mais **2 seulement ont des candidatures**. Alimenter le
+menu depuis `partner_profiles` aurait proposé trois établissements menant à une liste vide —
+que l'utilisateur lit comme une panne, pas comme une absence. Le menu est construit à partir
+des dossiers chargés, avec le compte de chacun.
+
+### Choix assumé : filtrage côté client
+
+Contrairement au catalogue (1 519 produits, entrée 62), les dossiers se comptent en dizaines
+et la liste complète est déjà chargée pour l'écran. Filtrer côté serveur aurait ajouté des
+paramètres, une requête par frappe et une pagination, sans rien résoudre. **Le critère n'est
+pas l'uniformité mais la volumétrie** : au catalogue, filtrer dans le navigateur n'aurait porté
+que sur les 100 premières lignes et aurait menti ; ici, il porte sur la totalité.

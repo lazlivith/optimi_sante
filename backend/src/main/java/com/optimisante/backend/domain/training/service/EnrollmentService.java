@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import com.optimisante.backend.domain.training.entity.EnrollmentTransitions;
 import org.springframework.security.access.AccessDeniedException;
 import java.time.OffsetDateTime;
@@ -636,8 +637,24 @@ public class EnrollmentService {
 
     @Transactional(readOnly = true)
     public List<EnrollmentDetailDto> getAllEnrollmentsForAdmin() {
-        return enrollmentRepository.findAll().stream()
-                .map(enrollment -> toDetailDto(enrollment, true))
+        // Chargement joint plutôt que findAll() : le mapping traverse session → formation →
+        // CHU partenaire pour chaque dossier. En chargement paresseux, cela déclenche trois
+        // requêtes supplémentaires par ligne — invisible sur douze dossiers, intenable ensuite.
+        List<Enrollment> dossiers = enrollmentRepository.findAllForAdmin();
+
+        // Le nom du médecin vit dans doctor_profiles, hors du graphe des dossiers : la
+        // jointure ci-dessus ne peut pas l'atteindre. Il est donc chargé en une fois, sans
+        // quoi la liste refait une requête par ligne — mesuré, douze pour douze dossiers.
+        Map<UUID, String> nomsMedecins = doctorProfileRepository.findByUserIdIn(
+                        dossiers.stream().map(d -> d.getDoctor().getId()).collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(
+                        profil -> profil.getUser().getId(),
+                        profil -> "Dr. " + profil.getFirstName() + " " + profil.getLastName(),
+                        (a, b) -> a));
+
+        return dossiers.stream()
+                .map(enrollment -> toDetailDto(enrollment, true, nomsMedecins))
                 .collect(java.util.stream.Collectors.toList());
     }
 
@@ -688,6 +705,17 @@ public class EnrollmentService {
     }
 
     private EnrollmentDetailDto toDetailDto(Enrollment enrollment, boolean includeDoctorName) {
+        return toDetailDto(enrollment, includeDoctorName, null);
+    }
+
+    /**
+     * @param nomsMedecins noms déjà chargés, indexés par identifiant d'utilisateur, ou
+     *                     {@code null} pour un dossier isolé — auquel cas le nom est résolu à
+     *                     la demande. Ce paramètre n'existe que pour les listes : y passer
+     *                     {@code null} redonne le comportement d'origine.
+     */
+    private EnrollmentDetailDto toDetailDto(Enrollment enrollment, boolean includeDoctorName,
+                                            Map<UUID, String> nomsMedecins) {
         EnrollmentDetailDto.EnrollmentDetailDtoBuilder builder = EnrollmentDetailDto.builder()
                 .id(enrollment.getId())
                 .status(enrollment.getStatus().name())
@@ -699,6 +727,8 @@ public class EnrollmentService {
                 .conventionS3Key(enrollment.getConventionS3Key())
                 .attestationS3Key(enrollment.getAttestationS3Key())
                 .hostInstitution(enrollment.getSession().getLocation())
+                .partnerProfileId(enrollment.getSession().getTraining().getPartnerProfile().getId())
+                .partnerName(enrollment.getSession().getTraining().getPartnerProfile().getInstitutionName())
                 .actionRequiredNote(enrollment.getActionRequiredNote())
                 .rejectionReason(enrollment.getRejectionReason())
                 // Montant résolu depuis la session (ou le tarif de la formation) : c'est ce
@@ -707,9 +737,12 @@ public class EnrollmentService {
 
         if (includeDoctorName) {
             String doctorEmail = enrollment.getDoctor().getEmail();
-            String doctorName = doctorProfileRepository.findByUserId(enrollment.getDoctor().getId())
-                    .map(p -> "Dr. " + p.getFirstName() + " " + p.getLastName())
-                    .orElse("Dr. " + doctorEmail);
+            UUID doctorId = enrollment.getDoctor().getId();
+            String doctorName = nomsMedecins != null
+                    ? nomsMedecins.getOrDefault(doctorId, "Dr. " + doctorEmail)
+                    : doctorProfileRepository.findByUserId(doctorId)
+                            .map(p -> "Dr. " + p.getFirstName() + " " + p.getLastName())
+                            .orElse("Dr. " + doctorEmail);
             builder.doctorName(doctorName).doctorEmail(doctorEmail);
         }
 
