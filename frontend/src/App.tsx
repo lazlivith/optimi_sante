@@ -4,6 +4,7 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PageTransition } from './components/common/PageTransition';
+import { ScrollManager } from './components/common/ScrollManager';
 // Rôles autorisés par univers, lus de la même définition que la sidebar : le layout n'est
 // accessible qu'aux administrateurs, chaque route interne restreint ensuite au métier
 // concerné, pour qu'un admin négoce tombe sur un refus explicite s'il vise une URL de mobilité.
@@ -88,6 +89,9 @@ const Layout = ({ children }: { children: ReactNode }) => {
 export function App() {
   return (
     <BrowserRouter>
+      {/* Doit vivre DANS le routeur : il lit l'adresse courante pour atteindre l'ancre
+          demandée et remettre le défilement en haut lors d'une navigation ordinaire. */}
+      <ScrollManager />
       <Suspense fallback={<PageFallback />}>
         <Routes>
             <Route element={<ProtectedRoute allowedRoles={ALL_ADMIN_ROLES} />}>

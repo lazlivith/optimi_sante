@@ -3,6 +3,21 @@ import { LegalLayout, Manquant } from './LegalLayout';
 import { LEGAL, ou } from '../../config/legal';
 import { usePageMeta } from '../../hooks/usePageMeta';
 
+/** Sommaire. « cookies » est vise directement depuis le pied de page. */
+const SECTIONS = [
+  { id: 'responsable', label: '1. Responsable' },
+  { id: 'donnees-traitees', label: '2. Données traitées' },
+  { id: 'finalites', label: '3. Finalités' },
+  { id: 'destinataires', label: '4. Destinataires' },
+  { id: 'coffre-fort', label: '5. Coffre-fort' },
+  { id: 'conservation', label: '6. Conservation' },
+  { id: 'droits', label: '7. Vos droits' },
+  { id: 'securite', label: '8. Sécurité' },
+  { id: 'transferts', label: '9. Transferts' },
+  { id: 'cookies', label: '10. Cookies' },
+  { id: 'hebergement', label: '11. Hébergement' },
+] as const;
+
 /**
  * Politique de confidentialité.
  *
@@ -19,8 +34,9 @@ export function PrivacyPolicyPage() {
     <LegalLayout
       titre="Politique de confidentialité"
       chapo="Quelles données nous traitons, pourquoi, combien de temps, et comment exercer vos droits."
+      sections={SECTIONS}
     >
-      <h2>1. Responsable du traitement</h2>
+      <h2 id="responsable">1. Responsable du traitement</h2>
       <p>
         {LEGAL.raisonSociale} ({LEGAL.formeJuridique}), représentée par{' '}
         {LEGAL.directeurPublication}, est responsable des traitements décrits ci-après.
@@ -30,7 +46,7 @@ export function PrivacyPolicyPage() {
         <a href={`mailto:${LEGAL.emailDpo}`}>{LEGAL.emailDpo}</a>.
       </p>
 
-      <h2>2. Données traitées</h2>
+      <h2 id="donnees-traitees">2. Données traitées</h2>
 
       <h3>Toute personne disposant d'un compte</h3>
       <ul>
@@ -74,7 +90,7 @@ export function PrivacyPolicyPage() {
         de l'exécution du contrat.
       </p>
 
-      <h2>3. Finalités et bases légales</h2>
+      <h2 id="finalites">3. Finalités et bases légales</h2>
       <ul>
         <li><strong>Exécution du contrat</strong> — gestion du compte, des commandes, des
           livraisons et du parcours de mobilité.</li>
@@ -86,7 +102,7 @@ export function PrivacyPolicyPage() {
           dossier de mobilité, et communications non contractuelles.</li>
       </ul>
 
-      <h2>4. Destinataires</h2>
+      <h2 id="destinataires">4. Destinataires</h2>
       <p>Vos données ne sont ni vendues, ni louées, ni cédées. Elles sont transmises :</p>
       <ul>
         <li>aux <strong>établissements de santé partenaires</strong>, pour les seuls dossiers
@@ -100,7 +116,7 @@ export function PrivacyPolicyPage() {
         <li>aux autorités compétentes, sur réquisition légale.</li>
       </ul>
 
-      <h2>5. Coffre-fort documentaire</h2>
+      <h2 id="coffre-fort">5. Coffre-fort documentaire</h2>
       <p>
         Les pièces justificatives sont conservées dans un espace dédié et ne sont accessibles
         qu'à vous-même, à l'équipe d'Optimi Santé habilitée sur votre dossier, et à
@@ -112,7 +128,7 @@ export function PrivacyPolicyPage() {
         lien obtenu ne reste pas valable indéfiniment.
       </p>
 
-      <h2>6. Durées de conservation</h2>
+      <h2 id="conservation">6. Durées de conservation</h2>
       <ul>
         <li><strong>Compte utilisateur</strong> — pendant toute la durée de la relation, puis
           trois ans après le dernier contact.</li>
@@ -125,7 +141,7 @@ export function PrivacyPolicyPage() {
         <li><strong>Journal des courriels</strong> — trois ans, à des fins de preuve d'envoi.</li>
       </ul>
 
-      <h2>7. Vos droits</h2>
+      <h2 id="droits">7. Vos droits</h2>
       <p>
         Vous disposez des droits d'accès, de rectification, d'effacement, de limitation,
         d'opposition et de portabilité prévus par le RGPD.
@@ -149,7 +165,7 @@ export function PrivacyPolicyPage() {
         <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">cnil.fr</a>.
       </p>
 
-      <h2>8. Sécurité</h2>
+      <h2 id="securite">8. Sécurité</h2>
       <p>
         Les échanges sont chiffrés en transit. Les mots de passe ne sont jamais stockés en
         clair. L'accès aux données est cloisonné par rôle : l'administration du négoce n'accède
@@ -159,7 +175,7 @@ export function PrivacyPolicyPage() {
         l'écran.
       </p>
 
-      <h2>9. Transferts hors Union européenne</h2>
+      <h2 id="transferts">9. Transferts hors Union européenne</h2>
       <p>
         Les données sont hébergées dans l'Union européenne. Certains sous-traitants techniques
         peuvent être établis hors UE ; ces transferts sont alors encadrés par les clauses
@@ -174,7 +190,7 @@ export function PrivacyPolicyPage() {
         déposé.
       </p>
 
-      <h2>11. Hébergement</h2>
+      <h2 id="hebergement">11. Hébergement</h2>
       <p>
         Hébergeur : <Manquant valeur={ou(LEGAL.hebergeurNom)} />. Les serveurs et les bases de
         données sont situés dans l'Union européenne.

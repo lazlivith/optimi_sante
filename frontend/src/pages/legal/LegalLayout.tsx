@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Scale, ShieldCheck } from 'lucide-react';
 import { LEGAL } from '../../config/legal';
+import { SectionNav, type SectionLink } from '../../components/common/SectionNav';
 
 const PAGES = [
   { to: '/mentions-legales', label: 'Mentions légales', icon: Scale },
@@ -17,11 +18,11 @@ const PAGES = [
  * non seulement par le pied de page qu'il faudrait aller rechercher tout en bas.</p>
  */
 export function LegalLayout({
-  titre, chapo, children,
-}: { titre: string; chapo: string; children: ReactNode }) {
+  titre, chapo, sections, children,
+}: { titre: string; chapo: string; sections?: readonly SectionLink[]; children: ReactNode }) {
   return (
     <div className="bg-slate-50 min-h-screen py-10">
-      <div className="container mx-auto px-4 max-w-3xl">
+      <div className={`container mx-auto px-4 ${sections ? 'max-w-6xl' : 'max-w-3xl'}`}>
         <header className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-brand-dark">{titre}</h1>
           <p className="text-slate-500 mt-2">{chapo}</p>
@@ -41,9 +42,18 @@ export function LegalLayout({
           ))}
         </nav>
 
-        <article className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-10 legal-prose">
-          {children}
-        </article>
+        {/* Sommaire collant a gauche des qu'il y a des sections : ces documents se
+            consultent pour un article precis, pas de bout en bout. */}
+        <div className={sections ? 'grid lg:grid-cols-[240px_minmax(0,1fr)] gap-8 lg:gap-12' : ''}>
+          {sections && (
+            <aside>
+              <SectionNav sections={sections} />
+            </aside>
+          )}
+          <article className="min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-10 legal-prose">
+            {children}
+          </article>
+        </div>
       </div>
 
       {/* Styles locaux : ces trois pages sont les seules du site a rendre de longs textes
@@ -53,7 +63,9 @@ export function LegalLayout({
           font-size: 1.15rem; font-weight: 700; color: #0f2e29;
           margin: 2.25rem 0 .75rem; padding-bottom: .4rem;
           border-bottom: 1px solid #e2e8f0;
+          scroll-margin-top: 10rem;
         }
+        .legal-prose h3 { scroll-margin-top: 10rem; }
         .legal-prose h2:first-child { margin-top: 0; }
         .legal-prose h3 {
           font-size: .95rem; font-weight: 700; color: #1e293b; margin: 1.5rem 0 .5rem;

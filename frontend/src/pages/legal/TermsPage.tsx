@@ -3,6 +3,20 @@ import { LegalLayout, Manquant } from './LegalLayout';
 import { LEGAL, CONDITIONS_MOBILITE, ou } from '../../config/legal';
 import { usePageMeta } from '../../hooks/usePageMeta';
 
+/** Sommaire. Les identifiants servent aussi de cibles aux liens du pied de page. */
+const SECTIONS = [
+  { id: 'objet', label: '1. Objet' },
+  { id: 'negoce', label: '2. Négoce' },
+  { id: 'livraison', label: '— Livraison' },
+  { id: 'retractation', label: '— Rétractation' },
+  { id: 'mobilite', label: '3. Mobilité' },
+  { id: 'compte', label: '4. Compte' },
+  { id: 'donnees', label: '5. Données' },
+  { id: 'responsabilite', label: '6. Responsabilité' },
+  { id: 'mediation', label: '7. Médiation' },
+  { id: 'droit', label: '8. Droit applicable' },
+] as const;
+
 /**
  * Conditions générales de vente et d'utilisation.
  *
@@ -24,8 +38,9 @@ export function TermsPage() {
     <LegalLayout
       titre="Conditions générales de vente et d'utilisation"
       chapo="Elles régissent l'usage de la plateforme, la vente d'équipements et le parcours de mobilité médicale."
+      sections={SECTIONS}
     >
-      <h2>1. Objet et acceptation</h2>
+      <h2 id="objet">1. Objet et acceptation</h2>
       <p>
         Les présentes conditions régissent les relations entre {LEGAL.raisonSociale}, ci-après
         « la Plateforme », et toute personne physique ou morale utilisant ses services. La
@@ -38,7 +53,7 @@ export function TermsPage() {
         <strong>mobilité médicale internationale et la formation</strong> (titre 3).
       </p>
 
-      <h2>2. Négoce d'équipements et de consommables</h2>
+      <h2 id="negoce">2. Négoce d'équipements et de consommables</h2>
 
       <h3>2.1 Comptes et clientèle</h3>
       <p>
@@ -107,7 +122,7 @@ export function TermsPage() {
         la durée est précisée sur la fiche produit.
       </p>
 
-      <h2>3. Mobilité médicale et formation</h2>
+      <h2 id="mobilite">3. Mobilité médicale et formation</h2>
 
       <h3>3.1 Nature du service</h3>
       <p>
@@ -204,7 +219,7 @@ export function TermsPage() {
         remboursement, sans préjudice des suites légales.
       </p>
 
-      <h2>4. Compte et sécurité</h2>
+      <h2 id="compte">4. Compte et sécurité</h2>
       <p>
         L'utilisateur est responsable de la confidentialité de ses identifiants et des actions
         effectuées depuis son compte. Toute utilisation frauduleuse doit être signalée sans
@@ -215,7 +230,7 @@ export function TermsPage() {
         d'usage susceptible de porter atteinte à la sécurité du service.
       </p>
 
-      <h2>5. Données personnelles</h2>
+      <h2 id="donnees">5. Données personnelles</h2>
       <p>
         Le traitement des données est décrit dans la{' '}
         <Link to="/politique-confidentialite">politique de confidentialité</Link>. Chaque
@@ -223,14 +238,14 @@ export function TermsPage() {
         <Link to="/mes-donnees">Mes données personnelles</Link>.
       </p>
 
-      <h2>6. Responsabilité</h2>
+      <h2 id="responsabilite">6. Responsabilité</h2>
       <p>
         La Plateforme est tenue d'une obligation de moyens dans l'accompagnement des dossiers de
         mobilité. Elle ne saurait être tenue responsable des décisions relevant des
         établissements d'accueil, des autorités consulaires ou des transporteurs.
       </p>
 
-      <h2>7. Réclamation et médiation</h2>
+      <h2 id="mediation">7. Réclamation et médiation</h2>
       <p>
         Toute réclamation doit être adressée à{' '}
         <a href={`mailto:${LEGAL.emailContact}`}>{LEGAL.emailContact}</a>. À défaut de solution
@@ -246,7 +261,7 @@ export function TermsPage() {
         </a>.
       </p>
 
-      <h2>8. Droit applicable</h2>
+      <h2 id="droit">8. Droit applicable</h2>
       <p>
         Les présentes conditions sont soumises au droit français. À défaut de résolution
         amiable, les tribunaux compétents sont ceux du ressort du siège social, sauf disposition

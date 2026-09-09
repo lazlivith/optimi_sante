@@ -4,7 +4,17 @@ import {
   ClipboardList, UserCheck, Plane, Award, ShieldCheck,
 } from 'lucide-react';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { SectionNav } from '../components/common/SectionNav';
 import { CONDITIONS_MOBILITE } from '../config/legal';
+
+/** Sommaire de la page. Les identifiants correspondent aux ancres visées par le pied de page. */
+const SECTIONS = [
+  { id: 'negoce', label: 'Négoce médical' },
+  { id: 'devis', label: 'Devis professionnel' },
+  { id: 'formations', label: 'Formations & mobilité' },
+  { id: 'partenariat', label: 'Partenariat' },
+  { id: 'faq', label: 'Questions fréquentes' },
+] as const;
 
 /** Les cinq phases du parcours, telles que l'automate les applique réellement. */
 const PHASES = [
@@ -112,7 +122,15 @@ export function ServicesPage() {
         </div>
       </section>
 
-      <div className="container mx-auto px-4 md:px-8 py-12 max-w-4xl space-y-14">
+      {/* Deux colonnes : sommaire collant a gauche, contenu a droite. On arrive rarement en
+          haut de cette page — le plus souvent par un lien de pied de page visant une section
+          precise — et le sommaire dit alors ce que la page contient d'autre. */}
+      <div className="container mx-auto px-4 md:px-8 py-12 max-w-6xl grid lg:grid-cols-[220px_minmax(0,1fr)] gap-8 lg:gap-12">
+        <aside className="lg:pt-2">
+          <SectionNav sections={SECTIONS} />
+        </aside>
+
+        <div className="min-w-0 space-y-14">
 
         {/* Négoce */}
         <section id="negoce" className="scroll-mt-32">
@@ -242,6 +260,7 @@ export function ServicesPage() {
             </Link>.
           </p>
         </section>
+        </div>
       </div>
     </div>
   );

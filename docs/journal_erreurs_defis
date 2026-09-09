@@ -2317,3 +2317,65 @@ d'adresses pour savoir lesquelles sont clientes. Le consentement est simplement 
 une désinscription conserve la ligne — sans quoi on ne pourrait pas prouver qu'un retrait a été
 honoré — et la même adresse peut se réabonner ensuite. Vérifié sur copie : doublon en casse
 différente refusé, réabonnement après désinscription accepté.
+
+## 76. Les ancres du pied de page ne fonctionnaient pas — et rien ne le disait
+
+### Un lien qui a l'air de marcher
+
+Le pied de page livré au lot précédent renvoyait vers huit sections précises :
+`/cgv#livraison`, `/services#faq`, `/politique-confidentialite#cookies`… Les huit ancres
+existaient bien dans les pages. **Aucune n'était atteinte.**
+
+React Router ne traite pas le fragment d'URL : cliquer sur un de ces liens depuis une autre
+page charge la bonne page et laisse le visiteur **en haut**. Le `#` est purement décoratif tant
+que personne ne l'implémente.
+
+C'est le pire genre de défaut : le lien n'échoue pas, il ne produit aucune erreur, et l'on
+suppose simplement que la section était en haut. Je l'ai livré en croyant qu'il suffisait de
+poser les `id`.
+
+**Le site n'avait par ailleurs aucune gestion du défilement** : naviguer depuis le bas d'une
+page pouvait déposer au milieu de la suivante.
+
+### Le point délicat : la page n'existe pas encore
+
+`ScrollManager` ne peut pas chercher l'élément une seule fois. Les pages sont chargées à la
+demande (code-splitting) : au moment où l'adresse change, le module de la page cible n'est pas
+encore récupéré, et la section n'est pas dans le document. Une recherche unique échouerait
+**systématiquement lors d'une arrivée depuis une autre page** — c'est-à-dire exactement le cas
+d'usage d'un lien de pied de page, et pas du tout lors d'un test depuis la page elle-même.
+
+Le composant réessaie donc pendant environ deux secondes, puis abandonne.
+
+### Deux compensations que l'on découvre seulement à l'usage
+
+- **Le décalage de l'en-tête collante** (80 + 48 px). Sans lui, la section visée se retrouve
+  *sous* l'en-tête : le défilement a bien eu lieu, mais l'utilisateur ne voit pas son titre et
+  conclut que le lien n'a rien fait.
+- **Le signalement visuel.** Sur une page de plusieurs écrans, arriver au bon endroit sans rien
+  voir changer laisse douter d'avoir atterri où l'on voulait. Un liseré s'estompe en 1,6 s —
+  il signale, il ne décore pas, et il est désactivé si l'utilisateur a demandé moins
+  d'animations.
+
+### Rendre ces pages parcourables, pas seulement atteignables
+
+Un sommaire collant (`SectionNav`) accompagne désormais la page services et les deux documents
+longs. Il répond à une question que ces pages ne réglaient pas : **on y arrive pour un point
+précis, et rien ne disait ce qu'elles contenaient d'autre.**
+
+Le repérage de la section en cours de lecture passe par un `IntersectionObserver` plutôt que
+par un calcul à chaque défilement : le navigateur signale lui-même les entrées et sorties, sans
+faire tourner du code à chaque pixel. Sa marge haute reprend la hauteur de l'en-tête — une
+section masquée derrière elle ne doit pas être comptée comme lue.
+
+Sur écran étroit, le sommaire devient une barre horizontale défilante : un sommaire vertical de
+onze entrées y occuperait un écran entier avant le premier mot du texte.
+
+### Vérifié par recoupement automatique
+
+Plutôt que de cliquer les liens un par un, un contrôle croise les ancres **visées** par le pied
+de page et les `id` **réellement posés** dans chaque page, puis fait de même pour les trois
+sommaires. Résultat : 8 liens et 26 entrées de sommaire, **toutes les cibles existent**.
+
+C'est ce recoupement qui manquait au lot précédent : j'avais vérifié que les `id` étaient là,
+sans vérifier que quelque chose s'en servait.
