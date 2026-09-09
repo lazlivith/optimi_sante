@@ -52,6 +52,7 @@ const AdminPromoCodesPage = lazy(() => import('./pages/admin/AdminPromoCodesPage
 const AdminEmailsPage = lazy(() => import('./pages/admin/AdminEmailsPage').then(m => ({ default: m.AdminEmailsPage })));
 const AdminPayoutsPage = lazy(() => import('./pages/admin/AdminPayoutsPage').then(m => ({ default: m.AdminPayoutsPage })));
 const BecomePartnerPage = lazy(() => import('./pages/partnership/BecomePartnerPage').then(m => ({ default: m.BecomePartnerPage })));
+const ServicesPage = lazy(() => import('./pages/ServicesPage').then(m => ({ default: m.ServicesPage })));
 const LegalNoticePage = lazy(() => import('./pages/legal/LegalNoticePage').then(m => ({ default: m.LegalNoticePage })));
 const TermsPage = lazy(() => import('./pages/legal/TermsPage').then(m => ({ default: m.TermsPage })));
 const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
@@ -174,6 +175,9 @@ export function App() {
 
                   {/* Pages juridiques : publiques par obligation — elles doivent etre
                       consultables sans compte, y compris par un visiteur qui hesite. */}
+                  {/* Page de presentation, consultable avant tout engagement. */}
+                  <Route path="/services" element={<ServicesPage />} />
+
                   <Route path="/mentions-legales" element={<LegalNoticePage />} />
                   <Route path="/cgv" element={<TermsPage />} />
                   <Route path="/politique-confidentialite" element={<PrivacyPolicyPage />} />

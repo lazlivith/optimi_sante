@@ -72,7 +72,7 @@ export function TermsPage() {
         Une facture est mise à disposition dans l'espace client après validation du paiement.
       </p>
 
-      <h3>2.4 Livraison</h3>
+      <h3 id="livraison" className="scroll-mt-28">2.4 Livraison</h3>
       <p>
         Les délais annoncés sont indicatifs et courent à compter de la validation du paiement.
         Le transfert des risques intervient à la remise du colis. Il appartient au destinataire
@@ -80,7 +80,7 @@ export function TermsPage() {
         transporteur.
       </p>
 
-      <h3>2.5 Droit de rétractation</h3>
+      <h3 id="retractation" className="scroll-mt-28">2.5 Droit de rétractation</h3>
       <p>
         Le client <strong>consommateur</strong> dispose d'un délai de{' '}
         <strong>quatorze jours</strong> à compter de la réception pour exercer son droit de

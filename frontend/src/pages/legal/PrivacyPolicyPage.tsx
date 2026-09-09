@@ -166,7 +166,7 @@ export function PrivacyPolicyPage() {
         contractuelles types de la Commission européenne.
       </p>
 
-      <h2>10. Cookies</h2>
+      <h2 id="cookies" className="scroll-mt-28">10. Cookies</h2>
       <p>
         La plateforme utilise les cookies et le stockage local strictement nécessaires à son
         fonctionnement : session de connexion et contenu du panier. Ils ne requièrent pas de

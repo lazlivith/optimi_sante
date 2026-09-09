@@ -2253,3 +2253,67 @@ Ces textes sont des **projets sérieux et structurés, pas un avis juridique**. 
 obligations formelles et décrivent fidèlement le fonctionnement de la plateforme, mais l'objet
 social — intermédiation, formation médicale, mobilité internationale — mérite une relecture par
 un professionnel avant la mise en ligne. Le dire fait partie du travail.
+
+## 75. Page « Nos services », pied de page dense et lettre d'information (V39)
+
+### Un pied de page dense sans un seul lien mort
+
+La référence fournie comportait une quinzaine d'entrées : « Nos magasins », « Carrières »,
+« Politique de cookies », « Livraison », « Retour / Remboursement », « FAQ », « Blog ». La
+tentation évidente était de les recopier. La moitié ne correspond à rien ici.
+
+Trois traitements, selon ce qui existe réellement :
+
+- **Ce qui existe ailleurs sous un autre nom** — « Livraison » et « Retour / Remboursement »
+  sont des articles des conditions générales. Ils y pointent par une ancre
+  (`/cgv#livraison`, `/cgv#retractation`) plutôt que vers des pages qu'il aurait fallu
+  inventer. Idem pour « Politique de cookies », qui mène à la section 10 de la politique de
+  confidentialité.
+- **Ce qui manquait vraiment** — « Qui sommes-nous ? », « FAQ », « Devis professionnel » :
+  la page `/services` les fournit, avec des ancres pour que chaque lien atterrisse à sa
+  section. Un lien « FAQ » qui déposerait en haut d'une longue page obligerait à la parcourir.
+- **Ce qui n'existe pas** — magasins, carrières, blog. Non listés. Une entrée de pied de page
+  qui ne mène nulle part coûte plus de confiance que son absence.
+
+Le téléphone n'apparaît que s'il est renseigné : un numéro de démonstration finirait par être
+composé.
+
+### La page services dit aussi ce que la plateforme ne fait pas
+
+Elle s'adresse à quelqu'un qui hésite **avant** de s'engager. Elle comporte donc un encart
+explicite : la Plateforme est intermédiaire, elle ne délivre ni l'admission ni le visa. Le dire
+avant l'engagement plutôt qu'après vaut mieux qu'une promesse implicite qu'il faudrait
+démentir en cas de refus.
+
+Les cinq phases décrites sont celles que l'automate applique réellement, et le paragraphe sur
+les frais reprend `CONDITIONS_MOBILITE` — la même source que les CGV. Trois endroits parlent
+du même barème ; un seul le définit.
+
+### La lettre d'information : construite, pas simulée
+
+Un formulaire d'inscription qui n'aboutit nulle part est exactement le faux que ce pied de page
+refuse par ailleurs. D'où **V39** et un endpoint réel.
+
+**Une table dédiée plutôt que `prospect_leads`** : cette dernière exige prénom, nom, téléphone,
+pays et formation cible. Y verser des inscriptions newsletter aurait obligé à inventer ces
+valeurs, et mélangé deux populations que le commercial doit distinguer — un prospect formation
+n'est pas un abonné.
+
+**Ce qui rend le consentement opposable.** Le RGPD demande de pouvoir prouver le consentement,
+pas seulement de l'avoir recueilli. Enregistrer une case cochée ne prouve rien : il faut savoir
+**à quoi** la personne a consenti. `consent_text` conserve donc le libellé exact affiché au
+moment de l'inscription ; si le texte évolue, les consentements antérieurs restent lisibles
+tels qu'ils ont été donnés. C'est le client qui l'envoie, parce que c'est lui qui l'affiche, et
+le serveur refuse une inscription sans lui.
+
+**La case n'est pas pré-cochée** — un consentement pré-coché n'en est pas un — et le bouton
+reste inactif tant qu'elle ne l'est pas, plutôt que de laisser envoyer puis refuser.
+
+**Ré-inscrire une adresse déjà abonnée renvoie un succès.** Répondre « cette adresse est déjà
+inscrite » transformerait le formulaire en oracle : n'importe qui pourrait tester une liste
+d'adresses pour savoir lesquelles sont clientes. Le consentement est simplement réenregistré.
+
+**Index unique partiel** sur l'adresse en minuscules, restreint aux abonnements actifs :
+une désinscription conserve la ligne — sans quoi on ne pourrait pas prouver qu'un retrait a été
+honoré — et la même adresse peut se réabonner ensuite. Vérifié sur copie : doublon en casse
+différente refusé, réabonnement après désinscription accepté.
