@@ -590,10 +590,17 @@ public class EnrollmentService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        boolean isAdmin = user.getRole() == com.optimisante.backend.domain.identity.entity.Role.ADMIN
-                || user.getRole() == com.optimisante.backend.domain.identity.entity.Role.SUPER_ADMIN;
+        // ADMIN_MOBILITE doit figurer ici : depuis la scission des rôles (V30), c'est LUI qui
+        // administre la mobilité. Son absence rendait ce contrôle plus strict que le
+        // @PreAuthorize de l'endpoint, qui l'autorise — l'administrateur passait la porte puis
+        // se voyait refuser à l'intérieur, avec « Unauthorized to upload documents ». Vérifié
+        // sur la plateforme : le rôle censé constituer le dossier ne pouvait rien y déposer.
+        com.optimisante.backend.domain.identity.entity.Role role = user.getRole();
+        boolean isAdmin = role == com.optimisante.backend.domain.identity.entity.Role.ADMIN
+                || role == com.optimisante.backend.domain.identity.entity.Role.SUPER_ADMIN
+                || role == com.optimisante.backend.domain.identity.entity.Role.ADMIN_MOBILITE;
         if (!isAdmin && !enrollment.getDoctor().getId().equals(userId)) {
-            throw new RuntimeException("Unauthorized to upload documents for this enrollment");
+            throw new AccessDeniedException("Vous n'êtes pas autorisé à déposer une pièce sur ce dossier.");
         }
 
         String publicId = storageService.uploadFile(file, "docs/enrollments");

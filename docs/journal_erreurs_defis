@@ -1662,3 +1662,101 @@ et la liste complète est déjà chargée pour l'écran. Filtrer côté serveur 
 paramètres, une requête par frappe et une pagination, sans rien résoudre. **Le critère n'est
 pas l'uniformité mais la volumétrie** : au catalogue, filtrer dans le navigateur n'aurait porté
 que sur les 100 premières lignes et aurait menti ; ici, il porte sur la totalité.
+
+## 68. Prompt 05 — Espace de constitution du dossier de pièces (V37)
+
+### Ce qui existait pour réclamer une pièce : une phrase
+
+Pour demander un document à un médecin, l'administration disposait d'un seul moyen :
+`requestAction`, qui bascule le dossier en `ACTION_REQUIRED` avec **une note en texte libre**.
+Trois limites, qui expliquent la demande initiale d'« un espace dédié » :
+
+1. **Une seule demande à la fois.** Réclamer trois pièces obligeait à les énumérer dans une
+   phrase, sans pouvoir suivre laquelle est arrivée.
+2. **Le dossier entier est bloqué.** Or les pièces du dossier de visa se rassemblent *pendant*
+   la procédure — après l'acceptation du CHU, après la convention — moments où renvoyer le
+   dossier en revue serait absurde.
+3. **Rien ne dit ce qu'il reste à fournir.** Ni le médecin ni l'administration ne pouvaient
+   répondre à « mon dossier est-il complet ? ».
+
+### La décision de conception : ne pas toucher à la machine à états
+
+`enrollment_document_requests` est **indépendante du statut du dossier**. Demander une pièce
+ne fait rien basculer. Les deux mécanismes coexistent et ne servent pas au même moment :
+`requestAction` bloque la revue initiale, les demandes de pièces accompagnent le parcours.
+
+Il aurait été tentant de réutiliser `ACTION_REQUIRED` pour tout — c'est l'erreur qui aurait
+rendu impossible la collecte des pièces de visa après la convention.
+
+### Ce que la table ne fait pas
+
+Elle ne remplace pas `enrollment_documents`, qui reste le magasin des fichiers. Une demande
+**pointe** vers la pièce qui la satisfait, elle ne la stocke pas. Un document peut donc exister
+sans demande : c'est le cas de ceux que l'administration produit elle-même (convention,
+attestation, courrier consulaire), qui ne sont réclamés à personne.
+
+### Le libellé libre à côté de la taxonomie
+
+Le type reste l'énumération existante à huit valeurs — je ne l'ai pas étendue, faute de savoir
+quelle taxonomie l'utilisateur veut. Mais `OTHER` n'apprend pas au médecin qu'on attend un acte
+de naissance traduit : chaque demande porte donc un **libellé obligatoire**, qui est ce que le
+médecin lit. Le type sert au classement, le libellé à la communication.
+
+### Les invariants sont dans la base, pas seulement dans le service
+
+Une contrainte `CHECK` de cohérence lie l'état aux colonnes qui doivent l'accompagner :
+`ACCEPTED` exige une pièce attachée, `REJECTED` exige un motif. Sans elle, un refus sans motif
+laisserait le médecin devant un blocage qu'on ne lui explique pas — il redéposerait la même
+pièce et le dossier tournerait en rond.
+
+Un **index unique partiel** empêche de réclamer deux fois la même pièce tant que la première
+demande n'est pas réglée (double clic, ou deux administrateurs sur le même dossier). Restreint
+aux demandes *ouvertes* : une fois acceptée ou annulée, la même pièce peut légitimement être
+redemandée — un passeport périmé, une traduction à refaire.
+
+**Six contrôles rejoués sur une copie de la base** avant de l'appliquer : `ACCEPTED` sans
+pièce, `REJECTED` sans motif et type inconnu sont refusés ; une demande valide passe ; le même
+libellé en casse différente est refusé ; un libellé différent passe.
+
+### Le bug qui bloquait la fonctionnalité demandée
+
+Avant d'écrire quoi que ce soit, j'ai vérifié qu'un administrateur pouvait déposer une pièce.
+Il ne pouvait pas : `uploadEnrollmentDocument` testait `ADMIN` et `SUPER_ADMIN` mais **pas
+`ADMIN_MOBILITE`** — un reliquat de la scission des rôles (V30). Le `@PreAuthorize` de
+l'endpoint l'autorisait, le contrôle interne le refusait : l'administrateur passait la porte
+puis se voyait refuser à l'intérieur, avec « Unauthorized to upload documents ».
+
+**Le rôle censé constituer le dossier ne pouvait rien y déposer.** Vérifié sur la plateforme
+avant correction. L'exception est au passage devenue une `AccessDeniedException` — un refus de
+droit répondait jusque-là par une erreur 500 générique.
+
+### Vérifié en conditions réelles, 13 contrôles
+
+Le cycle complet rejoué contre la plateforme déployée :
+
+| # | Contrôle | Résultat |
+|---|---|---|
+| 1 | L'admin réclame une pièce | créée, `PENDING` |
+| 2 | La même pièce, en casse différente | refusée, **message lisible** |
+| 3 | Récapitulatif admin | 1 attendue, non complet |
+| 4 | Ce que voit le médecin | la pièce, avec sa date limite |
+| 5 | Le médecin dépose | `SUBMITTED`, pièce rattachée |
+| 6 | Refus **sans motif** | refusé |
+| 7 | Refus avec motif | `REJECTED`, motif conservé |
+| 8 | Le médecin redépose | `SUBMITTED`, ancien motif effacé |
+| 9 | L'admin accepte | `ACCEPTED` |
+| 10 | Dossier complet ? | `complete = true` |
+| 11 | `ADMIN_MOBILITE` dépose une pièce | **200** (était refusé avant correctif) |
+| 12 | Un médecin lit le dossier d'un tiers | **403** |
+| 13 | `ADMIN_ECOMMERCE` réclame une pièce | **403** |
+
+Les contrôles 6 et 8 sont ceux qui comptent le plus : ils prouvent qu'un refus est toujours
+motivé, et qu'un motif périmé ne reste pas affiché sur une pièce qui n'est plus celle qu'on
+examine.
+
+### Ce que ce lot ne comprend pas
+
+Les écrans. La liste, le formulaire de demande, l'espace « Mon dossier visa » du médecin
+relèvent du lot suivant. Le service expose déjà le récapitulatif dont ils auront besoin :
+total, acceptées, en attente du médecin, en attente de vérification, et un drapeau `complete`
+— avec la règle qu'un dossier **sans aucune demande n'est pas complet**, il n'a pas commencé.
