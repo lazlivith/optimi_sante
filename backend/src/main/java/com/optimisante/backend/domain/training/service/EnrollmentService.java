@@ -89,7 +89,15 @@ public class EnrollmentService {
                 .session(session)
                 .build();
 
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        // Sans cet evenement, un dossier deposé n'apparaissait que si un administrateur
+        // pensait de lui-meme a ouvrir la liste : rien ne signalait son arrivee.
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentSubmitted(
+                saved.getId(), doctorDisplayName(saved), doctor.getEmail(),
+                saved.getSession().getTraining().getTitle()));
+
+        return toResponseDto(saved);
     }
 
     @Transactional
@@ -252,7 +260,13 @@ public class EnrollmentService {
         enrollment.setActionRequiredNote(null);
 
         log.info("Dossier {} pré-qualifié par l'admin {} et transmis au partenaire", enrollmentId, adminId);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentSubmittedToPartner(
+                saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
+                saved.getSession().getTraining().getTitle(), institutionName(saved)));
+
+        return toResponseDto(saved);
     }
 
     /**
@@ -273,7 +287,15 @@ public class EnrollmentService {
         enrollment.setOptimiReviewedBy(adminId);
 
         log.info("Corrections demandées sur le dossier {} par l'admin {}", enrollmentId, adminId);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        // Le motif voyage AVEC l'evenement : le medecin doit savoir quelle piece corriger,
+        // pas seulement que son dossier a change d'etat.
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentActionRequired(
+                saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
+                saved.getActionRequiredNote()));
+
+        return toResponseDto(saved);
     }
 
     /** Le médecin a déposé les pièces demandées et resoumet son dossier à la revue. */
@@ -289,7 +311,13 @@ public class EnrollmentService {
         enrollment.setActionRequiredNote(null);
 
         log.info("Dossier {} resoumis par le médecin {} après corrections", enrollmentId, doctorId);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentResubmitted(
+                saved.getId(), doctorDisplayName(saved),
+                saved.getSession().getTraining().getTitle()));
+
+        return toResponseDto(saved);
     }
 
     /**
@@ -312,8 +340,6 @@ public class EnrollmentService {
         EnrollmentStatus target = accept ? EnrollmentStatus.ACCEPTED_BY_PARTNER : EnrollmentStatus.REJECTED;
         EnrollmentTransitions.assertAllowed(enrollment.getStatus(), target);
 
-        EnrollmentStatus previousStatus = enrollment.getStatus();
-
         if (!accept && (reason == null || reason.isBlank())) {
             throw new IllegalArgumentException("Un motif est obligatoire pour refuser une candidature.");
         }
@@ -335,12 +361,9 @@ public class EnrollmentService {
 
         Enrollment saved = enrollmentRepository.save(enrollment);
 
-        if (previousStatus != saved.getStatus()) {
-            eventPublisher.publishEvent(
-                    new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentStatusChanged(
-                            saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
-                            previousStatus == null ? null : previousStatus.name(), saved.getStatus().name()));
-        }
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.PartnerDecisionMade(
+                saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
+                institutionName(saved), accept, reason));
 
         return toResponseDto(saved);
     }
@@ -375,7 +398,13 @@ public class EnrollmentService {
 
         log.info("Le partenaire {} demande des pièces complémentaires sur le dossier {}",
                 partnerUserId, enrollmentId);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.PartnerCorrectionRequested(
+                saved.getId(), saved.getDoctor().getId(), doctorDisplayName(saved),
+                saved.getDoctor().getEmail(), institutionName(saved), saved.getActionRequiredNote()));
+
+        return toResponseDto(saved);
     }
 
     /**
@@ -516,6 +545,23 @@ public class EnrollmentService {
         } catch (RuntimeException e) {
             return null;
         }
+    }
+
+    /**
+     * Nom affichable d'un medecin pour les notifications destinees a l'equipe admin.
+     * Repli sur l'e-mail : un dossier tout juste cree peut ne pas encore avoir de profil.
+     */
+    private String doctorDisplayName(Enrollment enrollment) {
+        User doctor = enrollment.getDoctor();
+        return doctorProfileRepository.findByUserId(doctor.getId())
+                .map(p -> "Dr. " + p.getFirstName() + " " + p.getLastName())
+                .orElse(doctor.getEmail());
+    }
+
+    /** Etablissement d'accueil de la session, pour situer le dossier dans les messages. */
+    private String institutionName(Enrollment enrollment) {
+        var partner = enrollment.getSession().getTraining().getPartnerProfile();
+        return partner == null ? "l'etablissement d'accueil" : partner.getInstitutionName();
     }
 
     private Enrollment requireEnrollment(UUID enrollmentId) {

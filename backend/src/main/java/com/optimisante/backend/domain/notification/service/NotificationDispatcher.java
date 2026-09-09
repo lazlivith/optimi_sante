@@ -1,7 +1,6 @@
 package com.optimisante.backend.domain.notification.service;
 
 import com.optimisante.backend.common.email.EmailService;
-import com.optimisante.backend.domain.identity.entity.Role;
 import com.optimisante.backend.domain.notification.entity.NotificationSeverity;
 import com.optimisante.backend.domain.notification.event.NotificationEvents;
 import lombok.RequiredArgsConstructor;
@@ -74,7 +73,7 @@ public class NotificationDispatcher {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPartnershipRequestSubmitted(NotificationEvents.PartnershipRequestSubmitted e) {
-        notifications.notifyRole(Role.ADMIN, "PARTNERSHIP_REQUEST", NotificationSeverity.WARNING,
+        notifications.notifyAdmins("PARTNERSHIP_REQUEST", NotificationSeverity.WARNING,
                 "Nouvelle demande de partenariat",
                 e.institutionName() + " a soumis une demande de partenariat à examiner.",
                 "/admin/partnership-requests", null, "PARTNERSHIP_REQUEST");
@@ -83,16 +82,168 @@ public class NotificationDispatcher {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onDoctorApplicationSubmitted(NotificationEvents.DoctorApplicationSubmitted e) {
-        notifications.notifyRole(Role.ADMIN, "DOCTOR_APPLICATION", NotificationSeverity.INFO,
+        notifications.notifyAdmins("DOCTOR_APPLICATION", NotificationSeverity.INFO,
                 "Nouvelle candidature médecin",
                 e.fullName() + (e.specialty() == null ? "" : " (" + e.specialty() + ")") + " a déposé une candidature.",
                 "/admin/enrollments", null, "DOCTOR_APPLICATION");
     }
 
+    // =====================================================================================
+    // Cycle de candidature tripartite
+    // =====================================================================================
+
+    /** Depot d'un dossier : l'equipe admin est prevenue dans l'app ET par e-mail. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onEnrollmentSubmitted(NotificationEvents.EnrollmentSubmitted e) {
+        String body = e.doctorName() + " a déposé un dossier pour « " + e.trainingTitle()
+                + " ». Les pièces sont à vérifier avant transmission au CHU.";
+        notifications.notifyAdmins("ENROLLMENT_SUBMITTED", NotificationSeverity.WARNING,
+                "Nouveau dossier de candidature", body,
+                "/admin/enrollments/" + e.enrollmentId(), null,
+                "ENROLLMENT_SUBMITTED:" + e.enrollmentId());
+        emailAdmins("Optimi Santé — Nouveau dossier de candidature",
+                "Nouveau dossier à instruire",
+                "<p>" + body + "</p><p>Adresse du candidat : " + e.doctorEmail() + "</p>");
+    }
+
+    /** Dossier transmis au CHU : le medecin apprend que son dossier a passe la revue interne. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onEnrollmentSubmittedToPartner(NotificationEvents.EnrollmentSubmittedToPartner e) {
+        String body = "Votre dossier pour « " + e.trainingTitle() + " » a été vérifié par notre équipe "
+                + "et transmis à " + e.institutionName() + ", qui statuera sur votre admission. "
+                + "Votre dossier est en cours de traitement.";
+        notifications.notifyUser(e.doctorUserId(), "ENROLLMENT_STATUS", NotificationSeverity.SUCCESS,
+                "Dossier transmis à l'établissement", body,
+                "/doctor/enrollments/" + e.enrollmentId(), null,
+                "ENROLLMENT_TO_PARTNER:" + e.enrollmentId());
+        if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
+            emailService.sendHtml(e.doctorEmail(),
+                    "Optimi Santé — Votre dossier est transmis à l'établissement",
+                    "Votre dossier est en cours de traitement", "<p>" + body + "</p>");
+        }
+    }
+
+    /**
+     * Piece manquante ou non conforme. Le motif saisi par l'administrateur est repris tel quel
+     * dans la notification et l'e-mail : sans lui, le medecin sait seulement que quelque chose
+     * ne va pas, sans savoir quoi corriger.
+     */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onEnrollmentActionRequired(NotificationEvents.EnrollmentActionRequired e) {
+        String body = "Votre dossier nécessite une correction avant de pouvoir être transmis : "
+                + e.note();
+        notifications.notifyUser(e.doctorUserId(), "ENROLLMENT_STATUS", NotificationSeverity.WARNING,
+                "Pièce à corriger dans votre dossier", body,
+                "/doctor/enrollments/" + e.enrollmentId(), null,
+                "ENROLLMENT_ACTION:" + e.enrollmentId());
+        if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
+            emailService.sendHtml(e.doctorEmail(),
+                    "Optimi Santé — Une pièce de votre dossier est à corriger",
+                    "Votre dossier demande une correction",
+                    "<p>" + body + "</p><p>Déposez la pièce demandée depuis votre espace médecin, "
+                            + "puis resoumettez votre dossier.</p>");
+        }
+    }
+
+    /** Le medecin a corrige : le dossier revient dans la file d'instruction admin. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onEnrollmentResubmitted(NotificationEvents.EnrollmentResubmitted e) {
+        String body = e.doctorName() + " a corrigé son dossier pour « " + e.trainingTitle()
+                + " ». Il est de nouveau en attente de vérification.";
+        notifications.notifyAdmins("ENROLLMENT_RESUBMITTED", NotificationSeverity.INFO,
+                "Dossier corrigé et resoumis", body,
+                "/admin/enrollments/" + e.enrollmentId(), null,
+                "ENROLLMENT_RESUBMITTED:" + e.enrollmentId());
+    }
+
+    /** Le CHU reclame une piece : c'est OptimiSante qui relaie, jamais le CHU en direct. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onPartnerCorrectionRequested(NotificationEvents.PartnerCorrectionRequested e) {
+        String body = e.institutionName() + " réclame une pièce complémentaire sur le dossier de "
+                + e.doctorName() + " : " + e.note();
+        notifications.notifyAdmins("PARTNER_CORRECTION", NotificationSeverity.WARNING,
+                "L'établissement demande une pièce", body,
+                "/admin/enrollments/" + e.enrollmentId(), null,
+                "PARTNER_CORRECTION:" + e.enrollmentId());
+        emailAdmins("Optimi Santé — L'établissement réclame une pièce",
+                "Demande de pièce complémentaire", "<p>" + body + "</p>");
+
+        // Le medecin est aussi prevenu : c'est lui qui doit deposer la piece, et son dossier
+        // est deja repasse en ACTION_REQUIRED. Le message reste emis par OptimiSante — le
+        // CHU ne s'adresse jamais directement au candidat.
+        String doctorBody = "Votre dossier nécessite une pièce complémentaire : " + e.note();
+        notifications.notifyUser(e.doctorUserId(), "ENROLLMENT_STATUS", NotificationSeverity.WARNING,
+                "Pièce à fournir dans votre dossier", doctorBody,
+                "/doctor/enrollments/" + e.enrollmentId(), null,
+                "ENROLLMENT_ACTION:" + e.enrollmentId());
+        if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
+            emailService.sendHtml(e.doctorEmail(),
+                    "Optimi Santé — Une pièce complémentaire est demandée",
+                    "Votre dossier demande une pièce",
+                    "<p>" + doctorBody + "</p><p>Déposez-la depuis votre espace médecin, "
+                            + "puis resoumettez votre dossier.</p>");
+        }
+    }
+
+    /** Decision d'admission du CHU, relayee au medecin. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onPartnerDecisionMade(NotificationEvents.PartnerDecisionMade e) {
+        String body = e.accepted()
+                ? "Bonne nouvelle : " + e.institutionName() + " a retenu votre candidature. "
+                  + "Il vous reste à régler les frais de formation pour confirmer votre place."
+                : "Votre candidature n'a pas été retenue par " + e.institutionName()
+                  + (e.reason() == null || e.reason().isBlank() ? "." : " : " + e.reason());
+        notifications.notifyUser(e.doctorUserId(), "ENROLLMENT_STATUS",
+                e.accepted() ? NotificationSeverity.SUCCESS : NotificationSeverity.WARNING,
+                e.accepted() ? "Candidature acceptée" : "Candidature refusée", body,
+                "/doctor/enrollments/" + e.enrollmentId(), null,
+                "PARTNER_DECISION:" + e.enrollmentId());
+        if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
+            emailService.sendHtml(e.doctorEmail(),
+                    e.accepted()
+                            ? "Optimi Santé — Votre candidature est acceptée"
+                            : "Optimi Santé — Réponse à votre candidature",
+                    e.accepted() ? "Candidature acceptée" : "Candidature refusée",
+                    "<p>" + body + "</p>");
+        }
+    }
+
+    /** Envoi groupe a l'equipe d'administration, best-effort comme tout le reste du dispatcher. */
+    private void emailAdmins(String subject, String heading, String innerHtml) {
+        for (String address : notifications.adminEmails()) {
+            emailService.sendHtml(address, subject, heading, innerHtml);
+        }
+    }
+
+    /**
+     * Libelle lisible d'un statut. Le repli mecanique (tirets bas remplaces par des espaces)
+     * produisait « under optimi review » dans les notifications recues par les medecins :
+     * un identifiant technique, en anglais, dans un message destine au candidat.
+     */
     private static String humanize(String status) {
         if (status == null) {
             return "";
         }
-        return status.replace('_', ' ').toLowerCase();
+        return switch (status) {
+            case "UNDER_OPTIMI_REVIEW"  -> "en cours de vérification";
+            case "ACTION_REQUIRED"      -> "en attente de correction";
+            case "SUBMITTED_TO_PARTNER" -> "transmis à l'établissement";
+            case "ACCEPTED_BY_PARTNER"  -> "accepté par l'établissement";
+            case "PENDING_TUITION_FEE"  -> "en attente du paiement des frais";
+            case "CONFIRMED"            -> "inscription confirmée";
+            case "CONVENTION_ISSUED"    -> "convention émise";
+            case "VISA_SUBMITTED"       -> "demande de visa déposée";
+            case "VISA_GRANTED"         -> "visa obtenu";
+            case "READY_TO_START"       -> "prêt au départ";
+            case "REJECTED"             -> "refusé";
+            case "CANCELLED"            -> "annulé";
+            default -> status.replace('_', ' ').toLowerCase();
+        };
     }
 }

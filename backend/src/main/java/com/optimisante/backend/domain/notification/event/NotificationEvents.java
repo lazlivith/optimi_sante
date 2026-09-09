@@ -39,4 +39,41 @@ public final class NotificationEvents {
     /** Une nouvelle candidature médecin a été déposée — visible dans le back-office admin. */
     public record DoctorApplicationSubmitted(String fullName, String specialty, String email) {
     }
+
+    // ---------------------------------------------------------------------------------
+    // Cycle de candidature tripartite — un événement par main qui change de camp.
+    //
+    // EnrollmentStatusChanged reste le filet générique, mais il ne peut dire au médecin
+    // QUE son dossier a bougé, jamais POURQUOI. Les événements ci-dessous portent le motif
+    // et le destinataire reel de chaque etape, ce que la seule paire de statuts ne permet pas.
+    // ---------------------------------------------------------------------------------
+
+    /** Un médecin vient de déposer un dossier : l'équipe OptimiSanté doit l'instruire. */
+    public record EnrollmentSubmitted(UUID enrollmentId, String doctorName, String doctorEmail,
+                                      String trainingTitle) {
+    }
+
+    /** Dossier pré-qualifié par OptimiSanté et transmis au CHU pour décision. */
+    public record EnrollmentSubmittedToPartner(UUID enrollmentId, UUID doctorUserId, String doctorEmail,
+                                               String trainingTitle, String institutionName) {
+    }
+
+    /** OptimiSanté réclame une pièce au médecin : {@code note} dit laquelle, et pourquoi. */
+    public record EnrollmentActionRequired(UUID enrollmentId, UUID doctorUserId, String doctorEmail,
+                                           String note) {
+    }
+
+    /** Le médecin a corrigé son dossier et l'a resoumis : il retourne dans la file admin. */
+    public record EnrollmentResubmitted(UUID enrollmentId, String doctorName, String trainingTitle) {
+    }
+
+    /** Le CHU réclame une pièce complémentaire ; le dossier revient à OptimiSanté. */
+    public record PartnerCorrectionRequested(UUID enrollmentId, UUID doctorUserId, String doctorName,
+                                             String doctorEmail, String institutionName, String note) {
+    }
+
+    /** Décision du CHU sur une candidature : acceptée ou refusée. */
+    public record PartnerDecisionMade(UUID enrollmentId, UUID doctorUserId, String doctorEmail,
+                                      String institutionName, boolean accepted, String reason) {
+    }
 }

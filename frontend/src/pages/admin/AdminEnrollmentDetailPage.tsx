@@ -9,7 +9,7 @@ import { StatusBadge, getStatusLabel } from '../../components/common/StatusBadge
 import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
 import { EmptyState } from '../../components/common/EmptyState';
 import { FileUploadDropzone } from '../../components/common/FileUploadDropzone';
-import { ArrowLeft, Loader2, CheckCircle, FileText, Download, Lock, FileSignature, Stamp, Upload } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle, FileText, Download, Lock, FileSignature, Stamp, Upload, Send, AlertTriangle } from 'lucide-react';
 
 const STEPS = ENROLLMENT_STEPS.map(s => s.id);
 
@@ -61,6 +61,50 @@ export function AdminEnrollmentDetailPage() {
       fetchEnrollmentData();
     } catch (err: any) {
       setToast({ message: err.response?.data?.message || 'Erreur lors de la mise à jour.', type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  /** Pré-qualification validée : le dossier part au CHU, qui statuera sur l'admission. */
+  const handleSubmitToPartner = async () => {
+    if (!id) return;
+    setIsProcessing(true);
+    try {
+      await adminService.submitEnrollmentToPartner(id);
+      setToast({ message: "Dossier transmis à l'établissement. Le médecin en est informé.", type: 'success' });
+      fetchEnrollmentData();
+    } catch (err: any) {
+      setToast({ message: err.response?.data?.message || 'Erreur lors de la transmission.', type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  /**
+   * Renvoi au médecin pour correction. Le motif est saisi ici puis affiché tel quel dans
+   * son espace et dans l'e-mail qu'il reçoit : sans lui, il saurait que son dossier est
+   * bloqué sans savoir quelle pièce reprendre.
+   */
+  const handleRequestAction = async () => {
+    if (!id) return;
+    const note = window.prompt(
+      'Quelle pièce doit être corrigée ?\n\n'
+      + 'Ce texte est envoyé au médecin par e-mail et affiché dans son espace.\n'
+      + "Exemple : « Le diplôme est illisible, merci de redéposer un scan couleur. »",
+    );
+    if (note === null) return;
+    if (!note.trim()) {
+      setToast({ message: 'Un motif est obligatoire pour demander une correction.', type: 'error' });
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      await adminService.requestEnrollmentAction(id, note.trim());
+      setToast({ message: 'Demande envoyée au médecin.', type: 'success' });
+      fetchEnrollmentData();
+    } catch (err: any) {
+      setToast({ message: err.response?.data?.message || "Erreur lors de l'envoi.", type: 'error' });
     } finally {
       setIsProcessing(false);
     }
@@ -124,6 +168,9 @@ export function AdminEnrollmentDetailPage() {
 
   const currentIndex = STEPS.findIndex(s => s === enrollment.status);
   const nextStep = currentIndex >= 0 && currentIndex < STEPS.length - 1 ? STEPS[currentIndex + 1] : null;
+  // Étape d'instruction OptimiSanté : c'est la seule où l'admin arbitre entre transmettre
+  // au CHU et renvoyer le dossier au médecin. Ailleurs, l'avancement reste linéaire.
+  const isUnderReview = enrollment.status === 'UNDER_OPTIMI_REVIEW';
 
   return (
     <div className="min-h-screen bg-slate-50 py-10">
@@ -154,8 +201,38 @@ export function AdminEnrollmentDetailPage() {
                 <Stepper steps={ENROLLMENT_STEPS} currentStepId={enrollment.status} size="full" />
               )}
 
-              <div className="flex gap-4 border-t border-slate-100 pt-6">
-                {nextStep && (
+              {enrollment.actionRequiredNote && (
+                <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-amber-700 mb-1">
+                    Correction demandée
+                  </p>
+                  <p className="text-sm text-amber-900 whitespace-pre-line">{enrollment.actionRequiredNote}</p>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-4 border-t border-slate-100 pt-6">
+                {isUnderReview && (
+                  <>
+                    <button
+                      onClick={handleSubmitToPartner}
+                      disabled={isProcessing}
+                      className="flex items-center px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors disabled:opacity-50"
+                    >
+                      {isProcessing ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Send className="w-5 h-5 mr-2" />}
+                      Valider et transmettre au CHU
+                    </button>
+                    <button
+                      onClick={handleRequestAction}
+                      disabled={isProcessing}
+                      className="flex items-center px-6 py-3 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-colors disabled:opacity-50"
+                    >
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      Demander une correction
+                    </button>
+                  </>
+                )}
+
+                {nextStep && !isUnderReview && (
                   <button
                     onClick={() => handleUpdateStatus(nextStep)}
                     disabled={isProcessing}

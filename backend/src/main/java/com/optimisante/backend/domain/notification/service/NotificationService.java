@@ -69,6 +69,35 @@ public class NotificationService {
         }
     }
 
+    /**
+     * Notifie l'équipe d'administration, c'est-à-dire {@code ADMIN} <b>et</b> {@code SUPER_ADMIN}.
+     *
+     * <p>Un {@code notifyRole(Role.ADMIN, ...)} seul est un piège : le rôle {@code ADMIN} peut
+     * n'être porté par aucun compte (c'est le cas d'une plateforme pilotée par un unique
+     * {@code SUPER_ADMIN}), et l'alerte part alors dans le vide sans la moindre erreur. Toute
+     * notification destinée au back-office doit passer par ici.</p>
+     */
+    public void notifyAdmins(String type, NotificationSeverity severity,
+                             String title, String body, String linkUrl, String metadataJson, String dedupeKey) {
+        notifyRole(Role.ADMIN, type, severity, title, body, linkUrl, metadataJson, dedupeKey);
+        notifyRole(Role.SUPER_ADMIN, type, severity, title, body, linkUrl, metadataJson, dedupeKey);
+    }
+
+    /** Adresses e-mail de l'équipe d'administration, pour les alertes qui doivent sortir de l'app. */
+    public java.util.List<String> adminEmails() {
+        try {
+            java.util.List<String> emails = new java.util.ArrayList<>();
+            for (Role role : java.util.List.of(Role.ADMIN, Role.SUPER_ADMIN)) {
+                userRepository.findByRole(role, PageRequest.of(0, ROLE_FANOUT_CAP)).getContent()
+                        .forEach(u -> emails.add(u.getEmail()));
+            }
+            return emails;
+        } catch (Exception e) {
+            log.warn("adminEmails failed (ignored): {}", e.getMessage());
+            return java.util.List.of();
+        }
+    }
+
     /** L'utilisateur accepte-t-il l'e-mail pour ce type ? (Défaut : oui.) Consulté par le dispatcher. */
     public boolean emailAllowed(UUID userId, String type) {
         return preferenceRepository.findById(new NotificationPreference.Id(userId, type))
