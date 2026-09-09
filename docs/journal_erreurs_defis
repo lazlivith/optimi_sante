@@ -1423,9 +1423,11 @@ connaissable :
    housse standard » en couvre quinze). Une gamme n'a pas de prix unitaire. **97 % des fiches
    à 100,00 € sont multi-références, contre 30 % pour le reste du catalogue.**
 
-**Ce que cela a déjà coûté** : un « Stérilisateur à air chaud DOF-HAS70A » a été vendu — 2
-unités à 100,00 € puis 18 à 95,00 €, soit **20 appareils pour 1 910 € au total**. La commande
-n'est pas retouchée : une pièce comptable ne se réécrit pas. Elle mesure le risque.
+**Ce que cela aurait coûté** : une commande de **test** porte un « Stérilisateur à air chaud
+DOF-HAS70A » — 2 unités à 100,00 € puis 18 à 95,00 €, soit 20 appareils pour 1 910 €. *Aucune
+vente réelle n'a eu lieu* : toutes les commandes en base sont des données de test (voir
+l'entrée 66). Ce n'est donc pas une perte, mais la démonstration que le parcours d'achat
+menait effectivement au bout au prix de remplissage.
 
 **La correction ne devine aucun prix.** Personne ne déduit le tarif d'un cryostat d'une base de
 données. Les fiches basculent sur `is_quote_only` — un mécanisme **déjà présent et déjà
@@ -1505,3 +1507,48 @@ récupérée (0 → 305 caractères) ; `Adaptateur secteur Veroval` à 14,33 €
   produits en exemplaire unique, rien ne dit si leur prix est HT ou TTC ; seule une
   confrontation au tarif fournisseur le dira.
 - **Renseigner les 138 tarifs** manquants, pour sortir ces fiches du régime « sur devis ».
+
+## 66. Deux rappels : les ventes en base sont fictives, et une migration appliquée est immuable
+
+### J'ai chiffré une perte qui n'existait pas
+
+J'ai présenté la commande de 20 stérilisateurs à ~100 € comme **une perte commerciale déjà
+subie**. C'était faux : toutes les commandes, tous les comptes clients et tous les partenaires
+présents en base sont des données de test, créées pendant le développement et destinées à être
+purgées avant la mise en production.
+
+L'erreur ne vient pas d'une donnée mal lue mais d'une **hypothèse jamais vérifiée** : j'ai traité
+`order_items` comme un registre comptable parce que c'est ce qu'il sera en production, sans me
+demander ce qu'il contenait aujourd'hui. Une base de développement ressemble à une base de
+production ; c'est précisément pourquoi il faut le demander plutôt que le supposer.
+
+**Ce que cela change concrètement.** L'argument « une commande est une pièce comptable » qui
+justifiait plusieurs choix reste valable *pour la production*, mais la contrainte actuelle est
+purement **technique** : masquer un produit référencé par une commande fait échouer l'affichage
+de celle-ci. Deux conséquences :
+
+- Les **2 groupes de doublons** (`Fauteuil Releveur BORAS`, `Cardiomate pc-ecg`) laissés non
+  fusionnés en V34/V36 ne l'étaient qu'à cause de commandes fictives. La purge levée, ils
+  pourront être fusionnés comme les 32 autres.
+- Le correctif de `OrderService` (entrée 64) **garde toute sa valeur** : il vaudra pour les
+  vraies commandes, et c'est lui qui rendra la fusion de ces deux groupes possible sans casse.
+
+### Puis j'ai failli casser l'historique des migrations
+
+Voulant corriger la formulation fautive, j'ai édité les commentaires de **V35 et V36 — déjà
+appliquées**. Flyway enregistre l'empreinte de chaque migration au moment où il la joue et la
+revérifie à chaque démarrage : modifier ne serait-ce qu'un commentaire aurait fait échouer le
+prochain lancement du backend sur un `Migration checksum mismatch`, et cassé toute base ayant
+déjà reçu ces versions.
+
+**Une migration appliquée est immuable**, commentaires compris. Les deux fichiers ont été
+restaurés à l'identique ; la correction vit ici, dans le journal, qui est le bon endroit pour
+un récit — une migration décrit ce qu'elle fait, pas ce qu'on a compris après coup.
+
+### Ce qui reste à faire, le moment venu
+
+Un script de préparation à la production devra retirer les commandes, comptes clients et
+partenaires fictifs. Il n'est pas écrit : le faire maintenant priverait les tests en cours de
+leurs données. À traiter comme un chantier à part entière — l'ordre de suppression compte
+(`order_items` avant `orders`, réservations de stock, journaux d'emails, candidatures), et
+c'est exactement le genre d'opération qui doit être rejouée sur une copie avant la vraie base.
