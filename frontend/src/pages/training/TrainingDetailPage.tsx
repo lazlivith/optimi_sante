@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Download, Loader2, CheckCircle, GraduationCap, Clock, MapPin } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, CheckCircle, GraduationCap, Clock, MapPin, Stamp, ShieldCheck, Home, Car, ArrowRight } from 'lucide-react';
 import { trainingService, type LeadCaptureRequestDto, type TrainingSummaryDto } from '../../api/trainingService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -155,6 +155,38 @@ export function TrainingDetailPage() {
                   <p className="font-semibold text-brand-dark">{training?.location ?? 'CHU Partenaires'}</p>
                 </div>
               </div>
+            </div>
+
+            {/* Rappel synthetique de l'accompagnement, renvoye vers /services. Detailler
+                l'assurance, le logement et le visa ici noierait le programme medical, qui est
+                la raison pour laquelle on ouvre cette page. */}
+            <div className="rounded-2xl border border-brand-green/25 bg-brand-green/5 p-5 mb-6">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-brand-green mb-2">
+                Compris dans notre accompagnement
+              </p>
+              <ul className="grid sm:grid-cols-2 gap-x-5 gap-y-1.5 mb-4">
+                {[
+                  { icon: Stamp, texte: 'Dossier consulaire et convention' },
+                  { icon: ShieldCheck, texte: 'Assurance rapatriement & santé' },
+                  { icon: Home, texte: 'Hébergement près du CHU' },
+                  { icon: Car, texte: "Accueil et transport à l'arrivée" },
+                ].map(({ icon: Icon, texte }) => (
+                  <li key={texte} className="flex items-center gap-2 text-sm text-slate-700">
+                    <Icon className="w-4 h-4 text-brand-green shrink-0" />
+                    {texte}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-slate-500 mb-3">
+                Options à choisir séparément, une fois votre candidature acceptée.
+              </p>
+              <Link
+                to="/services"
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-green hover:underline"
+              >
+                En savoir plus sur notre accompagnement
+                <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
 
             <Link to={applyPath} className="inline-flex items-center justify-center px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">

@@ -2379,3 +2379,63 @@ sommaires. Résultat : 8 liens et 26 entrées de sommaire, **toutes les cibles e
 
 C'est ce recoupement qui manquait au lot précédent : j'avais vérifié que les `id` étaient là,
 sans vérifier que quelque chose s'en servait.
+
+## 77. Lot 1 — Vitrine « Nos services & accompagnement »
+
+Premier des cinq lots du plan validé. Frontend uniquement : aucune migration, aucun changement
+de comportement serveur.
+
+### La page dit ce qu'Optimi Santé fait, pas ce que le logiciel sait faire
+
+La page précédente parlait de négoce, de devis et de partenariat. Elle est réécrite autour de
+ce qu'un médecin veut savoir avant de s'engager : **qui s'occupe de lui**. Accompagnement visa
+et administratif d'abord, pack logistique ensuite, parcours étape par étape, puis frais et
+conditions.
+
+Le négoce, le devis professionnel et le partenariat restent présents, mais après — l'ordre
+suit l'audience visée, pas l'organigramme.
+
+### Aucun montant n'est écrit dans le texte
+
+Les frais de dossier et la part exigée à l'admission viennent de `CONDITIONS_MOBILITE`, la même
+source que les conditions générales. Un chiffre recopié dans une page commerciale finit par
+contredire le contrat opposable — c'est précisément le risque identifié au lot précédent.
+
+**Conséquence assumée :** la page affiche aujourd'hui **50 €** et **100 %**, parce que c'est ce
+que le serveur facture. Le passage à 100 € et 60 % est le contenu des lots 2 et 5 ; l'écrire ici
+maintenant reviendrait à annoncer un barème que la plateforme n'applique pas.
+
+### Décrire une prestation sans promettre une fonctionnalité
+
+Assurance, hébergement et transport sont des services réellement rendus par Optimi Santé —
+aujourd'hui hors plateforme. La page les décrit donc comme des prestations à souscrire
+« au moment de la procédure », sans laisser entendre qu'un écran de configuration en ligne
+existe. Il arrivera au lot 4.
+
+Même prudence pour l'entretien : le parcours mentionne que l'établissement propose des créneaux
+et que le candidat choisit le sien, ce qui est le processus métier ; l'outil qui le porte est le
+lot 3.
+
+### L'encart de la fiche formation reste un rappel
+
+Quatre lignes, une phrase de cadrage, un lien. Détailler l'assurance, le logement et le visa sur
+la fiche noierait le programme médical — la raison pour laquelle on ouvre cette page. C'est
+exactement la séparation demandée.
+
+### Les ancres du pied de page réorganisées sans en casser
+
+La page gagne trois sections (`accompagnement`, `pack`, `tarifs`) et en réordonne d'autres. Les
+identifiants `negoce`, `devis`, `formations`, `partenariat` et `faq` sont **conservés**, parce
+que le pied de page les vise directement.
+
+Le contrôle de cohérence écrit à l'entrée 76 a été rejoué : **10 liens de pied de page et 8
+entrées de sommaire, toutes les cibles existent**. C'est le genre de vérification qui ne coûte
+rien une fois écrite et qui aurait évité le défaut d'origine.
+
+### Un détail d'outillage, deux fois de suite
+
+L'apostrophe française a de nouveau cassé une génération de code : `l'arrivée` écrit dans un
+script de patch Python est ressorti sans son échappement, produisant une chaîne JavaScript non
+terminée. Corrigé en passant la chaîne en guillemets doubles — plus simple que d'échapper à
+travers deux couches. C'est la même famille de friction que les heredocs bash abandonnés plus
+tôt dans ce projet.
