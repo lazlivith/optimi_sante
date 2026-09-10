@@ -2603,3 +2603,126 @@ Le partenaire, lui, ne voit ni ne renseigne ce champ : `CreateTrainingRequestDto
 pas, et `PartnerTrainingResponseDto` ne le renvoie pas. L'isolation ne repose donc pas sur un
 contrôle d'accès qu'on pourrait oublier, mais sur l'absence du champ dans le contrat qu'il
 manipule — le CHU ne peut pas fixer la rémunération d'un travail qu'il n'effectue pas.
+
+---
+
+## Lot 3 — Entretien de sélection : le CHU propose, Optimi Santé transmet, le médecin choisit
+
+### Pourquoi passer par l'administration
+
+Le détour n'est pas une lourdeur ajoutée : la règle existait déjà, écrite noir sur blanc dans
+`EnrollmentTransitions` — *« le partenaire ne s'adresse jamais directement au médecin »*. Un CHU
+qui convoquerait lui-même sortirait du rôle d'agence et priverait la plateforme de la trace de
+ce qui a été promis au candidat. Le circuit à trois mains reprend donc une contrainte du
+domaine, il n'en invente pas une.
+
+### Ce que ce module ne fait pas
+
+**Aucun statut de dossier n'a été ajouté, aucune transition modifiée.** L'entretien accompagne
+la décision du partenaire, il ne la remplace pas : un dossier peut être accepté sans entretien,
+et un entretien confirmé ne fait pas avancer la candidature. C'est le choix déjà fait en V37
+pour les demandes de pièces, et pour la même raison — greffer chaque nouvelle étape sur
+l'automate finirait par le rendre illisible.
+
+### Ce que la base refuse d'elle-même
+
+Neuf comportements ont été vérifiés sur la base réelle, dans une transaction annulée, **avant**
+d'écrire la moindre ligne de Java :
+
+| Cas | Attendu | Obtenu |
+|---|---|---|
+| Entretien sur place sans adresse | refus | `interview_schedules_location_check` |
+| Entretien téléphonique sans adresse | accepté | accepté |
+| `TRANSMITTED` sans date de transmission | refus | `interview_schedules_coherent` |
+| `CONFIRMED` sans créneau retenu | refus | `interview_schedules_coherent` |
+| `CANCELLED` sans motif | refus | `interview_schedules_coherent` |
+| Deux entretiens vivants sur un dossier | refus | `uq_interview_schedule_actif` |
+| Un vivant + un annulé | accepté | accepté |
+| Créneau finissant avant de commencer | refus | `interview_slots_order_check` |
+| Deux créneaux au même instant | refus | `uq_interview_slots_moment` |
+
+### Trois erreurs qui méritent d'être écrites
+
+**1. J'ai mesuré la mauvaise chose.** Pour vérifier l'absence de N+1 sur la file d'attente
+administrative, j'ai compté `seq_scan + idx_scan` de `pg_stat_user_tables`, comme lors des
+audits précédents. Résultat : **16 accès avant la correction, 25 après**. La correction semblait
+avoir aggravé la situation.
+
+Elle ne l'avait pas. Ce compteur mesure les **accès de table**, pas les **requêtes SQL** : une
+jointure imbriquée parcourt la table interne une fois par ligne externe, et enregistre donc
+autant d'`idx_scan` en une seule requête. La métrique ne pouvait structurellement pas montrer
+ce que je cherchais. **Un chiffre qui ne mesure pas la bonne chose est pire qu'aucun chiffre :
+il donne l'assurance de s'être trompé.**
+
+**2. Mon compteur de requêtes ne comptait que mes propres sondes.** Passé à
+`log_statement = 'all'`, j'ai compté les lignes `statement: select` — et trouvé 2 requêtes pour
+7 entretiens, un résultat trop beau. Les requêtes de Hibernate passent par des instructions
+préparées, journalisées sous `execute <unnamed>:` et non sous `statement:`. Mes deux « requêtes »
+étaient les bornes que j'avais moi-même insérées pour délimiter la mesure.
+
+**3. Le chargement groupé ne remplaçait rien.** Une fois le bon motif employé, la vérité est
+apparue : **8 requêtes sur `doctor_profiles` pour 7 entretiens**. Le chargement groupé était
+pourtant en place. La cause tient en un mot :
+
+```java
+.doctorName(noms.getOrDefault(dossier.getDoctor().getId(), nomMedecin(dossier)))
+```
+
+`getOrDefault` **évalue son argument par défaut dans tous les cas**. `nomMedecin()` — donc la
+requête par ligne — partait pour chaque entretien, que le nom soit déjà connu ou non. Le
+chargement groupé n'économisait rien et ajoutait une requête. Écrit en deux temps, le compte
+tombe à **2 requêtes pour 7 entretiens, et il ne bouge plus avec la taille de la file**.
+
+Un chargement groupé qui ne remplace rien est pire que pas de chargement groupé du tout : il
+coûte une requête et donne l'impression que le problème est réglé.
+
+### Un angle mort d'envoi, reproductible et non aléatoire
+
+La confirmation prévient deux personnes : le médecin et l'établissement. Les deux messages
+partent coup sur coup, et le relais refusait systématiquement le second — *« Too many emails per
+second »*. Toujours le même destinataire perdu : **l'établissement, celui-là même qui recevra le
+candidat**.
+
+`EmailService` retente donc une fois, après une seconde, **uniquement lorsque le refus porte sur
+la cadence** — reconnu sur le texte du message et non sur le code SMTP, que les relais utilisent
+de façon contradictoire (421 ou 450 transitoire chez les uns, 550 définitif chez d'autres). Une
+adresse invalide, elle, n'est pas retentée : elle échouerait pareillement.
+
+Vérifié : `Email envoyé à chu@optimi.com à la seconde tentative`. Les refus qui subsistent
+tiennent au quota du relais de test — un envoi isolé passe sans difficulté — et chaque échec
+reste tracé dans `email_logs`, renvoyable depuis l'espace « Emails ».
+
+### Une convocation qui survivait à son annulation
+
+Après avoir annulé un entretien confirmé, la convocation restait dans les documents du médecin.
+Rien à l'écran ne la distinguait d'une convocation valable : il aurait pu se présenter à un
+rendez-vous supprimé. Elle est désormais retirée du coffre à l'annulation.
+
+En revanche — et c'est l'ajustement inverse — **le créneau retenu et la date de confirmation
+sont conservés**. Je les effaçais d'abord « par cohérence », en croyant la contrainte V41 les
+interdire ; sa branche `CANCELLED` ne les interdit pas. Les effacer faisait perdre l'essentiel :
+un entretien annulé après confirmation et un entretien annulé avant se seraient lus pareil. Mon
+propre commentaire promettait d'ailleurs une trace que le code détruisait.
+
+### Le circuit, vérifié sur la plateforme déployée
+
+| Contrôle | Résultat |
+|---|---|
+| Un seul créneau proposé | **400** — « un seul ne laisse aucun choix au médecin » |
+| Visio sans lien de connexion | **400** |
+| Créneau déjà passé | **400**, la date étant nommée |
+| Deux créneaux valides | **200**, `PROPOSED` |
+| Second entretien sur le même dossier | **409** |
+| Médecin, avant transmission | **204** — l'entretien n'existe pas pour lui |
+| Médecin tentant de confirmer avant transmission | **409** |
+| Médecin tentant de transmettre | **403** |
+| Transmission par l'admin | **200**, `TRANSMITTED`, email au médecin |
+| Transmettre deux fois | **409** |
+| Un autre médecin confirme | **403** |
+| Créneau étranger à l'entretien | **400** |
+| Confirmation | **200**, `CONFIRMED`, convocation déposée, deux emails |
+| Confirmer deux fois | **409** |
+| Annulation sans motif | **400** |
+| Annulation, puis nouvelle proposition | **200** puis **200** |
+| Statut du dossier après tout le circuit | `SUBMITTED_TO_PARTNER`, **inchangé** |
+| File d'attente admin, 7 entretiens | **2 requêtes SQL** |

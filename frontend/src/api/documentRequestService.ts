@@ -9,6 +9,7 @@ export const DOCUMENT_TYPES = [
   { value: 'VISA_GRANT', label: 'Visa' },
   { value: 'CONSULAR_LETTER', label: 'Courrier consulaire' },
   { value: 'ACCOMMODATION_PROOF', label: 'Justificatif d\'hébergement' },
+  { value: 'INTERVIEW_CONVOCATION', label: "Convocation à l'entretien" },
   { value: 'OTHER', label: 'Autre pièce' },
 ] as const;
 

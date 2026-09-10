@@ -7,6 +7,7 @@ import { ArrowLeft, UploadCloud, FileText, Loader2, XCircle, AlertTriangle, Send
 import { TuitionPaymentCard } from '../../components/training/TuitionPaymentCard';
 import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
 import { MyVisaDossierPanel } from '../../components/enrollment/MyVisaDossierPanel';
+import { MyInterviewPanel } from '../../components/enrollment/MyInterviewPanel';
 
 export function MyEnrollmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -170,6 +171,13 @@ export function MyEnrollmentDetailPage() {
             />
           </div>
         )}
+
+        {/* Entretien de selection. Place avant les pieces : quand un entretien attend une
+            reponse, c'est l'action la plus urgente du dossier — et le panneau ne s'affiche
+            que dans ce cas, il ne prend donc jamais la place pour rien. */}
+        <div className="mb-8">
+          <MyInterviewPanel enrollmentId={enrollment.id} />
+        </div>
 
         {/* Dossier visa : ce qu'OptimiSanté reclame, suivi piece par piece. Place avant
             l'envoi libre ci-dessous, qui reste utile pour transmettre un document qu'on ne

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Convocation à l'entretien de sélection</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 20mm;
+            @bottom-center { content: element(footer); }
+        }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 13px; color: #333; line-height: 1.5; }
+        .footer { position: running(footer); }
+        .cert-header { text-align: center; margin-top: 40px; margin-bottom: 32px; }
+        .section-title { border-bottom: 2px solid #154D44; color: #154D44; padding-bottom: 5px; margin-top: 28px; margin-bottom: 12px; }
+        .rendezvous { background-color: #F1F6F3; border-left: 4px solid #154D44; padding: 16px; margin: 20px 0; }
+        .rendezvous .date { font-size: 17px; font-weight: bold; color: #154D44; }
+        .note { background-color: #f5f5f5; padding: 12px; margin: 12px 0; border-radius: 4px; }
+        .avis { margin-top: 32px; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 12px; }
+    </style>
+</head>
+<body>
+
+    <div th:replace="~{components/header :: header}"></div>
+
+    <div class="cert-header">
+        <h2 style="color: #154D44; margin-bottom: 5px;">CONVOCATION À L'ENTRETIEN DE SÉLECTION</h2>
+        <p style="margin: 0; color: #666;">Réf : <span th:text="${reference}">ENT-00000000</span></p>
+    </div>
+
+    <p>
+        <strong>Dr. <span th:text="${doctorName}">Nom du médecin</span></strong>,
+        vous êtes attendu(e) pour l'entretien de sélection organisé par
+        <strong th:text="${institutionName}">Établissement</strong>
+        dans le cadre de votre candidature à la formation
+        <strong th:text="${trainingTitle}">Titre de la formation</strong>.
+    </p>
+
+    <!-- Le créneau vient du choix du médecin lui-même : ce document confirme sa décision,
+         il ne la lui impose pas. -->
+    <div class="rendezvous">
+        <p style="margin: 0 0 6px 0;" class="date" th:text="${interviewDate}">Date et heure</p>
+        <p style="margin: 4px 0;">Fin prévue : <span th:text="${interviewEnd}">00h00</span></p>
+        <p style="margin: 4px 0;"><strong>Forme :</strong> <span th:text="${modeLabel}">Mode</span></p>
+        <p style="margin: 4px 0;" th:if="${locationOrLink}">
+            <strong>Lieu / lien de connexion :</strong>
+            <span th:text="${locationOrLink}">Adresse ou lien</span>
+        </p>
+    </div>
+
+    <div th:if="${partnerNote}">
+        <h3 class="section-title">Consignes de l'établissement</h3>
+        <div class="note" th:text="${partnerNote}">Consignes</div>
+    </div>
+
+    <div th:if="${adminNote}">
+        <h3 class="section-title">Précisions d'Optimi Santé</h3>
+        <div class="note" th:text="${adminNote}">Précisions</div>
+    </div>
+
+    <h3 class="section-title">Ce que vaut ce document</h3>
+    <p>
+        Cette convocation atteste du rendez-vous convenu entre vous et l'établissement d'accueil.
+        <strong>Elle ne préjuge pas de la décision de l'établissement</strong> sur votre candidature :
+        l'entretien accompagne cette décision, il ne l'anticipe pas.
+    </p>
+    <p>
+        En cas d'empêchement, prévenez Optimi Santé sans attendre : un nouveau créneau devra être
+        convenu avec l'établissement.
+    </p>
+
+    <div class="avis">
+        <p style="margin: 0;">
+            Document émis le <span th:text="${issuedAt}">date</span> par Optimi Santé,
+            à l'attention de <span th:text="${doctorEmail}">email</span>.
+        </p>
+    </div>
+
+    <div th:replace="~{components/footer :: footer}"></div>
+
+</body>
+</html>

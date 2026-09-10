@@ -10,6 +10,7 @@ import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
 import { EmptyState } from '../../components/common/EmptyState';
 import { FileUploadDropzone } from '../../components/common/FileUploadDropzone';
 import { AdminDocumentRequestsPanel } from '../../components/enrollment/AdminDocumentRequestsPanel';
+import { AdminInterviewPanel } from '../../components/enrollment/AdminInterviewPanel';
 import { ArrowLeft, Loader2, CheckCircle, FileText, Download, Lock, FileSignature, Stamp, Upload } from 'lucide-react';
 
 const STEPS = ENROLLMENT_STEPS.map(s => s.id);
@@ -204,6 +205,10 @@ export function AdminEnrollmentDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* Entretien de selection : c'est ici que la transmission au medecin se decide,
+                geste sans lequel les creneaux du CHU restent invisibles au candidat. */}
+            <AdminInterviewPanel enrollmentId={enrollment.id} />
 
             {/* Pieces reclamees au candidat. Place AVANT le coffre-fort : ce qui manque se
                 traite avant ce qui est deja la, et c'est de ce panneau que part l'action. */}

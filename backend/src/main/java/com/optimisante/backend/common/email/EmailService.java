@@ -96,16 +96,151 @@ public class EmailService {
         sendOrThrow(toEmail, subject, html, EmailType.TEST);
     }
 
-    /** Envoi non bloquant : trace le résultat, n'interrompt jamais le flux métier appelant. */
+    /**
+     * Prévient le médecin que des créneaux d'entretien lui sont proposés.
+     *
+     * <p>Le message est volontairement court : il n'énumère pas les créneaux. Une liste de
+     * dates dans un email vieillit mal — le médecin la lirait après qu'un créneau a été retenu
+     * ou l'entretien annulé, et croirait des informations périmées. L'email amène sur le
+     * dossier, où l'état affiché est toujours le vrai.</p>
+     *
+     * <p>Échec non bloquant, comme l'envoi des identifiants : si le SMTP est indisponible, les
+     * créneaux restent transmis et visibles dans l'espace du médecin.</p>
+     */
+    public void sendInterviewSlotsEmail(String toEmail, String doctorName, String trainingTitle,
+                                        String institutionName, int nombreCreneaux,
+                                        UUID recipientUserId) {
+        String subject = "Optimi Santé — Entretien de sélection : créneaux à choisir";
+        String dossierUrl = frontendBaseUrl + "/doctor/enrollments";
+        String html = """
+                <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1a2e29;">
+                    <div style="background-color: #154D44; padding: 24px; border-radius: 12px 12px 0 0;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">Optimi Santé</h1>
+                    </div>
+                    <div style="border: 1px solid #E2EBE5; border-top: none; padding: 32px; border-radius: 0 0 12px 12px;">
+                        <p>Bonjour %s,</p>
+                        <p><strong>%s</strong> vous propose un entretien de sélection pour la formation
+                        <strong>%s</strong>.</p>
+                        <p><strong>%d créneaux</strong> vous sont proposés. Choisissez celui qui vous convient
+                        depuis votre dossier : votre choix vaut confirmation du rendez-vous, et votre
+                        convocation sera déposée dans vos documents.</p>
+                        <a href="%s" style="display: inline-block; background-color: #154D44; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; margin-top: 16px;">Choisir mon créneau</a>
+                        <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
+                    </div>
+                </div>
+                """.formatted(doctorName, institutionName, trainingTitle, nombreCreneaux, dossierUrl);
+
+        send(toEmail, subject, html, EmailType.INTERVIEW_SLOTS, recipientUserId);
+    }
+
+    /**
+     * Confirme le rendez-vous retenu.
+     *
+     * <p>Celui-ci porte bien la date : elle est désormais arrêtée, et c'est précisément
+     * l'information que le destinataire voudra retrouver dans sa boîte mail. Le même message
+     * sert au médecin et à l'établissement — ils ont besoin du même rendez-vous.</p>
+     */
+    public void sendInterviewConfirmedEmail(String toEmail, String destinataire, String doctorName,
+                                            String trainingTitle, String creneau, String modeLabel,
+                                            String lieuOuLien, UUID recipientUserId) {
+        String subject = "Optimi Santé — Entretien confirmé : " + creneau;
+        String lieuLigne = (lieuOuLien == null || lieuOuLien.isBlank())
+                ? ""
+                : "<p style=\"margin: 4px 0;\"><strong>Lieu / lien :</strong> " + lieuOuLien + "</p>";
+        String html = """
+                <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1a2e29;">
+                    <div style="background-color: #154D44; padding: 24px; border-radius: 12px 12px 0 0;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">Optimi Santé</h1>
+                    </div>
+                    <div style="border: 1px solid #E2EBE5; border-top: none; padding: 32px; border-radius: 0 0 12px 12px;">
+                        <p>Bonjour %s,</p>
+                        <p>L'entretien de sélection de <strong>Dr. %s</strong> pour la formation
+                        <strong>%s</strong> est confirmé.</p>
+                        <div style="background-color: #F6F7F5; border-radius: 8px; padding: 16px; margin: 24px 0;">
+                            <p style="margin: 4px 0;"><strong>Date :</strong> %s</p>
+                            <p style="margin: 4px 0;"><strong>Forme :</strong> %s</p>
+                            %s
+                        </div>
+                        <p>La convocation est disponible dans les documents du dossier.</p>
+                        <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
+                    </div>
+                </div>
+                """.formatted(destinataire, doctorName, trainingTitle, creneau, modeLabel, lieuLigne);
+
+        send(toEmail, subject, html, EmailType.INTERVIEW_CONFIRMED, recipientUserId);
+    }
+
+    /**
+     * Délai avant la seconde tentative, quand le relais a refusé pour cadence excessive.
+     *
+     * <p>Un peu plus d'une seconde : les relais qui limitent le débit raisonnent à la seconde.</p>
+     */
+    private static final long PAUSE_AVANT_SECONDE_TENTATIVE_MS = 1200L;
+
+    /**
+     * Envoi non bloquant : trace le résultat, n'interrompt jamais le flux métier appelant.
+     *
+     * <p><b>Une seconde tentative est faite lorsque le refus porte sur la cadence.</b> Certains
+     * gestes de la plateforme envoient deux messages coup sur coup — la confirmation d'un
+     * entretien prévient le médecin <i>et</i> l'établissement. Les relais qui limitent le débit
+     * refusent alors le second de façon systématique, et c'est toujours le même destinataire
+     * qui est perdu : l'établissement, celui-là même qui recevra le candidat. Ce n'est donc pas
+     * un aléa mais un angle mort reproductible, qu'une pause d'une seconde suffit à lever.</p>
+     *
+     * <p>Le nouvel essai ne concerne que ce refus-là. Une adresse invalide ou un mot de passe
+     * SMTP erroné échoueront pareillement la seconde fois : réessayer ne ferait qu'ajouter de
+     * la latence à une erreur déjà certaine.</p>
+     */
     private void send(String to, String subject, String html, EmailType type, UUID recipientUserId) {
         try {
             deliver(to, subject, html);
             log.info("Email envoyé à {}", to);
             trace(to, subject, type, EmailStatus.SENT, null, recipientUserId);
-        } catch (Exception e) {
-            log.error("Échec de l'envoi d'email à {} : {}", to, e.getMessage());
-            trace(to, subject, type, EmailStatus.FAILED, e.getMessage(), recipientUserId);
+            return;
+        } catch (Exception premiereErreur) {
+            if (!refusDeCadence(premiereErreur)) {
+                log.error("Échec de l'envoi d'email à {} : {}", to, premiereErreur.getMessage());
+                trace(to, subject, type, EmailStatus.FAILED, premiereErreur.getMessage(), recipientUserId);
+                return;
+            }
+            log.warn("Cadence refusée par le relais pour {} : nouvelle tentative dans {} ms",
+                    to, PAUSE_AVANT_SECONDE_TENTATIVE_MS);
         }
+
+        try {
+            Thread.sleep(PAUSE_AVANT_SECONDE_TENTATIVE_MS);
+            deliver(to, subject, html);
+            log.info("Email envoyé à {} à la seconde tentative", to);
+            trace(to, subject, type, EmailStatus.SENT, null, recipientUserId);
+        } catch (InterruptedException interruption) {
+            // Restaurer le drapeau : l'avaler priverait l'appelant de l'information.
+            Thread.currentThread().interrupt();
+            log.error("Attente interrompue avant la seconde tentative vers {}", to);
+            trace(to, subject, type, EmailStatus.FAILED, "Attente interrompue", recipientUserId);
+        } catch (Exception secondeErreur) {
+            log.error("Échec de l'envoi d'email à {} après deux tentatives : {}",
+                    to, secondeErreur.getMessage());
+            trace(to, subject, type, EmailStatus.FAILED, secondeErreur.getMessage(), recipientUserId);
+        }
+    }
+
+    /**
+     * Le relais a-t-il refusé pour cause de cadence ?
+     *
+     * <p>Reconnu sur le texte du message et non sur le code SMTP : les relais utilisent pour ce
+     * refus des codes contradictoires — un 421 ou 450 transitoire chez les uns, un 550
+     * définitif chez d'autres. Se fier au code laisserait passer la moitié des cas.</p>
+     */
+    private boolean refusDeCadence(Exception e) {
+        String message = e.getMessage();
+        if (message == null) {
+            return false;
+        }
+        String m = message.toLowerCase(java.util.Locale.ROOT);
+        return m.contains("too many emails")
+                || m.contains("rate limit")
+                || m.contains("too many messages")
+                || m.contains("throttl");
     }
 
     /** Envoi bloquant : trace le résultat puis propage l'erreur à l'appelant. */

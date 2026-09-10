@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { partnerService, type EnrollmentDto, type PartnerTrainingDto } from '../../api/partnerService';
+import { PartnerInterviewDialog } from '../../components/enrollment/PartnerInterviewDialog';
 import type { DocumentItemDto } from '../../api/vaultService';
 import { vaultService } from '../../api/vaultService';
 import { Toast, type ToastType } from '../../components/common/Toast';
@@ -7,7 +8,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Avatar } from '../../components/common/Avatar';
-import { Loader2, CheckCircle, FileText, Filter, FolderOpen, X, ExternalLink } from 'lucide-react';
+import { Loader2, CheckCircle, FileText, Filter, FolderOpen, X, ExternalLink, CalendarPlus} from 'lucide-react';
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   PASSPORT: 'Passeport',
@@ -28,6 +29,11 @@ export function PartnerEnrollmentsPage() {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   const [viewingDocsFor, setViewingDocsFor] = useState<EnrollmentDto | null>(null);
+
+  // Candidature dont on planifie l'entretien. L'entretien se propose depuis la liste et non
+  // depuis un ecran a part : c'est en examinant un dossier qu'on decide de rencontrer son
+  // auteur.
+  const [entretienPour, setEntretienPour] = useState<EnrollmentDto | null>(null);
   const [docs, setDocs] = useState<DocumentItemDto[]>([]);
   const [isLoadingDocs, setIsLoadingDocs] = useState(false);
 
@@ -200,6 +206,11 @@ export function PartnerEnrollmentsPage() {
                         </button>
                         {e.status === 'SUBMITTED_TO_PARTNER' && (
                           <>
+                            {/* L'entretien accompagne la decision, il ne la remplace pas :
+                                le bouton coexiste avec « Approuver » au lieu de s'y substituer. */}
+                            <button onClick={() => setEntretienPour(e)} className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-brand-green bg-brand-green/10 rounded-lg hover:bg-brand-green/20 transition-colors">
+                              <CalendarPlus className="w-3.5 h-3.5 mr-1.5" /> Entretien
+                            </button>
                             <button onClick={() => handleApprove(e.id)} className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
                               <CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Approuver
                             </button>
@@ -266,6 +277,14 @@ export function PartnerEnrollmentsPage() {
       )}
 
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
+
+      {entretienPour && (
+        <PartnerInterviewDialog
+          enrollmentId={entretienPour.id}
+          doctorName={entretienPour.doctorName}
+          onClose={() => setEntretienPour(null)}
+        />
+      )}
     </div>
   );
 }
