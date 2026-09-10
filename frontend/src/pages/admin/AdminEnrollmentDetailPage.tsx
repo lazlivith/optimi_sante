@@ -9,6 +9,7 @@ import { StatusBadge, getStatusLabel } from '../../components/common/StatusBadge
 import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
 import { EmptyState } from '../../components/common/EmptyState';
 import { FileUploadDropzone } from '../../components/common/FileUploadDropzone';
+import { AdminDocumentRequestsPanel } from '../../components/enrollment/AdminDocumentRequestsPanel';
 import { ArrowLeft, Loader2, CheckCircle, FileText, Download, Lock, FileSignature, Stamp, Upload, Send, AlertTriangle, Trash2 } from 'lucide-react';
 
 const STEPS = ENROLLMENT_STEPS.map(s => s.id);
@@ -313,6 +314,10 @@ export function AdminEnrollmentDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* Pieces reclamees au candidat. Place AVANT le coffre-fort : ce qui manque se
+                traite avant ce qui est deja la, et c'est de ce panneau que part l'action. */}
+            <AdminDocumentRequestsPanel enrollmentId={enrollment.id} />
 
             {/* Vault Viewer */}
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">

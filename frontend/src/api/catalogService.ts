@@ -21,6 +21,14 @@ export interface Product {
   category?: Category;
   isOnPromo?: boolean;
   promoEndsAt?: string;
+  /** Formation qui apprend a utiliser l'equipement, absente si aucune. */
+  relatedTraining?: {
+    id: string;
+    title: string;
+    slug: string;
+    price: number;
+    durationDays: number;
+  } | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -32,7 +40,8 @@ export interface PaginatedResponse<T> {
 }
 
 export const catalogService = {
-  getProducts: async (params: { page?: number; size?: number; search?: string; categoryId?: string }) => {
+  /** `promo: true` ne remonte que les produits dont la promotion est active maintenant. */
+  getProducts: async (params: { page?: number; size?: number; search?: string; categoryId?: string; promo?: boolean }) => {
     const { data } = await axiosClient.get<PaginatedResponse<Product>>('/catalog/products', { params });
     return data;
   },

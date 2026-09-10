@@ -107,3 +107,22 @@
     animation: none;
   }
 }
+
+/* ─── Section atteinte par une ancre ────────────────────────────────────────
+   Arriver au bon endroit d'une page longue sans rien voir changer laisse douter
+   d'avoir atterri où l'on voulait. Le liseré s'estompe de lui-même : il signale,
+   il ne décore pas. */
+.section-visee {
+  animation: section-visee 1.6s ease-out;
+  border-radius: 0.75rem;
+}
+
+@keyframes section-visee {
+  0%   { background-color: rgba(20, 82, 74, 0.10); box-shadow: 0 0 0 6px rgba(20, 82, 74, 0.10); }
+  70%  { background-color: rgba(20, 82, 74, 0.06); box-shadow: 0 0 0 6px rgba(20, 82, 74, 0.06); }
+  100% { background-color: transparent;            box-shadow: 0 0 0 6px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-visee { animation: none; }
+}

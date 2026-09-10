@@ -17,7 +17,14 @@ export function DoctorLayout() {
 
   return (
     <div className="min-h-screen flex bg-slate-100">
-      <aside className="w-64 shrink-0 bg-emerald-950 text-emerald-200 flex flex-col">
+      {/* `sticky top-0 h-screen` : sans hauteur imposee, l'aside s'etire a la hauteur
+          TOTALE de la page (le conteneur est en `min-h-screen flex`). Le `flex-1` du menu
+          repoussait alors « Se deconnecter » tout en bas de la page — a des milliers de
+          pixels — au lieu du bas de l'ecran, et la barre defilait avec le contenu.
+          Bornee a la hauteur de la fenetre, elle reste immobile et son pied revient a sa
+          place. `overflow-y-auto` sur le menu couvre le cas du super admin, seul role
+          dont les entrees peuvent depasser un petit ecran. */}
+      <aside className="w-64 shrink-0 bg-emerald-950 text-emerald-200 flex flex-col sticky top-0 h-screen">
         <div className="h-16 flex items-center gap-2 px-6 border-b border-white/10">
           <div className="bg-brand-green text-white font-bold rounded-lg flex items-center justify-center w-8 h-8 text-xs">
             OS
@@ -28,7 +35,7 @@ export function DoctorLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 py-6 px-3 space-y-1">
+        <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto min-h-0">
           {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}

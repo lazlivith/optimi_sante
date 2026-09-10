@@ -47,7 +47,9 @@ Tous les comptes ci-dessous utilisent le mot de passe **`password123`** (hash v�
 
 | Email | Rôle | Tenant |
 |---|---|---|
-| `admin@optimi.com` | `ADMIN` | FR_MAIN |
+| `superadmin@optimi.com` | `SUPER_ADMIN` | FR_MAIN |
+| `ecom.admin@optimi.com` | `ADMIN_ECOMMERCE` | FR_MAIN |
+| `mob.admin@optimi.com` | `ADMIN_MOBILITE` | FR_MAIN |
 | `chu@optimi.com` | `CENTRE_FORMATION` | FR_MAIN |
 | `medecin@optimi.com` | `MEDECIN` | FR_MAIN |
 | `b2c@optimi.com` | `CLIENT_B2C` | FR_MAIN |
@@ -228,6 +230,20 @@ Mot de passe de tous ces comptes : `password123`.
 Notez les identifiants de dossier affichés en fin de script : ils changent à chaque exécution.
 
 ---
+
+### Comptes d'administration depuis la scission (V30)
+
+L'administration est scindée en deux métiers, appliqués jusque dans l'API. Le compte
+historique `admin@optimi.com` a été retiré.
+
+| Compte | Voit | Ne voit pas |
+|---|---|---|
+| `superadmin@optimi.com` | tout, plus la gestion des comptes | — |
+| `ecom.admin@optimi.com` | catalogue, commandes, devis, promos, ventes | tout l'univers mobilité (**403**) |
+| `mob.admin@optimi.com` | dossiers, formations, partenariats, reversements, emails | tout l'univers négoce (**403**) |
+
+Un `403` d'un admin métier sur l'univers de l'autre n'est pas un bug : c'est le
+comportement attendu, à vérifier explicitement.
 
 ## B. Variables Postman à ajouter
 

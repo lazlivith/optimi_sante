@@ -6,6 +6,7 @@ import { Toast, type ToastType } from '../../components/common/Toast';
 import { ArrowLeft, UploadCloud, FileText, Loader2, XCircle, AlertTriangle, Send, Trash2 } from 'lucide-react';
 import { TuitionPaymentCard } from '../../components/training/TuitionPaymentCard';
 import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
+import { MyVisaDossierPanel } from '../../components/enrollment/MyVisaDossierPanel';
 
 export function MyEnrollmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -219,6 +220,13 @@ export function MyEnrollmentDetailPage() {
             />
           </div>
         )}
+
+        {/* Dossier visa : ce qu'OptimiSanté reclame, suivi piece par piece. Place avant
+            l'envoi libre ci-dessous, qui reste utile pour transmettre un document qu'on ne
+            lui a pas demande. */}
+        <div className="mb-8">
+          <MyVisaDossierPanel enrollmentId={enrollment.id} />
+        </div>
 
         {/* Upload Zone */}
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">

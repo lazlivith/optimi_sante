@@ -55,6 +55,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/trainings").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/trainings/*/sessions").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/trainings/*/lead-capture").permitAll()
+                        // Inscription a la lettre d'information depuis le pied de page :
+                        // elle s'adresse par nature a des visiteurs non connectes.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/newsletter/subscribe").permitAll()
                         .requestMatchers("/api/v1/partnership/**").permitAll()
                         .requestMatchers("/api/v1/doctor-applications/**").permitAll()
                         // Assistant conversationnel : le widget du site vitrine doit répondre à un

@@ -83,4 +83,9 @@ public class PdfGeneratorService {
     public byte[] generatePartnershipConventionPdf(Map<String, Object> data) {
         return generatePdfFromTemplate("convention-partenariat", data);
     }
+
+    /** Relevé de reversement destiné à l'établissement partenaire. */
+    public byte[] generatePayoutStatementPdf(Map<String, Object> data) {
+        return generatePdfFromTemplate("releve-reversement", data);
+    }
 }

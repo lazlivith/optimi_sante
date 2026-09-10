@@ -45,4 +45,7 @@ public interface EnrollmentPaymentRepository extends JpaRepository<EnrollmentPay
               AND p.enrollment.session.training.partnerProfile.id = :partnerProfileId
             """)
     BigDecimal sumPendingPayout(@Param("partnerProfileId") UUID partnerProfileId);
+
+    /** Lignes rattachées à un reversement, pour le détail du relevé PDF. */
+    List<EnrollmentPayment> findByPartnerPayoutId(UUID partnerPayoutId);
 }

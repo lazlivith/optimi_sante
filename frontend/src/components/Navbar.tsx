@@ -1,9 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, Settings, Search, Home, Briefcase } from 'lucide-react';
+import { adminHomeFor, ALL_ADMIN_ROLES } from '../lib/adminUniverses';
+import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, Settings, Search, Home, Briefcase, Database as DatabaseIcon, ShieldCheck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { NotificationBell } from './common/NotificationBell';
+
+/**
+ * Logo de l'en-tete : declinaison coloree, decoupee de la planche de marque et detouree.
+ *
+ * `optimi.webp` ne convenait pas — son degrade bleu est incruste dans l'image, ce qui
+ * affichait un rectangle bleu dans une barre blanche. Le PNG transparent le remplace.
+ */
+const LOGO_SRC = '/logo-optimi-sombre.png';
 
 export const Navbar = () => {
   const { totalItems } = useCart();
@@ -31,6 +40,11 @@ export const Navbar = () => {
     }
   };
 
+  const ADMIN_ROLES: string[] = ALL_ADMIN_ROLES;
+
+  // Deposer le fichier dans frontend/public/ sous ce nom suffit a l'activer.
+  const [logoDisponible, setLogoDisponible] = useState(true);
+
   const getRoleLabel = (role: string) => {
     switch (role) {
       case 'CLIENT_B2C': return 'PARTICULIER';
@@ -38,6 +52,10 @@ export const Navbar = () => {
       case 'MEDECIN': return 'MÉDECIN';
       case 'ADMIN':
       case 'SUPER_ADMIN': return 'ADMIN';
+      // Sans ces deux cas, le `default` renvoyait l'enum brute et l'ecran affichait
+      // « ADMIN_MOBILITE » a l'utilisateur.
+      case 'ADMIN_ECOMMERCE': return 'ADMIN NÉGOCE';
+      case 'ADMIN_MOBILITE': return 'ADMIN MOBILITÉ';
       case 'CENTRE_FORMATION': return 'PARTENAIRE';
       default: return role;
     }
@@ -49,7 +67,9 @@ export const Navbar = () => {
       case 'CLIENT_B2B': return 'text-purple-600';
       case 'MEDECIN': return 'text-emerald-600';
       case 'ADMIN':
-      case 'SUPER_ADMIN': return 'text-red-600';
+      case 'SUPER_ADMIN':
+      case 'ADMIN_ECOMMERCE':
+      case 'ADMIN_MOBILITE': return 'text-red-600';
       default: return 'text-gray-600';
     }
   };
@@ -57,17 +77,33 @@ export const Navbar = () => {
   return (
     <header className="bg-white sticky top-0 z-50 border-b border-gray-100 shadow-sm">
       {/* Main Header Row */}
-      <div className="container mx-auto px-4 h-16 flex items-center gap-4">
+      <div className="container mx-auto px-4 h-20 flex items-center gap-5">
 
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 shrink-0">
-          <div className="bg-brand-green text-white font-bold rounded-lg flex items-center justify-center w-9 h-9 text-sm">
-            OS
-          </div>
-          <div className="hidden sm:block">
-            <span className="text-lg font-bold text-brand-dark tracking-tight block leading-none">Optimi Santé</span>
-            <span className="text-[10px] text-slate-400 leading-none">Santé & Confort</span>
-          </div>
+        {/* Logo.
+            Le vrai logo est servi depuis /public. Tant qu'il n'y est pas, `onError` fait
+            basculer sur le monogramme d'origine : l'en-tete reste correcte au lieu d'afficher
+            une image cassee, et le logo apparait de lui-meme le jour ou le fichier est depose.
+            Quand il s'affiche, le texte « Optimi Santé » disparait — le logo est deja un
+            logotype, le repeter a cote ferait doublon. */}
+        <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="Optimi Santé — accueil">
+          {logoDisponible ? (
+            <img
+              src={LOGO_SRC}
+              alt="Optimi Santé"
+              onError={() => setLogoDisponible(false)}
+              className="h-12 w-auto max-w-[190px] object-contain"
+            />
+          ) : (
+            <>
+              <div className="bg-brand-green text-white font-bold rounded-xl flex items-center justify-center w-11 h-11 text-base">
+                OS
+              </div>
+              <div className="hidden sm:block">
+                <span className="text-xl font-bold text-brand-dark tracking-tight block leading-none">Optimi Santé</span>
+                <span className="text-[11px] text-slate-400 leading-none">soutenir le handicap et le soin</span>
+              </div>
+            </>
+          )}
         </Link>
 
         {/* Search Bar — Central */}
@@ -130,8 +166,13 @@ export const Navbar = () => {
                   <Link to="/profile" onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                     <UserIcon className="w-4 h-4 mr-3 text-gray-400" /> Mon Profil
                   </Link>
-                  {(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
-                    <Link to="/admin" onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  {/* ADMIN_ECOMMERCE et ADMIN_MOBILITE manquaient ici : la barre laterale
+                      d'administration propose « Retour a la boutique », mais aucun chemin ne
+                      ramenait ensuite vers l'espace — l'administrateur restait bloque sur la
+                      vitrine. `adminHomeFor` renvoie chacun vers le tableau de bord de son
+                      metier, la meme source que la redirection de connexion. */}
+                  {ADMIN_ROLES.includes(user.role) && (
+                    <Link to={adminHomeFor(user.role)} onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                       <Settings className="w-4 h-4 mr-3 text-gray-400" /> Espace Admin
                     </Link>
                   )}
@@ -142,7 +183,10 @@ export const Navbar = () => {
                   )}
                   {(user.role === 'CLIENT_B2B' || user.role === 'CLIENT_B2C' || user.role === 'MEDECIN' || user.role === 'CENTRE_FORMATION') && (
                     <Link to="/my-orders" onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                      <FileText className="w-4 h-4 mr-3 text-gray-400" /> {user.role === 'CLIENT_B2B' ? 'Mes Devis' : 'Mes Commandes'}
+                      {/* « Mes Devis » seul faisait croire aux comptes professionnels qu'aucun
+                          historique de commande n'existait : la page destinataire s'intitule
+                          « Mes Commandes & Devis » et contient bien les deux. */}
+                      <FileText className="w-4 h-4 mr-3 text-gray-400" /> {user.role === 'CLIENT_B2B' ? 'Mes commandes et devis' : 'Mes commandes'}
                     </Link>
                   )}
                   {user.role === 'CENTRE_FORMATION' && (
@@ -150,6 +194,14 @@ export const Navbar = () => {
                       <Briefcase className="w-4 h-4 mr-3 text-gray-400" /> Espace Partenaire
                     </Link>
                   )}
+                  {/* Droit d'acces (RGPD art. 15) : propose a tout compte authentifie, pas
+                      seulement aux clients — le droit ne depend pas du role. */}
+                  <Link to="/mes-donnees" onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    <DatabaseIcon className="w-4 h-4 mr-3 text-gray-400" /> Mes données personnelles
+                  </Link>
+                  <Link to="/politique-confidentialite" onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    <ShieldCheck className="w-4 h-4 mr-3 text-gray-400" /> Confidentialité
+                  </Link>
                   <div className="border-t border-gray-100 mt-1 pt-1">
                     <button
                       onClick={() => { setIsDropdownOpen(false); logout(); }}
@@ -171,7 +223,7 @@ export const Navbar = () => {
 
       {/* Secondary Navigation */}
       <div className="border-t border-gray-100 bg-white">
-        <div className="container mx-auto px-4 flex items-center h-11 gap-1">
+        <div className="container mx-auto px-4 flex items-center h-12 gap-1">
           {/* Client Type Switcher */}
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 mr-3">
             <button

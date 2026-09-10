@@ -32,9 +32,11 @@ public class CatalogResource {
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
+            /** Alimente la page « Promotions » et le carrousel d'accueil. */
+            @RequestParam(required = false) Boolean promo,
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        return ResponseEntity.ok(catalogService.searchProducts(search, categoryId, minPrice, maxPrice, pageable));
+        return ResponseEntity.ok(catalogService.searchProducts(search, categoryId, minPrice, maxPrice, promo, pageable));
     }
 
     @GetMapping("/products/{slug}")

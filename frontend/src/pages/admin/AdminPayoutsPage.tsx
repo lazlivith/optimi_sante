@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Wallet, TrendingUp, Clock, Banknote, Search, Send, CheckCircle2, Inbox, Loader2, Building2,
+  Wallet, TrendingUp, Clock, Banknote, Search, Send, CheckCircle2, Inbox, Loader2, Building2, FileText,
 } from 'lucide-react';
 import {
   financeService, formatMoney, formatDate, PAYMENT_TYPE_LABELS,
@@ -92,6 +92,23 @@ export function AdminPayoutsPage() {
     } catch (err: any) {
       setToast({
         message: err.response?.data?.message || 'Action impossible.',
+        type: 'error',
+      });
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  const handleStatement = async (payoutId: string) => {
+    setIsWorking(true);
+    try {
+      await financeService.generateStatement(payoutId);
+      setToast({ message: 'Relevé généré et mis à disposition du partenaire.', type: 'success' });
+      setPayouts(await financeService.getPartnerPayouts(selectedPartner));
+    } catch (err: any) {
+      console.error('Échec de la génération du relevé', err);
+      setToast({
+        message: err.response?.data?.message || "Le relevé n'a pas pu être généré.",
         type: 'error',
       });
     } finally {
@@ -346,17 +363,27 @@ export function AdminPayoutsPage() {
                         <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
                         <td className="px-4 py-3 text-slate-500">{formatDate(p.paidAt)}</td>
                         <td className="px-4 py-3 text-right">
-                          {p.status === 'PENDING' ? (
+                          <div className="flex items-center justify-end gap-2">
                             <button
-                              type="button" onClick={() => handleMarkPaid(p.id)} disabled={isWorking}
+                              type="button" onClick={() => handleStatement(p.id)} disabled={isWorking}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 transition-colors"
+                              title={p.statementAvailable
+                                ? 'Régénérer le relevé PDF'
+                                : 'Générer le relevé PDF remis au partenaire'}
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              Marquer viré
+                              <FileText className="w-3.5 h-3.5" />
+                              {p.statementAvailable ? 'Régénérer' : 'Relevé PDF'}
                             </button>
-                          ) : (
-                            <span className="text-xs text-slate-400">—</span>
-                          )}
+                            {p.status === 'PENDING' && (
+                              <button
+                                type="button" onClick={() => handleMarkPaid(p.id)} disabled={isWorking}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 transition-colors"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Marquer viré
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

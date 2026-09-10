@@ -3,6 +3,7 @@ package com.optimisante.backend.domain.catalog.service;
 import com.optimisante.backend.config.tenant.TenantContext;
 import com.optimisante.backend.domain.catalog.dto.CategoryResponseDto;
 import com.optimisante.backend.domain.catalog.dto.CategorySummaryDto;
+import com.optimisante.backend.domain.catalog.dto.RelatedTrainingDto;
 import com.optimisante.backend.domain.catalog.dto.ProductResponseDto;
 import com.optimisante.backend.domain.catalog.entity.Category;
 import com.optimisante.backend.domain.catalog.entity.Product;
@@ -62,6 +63,14 @@ public class CatalogService {
 
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> searchProducts(String search, UUID categoryId, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
+        return searchProducts(search, categoryId, minPrice, maxPrice, null, pageable);
+    }
+
+    /**
+     * @param promoOnly ne remonter que les produits dont la promotion est active maintenant.
+     *                  {@code null} ou {@code false} laisse le catalogue entier.
+     */
+    public Page<ProductResponseDto> searchProducts(String search, UUID categoryId, BigDecimal minPrice, BigDecimal maxPrice, Boolean promoOnly, Pageable pageable) {
         UUID tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             throw new IllegalStateException("Tenant context is required");
@@ -71,7 +80,8 @@ public class CatalogService {
                 .and(ProductSpecification.fetchCategory())
                 .and(ProductSpecification.search(search))
                 .and(ProductSpecification.withCategoryId(categoryId))
-                .and(ProductSpecification.priceBetween(minPrice, maxPrice));
+                .and(ProductSpecification.priceBetween(minPrice, maxPrice))
+                .and(ProductSpecification.onPromoOnly(promoOnly));
 
         Page<Product> products = productRepository.findAll(spec, pageable);
         
@@ -141,6 +151,18 @@ public class CatalogService {
             );
         }
 
+        // Seule une formation approuvee et publiee est proposee au client : annoncer une offre
+        // liee vers une formation en attente de validation enverrait vers une page vide.
+        RelatedTrainingDto formationLiee = null;
+        var formation = product.getTraining();
+        if (formation != null && Boolean.TRUE.equals(formation.getIsPublished())
+                && formation.getApprovalStatus() != null
+                && "APPROVED".equals(formation.getApprovalStatus().name())) {
+            formationLiee = new RelatedTrainingDto(
+                    formation.getId(), formation.getTitle(), formation.getSlug(),
+                    formation.getPrice(), formation.getDurationDays());
+        }
+
         return new ProductResponseDto(
                 product.getId(),
                 product.getSku(),
@@ -155,7 +177,8 @@ public class CatalogService {
                 product.getImageUrl(),
                 categoryDto,
                 product.isPromoActive(),
-                product.isPromoActive() ? product.getPromoEndsAt() : null
+                product.isPromoActive() ? product.getPromoEndsAt() : null,
+                formationLiee
         );
     }
 }

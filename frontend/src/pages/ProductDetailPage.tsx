@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { catalogService } from '../api/catalogService';
 import { useCart } from '../context/CartContext';
-import { ArrowLeft, ShieldCheck, Truck, Loader2, X } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Truck, Loader2, X, GraduationCap, ArrowRight } from 'lucide-react';
 import { CountdownTimer } from '../components/common/CountdownTimer';
 import { Toast, type ToastType } from '../components/common/Toast';
 import { ProductImage } from '../components/common/ProductImage';
@@ -64,13 +64,16 @@ export function ProductDetailPage() {
       
       <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-12">
         <div className="grid md:grid-cols-2 gap-12 lg:gap-20">
-          <div className="aspect-square bg-slate-50 rounded-2xl overflow-hidden relative group">
+          {/* Visuel principal en `contain` : c'est l'image sur laquelle on décide d'acheter,
+              elle doit montrer l'article entier. En `cover`, un équipement large était
+              tronqué à gauche et à droite sans que rien ne l'indique. */}
+          <div className="aspect-square bg-white border border-slate-100 rounded-2xl overflow-hidden relative group p-6">
             <ProductImage
               src={product.imageUrl}
               alt={product.name}
               className="w-full h-full group-hover:scale-105 transition-transform duration-700"
               iconClassName="w-32 h-32 opacity-50"
-              objectFit="cover"
+              objectFit="contain"
             />
           </div>
           
@@ -101,6 +104,36 @@ export function ProductDetailPage() {
                 </>
               )}
             </div>
+
+            {/* Offre liee : acheter la machine et apprendre a s'en servir. Placee avant les
+                caracteristiques et le bouton d'achat — c'est un argument de decision, pas un
+                complement a lire apres coup. */}
+            {product.relatedTraining && (
+              <Link
+                to={`/formations/${product.relatedTraining.id}`}
+                className="group block mb-8 rounded-2xl border border-brand-green/25 bg-brand-green/5 p-5 hover:bg-brand-green/10 transition-colors"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="shrink-0 w-11 h-11 rounded-xl bg-brand-green text-white flex items-center justify-center">
+                    <GraduationCap className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-brand-green mb-1">
+                      Formez-vous à cet équipement
+                    </p>
+                    <p className="font-bold text-brand-dark leading-snug">
+                      {product.relatedTraining.title}
+                    </p>
+                    <p className="text-sm text-slate-600 mt-1">
+                      {product.relatedTraining.durationDays} jour
+                      {product.relatedTraining.durationDays > 1 ? 's' : ''} ·{' '}
+                      {product.relatedTraining.price.toFixed(0)} €
+                    </p>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-brand-green shrink-0 mt-1 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+            )}
 
             <div className="grid grid-cols-2 gap-4 mb-8">
               <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">

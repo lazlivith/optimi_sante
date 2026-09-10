@@ -12,11 +12,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import com.optimisante.backend.config.security.MobilityAdmin;
 
 @RestController
 @RequestMapping("/api/v1/admin/partnership-requests")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+@MobilityAdmin
 public class AdminPartnershipResource {
 
     private final PartnershipService partnershipService;

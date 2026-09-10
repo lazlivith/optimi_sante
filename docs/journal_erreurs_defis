@@ -912,3 +912,1470 @@ Livré : `AdminPayoutsPage` (4 KPI, onglet registre filtrable, onglet reversemen
 - non-régression espace partenaire (candidatures, synthèse, reversements) → 200 ; `tsc -b` et `vite build` propres.
 
 **Non fait, signalé** : le bouton de téléchargement PDF du relevé de virement demandé au prompt 3 — aucun gabarit ni génération n'existe pour les reversements. L'ajouter aurait signifié créer un document vide ou un bouton inerte ; il vaut mieux le traiter comme un vrai sujet (gabarit Thymeleaf + génération, sur le modèle des conventions).
+
+## 59. Relevé de reversement PDF (V29) — déployé & vérifié
+
+Dernier élément volontairement laissé de côté à l'entrée #58 : le partenaire disposait de ses chiffres à l'écran, mais d'aucun justificatif téléchargeable.
+
+**Livré** : migration `V29` (`partner_payouts.statement_s3_key`), gabarit Thymeleaf `releve-reversement.html`, `PdfGeneratorService.generatePayoutStatementPdf`, `PartnerPayoutService.generateStatement` (génération + dépôt sur le stockage), endpoint admin de génération, type `PAYOUT_STATEMENT` dans le contrôleur de téléchargement, boutons dans les deux espaces.
+
+### Confidentialité étendue au document
+
+Le relevé **ne mentionne ni le montant brut réglé par le médecin, ni la commission, ni son taux** — même règle que l'écran « Mes revenus ». Ce point ne pouvait pas être vérifié à l'œil : le PDF a été téléchargé et **son texte extrait puis audité** (décompression des flux, extraction des chaînes). Résultat : aucun des termes `commission`, `3200`, `480`, `brut` ; montant net `2 720,00 EUR` bien présent. C'est le seul contrôle qui prouve réellement l'absence de fuite dans un binaire.
+
+### Deux défauts d'affichage corrigés
+
+1. **Séparateur de milliers absent** (`2720,00` au lieu de `2 720,00`). Mon code normalisait `U+00A0`, mais `String.format(Locale.FRANCE, ...)` produit **`U+202F`** (espace fine insécable) sur les JDK récents : la police du PDF avalait le caractère et le séparateur disparaissait purement et simplement. Les deux variantes sont désormais normalisées.
+
+2. **`« Page  sur  »` vide — défaut pré-existant sur TOUS les PDF du projet.** Le fragment `components/footer.html` référence `#pagenumber` / `#pagecount`, mais aucune feuille de style ne déclarait les compteurs correspondants. Conventions, attestations, devis et reçus sont concernés depuis l'origine. Les deux règles CSS (`content: counter(page)` / `counter(pages)`) ont été ajoutées **au seul gabarit du relevé**, pour ne pas modifier un fragment partagé par cinq documents en production sans validation. Correctif prouvé : le relevé affiche désormais « Page 1 sur 1 ». **Les mêmes deux lignes règlent les cinq autres documents — à décider.**
+
+**Vérifié en conditions réelles** : PDF généré du premier coup (PDF 1.5, 1 page, ~3,2 Ko), accents corrects (`RELEVÉ`, `BÉNÉFICIAIRE`, `Échographie`), régénération idempotente, et contrôle des droits sur le téléchargement — partenaire bénéficiaire **200**, admin **200**, médecin tiers **403**, anonyme **401**. `tsc -b` et `vite build` propres.
+
+## 60. Scission de l'administration en deux metiers (V30) — deploye & verifie
+
+Prompt 01 du plan de refonte. L'administration couvrait deux domaines sans rapport (negoce
+et mobilite), operes par deux personnes distinctes. La separation est portee par les ROLES,
+donc appliquee jusque dans l'API : un administrateur du negoce ne doit pas pouvoir ouvrir un
+dossier medical en connaissant l'URL.
+
+**Livre** : `V30` (roles `ADMIN_ECOMMERCE` et `ADMIN_MOBILITE`, index sur `role`), enum `Role`
+etendu avec `ADMIN` marque `@Deprecated`, et quatre annotations composees dans
+`config/security` : `@EcommerceAdmin`, `@MobilityAdmin`, `@PlatformAdmin`, `@AnyAdmin`.
+
+### Pourquoi des annotations plutot que des `@PreAuthorize` ecrits sur place
+
+La regle enumere trois roles et s'applique a une trentaine d'endpoints. Repetee a la main,
+elle finit par diverger — et un oubli ne se voit pas : il se traduit par un acces qui n'aurait
+pas du exister. La regle vit desormais a un seul endroit, et l'intention (`@MobilityAdmin`)
+est lisible sur chaque controleur.
+
+### Trois problemes trouves en appliquant la scission
+
+1. **`@PlatformAdmin` reserve au SUPER_ADMIN aurait verrouille la gestion des comptes.** La
+   plateforme ne compte **aucun compte `SUPER_ADMIN`** — seulement un `ADMIN`. Restreindre
+   immediatement aurait rendu la gestion des comptes inaccessible a tout le monde, y compris
+   pour creer le premier super administrateur. `ADMIN` y est donc conserve, comme dans les
+   deux annotations metier, avec l'etape de sortie documentee dans l'annotation.
+
+2. **Trois endpoints excluaient le SUPER_ADMIN** (`generateConvention`,
+   `generateAttestation`, `updateEnrollmentStatus`) : ecrits `hasRole('ADMIN')` seul. Un super
+   administrateur ne pouvait pas relancer une convention. Incoherence pre-existante, corrigee
+   par l'application uniforme de `@MobilityAdmin`.
+
+3. **`PayoutResource` manquait dans ma propre table de repartition** — 8 endpoints. Rattrape
+   en seconde passe, puis verifie par un audit automatique : plus aucun `@PreAuthorize`
+   mentionnant `ADMIN` hors des annotations composees, hormis quatre endpoints **mixtes**
+   (metier + secours admin) qui n'en relevent pas. Deux d'entre eux ont ete etendus a
+   `ADMIN_MOBILITE`, faute de quoi le nouveau role aurait perdu un acces que `ADMIN` avait.
+
+### Le compilateur comme garde-fou
+
+Ajouter deux valeurs a l'enum `Role` a fait echouer la compilation sur un `switch` exhaustif
+d'`AdminEmailService`. C'est exactement le service attendu d'un switch exhaustif : il a
+designe le seul endroit du code a mettre a jour, au lieu de laisser un `default` avaler
+silencieusement les nouveaux roles.
+
+### Bug pre-existant releve, non corrige
+
+`TrainingEnrollmentPage` (parcours d'un medecin deja titulaire d'un compte) televerse ses
+pieces via `/admin/storage/upload`, **endpoint reserve aux administrateurs**. Un medecin y
+recoit un 403 et voit « Le televersement du fichier a echoue ». Le correctif consiste a
+pointer cette page vers `POST /enrollments/{id}/documents`, deja utilise et eprouve par
+`MyEnrollmentDetailPage` — traite comme un sujet distinct pour ne pas melanger les chantiers.
+
+**Verifie en conditions reelles, 33 controles** : deux comptes de test crees (un par univers) ;
+chaque univers accede aux 4 (negoce) ou 6 (mobilite) routes du sien ; **chacun recoit 403 sur
+l'integralite de l'univers de l'autre** ; les deux sont refuses sur la gestion des comptes ; et
+**le compte `ADMIN` herite conserve l'acces aux 10 routes** — aucun compte existant ne perd
+d'acces au deploiement, ce qui etait la condition posee.
+
+**Aucun compte n'a ete reaffecte automatiquement** : decider qui gere quoi releve de
+l'organisation, pas d'une migration.
+
+## 61. Retrait de `admin@optimi.com` et navigation à deux univers (déployé & vérifié)
+
+La scission des rôles (#60) avait créé les deux rôles métier sans que l'interface en tienne
+compte : la sidebar affichait les dix entrées à tout le monde, et un administrateur négoce
+qui cliquait sur « Dossiers CHU » atterrissait sur un écran d'erreurs 403. Cette entrée
+règle les deux moitiés du problème — le compte hérité, puis l'interface.
+
+### Le compte hérité : désactivé, pas effacé
+
+`admin@optimi.com` a été retiré par `deleted_at` + `is_active = false` (sa connexion renvoie
+désormais 401), et non par un `DELETE`.
+
+**Ses deux traces `enrollments.optimi_reviewed_by` ont été délibérément conservées.** Les
+réécrire au nom du superadmin aurait produit une piste d'audit fausse : ces dossiers ont bien
+été pré-qualifiés par ce compte-là, à cette date-là. Un référentiel de décisions dont on
+réattribue les auteurs après coup ne vaut plus rien. Les références *documentaires*
+(`seed_recette.sql`, guides de test) ont en revanche été réaffectées au superadmin, puisqu'il
+s'agit d'instructions pour l'avenir et non d'une trace du passé.
+
+### Une seule définition de la répartition
+
+Sidebar, gardes de route et redirection post-connexion décrivaient la même répartition à
+trois endroits. Trois copies d'une même règle divergent toujours : un menu finit par montrer
+une entrée qu'une garde refuse. Tout est passé par `frontend/src/lib/adminUniverses.ts`, qui
+porte les trois univers (Négoce, Mobilité, Gouvernance) **et** les tableaux de rôles que
+consomment les `ProtectedRoute` d'`App.tsx`.
+
+Une première version exposait en plus un helper `rolesAllowedOn(path)` que personne
+n'appelait — un second chemin vers la même vérité, exactement ce que le fichier prétendait
+éviter. Remplacé par les quatre constantes réellement importées.
+
+⚠️ Ce fichier **aligne** l'interface sur les droits, il ne les crée pas. Masquer une entrée de
+menu ne protège rien : la séparation est appliquée par le serveur (#60).
+
+### Refus explicite au lieu d'une redirection muette
+
+`ProtectedRoute` renvoyait un `<Navigate to="/">` quand le rôle ne convenait pas. L'utilisateur
+se retrouvait sur l'accueil sans explication, croyait à un bug et réessayait. Il reçoit
+maintenant une page `AccessDeniedPage` qui nomme la restriction et propose le retour vers son
+propre tableau de bord.
+
+### Deux tableaux de bord au lieu d'un
+
+`AdminDashboardPage` interrogeait sept services répartis sur les deux univers : depuis la
+scission, un admin négoce l'ouvrait et recevait une pluie de 403. Scindé en
+`AdminSalesDashboardPage` (négoce) et `AdminMobilityDashboardPage` (mobilité), chacun
+n'appelant que les services de son métier. L'ancienne page, devenue orpheline, a été supprimée
+plutôt que laissée en place — un écran mort qui traverse les deux univers est un piège.
+
+Le bloc « Actions en attente » ne remonte que ce que l'utilisateur peut **réellement traiter** :
+un dossier déjà transmis au CHU, ou en attente du paiement du médecin, n'est pas de son
+ressort. L'y afficher créerait une charge fantôme qu'il ne peut pas résorber.
+
+`/admin` ne rend plus d'écran : `AdminHomeRedirect` renvoie chacun vers `adminHomeFor(role)`.
+
+### Renommages levant une ambiguïté
+
+« Finance » (négoce) et « Reversements » (mobilité) cohabitaient sans qu'on puisse les
+distinguer. Devenus **« Chiffre d'affaires »** et **« Reversements CHU »**.
+
+**Vérifié en conditions réelles** : les trois comptes (`superadmin`, `ecom.admin`,
+`mob.admin`) authentifiés contre le backend en cours d'exécution, puis sondés sur cinq
+endpoints couvrant les trois univers. Matrice obtenue, conforme point par point :
+
+| Compte | finance/summary | orders/quotes | enrollments | finance/kpis | users |
+|---|---|---|---|---|---|
+| superadmin | 200 | 200 | 200 | 200 | 200 |
+| ecom.admin | 200 | 200 | **403** | **403** | **403** |
+| mob.admin | **403** | **403** | 200 | 200 | **403** |
+
+`admin@optimi.com` : **401**. Chaque route du front a par ailleurs été confrontée à
+l'annotation du contrôleur qui la sert — y compris le piège `/admin/finance/*`, servi par
+**deux** contrôleurs distincts (`summary` en `@EcommerceAdmin` sur `AdminFinanceResource`,
+`kpis` et `partners-due` en `@MobilityAdmin` sur `PayoutResource`).
+
+## 62. Catalogue : nettoyage des catégories (V31), recherche et filtres — déployé & vérifié
+
+### Le vrai défaut n'était pas l'absence de filtre
+
+`AdminCatalogPage` appelait `listProducts(0, 100)` sur un catalogue de **1 519 produits**, sans
+pagination ni indication. **93 % du catalogue était inatteignable depuis cet écran**, en
+silence. Ajouter une recherche sans rétablir la pagination aurait déplacé le problème :
+filtrer côté navigateur n'aurait porté que sur ces 100 lignes, et un produit absent du résultat
+aurait été déclaré inexistant.
+
+### V31 — deux défauts d'import, un seul nettoyage
+
+Le catalogue comptait 273 catégories pour 130 réellement utilisées :
+
+1. **95 noms portaient `&amp;`** au lieu de `&` — l'import a stocké du HTML échappé sans le
+   décoder. « Accessoires &amp; tabliers » s'affichait tel quel.
+2. **Le même nom existait en 2 ou 3 exemplaires**, distingués par un suffixe de slug (`-2`),
+   l'import ayant tourné plusieurs fois. Les produits s'étaient répartis entre les copies :
+   « Cannes de marche » en comptait 7 d'un côté, 2 de l'autre, 0 de la troisième. Aucun filtre
+   par catégorie ne pouvait fonctionner sur cette base.
+
+La migration décode, normalise les espaces, puis fusionne les noms identiques en rattachant les
+produits à la copie canonique — celle qui porte le plus de produits, à égalité le slug le plus
+court (l'import numérote les copies), à égalité encore le plus petit `id` pour que le résultat
+soit déterministe.
+
+**Ce qu'elle ne fait pas, délibérément :**
+- Elle ne supprime pas les 93 catégories restées vides. Une catégorie vide est peut-être un
+  rayon à approvisionner : la supprimer relève d'une décision commerciale.
+- Elle ne fusionne que les noms **strictement** identiques. Les quasi-doublons
+  (« Accessoires pré-opératoire » singulier vs pluriel) sont laissés en place : les rapprocher
+  demande un arbitrage humain, et une migration qui devine se trompe sans le dire.
+
+**`ON COMMIT DROP` écarté.** La table de travail est une table ordinaire, supprimée
+explicitement. Une table temporaire `ON COMMIT DROP` suppose que Flyway enveloppe la migration
+dans une transaction : c'est le cas aujourd'hui, mais si la configuration changeait, la table
+disparaîtrait avant les `UPDATE` qui la lisent et **la fusion ne ferait rien, en silence**.
+
+**Vérifiée sur une copie de la base avant d'approcher la vraie** (`pg_dump` → base jetable) :
+273 → 223 catégories, 0 entité HTML, 0 doublon, **1 519 produits intacts**, et les totaux par
+catégorie identiques avant/après (`Cannes de marche` 9, `Sparadrap` 13, `Gels & huiles` 18).
+Puis rejouée par Flyway sur la base réelle, mêmes chiffres.
+
+### Le piège du `@SQLRestriction` sur le comptage
+
+Le menu de filtre affiche le nombre de produits par catégorie. Écrit en JPQL, ce comptage
+aurait été faux : `Product` porte `@SQLRestriction("deleted_at IS NULL AND is_active = true")`,
+qu'Hibernate applique à **toute** requête touchant l'entité, jointures comprises. Une catégorie
+ne contenant que des produits désactivés se serait affichée comme vide — et l'administrateur
+l'aurait crue inutilisée. Requête native, comme `AdminProductRow` l'avait déjà imposé ailleurs.
+
+Le `LEFT JOIN` porte sa condition dans le `ON` et non le `WHERE` : dans un `WHERE`, elle
+annulerait l'effet du `LEFT JOIN` et ferait disparaître les catégories vides, précisément
+celles qu'il faut pouvoir repérer.
+
+### L'erreur : un nom de paramètre déjà réservé par Spring
+
+J'ai exposé le tri sous le paramètre `sort`. La compilation passe, la requête part, et
+PostgreSQL répond `syntax error at or near "order"` — **uniquement quand un tri est demandé**.
+
+Cause : Spring lit lui-même le paramètre de requête `sort` pour alimenter le `Pageable`, et
+ajoute l'`ORDER BY` correspondant à la fin de la requête native. La requête se retrouvait avec
+**deux** clauses `ORDER BY` concaténées :
+
+```sql
+ORDER BY CASE WHEN ... END ASC, p.is_active DESC, p.created_at DESC
+ order by p.price_desc asc fetch first ? rows only
+```
+
+Renommé en `sortBy`. Et le `Pageable` est désormais reconstruit sans son tri
+(`PageRequest.of(page, size)`) : un tri fourni par le client était recopié tel quel dans
+l'`ORDER BY` d'une requête native. Le tri passe exclusivement par une liste blanche de trois
+valeurs ; toute autre est ignorée plutôt que refusée — le tri est un confort d'affichage, pas
+une donnée, et renvoyer une erreur priverait l'utilisateur de sa liste pour une virgule mal
+placée dans l'URL.
+
+**Cette erreur n'était détectable qu'à l'exécution.** Elle n'apparaît ni à la compilation, ni
+sur un appel sans tri, ni dans les tests d'un filtre isolé.
+
+### Le piège du paramètre nul, à nouveau
+
+Tous les filtres passent en `String` avec `CAST(:param AS text)`, y compris l'identifiant de
+catégorie. PostgreSQL ne peut pas inférer le type d'un paramètre nul et le transmet en
+`bytea` : la requête échoue alors sur `function lower(bytea) does not exist`, à l'exécution et
+**seulement quand le filtre est vide** — c'est-à-dire au premier chargement de la page. Un
+seul type de paramètre pour tous les filtres évite d'avoir à se rappeler lequel est concerné.
+
+### Vérifié en conditions réelles, 9 contrôles sur l'API déployée
+
+| Contrôle | Résultat |
+|---|---|
+| Aucun filtre | 1 519 produits, 507 pages |
+| Tri prix décroissant / croissant | 8 677 € en tête / 0,40 € en tête |
+| Tri nom A → Z | ordre alphabétique respecté |
+| Tri invalide (`DROP TABLE`) | ignoré, ordre par défaut |
+| Ancien paramètre `sort=p.injection` | ignoré, aucune erreur |
+| Recherche « compresse » | 18 résultats |
+| Recherche par référence exacte | 1 résultat |
+| Recherche + tri combinés | 18 résultats, triés |
+| Filtre catégorie + recherche | 359 résultats |
+
+Deux filtres renvoient 0 — c'est **exact et non un défaut** : la base ne contient aujourd'hui
+aucun produit désactivé ni aucun produit sous son seuil de stock (vérifié en SQL direct).
+
+### Défaut relevé, non corrigé
+
+**32 produits portent un mojibake dans leur nom** : `3M‚™ LITTMANN®`, `micropore‚™`, où `‚™`
+remplace `™`. C'est un double encodage cp1252/UTF-8 du même import que les `&amp;`, mais il ne
+se corrige pas de la même façon — il faut retrouver l'octet d'origine, ce qui n'est fiable que
+sur une liste de séquences vérifiée une à une. Traité comme un sujet distinct pour ne pas
+glisser une conversion approximative dans une migration par ailleurs vérifiée.
+
+## 63. Mojibake Mac OS Roman (V32) et quasi-doublons de catégories (V33) — déployés & vérifiés
+
+Deux nettoyages de données demandés après le Prompt 03. Dans les deux cas, ce que j'avais
+annoncé s'est révélé sous-estimé une fois les données réellement examinées.
+
+### J'avais annoncé 32 produits. Il y en avait 677.
+
+Mon rapport du Prompt 03 disait « 32 produits portent un mojibake dans leur nom ». J'avais
+regardé une seule séquence (`‚™`) dans une seule colonne. L'inventaire complet des caractères
+non-ASCII a donné : **57 noms, 619 descriptions, 1 catégorie**. Les descriptions sont visibles
+des clients sur la fiche produit — c'était la partie la plus exposée, et je l'avais manquée en
+ne cherchant que ce que j'avais déjà vu.
+
+### Le diagnostic : une seule cause, pas une liste de cas
+
+La corruption est systématique : du texte UTF-8 relu comme du **Mac OS Roman**. `™` (U+2122)
+s'écrit `E2 84 A2` en UTF-8 ; lus en Mac Roman ces trois octets donnent `‚Ñ¢`. Idem pour
+`®` (C2 AE → `¬Æ`), `°` (C2 B0 → `¬∞`), `Ø` (C3 98 → `√ò`), `€` (E2 82 AC → `‚Ç¨`),
+`’` (E2 80 99 → `‚Äô`).
+
+Une fois la cause identifiée, la table de réparation **se calcule** : pour chaque caractère
+Unicode dont l'encodage UTF-8 est lisible en Mac Roman, on connaît sa forme abîmée. 50 des 52
+entrées de V32 sont dérivées mécaniquement, pas transcrites à la main.
+
+### La transformation inverse, élégante, ne marchait pas
+
+Le réflexe correct devant ce genre de corruption est de la défaire : ré-encoder en Mac Roman,
+relire en UTF-8. J'ai essayé. **Elle échoue ici, et c'est le point important : elle échoue en
+silence.**
+
+`B√ÇTONNET SÉCURITÉ BÉBÉ` mélange `√Ç` (abîmé) et `É` (intact) — la corruption est **partielle
+à l'intérieur d'une même chaîne**. Ré-encoder l'ensemble produit une suite d'octets qui n'est
+pas de l'UTF-8 valide : la conversion lève une erreur, la ligne est laissée telle quelle, et
+rien ne le signale. La moitié des lignes seraient restées abîmées avec un rapport
+« migration réussie ». D'où le remplacement séquence par séquence.
+
+### Deux garde-fous qui ont servi
+
+**Le premier balayage était incomplet.** J'avais dérivé la table sur quelques plages Unicode
+choisies. Le garde-fou de fin de migration a refusé la migration : « 2 produit(s) portent
+encore du mojibake ». C'étaient deux `‚åÄ` — le signe diamètre `⌀` (U+2300), juste hors des
+plages retenues. Corrigé en balayant **tout le plan multilingue de base** : 44 → 50 séquences,
+0 résidu. Sans ce garde-fou, deux descriptions seraient restées abîmées sans que personne ne
+le sache.
+
+**Deux séquences ne sont dérivables d'aucun codec** et sont donc vérifiées à la main,
+occurrence par occurrence :
+- `‚™` → `™` : une troncature, pas un décodage (aucun des 14 codecs testés ne la produit).
+  34 lignes, toujours accolée à une marque (`3m‚™`, `coban‚™`, `nexcare‚™`).
+- `Â ` → `À ` : 17 occurrences, **toutes** des prépositions (`POT Â EAU`, `6 Â 8 PERSONNES`,
+  `SAC Â DOS`, `ARMOIRE Â PHARMACIE`). La condition porte sur `Â` **suivi d'une espace** :
+  suivi d'une lettre, c'est du français correct qu'il ne faut surtout pas toucher
+  (`BÂTONNET`, `LAIT D'ÂNESSE`, `PURE PÂTE`). C'est l'inventaire du caractère suivant qui a
+  permis de séparer les deux, pas une intuition.
+
+### V33 — la condition de rapprochement des quasi-doublons
+
+V31 n'avait fusionné que les noms strictement identiques, et je l'avais justifié par « une
+migration qui devine se trompe ». C'était une paresse déguisée en prudence : la bonne réponse
+n'est pas de renoncer, c'est de **rendre la règle explicite et de vérifier ce qu'elle produit
+avant de l'appliquer**.
+
+`category_norm(text)` réduit un libellé à une clé comparable : minuscules, décomposition
+Unicode et suppression des accents, `&` → `et`, ponctuation → espace, `s` final retiré des
+mots de plus de trois lettres.
+
+**La règle a été comparée niveau par niveau avant d'être retenue** — 3 groupes avec la casse
+et les accents seuls, 9 en ajoutant l'esperluette et la ponctuation, 12 en ajoutant le
+pluriel. Les 12 groupes ont été lus un par un ; les 3 que seul le pluriel rapproche sont
+« Accessoires pré-opératoire(s) », « Échelle(s) de lecture » et « Produit(s) de ventilation de
+laboratoire » — trois fusions correctes. **223 → 211 catégories.**
+
+Un groupe méritait le détour : deux `Bandes plâtrées & accessoires` visuellement identiques,
+qui ne différaient que par la **forme de normalisation Unicode** de leur accent (`â` précomposé
+contre `a` + accent combinant). Aucune comparaison de chaînes ne les rapprochait ; la
+décomposition NFD, si.
+
+### Ligne survivante et libellé conservé : deux décisions distinctes
+
+Une subtilité qui change le résultat. Si l'on garde le libellé de la ligne la plus utilisée,
+« Equipements divers » (8 produits, sans accent) l'emporte sur « Équipements divers »
+(0 produit, correctement accentué) — et la plateforme conserve la moins bonne des deux
+graphies. Les deux décisions sont donc séparées :
+
+- la **ligne** qui survit est celle qui porte le plus de produits (moins de rattachements à
+  réécrire) ;
+- le **libellé** affiché est celui de la variante la mieux orthographiée : le plus d'accents,
+  puis le plus long.
+
+Résultat vérifié : `Équipements divers` (8), `Accessoires pré-opératoires` (7),
+`Autour du lit & Canapé` (33), `Échelles de lecture` (2).
+
+### Ce qui empêche le problème de revenir
+
+Fusionner ne suffit pas : sans contrainte, le prochain import recrée les mêmes doublons et
+V31/V33 sont à refaire. Un **index unique sur `(tenant_id, category_norm(name))`** est donc
+posé. C'est la base, et non le code applicatif, qui refuse le doublon — aucun chemin d'écriture
+ne peut le contourner.
+
+`IMMUTABLE` est obligatoire pour indexer une expression, d'où la table de correspondance
+explicite via `translate` plutôt que `unaccent()`, qui ne l'est pas.
+
+**Testé :** l'insertion de `GANTS D'EXAMEN & DE CHIRURGIES` (casse, esperluette et pluriel
+différents) est **rejetée** par la contrainte ; `Rayon totalement inédit` est acceptée.
+
+### Vérification
+
+Les deux migrations ont été rejouées sur une copie `pg_dump` de la base réelle avant d'y
+toucher, puis appliquées par Flyway. État final : **211 catégories, 0 doublon normalisé,
+1 519 produits intacts, 0 mojibake restant**, confirmé aussi par l'API déployée
+(`3M™ LITTMANN®`, `Ø 18 mm`, `±10%`, `°C` s'affichent correctement).
+
+### Défauts relevés, non corrigés
+
+- **59 groupes de produits en double** (64 lignes surnuméraires) portent le même libellé.
+  C'est le même import rejoué que pour les catégories, mais au niveau produit : chaque ligne a
+  son propre SKU, son stock et potentiellement ses commandes. Les fusionner touche à
+  `order_items` — c'est un chantier à part, pas une variante de celui-ci.
+- **20 fautes d'accent de la source** : 14 `CRÉME` / `modéle` / `CUILLÉRE` (aigu au lieu de
+  grave) et 6 `TÂTE` / `tàte` pour `TÊTE`. Ce sont des erreurs de saisie du fournisseur, pas
+  d'encodage : les corriger relève de la qualité du catalogue, pas d'une migration technique.
+
+## 64. Doublons de produits (V34) : 59 annoncés, 5 fusionnés — et un bug d'historique découvert en route
+
+Suite demandée du nettoyage. Le résultat n'est pas celui attendu, et c'est le sujet de cette
+entrée : **l'analyse a invalidé la prémisse**.
+
+### « 59 groupes en double » était faux
+
+Le relevé initial détectait les doublons sur le **libellé**. Le libellé n'est pas l'identité
+d'un produit :
+
+- « Siège de douche rabattable SOLO » désigne **quatre références** distinctes (VB544W, VB544,
+  1820041020, 1820041010) à quatre prix : 66,08 / 64,22 / 90,77 / 93,41 €.
+- « BLOUSE VISITEUR » désigne deux articles à **9,43 €** et **74,66 €**.
+
+Fusionner sur le nom aurait supprimé de vraies fiches et imposé un prix arbitraire.
+**32 des 59 groupes étaient des faux positifs.**
+
+L'identité réelle est le SKU — qui n'est d'ailleurs pas une référence mais une **liste** de
+références, saisie tantôt avec des espaces, tantôt avec des retours à la ligne, tantôt avec un
+zéro de tête (`0411150010` et `411150010` désignent le même article). Sur ce critère
+normalisé : **34 groupes**, pas 59.
+
+### Puis le prix a invalidé la suite
+
+Sur les 34 groupes, un rapport de prix revenait : 987,10 / 822,58 = **1,2000**. Vérification
+sur l'ensemble : **22 groupes présentent un rapport de exactement 1,20**. Un passage d'import a
+enregistré du **HT**, l'autre du **TTC**. Et le code ne gère aucune TVA — `base_price` est
+utilisé tel quel.
+
+Fusionner, c'est choisir quelle fiche reste en vente, donc **quel prix le client paie**.
+Trancher HT contre TTC modifierait le prix de vente de 20 % sur 22 produits. Une migration n'a
+pas à décider cela. Cinq autres groupes présentent un écart inexpliqué (117,25 contre 89,90 ;
+78,80 contre 70,27) — même traitement.
+
+### La condition retenue
+
+V34 ne fusionne que les groupes où **la fusion n'arbitre aucun prix** : une fois le prix de
+remplissage écarté, il ne subsiste qu'un seul prix distinct dans le groupe. **5 groupes.**
+
+Cette condition s'appuie sur un constat mesuré : **141 produits portent exactement 100,00 €**
+quand le prix suivant le plus fréquent n'apparaît que 8 fois. Ce n'est pas une alternative
+commerciale, c'est une case non remplie — la fiche au vrai prix l'emporte.
+
+Un détail d'ordre a compté : mon premier classement plaçait la longueur de description avant
+le prix. Résultat, l'ÉTHYLOTEST à **100,00 € avec une description fournie** l'emportait sur la
+même fiche à **926,20 €**. Le critère de prix passe donc en premier : une fiche bavarde au
+prix de remplissage ne vaut pas mieux qu'une fiche brève au vrai prix.
+
+### Le bug découvert en chemin, et prouvé
+
+Avant de masquer quoi que ce soit, j'ai vérifié ce que devient une commande dont le produit
+disparaît. `order_items` conserve `unit_price` mais **pas le libellé** : celui-ci vient de
+l'association `Product`, qui porte `@SQLRestriction("deleted_at IS NULL AND is_active = true")`.
+`mapToResponseDto` faisait `item.getProduct().getName()` sans protection.
+
+**Test sur la plateforme en fonctionnement** — désactivation d'un seul produit déjà commandé,
+via le bouton « Désactiver » de l'écran catalogue :
+
+| Étape | Résultat |
+|---|---|
+| `GET /admin/orders` avant | **200** |
+| `PATCH .../status?active=false` | 200 |
+| `GET /admin/orders` après | **400** — `No row with the given identifier exists for entity Product` |
+| après restauration | **200** |
+
+Ce n'est pas un effet de bord de la fusion : **le bouton « Désactiver » du catalogue rendait
+déjà toute la liste des commandes de l'administration inaccessible** dès qu'il portait sur un
+article commandé. Trois déréférencements ont été protégés dans `OrderService` (liste des
+commandes, devis PDF, reçu PDF) ; l'article absent s'affiche désormais « Article retiré du
+catalogue » au lieu de faire échouer la page. **Rejoué après correctif : 200 dans les quatre
+étapes**, les autres lignes affichant toujours leur libellé réel.
+
+Le correctif de fond serait de figer le libellé dans `order_items` au moment de la commande,
+comme `unit_price` l'est déjà — un produit renommé après coup fait aujourd'hui mentir
+l'historique. Sujet distinct : il touche au parcours de commande.
+
+### On masque, on ne supprime pas
+
+Les doublons sont marqués `deleted_at` / `is_active = false`. `order_items` référence
+`products` sans `ON DELETE` et une commande est une pièce comptable. Par surcroît, **tout
+groupe dont une fiche porte une commande est exclu** de la fusion — volontairement plus strict
+que nécessaire : il suffirait d'exclure les groupes où la fiche *écartée* est commandée, mais
+la fiche retenue dépend d'un classement, et une règle indépendante de ce classement se vérifie
+d'un coup d'œil. Deux groupes sont concernés (`Fauteuil Releveur BORAS`, `Cardiomate pc-ecg`).
+
+### Vérification
+
+Rejouée sur une copie `pg_dump` avant la base réelle. **1 519 → 1 514 produits vivants**, les
+5 fiches retenues portant bien le vrai prix (926,20 / 444,76 / 38,86 / 27,54 / 24,79) et non le
+prix de remplissage. **0 commande orpheline.** Confirmé via l'API : le catalogue admin annonce
+1 514 produits.
+
+### Ce qui attend une décision, pas un correctif
+
+- **22 groupes HT/TTC** : quel prix fait foi ? La réponse détermine à la fois la fusion et,
+  plus largement, si le catalogue affiche des prix TTC ou HT. La migration est prête à être
+  paramétrée dès que la règle est connue.
+- **5 groupes à écart inexpliqué**, à examiner un par un.
+- **141 produits à 100,00 €** — sujet bien plus large que les doublons : 9 % du catalogue est
+  en vente à un prix de remplissage.
+
+## 65. Prix de remplissage (V35) et fusion des doublons au TTC (V36) — déployés & vérifiés
+
+Trois sujets laissés en suspens à l'entrée 64, traités dans l'ordre demandé : les fiches sans
+prix, puis l'arbitrage HT/TTC, puis les écarts inexpliqués.
+
+### V35 — 138 fiches en vente à un prix qui n'en est pas un
+
+138 produits vivants portaient exactement 100,00 €, quand le prix suivant le plus fréquent
+n'apparaît que 8 fois dans tout le catalogue. Les 1 513 fiches ayant été créées **à la même
+minute**, c'est la valeur par défaut d'un import.
+
+Ce ne sont pas des articles bon marché. Deux familles, toutes deux sans prix unitaire
+connaissable :
+
+1. **65 références `OPT-WC-…`** : cryostats, PCR en temps réel, microtomes rotatifs, automates
+   d'hématologie, scanners de lames, microscopes à fluorescence, centrifugeuses réfrigérées.
+   **Toute la famille est à 100,00 €** — minimum égal au maximum.
+2. **73 gammes multi-références** : le champ `sku` porte une *liste* de références (« Drap
+   housse standard » en couvre quinze). Une gamme n'a pas de prix unitaire. **97 % des fiches
+   à 100,00 € sont multi-références, contre 30 % pour le reste du catalogue.**
+
+**Ce que cela aurait coûté** : une commande de **test** porte un « Stérilisateur à air chaud
+DOF-HAS70A » — 2 unités à 100,00 € puis 18 à 95,00 €, soit 20 appareils pour 1 910 €. *Aucune
+vente réelle n'a eu lieu* : toutes les commandes en base sont des données de test (voir
+l'entrée 66). Ce n'est donc pas une perte, mais la démonstration que le parcours d'achat
+menait effectivement au bout au prix de remplissage.
+
+**La correction ne devine aucun prix.** Personne ne déduit le tarif d'un cryostat d'une base de
+données. Les fiches basculent sur `is_quote_only` — un mécanisme **déjà présent et déjà
+appliqué** : `OrderService` refuse la commande directe d'un article sur devis, la boutique
+affiche « Tarif sur demande » à la place du prix et « Demander un devis » à la place de
+« Ajouter au panier ». **Aucun changement de code n'a été nécessaire** : le comportement
+correct existait, il n'était simplement pas appliqué à ces fiches.
+
+`base_price` reste à 100,00 € : la colonne est NOT NULL et l'écraser par 0 ferait passer un
+défaut pour une donnée. Le prix n'est plus ni montré ni facturable, voilà tout.
+
+**Toutes les fiches à 100,00 €, sans exception.** Un article pourrait réellement valoir 100 €
+et basculer à tort. Le risque est asymétrique : une bascule injustifiée se corrige d'un clic et
+oriente entre-temps le client vers un devis ; un cryostat laissé à 100 € se vend à 100 €.
+
+### V36 — la catégorie désigne la passe d'import de référence
+
+Arbitrage métier reçu : **le TTC fait foi**. Restait à savoir quelle fiche survit.
+
+Les doublons viennent de deux passes d'import : l'une range les articles dans leur catégorie
+métier, l'autre les verse dans un fourre-tout. **Mesure faite sur les 22 groupes à TVA : dans
+20 d'entre eux, le prix TTC est porté par la fiche rangée dans une catégorie métier.** C'est
+donc la spécificité de la catégorie — et non la longueur de la description, que j'avais
+d'abord retenue — qui identifie la passe de référence. Aucun libellé n'est écrit en dur : c'est
+la volumétrie de la catégorie qui départage.
+
+Classement et prix restent deux décisions distinctes, comme en V33 : dans les 2 groupes où la
+passe de référence portait le HT, le prix TTC est **reporté** sur la fiche conservée.
+
+**Ce qui est récupéré plutôt que perdu.** La fiche conservée reprend la description la plus
+fournie du groupe. Sans cela, « Accessoires pour contec » (catégorie métier, description vide)
+perdait les 305 caractères de son doublon, et « Adaptateur secteur Veroval » gardait 5
+caractères au lieu de 86. Ce n'est pas un arbitrage : deux fiches du même groupe décrivent le
+même article. Le prix, lui, n'est jamais mélangé.
+
+### Les 5 écarts inexpliqués : traités, mais signalés
+
+Leurs rapports de prix — 1,073 / 1,121 / 1,164 / 1,182 / 1,304 — **ne sont pas un taux de
+TVA**. Les cinq portent pourtant la même signature que les 22 autres : la fiche au prix le plus
+élevé est dans une catégorie métier, l'autre dans le fourre-tout. La même règle leur est donc
+appliquée, sans prétendre à une certitude qu'on n'a pas, et **les cinq tarifs sont listés
+nommément dans la migration** pour être confrontés au tarif fournisseur :
+
+| Article | Conservé | Fiche écartée |
+|---|---|---|
+| TENSIOMÈTRE BRAS OMRON M7 IT V2 | 117,25 € | 89,90 € |
+| SAC D'INTERVENTION À BANDOULIÈRE | 181,88 € | 156,28 € |
+| SAC À DOS D'INTERVENTION LÉGER | 168,24 € | 156,78 € |
+| CAPTEURS POUR NELLCOR | 117,22 € | 99,14 € |
+| ARMOIRE 1 PORTE MÉTAL | 78,80 € | 70,27 € |
+
+### Une erreur de SQL rattrapée par le garde-fou lui-même
+
+Le contrôle final devait vérifier qu'aucun groupe fusionnable ne subsiste. Écrit d'un jet, il
+plaçait une sous-requête corrélée sur `p.id` dans un `HAVING`, alors que `p.id` n'est pas dans
+le `GROUP BY` — et comptait les lignes du premier groupe au lieu du nombre de groupes. Deux
+fautes dans un contrôle censé garantir le reste. Le comptage des commandes est désormais
+calculé ligne par ligne **avant** le regroupement, et l'ensemble est enveloppé pour compter les
+groupes.
+
+### Vérification
+
+Rejouées sur une copie `pg_dump` avant la base réelle. **1 514 → 1 487 produits vivants**
+(27 doublons masqués : 22 TVA + 5 écarts ; les 2 groupes portant une commande restent exclus),
+**139 fiches sur devis**, **0 fiche encore achetable au prix de remplissage**, **0 commande
+orpheline**. Contrôles ponctuels : `Fauteuil releveur jules - 1 moteur` conservé à 987,10 €
+(TTC) en catégorie « Repos » ; `Accessoires pour contec` à 19,60 € avec sa description
+récupérée (0 → 305 caractères) ; `Adaptateur secteur Veroval` à 14,33 € (5 → 86 caractères).
+
+### Reste ouvert
+
+- **Les 2 groupes portant une commande** (`Fauteuil Releveur BORAS`, `Cardiomate pc-ecg`)
+  gardent leurs deux fiches : masquer une fiche commandée priverait l'historique de l'article
+  réellement vendu. Leur fusion demande de décider quoi faire de la commande — décision
+  humaine.
+- **Le catalogue est-il TTC partout ?** L'arbitrage porte sur les doublons. Pour les 1 400
+  produits en exemplaire unique, rien ne dit si leur prix est HT ou TTC ; seule une
+  confrontation au tarif fournisseur le dira.
+- **Renseigner les 138 tarifs** manquants, pour sortir ces fiches du régime « sur devis ».
+
+## 66. Deux rappels : les ventes en base sont fictives, et une migration appliquée est immuable
+
+### J'ai chiffré une perte qui n'existait pas
+
+J'ai présenté la commande de 20 stérilisateurs à ~100 € comme **une perte commerciale déjà
+subie**. C'était faux : toutes les commandes, tous les comptes clients et tous les partenaires
+présents en base sont des données de test, créées pendant le développement et destinées à être
+purgées avant la mise en production.
+
+L'erreur ne vient pas d'une donnée mal lue mais d'une **hypothèse jamais vérifiée** : j'ai traité
+`order_items` comme un registre comptable parce que c'est ce qu'il sera en production, sans me
+demander ce qu'il contenait aujourd'hui. Une base de développement ressemble à une base de
+production ; c'est précisément pourquoi il faut le demander plutôt que le supposer.
+
+**Ce que cela change concrètement.** L'argument « une commande est une pièce comptable » qui
+justifiait plusieurs choix reste valable *pour la production*, mais la contrainte actuelle est
+purement **technique** : masquer un produit référencé par une commande fait échouer l'affichage
+de celle-ci. Deux conséquences :
+
+- Les **2 groupes de doublons** (`Fauteuil Releveur BORAS`, `Cardiomate pc-ecg`) laissés non
+  fusionnés en V34/V36 ne l'étaient qu'à cause de commandes fictives. La purge levée, ils
+  pourront être fusionnés comme les 32 autres.
+- Le correctif de `OrderService` (entrée 64) **garde toute sa valeur** : il vaudra pour les
+  vraies commandes, et c'est lui qui rendra la fusion de ces deux groupes possible sans casse.
+
+### Puis j'ai failli casser l'historique des migrations
+
+Voulant corriger la formulation fautive, j'ai édité les commentaires de **V35 et V36 — déjà
+appliquées**. Flyway enregistre l'empreinte de chaque migration au moment où il la joue et la
+revérifie à chaque démarrage : modifier ne serait-ce qu'un commentaire aurait fait échouer le
+prochain lancement du backend sur un `Migration checksum mismatch`, et cassé toute base ayant
+déjà reçu ces versions.
+
+**Une migration appliquée est immuable**, commentaires compris. Les deux fichiers ont été
+restaurés à l'identique ; la correction vit ici, dans le journal, qui est le bon endroit pour
+un récit — une migration décrit ce qu'elle fait, pas ce qu'on a compris après coup.
+
+### Ce qui reste à faire, le moment venu
+
+Un script de préparation à la production devra retirer les commandes, comptes clients et
+partenaires fictifs. Il n'est pas écrit : le faire maintenant priverait les tests en cours de
+leurs données. À traiter comme un chantier à part entière — l'ordre de suppression compte
+(`order_items` avant `orders`, réservations de stock, journaux d'emails, candidatures), et
+c'est exactement le genre d'opération qui doit être rejouée sur une copie avant la vraie base.
+
+## 67. Prompt 04 — Filtrage des dossiers CHU et remplacement du stepper à 9 points
+
+### Le filtre demandé n'était pas affichable : la donnée n'existait pas
+
+La consigne était de « filtrer les candidatures des médecins par partenaire ou CHU ».
+`EnrollmentDetailDto` ne portait **aucune référence au partenaire**. La seule information
+approchante, `hostInstitution`, est le champ `location` de la session — un texte libre
+(« Amphithéâtre B »), pas une identité d'établissement. Filtrer dessus aurait produit un
+regroupement par lieu de cours.
+
+Le CHU se trouve au bout de `Enrollment → session → training → partnerProfile`. Deux champs
+ont été ajoutés au DTO : `partnerProfileId`, sur lequel le filtre s'appuie, et `partnerName`,
+que l'interface affiche. **L'identifiant et le libellé sont distincts à dessein** : deux CHU
+peuvent porter un nom voisin, et filtrer sur une chaîne aurait rejoué au niveau des dossiers
+le problème que V33 venait de régler au niveau des catégories.
+
+### Une jointure ajoutée pour ne pas empirer un N+1 existant
+
+`getAllEnrollmentsForAdmin` faisait `findAll()` puis lisait, pour chaque dossier, le médecin,
+la session et la formation — en chargement paresseux, donc une requête par association et par
+ligne. Y ajouter le CHU partenaire aurait ajouté un quatrième aller-retour par dossier.
+
+`findAllForAdmin()` charge désormais les quatre associations d'un coup (`JOIN FETCH`).
+Indolore sur douze dossiers, indispensable ensuite — et c'est précisément parce que c'est
+indolore aujourd'hui qu'il fallait le corriger en passant, plutôt que de laisser une ligne de
+plus s'ajouter à la boucle.
+
+**Mesuré plutôt que supposé.** `pg_stat_user_tables` remis à zéro, un appel à
+`/admin/enrollments`, puis relevé des accès par table :
+
+| Table | Avant | Après |
+|---|---|---|
+| `training_sessions` | 1 | 1 |
+| `trainings` | 1 | 1 |
+| `partner_profiles` | 1 | 1 |
+| `users` | 1 | 1 |
+| `enrollments` | 3 | 3 |
+| **`doctor_profiles`** | **12** | **1** |
+
+La jointure tient : un seul accès là où le CHU en aurait coûté douze. Mais la mesure a
+**révélé un N+1 que je n'avais pas vu** — le nom du médecin vit dans `doctor_profiles`, hors
+du graphe des dossiers, et était résolu par un `findByUserId` appelé dans la boucle de
+mapping. Aucune jointure sur `Enrollment` ne pouvait l'atteindre.
+
+Corrigé par un chargement groupé (`findByUserIdIn`) et une carte passée au mapper. Le
+paramètre est facultatif : les trois autres appels à `toDetailDto` passent `null` et
+conservent exactement leur comportement d'origine. **Sans cette mesure, j'aurais annoncé avoir
+fermé le N+1 alors qu'il en restait douze requêtes sur treize.**
+
+### Et la deuxième mesure a rattrapé un déploiement fantôme
+
+Après correction et redéploiement, le relevé affichait **toujours 12 accès**. Plutôt que de
+conclure à un correctif inefficace, j'ai activé `log_statement='all'` sur PostgreSQL et lu le
+SQL réellement exécuté : douze `where dp1_0.user_id=$1`, c'est-à-dire l'**ancien** chemin —
+un chargement groupé aurait produit un `user_id in (…)`.
+
+Le code source portait bien la correction, la compilation locale aussi. Mais le jar embarqué
+dans l'image, extrait et inspecté, ne contenait **ni `findByUserIdIn` ni `nomsMedecins`** : le
+`docker compose up --build` avait réutilisé une couche de cache et redéployé l'image
+précédente. Reconstruction forcée (`build --no-cache`).
+
+La leçon n'est pas sur Docker : **« j'ai corrigé, compilé et redéployé » n'est pas une preuve
+que le correctif tourne.** Ici, deux vérifications indépendantes — le SQL journalisé, puis le
+contenu du jar déployé — ont été nécessaires pour distinguer « le correctif ne marche pas » de
+« le correctif n'est pas là ». Sans elles, j'aurais soit annoncé un succès inexistant, soit
+défait un code correct en cherchant un bug qui n'existait pas.
+
+### Le stepper à 9 points : neuf pastilles de 8 pixels, sans libellé
+
+La liste affichait le parcours sous forme de neuf points reliés. Pour situer un dossier, il
+fallait **compter les points** — et rien ne distinguait la 6e étape de la 7e. Le libellé
+n'existait que dans l'attribut `title`, invisible sans survol.
+
+Remplacé par une variante `inline` : le **libellé de l'étape en cours**, un compteur
+« 3/9 » aligné à droite, et une barre de progression. Le nom de l'étape est lisible
+immédiatement, et le compteur donne la position sans avoir à l'énumérer.
+
+**`ACTION_REQUIRED` n'avait aucune position.** Ce statut ne figure pas dans les neuf étapes :
+`findIndex` renvoyait `-1`, et le dossier s'affichait avec une progression entièrement vide,
+comme si rien n'avait commencé — alors qu'il s'agit d'un dossier déjà instruit, renvoyé au
+médecin pour une pièce. Il est désormais situé à l'étape de revue, en ambre, avec le libellé
+« Pièce demandée ». La règle est isolée dans `stepIndexForStatus`, partagée par les trois
+variantes du composant.
+
+### Filtrer par « qui doit agir » plutôt que par statut brut
+
+Le cycle compte onze statuts. Les proposer tels quels dans un menu déroulant aurait demandé à
+l'utilisateur de connaître la machine à états pour s'en servir. Le filtre porte donc sur cinq
+vues métier — *à traiter par OptimiSanté*, *chez le CHU*, *en attente du médecin*, *clos* —
+qui répondent à la seule question utile : **de qui dépend l'avancement ?** Le statut exact
+reste affiché sur chaque ligne par la `StatusBadge`.
+
+Un raccourci signale en permanence le nombre de dossiers en attente de revue et bascule sur la
+vue correspondante d'un clic.
+
+### La liste des CHU est déduite des dossiers, pas de la table des partenaires
+
+La base compte 5 profils partenaires mais **2 seulement ont des candidatures**. Alimenter le
+menu depuis `partner_profiles` aurait proposé trois établissements menant à une liste vide —
+que l'utilisateur lit comme une panne, pas comme une absence. Le menu est construit à partir
+des dossiers chargés, avec le compte de chacun.
+
+### Choix assumé : filtrage côté client
+
+Contrairement au catalogue (1 519 produits, entrée 62), les dossiers se comptent en dizaines
+et la liste complète est déjà chargée pour l'écran. Filtrer côté serveur aurait ajouté des
+paramètres, une requête par frappe et une pagination, sans rien résoudre. **Le critère n'est
+pas l'uniformité mais la volumétrie** : au catalogue, filtrer dans le navigateur n'aurait porté
+que sur les 100 premières lignes et aurait menti ; ici, il porte sur la totalité.
+
+## 68. Prompt 05 — Espace de constitution du dossier de pièces (V37)
+
+### Ce qui existait pour réclamer une pièce : une phrase
+
+Pour demander un document à un médecin, l'administration disposait d'un seul moyen :
+`requestAction`, qui bascule le dossier en `ACTION_REQUIRED` avec **une note en texte libre**.
+Trois limites, qui expliquent la demande initiale d'« un espace dédié » :
+
+1. **Une seule demande à la fois.** Réclamer trois pièces obligeait à les énumérer dans une
+   phrase, sans pouvoir suivre laquelle est arrivée.
+2. **Le dossier entier est bloqué.** Or les pièces du dossier de visa se rassemblent *pendant*
+   la procédure — après l'acceptation du CHU, après la convention — moments où renvoyer le
+   dossier en revue serait absurde.
+3. **Rien ne dit ce qu'il reste à fournir.** Ni le médecin ni l'administration ne pouvaient
+   répondre à « mon dossier est-il complet ? ».
+
+### La décision de conception : ne pas toucher à la machine à états
+
+`enrollment_document_requests` est **indépendante du statut du dossier**. Demander une pièce
+ne fait rien basculer. Les deux mécanismes coexistent et ne servent pas au même moment :
+`requestAction` bloque la revue initiale, les demandes de pièces accompagnent le parcours.
+
+Il aurait été tentant de réutiliser `ACTION_REQUIRED` pour tout — c'est l'erreur qui aurait
+rendu impossible la collecte des pièces de visa après la convention.
+
+### Ce que la table ne fait pas
+
+Elle ne remplace pas `enrollment_documents`, qui reste le magasin des fichiers. Une demande
+**pointe** vers la pièce qui la satisfait, elle ne la stocke pas. Un document peut donc exister
+sans demande : c'est le cas de ceux que l'administration produit elle-même (convention,
+attestation, courrier consulaire), qui ne sont réclamés à personne.
+
+### Le libellé libre à côté de la taxonomie
+
+Le type reste l'énumération existante à huit valeurs — je ne l'ai pas étendue, faute de savoir
+quelle taxonomie l'utilisateur veut. Mais `OTHER` n'apprend pas au médecin qu'on attend un acte
+de naissance traduit : chaque demande porte donc un **libellé obligatoire**, qui est ce que le
+médecin lit. Le type sert au classement, le libellé à la communication.
+
+### Les invariants sont dans la base, pas seulement dans le service
+
+Une contrainte `CHECK` de cohérence lie l'état aux colonnes qui doivent l'accompagner :
+`ACCEPTED` exige une pièce attachée, `REJECTED` exige un motif. Sans elle, un refus sans motif
+laisserait le médecin devant un blocage qu'on ne lui explique pas — il redéposerait la même
+pièce et le dossier tournerait en rond.
+
+Un **index unique partiel** empêche de réclamer deux fois la même pièce tant que la première
+demande n'est pas réglée (double clic, ou deux administrateurs sur le même dossier). Restreint
+aux demandes *ouvertes* : une fois acceptée ou annulée, la même pièce peut légitimement être
+redemandée — un passeport périmé, une traduction à refaire.
+
+**Six contrôles rejoués sur une copie de la base** avant de l'appliquer : `ACCEPTED` sans
+pièce, `REJECTED` sans motif et type inconnu sont refusés ; une demande valide passe ; le même
+libellé en casse différente est refusé ; un libellé différent passe.
+
+### Le bug qui bloquait la fonctionnalité demandée
+
+Avant d'écrire quoi que ce soit, j'ai vérifié qu'un administrateur pouvait déposer une pièce.
+Il ne pouvait pas : `uploadEnrollmentDocument` testait `ADMIN` et `SUPER_ADMIN` mais **pas
+`ADMIN_MOBILITE`** — un reliquat de la scission des rôles (V30). Le `@PreAuthorize` de
+l'endpoint l'autorisait, le contrôle interne le refusait : l'administrateur passait la porte
+puis se voyait refuser à l'intérieur, avec « Unauthorized to upload documents ».
+
+**Le rôle censé constituer le dossier ne pouvait rien y déposer.** Vérifié sur la plateforme
+avant correction. L'exception est au passage devenue une `AccessDeniedException` — un refus de
+droit répondait jusque-là par une erreur 500 générique.
+
+### Vérifié en conditions réelles, 13 contrôles
+
+Le cycle complet rejoué contre la plateforme déployée :
+
+| # | Contrôle | Résultat |
+|---|---|---|
+| 1 | L'admin réclame une pièce | créée, `PENDING` |
+| 2 | La même pièce, en casse différente | refusée, **message lisible** |
+| 3 | Récapitulatif admin | 1 attendue, non complet |
+| 4 | Ce que voit le médecin | la pièce, avec sa date limite |
+| 5 | Le médecin dépose | `SUBMITTED`, pièce rattachée |
+| 6 | Refus **sans motif** | refusé |
+| 7 | Refus avec motif | `REJECTED`, motif conservé |
+| 8 | Le médecin redépose | `SUBMITTED`, ancien motif effacé |
+| 9 | L'admin accepte | `ACCEPTED` |
+| 10 | Dossier complet ? | `complete = true` |
+| 11 | `ADMIN_MOBILITE` dépose une pièce | **200** (était refusé avant correctif) |
+| 12 | Un médecin lit le dossier d'un tiers | **403** |
+| 13 | `ADMIN_ECOMMERCE` réclame une pièce | **403** |
+
+Les contrôles 6 et 8 sont ceux qui comptent le plus : ils prouvent qu'un refus est toujours
+motivé, et qu'un motif périmé ne reste pas affiché sur une pièce qui n'est plus celle qu'on
+examine.
+
+### Ce que ce lot ne comprend pas
+
+Les écrans. La liste, le formulaire de demande, l'espace « Mon dossier visa » du médecin
+relèvent du lot suivant. Le service expose déjà le récapitulatif dont ils auront besoin :
+total, acceptées, en attente du médecin, en attente de vérification, et un drapeau `complete`
+— avec la règle qu'un dossier **sans aucune demande n'est pas complet**, il n'a pas commencé.
+
+## 69. Prompt 06 — Les écrans du dossier de pièces, et un second cloisonnement à réparer
+
+### Un bug découvert avant d'écrire une ligne d'interface
+
+Le panneau d'administration devait porter un bouton « Voir la pièce ». Avant de le dessiner,
+j'ai vérifié qu'un administrateur mobilité pouvait ouvrir un document : **403**.
+
+`DocumentController` testait, comme `uploadEnrollmentDocument` la veille, `ADMIN` et
+`SUPER_ADMIN` seulement. Même reliquat de la scission V30, même conséquence : le rôle qui
+instruit les dossiers ne pouvait pas lire les pièces qu'il réclame.
+
+**Mais le correctif ne pouvait pas être le même.** Ce contrôleur sert *aussi* les devis et
+factures des commandes, qui relèvent du négoce. Ajouter `ADMIN_MOBILITE` au drapeau unique
+`isAdmin` lui aurait ouvert les factures clients — on aurait réparé un cloisonnement en
+perçant l'autre.
+
+Le drapeau unique est donc devenu deux, appliqués branche par branche :
+`isEcommerceAdmin` pour les devis et factures, `isMobilityAdmin` pour les conventions,
+attestations, pièces de dossier et relevés de reversement. **Un contrôleur qui sert deux
+métiers ne peut pas avoir une seule notion d'« administrateur ».**
+
+### Ce que les écrans montrent, et pourquoi ce n'est pas le coffre-fort
+
+La page d'administration comportait déjà un « coffre-fort documentaire » listant les fichiers
+présents. Le nouveau panneau est placé **avant** lui, et répond à une autre question : le
+coffre-fort dit *ce qu'on a*, les pièces réclamées disent *ce qu'il manque*. C'est cette
+seconde question qui restait sans réponse, et sans laquelle on ne peut pas préparer une
+demande de visa.
+
+Un bandeau d'avancement partagé par les deux écrans (`DossierProgress`) affiche la progression
+et surtout **qui doit agir** : « 2 en attente du médecin », « 1 à vérifier ». C'est
+l'information qui manque le plus souvent quand un dossier semble bloqué sans qu'on sache par
+qui.
+
+### Le refus passe par une saisie obligatoire
+
+Refuser une pièce ouvre une invite qui rappelle *pourquoi* le motif est exigé : « Le médecin
+lira ce motif : sans lui, il redéposera la même pièce. » Un motif vide est refusé côté
+interface, côté service et côté base — trois barrières pour un cas qui, s'il passait, ferait
+tourner le dossier en rond sans que personne comprenne pourquoi.
+
+Côté médecin, un refus s'affiche en « **À refaire :** motif » avec un bouton « Déposer un
+nouveau fichier » — l'action suit immédiatement l'explication.
+
+### Pas d'entrée « Mon dossier visa » dans le menu du médecin
+
+C'était le réflexe attendu, et il aurait été faux : les pièces appartiennent à **un dossier
+précis**, et un médecin peut avoir plusieurs candidatures. Une entrée de menu au niveau du
+compte poserait aussitôt la question « lequel ? ». Le panneau vit donc sur le détail de la
+candidature, là où le contexte est déjà établi.
+
+Quand rien n'est réclamé, le panneau ne disparaît pas : il l'écrit. L'absence de demande est
+une information rassurante — un écran vide ressemble à un chargement qui n'a pas abouti.
+
+### Détail d'implémentation qui évite un bug classique
+
+L'input de fichier est réinitialisé (`e.target.value = ''`) après chaque envoi. Sans cela, un
+médecin dont la pièce est refusée et qui redépose **le même fichier corrigé sous le même nom**
+ne déclencherait aucun événement `change` : le navigateur considère que la valeur n'a pas
+changé, et rien ne se passerait — sans message d'erreur.
+
+### Le déploiement fantôme, deuxième fois — mais détecté d'emblée
+
+`docker compose up --build` a de nouveau réutilisé une couche de cache : le conteneur affichait
+27 minutes d'ancienneté après une commande censée le recréer. Cette fois je n'ai pas mesuré le
+comportement pour en déduire un problème — **j'ai directement inspecté le jar déployé**, qui ne
+contenait pas `isMobilityAdmin`. Reconstruction `--no-cache --force-recreate`.
+
+L'entrée 67 avait coûté trois allers-retours à comprendre ce symptôme ; celle-ci, une
+commande. C'est ce que vaut une leçon écrite.
+
+### Ce qui reste ouvert
+
+Aucune notification n'est envoyée au médecin lorsqu'une pièce lui est réclamée : il la
+découvre en consultant son dossier. Le service d'emails existe et le brancher est direct, mais
+c'est un choix de communication (fréquence, regroupement des demandes) qui appartient au
+métier, pas une évidence technique.
+
+## 70. Les deux administrateurs métier étaient enfermés dehors, et la barre latérale mesurait la page
+
+Deux défauts signalés au moment de la recette. Le second n'était pas cosmétique.
+
+### « Espace Admin » n'existait pas pour eux
+
+`Navbar.tsx` n'affichait le lien vers l'administration que pour `ADMIN` et `SUPER_ADMIN` :
+
+```js
+{(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
+  <Link to="/admin">Espace Admin</Link>
+)}
+```
+
+`ADMIN_ECOMMERCE` et `ADMIN_MOBILITE` en étaient absents. **Troisième occurrence exacte du
+même oubli** après `uploadEnrollmentDocument` (entrée 68) et `DocumentController`
+(entrée 69) : à chaque fois, un test de rôle écrit avant la scission V30 et jamais relu.
+
+La conséquence était sévère parce qu'elle se combinait à une autre fonctionnalité : la barre
+latérale d'administration propose « Retour à la boutique ». Un administrateur métier qui
+cliquait dessus se retrouvait sur la vitrine **sans aucun chemin de retour**. La connexion le
+redirigeait bien vers son tableau de bord, mais un seul clic suffisait à l'en sortir
+définitivement — jusqu'à ce qu'il pense à taper l'URL à la main.
+
+Le lien pointe désormais vers `adminHomeFor(user.role)`, la même source que la redirection de
+connexion et que la barre latérale : trois chemins, une seule définition.
+
+**Vérifié avant de conclure** que rien ne bloquait côté serveur : les sept appels des deux
+tableaux de bord répondent 200, et `/auth/profile` renvoie bien `ADMIN_MOBILITE` et
+`ADMIN_ECOMMERCE`. Le blocage était entièrement dans la navigation.
+
+### Le rôle s'affichait en langage de base de données
+
+Faute de cas dans `getRoleLabel`, le `default` renvoyait l'énumération brute : l'écran
+souhaitait la bienvenue à Marc sous l'étiquette **`ADMIN_MOBILITE`**. Devenu
+« ADMIN MOBILITÉ » / « ADMIN NÉGOCE ». Un `switch` sans cas par défaut sûr transforme une
+valeur technique en texte d'interface, sans que rien ne le signale.
+
+### La barre latérale mesurait la page, pas l'écran
+
+Les trois espaces (admin, partenaire, médecin) partageaient le même défaut :
+
+```html
+<div class="min-h-screen flex">
+  <aside class="w-64 shrink-0 flex flex-col">   <!-- aucune hauteur -->
+    <nav class="flex-1">…</nav>
+    <div>Se déconnecter</div>
+```
+
+Dans un conteneur `min-h-screen flex`, l'`aside` s'étire à la hauteur **totale de la page**.
+Sur un catalogue de 60 pages ou un long dossier, elle mesurait plusieurs milliers de pixels :
+le `flex-1` du menu repoussait « Se déconnecter » tout en bas de cette hauteur, et la barre
+défilait avec le contenu.
+
+Le symptôme décrit — « trop de distance, je trouve les boutons tout en bas alors qu'il n'y a
+pas autant d'éléments » — décrivait exactement cela : le pied de la barre n'était pas en bas
+de l'écran, il était en bas de la page.
+
+`sticky top-0 h-screen` borne la barre à la fenêtre : elle reste immobile et son pied revient
+à sa place. `overflow-y-auto min-h-0` sur le menu couvre le seul cas où les entrées peuvent
+dépasser un petit écran — le super admin et ses quatre groupes. `min-h-0` est indispensable :
+sans lui, un enfant flex refuse de rétrécir sous sa taille de contenu et le défilement interne
+ne s'active jamais.
+
+`position: sticky` plutôt que `fixed` : le contenu principal n'a alors aucun décalage à
+compenser, et la mise en page reste celle d'origine.
+
+## 71. Le motif « promotion » existait à moitié : trois morceaux qui ne se parlaient pas
+
+### Ce que l'inspection a révélé avant d'écrire quoi que ce soit
+
+Trois constats, tous vérifiables en une minute et tous décourageants :
+
+1. **Le menu proposait « Promotions » avec un badge NEW**, vers `/catalog?promo=true`. Or
+   `CatalogPage` **ne lisait pas ce paramètre** : l'entrée menait au catalogue entier. Une
+   fonctionnalité annoncée dans la navigation et absente de la page.
+2. **Le backend n'avait aucun filtre promotion** sur le catalogue public, alors que
+   `ProductResponseDto` exposait déjà `isOnPromo` et `promoEndsAt`, et que
+   `AdminCatalogPage` proposait déjà les trois champs de promotion à la saisie.
+3. **Aucun produit n'était en promotion** en base — donc même un filtre correct n'aurait rien
+   montré.
+
+Le motif était construit aux deux extrémités (saisie côté admin, affichage du drapeau) et
+manquait entièrement au milieu.
+
+### La condition de promotion vit à un seul endroit
+
+`ProductSpecification.onPromoOnly` ne se contente pas de « un prix promo est renseigné » : une
+promotion porte une fenêtre de validité, et une remise terminée ou pas encore commencée ne
+doit pas remonter. Les bornes nulles valent « depuis toujours » et « sans fin ».
+
+C'est **exactement la règle de `Product.getEffectiveBasePrice()`**, qui décide du prix
+réellement facturé. Les deux doivent dire la même chose : sinon la boutique afficherait une
+promotion qui ne s'appliquerait pas au paiement — un écart de prix entre la vitrine et la
+caisse, c'est-à-dire le pire défaut possible sur un site marchand.
+
+### Le carrousel d'accueil
+
+Il portait trois diapositives écrites en dur, avec des images pointant vers un Cloudinary de
+démonstration. Il affiche désormais les vraies promotions : image du produit, remise calculée,
+prix barré, prix promotionnel, date de fin.
+
+**Il retombe sur les bannières statiques quand aucune promotion n'est active.** Un carrousel
+vide serait pire que des diapositives figées : la page d'accueil s'ouvrirait sur un cadre noir.
+Le repli n'est pas une précaution théorique — c'est l'état actuel de la base.
+
+Deux détails qui évitent des bugs visibles :
+- **Une seule promotion ne défile pas.** Faire clignoter un carrousel à une diapositive donne
+  l'impression d'un défaut.
+- **L'index est ramené dans les bornes** si le nombre de promotions diminue pendant que la
+  page est ouverte — sinon le composant rendrait du vide.
+
+### « Nos promos du mois » n'en montrait aucune
+
+La section recevait `products.slice(0, 10)` : les dix premiers produits du catalogue, sans
+aucun rapport avec une remise. Le titre mentait depuis le début. Elle reçoit maintenant les
+promotions réelles.
+
+### La page « Promotions » se présente comme telle
+
+Un bandeau la nomme, et l'état vide est distinct de celui d'une recherche infructueuse : une
+liste vide en mode promotions ne veut pas dire « aucun résultat », mais « aucune remise en
+cours ». Le dire évite de chercher un filtre fautif qui n'existe pas.
+
+### Reste à faire : les offres liées
+
+L'idée d'associer une formation à l'achat d'un équipement (apprendre à utiliser la machine
+acquise) n'est pas traitée ici. Ce n'est pas un réglage d'affichage mais une **relation de
+domaine** entre `products` et `trainings` : migration, exposition dans les DTO, sélection côté
+administration, présentation sur la fiche produit. C'est un lot à part entière, et le mélanger
+au motif « promotion » aurait produit deux fonctionnalités à moitié faites.
+
+## 72. Offre liée (V38) : quel côté porte la clé, et pourquoi ce n'est pas symétrique
+
+« Une formation ne peut avoir qu'un produit, et un produit qu'une formation. » Une relation
+**un à un** : en apparence, peu importe quelle table porte la clé étrangère. En pratique, non.
+
+### Ce sont les auteurs qui décident du côté
+
+- Une **formation est créée et modifiée par le CHU partenaire** (`CENTRE_FORMATION`).
+  L'administration de la mobilité ne fait qu'**approuver ou refuser** — vérifié :
+  `AdminTrainingResource` n'expose que `GET`, `approve` et `reject`. Il n'existe aucun chemin
+  d'édition de formation côté administration.
+- Un **produit est édité par l'administration du négoce**, via un formulaire et un endpoint
+  qui existent déjà.
+
+Or rattacher une formation à un équipement est une **décision commerciale d'OptimiSanté**, pas
+une décision du CHU : un partenaire ne doit pas pouvoir désigner lui-même le produit que sa
+formation accompagne. Porter la clé côté `trainings` aurait donc obligé soit à ouvrir ce choix
+au partenaire — ce qui est faux métier — soit à construire tout un chemin d'édition de
+formation côté administration, pour une seule colonne.
+
+**La clé est donc portée par `products`.** Ce n'est pas un choix de commodité technique : c'est
+le seul côté dont l'auteur a le droit de décider.
+
+### L'unicité fait le 1:1, pas l'annotation
+
+La colonne seule ne dirait que « un produit renvoie à au plus une formation ». L'index unique
+partiel ajoute la réciproque. `@ManyToOne` plutôt que `@OneToOne` côté Hibernate :
+un `@OneToOne` facultatif est chargé de façon anticipée même déclaré paresseux, ce qui ferait
+une requête par produit sur les listes de catalogue. **L'unicité appartient à la base, le
+mapping n'a pas à la porter.**
+
+Vérifié sur une copie : premier rattachement accepté, second rattachement de la même formation
+à un autre produit **refusé**, retrait accepté.
+
+### Le rattachement doit pouvoir se défaire
+
+`updateProduct` traite `trainingId = null` comme « plus de formation liée », alors que
+`categoryId = null` signifie « ne change rien » dans le même service. La différence est
+volontaire et commentée : sans elle, une offre liée posée par erreur serait **indéfaisable**
+depuis l'interface.
+
+### Le cloisonnement des univers, encore
+
+Pour choisir une formation, l'administrateur du négoce doit pouvoir les lister. Or
+`/admin/trainings` est `@MobilityAdmin` et lui répond 403 — à juste titre.
+
+Plutôt que de percer ce cloisonnement, un endpoint `trainings-lookup` sous le périmètre du
+négoce expose le **strict minimum** : identifiant, titre, établissement, prix, durée. Ni
+candidatures, ni pièces, ni modération. C'est la troisième fois que ce cloisonnement se pose
+(entrées 68, 69, 70) et la première où la réponse n'est **pas** d'élargir un droit existant.
+
+Deux filtres implicites qui évitent des offres mortes :
+- Seules les formations **publiées et approuvées** sont proposées au rattachement, et le DTO
+  client ne renvoie l'offre que si elle l'est toujours. Annoncer une formation en attente de
+  validation enverrait le client vers une page indisponible.
+- `findLinkedTrainingIds` est une requête **native** : `Product` porte `@SQLRestriction`, et un
+  produit désactivé conserve son rattachement. En JPQL, la formation qu'il occupe apparaîtrait
+  comme libre — et la base refuserait ensuite l'enregistrement, avec une violation de contrainte
+  incompréhensible pour l'utilisateur.
+
+### L'interface signale plutôt que de masquer
+
+Une formation déjà rattachée reste visible dans le sélecteur, désactivée et marquée « (déjà
+rattachée) ». La faire disparaître laisserait l'utilisateur chercher une formation qu'il sait
+exister.
+
+### Le test a démenti ma propre affirmation
+
+J'avais écrit « deux barrières, un seul message compréhensible ». Le premier passage du cycle
+complet a renvoyé, sur la tentative de doublon :
+
+```
+HTTP 400 · could not execute statement [ERROR: duplicate key value violates
+unique constraint "uq_products_training"]
+```
+
+Ce n'est pas un message compréhensible, c'est une erreur PostgreSQL. La contrainte protégeait
+bien la donnée, mais l'affirmation sur l'expérience était fausse. Ajout d'un contrôle applicatif
+— l'index reste l'autorité, lui seul tient si deux administrateurs enregistrent simultanément —
+qui produit désormais un **409** avec : « La formation « … » accompagne déjà un autre
+équipement. Retirez-la de ce produit avant de la rattacher ici. »
+
+Le contrôle exclut le produit en cours d'édition : se rattacher à la formation qu'on porte déjà
+n'est pas un doublon, et sans cette exclusion tout réenregistrement d'un produit lié aurait
+échoué.
+
+### Vérifié en conditions réelles, 5 étapes
+
+| # | Contrôle | Résultat |
+|---|---|---|
+| 1 | Rattachement d'une formation à un produit | 200 |
+| 2 | La formation est signalée « déjà rattachée » dans le sélecteur | oui |
+| 3 | La même formation sur un second produit | **409**, message lisible |
+| 4 | Ce que voit le client sur la fiche produit | l'offre, sa durée et son prix |
+| 5 | Retrait du rattachement | l'offre disparaît de la fiche |
+
+Plus le cloisonnement : `trainings-lookup` répond 200 au négoce et **403 à la mobilité**, tandis
+que `/admin/trainings` reste **403 au négoce**. Chaque univers accède au strict nécessaire, sans
+que l'ouverture nouvelle en élargisse un autre.
+
+## 73. « Mes données personnelles » : droit d'accès et de portabilité (RGPD, art. 15 et 20)
+
+### Le seul point qui compte vraiment
+
+`PersonalDataService` ne prend **jamais** d'identifiant d'utilisateur en paramètre : toutes ses
+méthodes lisent l'identité authentifiée. Exposer `/personal-data/{userId}` aurait suffi à
+transformer une page de conformité en **outil d'extraction de la base** — il suffit d'une
+boucle sur des UUID. Le contrôle d'accès ne peut pas reposer sur la discrétion de l'appelant.
+
+L'endpoint est ouvert à tout compte authentifié, et pas seulement aux clients : le droit
+d'accès ne dépend pas du rôle. Un médecin ou un partenaire y a droit autant qu'un acheteur.
+
+### L'export rend ce qui est détenu, pas ce qui a été saisi
+
+Un export limité aux champs du formulaire d'inscription ne répond pas à l'article 15. Le
+recensement des tables portant une donnée du client a donné : `users`, `company_profiles`,
+`orders` (avec le nombre d'articles), et `email_logs` — **les emails reçus font partie des
+données détenues sur la personne**, même si elle ne les a pas saisis.
+
+Deux absences délibérées :
+- **L'empreinte du mot de passe.** Ce n'est pas une donnée exploitable par la personne, et la
+  restituer reviendrait à en multiplier les copies hors du système.
+- **Le contenu des emails** — il n'est pas conservé (V24, décision prise parce que l'email
+  d'identifiants transporte un mot de passe en clair). La page le dit explicitement : sans
+  cette phrase, on peut croire que les messages sont stockés.
+
+`stripe_customer_id` est en revanche restitué : c'est un pseudonyme, mais bien une donnée
+concernant la personne.
+
+### La recherche des emails porte sur l'adresse, pas sur l'identifiant
+
+`recipientUserId` n'est plus une clé étrangère depuis la V25 et reste nul pour les emails émis
+**avant que le compte n'existe** — typiquement l'envoi des identifiants, le premier message
+qu'une personne reçoit. Chercher par identifiant aurait omis précisément ces messages-là.
+
+### Deux détails de format qui décident si l'export est utilisable
+
+- **Séparateur point-virgule et BOM UTF-8.** Sans eux, Excel en configuration française ouvre
+  le fichier sur une seule colonne et affiche « Ã© » à la place des accents. Un export
+  illisible ne satisfait pas le droit d'accès — la conformité ne s'arrête pas à l'envoi d'un
+  fichier.
+- **Échappement systématique.** Une adresse de facturation contient des retours à la ligne et
+  des points-virgules : sans guillemets, chacun décalerait toutes les colonnes suivantes, et
+  l'export deviendrait faux à partir de la première adresse un peu longue.
+
+Le format retenu est long — `Rubrique;Champ;Valeur` — plutôt qu'un tableau par entité : les
+données d'un compte sont hétérogènes et ne partagent aucune colonne. Un seul fichier lisible
+vaut mieux que quatre à assembler.
+
+### Le téléchargement ne peut pas être un simple lien
+
+L'endpoint exige un jeton d'authentification, qu'un `<a href>` n'enverrait pas : le navigateur
+recevrait un 401 et afficherait une page blanche. Le fichier est récupéré en mémoire par axios
+puis remis au navigateur via un objet URL, révoqué aussitôt — sans révocation, le blob reste
+en mémoire tant que l'onglet est ouvert.
+
+### Ce que la page annonce, et ce qu'elle ne promet pas
+
+Elle affiche le contenu **avant** de proposer de le télécharger : un bouton d'export seul
+obligerait à ouvrir un fichier pour savoir ce qu'il contient.
+
+Et elle précise que certaines données de commande doivent être conservées pour des raisons
+comptables même après une demande d'effacement. Promettre un effacement total serait une
+promesse qu'on ne pourrait pas tenir.
+
+### Le déploiement fantôme, troisième fois — et cette fois j'ai perdu du temps
+
+Le premier déploiement a renvoyé un **500** sur `/me/personal-data`. Le journal donnait
+`No static resource api/v1/me/personal-data` : le contrôleur n'était pas enregistré. Inspection
+du jar : **ni `PersonalDataResource` ni `PersonalDataService`**, alors que le build s'était fait
+avec `--no-cache`.
+
+Reconstruit avec `--progress plain` pour voir ce qui se passait vraiment : `Compiling 196 source
+files`, `BUILD SUCCESS`, image renommée. Le conteneur recréé, la classe était là.
+
+La cause exacte reste indéterminée — le premier build avait sa sortie tronquée par un `tail -2`
+qui masquait précisément l'étape utile. **La leçon porte sur mon outillage, pas sur Docker :
+tronquer la sortie d'un build fait gagner trois lignes de lecture et coûte un diagnostic.**
+
+Deuxième leçon du même épisode : `./mvnw … | tail -12 && echo "COMPILE OK"` affiche
+« COMPILE OK » même quand Maven échoue, parce que c'est `tail` qui décide du code de retour.
+J'ai affiché ce message sur une compilation en échec avant de m'en apercevoir.
+
+### Vérifié en conditions réelles
+
+| Contrôle | Résultat |
+|---|---|
+| Sans authentification | **401** |
+| Chaque compte reçoit ses propres données | B2C 13 commandes, B2B profil « KDS », médecin 0 |
+| `?userId=<autre compte>` | **le paramètre est ignoré**, l'appelant reçoit ses propres données |
+| En-têtes du fichier | `text/csv;charset=UTF-8`, `Content-Disposition: attachment` |
+| BOM | `ef bb bf` présent |
+| Contenu | 87 lignes, accents corrects, valeurs échappées |
+| Empreinte du mot de passe | **absente** (contrôlé sur tout le fichier) |
+
+### Ce que cela ne règle pas
+
+Le droit d'accès est couvert, l'effacement ne l'est pas : la page renvoie vers un contact
+humain. C'est acceptable et courant, mais **les mentions légales et les CGV n'existent
+toujours pas** — et pour un site marchand français, elles sont obligatoires. Cette page rend
+le manque plus visible qu'avant, puisqu'elle en occupe la place naturelle dans le menu.
+
+## 74. Pages juridiques : mentions légales, CGV/CGU et politique de confidentialité
+
+### Vérifier le code avant d'écrire le contrat
+
+Les CGV sont un **document opposable**. Avant d'en rédiger la clause financière, j'ai vérifié
+ce que la plateforme facture réellement.
+
+La consigne annonçait « acompte de 60 % à la confirmation d'admission ». Or
+`EnrollmentPaymentService.openTuitionPayment` ouvre **un encaissement unique du montant
+total** au passage en `PENDING_TUITION_FEE` : il n'existe ni échéancier, ni solde, ni second
+prélèvement. Écrire 60 % dans les CGV aurait annoncé au candidat un barème que le code ne
+respecte pas — et facturer 100 % quand le contrat annonce 60 % n'est pas un écart de
+documentation, c'est un manquement contractuel.
+
+Les CGV décrivent donc **ce qui est appliqué aujourd'hui**, et la part exigée est une valeur de
+configuration (`CONDITIONS_MOBILITE.partExigeeALAdmission`) plutôt qu'un nombre écrit dans la
+phrase. Le jour où le paiement échelonné sera développé, le contrat suivra le code au lieu de
+diverger silencieusement.
+
+### Les valeurs manquantes sont visibles, pas masquées
+
+Le SIREN, le RCS, l'adresse du siège et l'hébergeur ne sont pas encore connus. Deux mauvaises
+solutions : les écrire en dur avec une valeur provisoire, ou masquer la ligne quand elle est
+vide. La première se corrige par un redéploiement applicatif — le plus sûr moyen de la laisser
+fausse. La seconde produit une page qui **paraît complète alors qu'elle ne l'est pas**.
+
+Les champs vides s'affichent donc « ⚠️ à compléter » en évidence sur la page publique. C'est
+inélégant, et c'est le but : une mention légale incomplète est une infraction (LCEN, art.
+6-III) ; incomplète **et silencieuse**, c'est une infraction que personne ne verra.
+
+Tout est surchargeable par variable d'environnement `VITE_LEGAL_*`, documentées dans
+`.env.example`.
+
+### « AWS / OVHcloud / Scaleway » n'est pas une mention d'hébergeur
+
+La loi impose de nommer **celui qui héberge réellement**, avec sa raison sociale, son adresse
+et son téléphone. Une liste d'options ne satisfait pas l'obligation. Les trois champs sont donc
+distincts et explicitement à renseigner, avec ce rappel dans `.env.example`.
+
+### Ce que les CGV disent parce que le code le fait
+
+Plusieurs clauses n'ont pas été recopiées d'un modèle mais tirées du comportement réel :
+
+- **« Aucun règlement de frais de formation n'est demandé avant que l'établissement n'ait
+  accepté la candidature »** — c'est l'automate qui le garantit : `PENDING_TUITION_FEE` n'est
+  atteignable que depuis `ACCEPTED_BY_PARTNER`.
+- **« Un dossier non transmis reste invisible de l'établissement »** — isolation appliquée par
+  le serveur, mesurée à la recette (9 dossiers visibles sur 11).
+- **« Aucune donnée de carte bancaire ne transite par nos serveurs »** — vrai, le paiement est
+  délégué de bout en bout.
+- **« Le contenu des courriels n'est pas conservé »** — décision de la V24, prise parce que le
+  message d'identifiants transporte un mot de passe en clair.
+
+Une politique de confidentialité qui décrirait autre chose que le système est une déclaration
+inexacte, pas une formalité.
+
+### Ce que j'ai ajouté sans qu'on me le demande, parce que c'est obligatoire
+
+- **Droit de rétractation de quatorze jours** (art. L221-18 du Code de la consommation), avec
+  son exception pour les produits descellés pour raisons d'hygiène (art. L221-28) — laquelle
+  concerne une part importante des consommables médicaux.
+- **Médiation de la consommation** : l'adhésion à un médiateur est obligatoire pour vendre aux
+  particuliers. Le champ est vide et signalé.
+- **Durée de conservation comptable de dix ans** (art. L123-22 du Code de commerce), présentée
+  comme s'imposant à l'entreprise — elle survit à une demande d'effacement, et la page « Mes
+  données personnelles » l'annonçait déjà.
+
+### Structure retenue
+
+Pas de fichiers JSON ni d'internationalisation : le site est monolingue, et introduire une
+couche i18n pour trois pages ajouterait un mécanisme sans usage. Un module TypeScript typé
+(`config/legal.ts`) porte l'identité et les conditions financières ; les trois pages le lisent.
+Une seule source, vérifiée par le compilateur.
+
+### La limite de ce lot
+
+Ces textes sont des **projets sérieux et structurés, pas un avis juridique**. Ils couvrent les
+obligations formelles et décrivent fidèlement le fonctionnement de la plateforme, mais l'objet
+social — intermédiation, formation médicale, mobilité internationale — mérite une relecture par
+un professionnel avant la mise en ligne. Le dire fait partie du travail.
+
+## 75. Page « Nos services », pied de page dense et lettre d'information (V39)
+
+### Un pied de page dense sans un seul lien mort
+
+La référence fournie comportait une quinzaine d'entrées : « Nos magasins », « Carrières »,
+« Politique de cookies », « Livraison », « Retour / Remboursement », « FAQ », « Blog ». La
+tentation évidente était de les recopier. La moitié ne correspond à rien ici.
+
+Trois traitements, selon ce qui existe réellement :
+
+- **Ce qui existe ailleurs sous un autre nom** — « Livraison » et « Retour / Remboursement »
+  sont des articles des conditions générales. Ils y pointent par une ancre
+  (`/cgv#livraison`, `/cgv#retractation`) plutôt que vers des pages qu'il aurait fallu
+  inventer. Idem pour « Politique de cookies », qui mène à la section 10 de la politique de
+  confidentialité.
+- **Ce qui manquait vraiment** — « Qui sommes-nous ? », « FAQ », « Devis professionnel » :
+  la page `/services` les fournit, avec des ancres pour que chaque lien atterrisse à sa
+  section. Un lien « FAQ » qui déposerait en haut d'une longue page obligerait à la parcourir.
+- **Ce qui n'existe pas** — magasins, carrières, blog. Non listés. Une entrée de pied de page
+  qui ne mène nulle part coûte plus de confiance que son absence.
+
+Le téléphone n'apparaît que s'il est renseigné : un numéro de démonstration finirait par être
+composé.
+
+### La page services dit aussi ce que la plateforme ne fait pas
+
+Elle s'adresse à quelqu'un qui hésite **avant** de s'engager. Elle comporte donc un encart
+explicite : la Plateforme est intermédiaire, elle ne délivre ni l'admission ni le visa. Le dire
+avant l'engagement plutôt qu'après vaut mieux qu'une promesse implicite qu'il faudrait
+démentir en cas de refus.
+
+Les cinq phases décrites sont celles que l'automate applique réellement, et le paragraphe sur
+les frais reprend `CONDITIONS_MOBILITE` — la même source que les CGV. Trois endroits parlent
+du même barème ; un seul le définit.
+
+### La lettre d'information : construite, pas simulée
+
+Un formulaire d'inscription qui n'aboutit nulle part est exactement le faux que ce pied de page
+refuse par ailleurs. D'où **V39** et un endpoint réel.
+
+**Une table dédiée plutôt que `prospect_leads`** : cette dernière exige prénom, nom, téléphone,
+pays et formation cible. Y verser des inscriptions newsletter aurait obligé à inventer ces
+valeurs, et mélangé deux populations que le commercial doit distinguer — un prospect formation
+n'est pas un abonné.
+
+**Ce qui rend le consentement opposable.** Le RGPD demande de pouvoir prouver le consentement,
+pas seulement de l'avoir recueilli. Enregistrer une case cochée ne prouve rien : il faut savoir
+**à quoi** la personne a consenti. `consent_text` conserve donc le libellé exact affiché au
+moment de l'inscription ; si le texte évolue, les consentements antérieurs restent lisibles
+tels qu'ils ont été donnés. C'est le client qui l'envoie, parce que c'est lui qui l'affiche, et
+le serveur refuse une inscription sans lui.
+
+**La case n'est pas pré-cochée** — un consentement pré-coché n'en est pas un — et le bouton
+reste inactif tant qu'elle ne l'est pas, plutôt que de laisser envoyer puis refuser.
+
+**Ré-inscrire une adresse déjà abonnée renvoie un succès.** Répondre « cette adresse est déjà
+inscrite » transformerait le formulaire en oracle : n'importe qui pourrait tester une liste
+d'adresses pour savoir lesquelles sont clientes. Le consentement est simplement réenregistré.
+
+**Index unique partiel** sur l'adresse en minuscules, restreint aux abonnements actifs :
+une désinscription conserve la ligne — sans quoi on ne pourrait pas prouver qu'un retrait a été
+honoré — et la même adresse peut se réabonner ensuite. Vérifié sur copie : doublon en casse
+différente refusé, réabonnement après désinscription accepté.
+
+## 76. Les ancres du pied de page ne fonctionnaient pas — et rien ne le disait
+
+### Un lien qui a l'air de marcher
+
+Le pied de page livré au lot précédent renvoyait vers huit sections précises :
+`/cgv#livraison`, `/services#faq`, `/politique-confidentialite#cookies`… Les huit ancres
+existaient bien dans les pages. **Aucune n'était atteinte.**
+
+React Router ne traite pas le fragment d'URL : cliquer sur un de ces liens depuis une autre
+page charge la bonne page et laisse le visiteur **en haut**. Le `#` est purement décoratif tant
+que personne ne l'implémente.
+
+C'est le pire genre de défaut : le lien n'échoue pas, il ne produit aucune erreur, et l'on
+suppose simplement que la section était en haut. Je l'ai livré en croyant qu'il suffisait de
+poser les `id`.
+
+**Le site n'avait par ailleurs aucune gestion du défilement** : naviguer depuis le bas d'une
+page pouvait déposer au milieu de la suivante.
+
+### Le point délicat : la page n'existe pas encore
+
+`ScrollManager` ne peut pas chercher l'élément une seule fois. Les pages sont chargées à la
+demande (code-splitting) : au moment où l'adresse change, le module de la page cible n'est pas
+encore récupéré, et la section n'est pas dans le document. Une recherche unique échouerait
+**systématiquement lors d'une arrivée depuis une autre page** — c'est-à-dire exactement le cas
+d'usage d'un lien de pied de page, et pas du tout lors d'un test depuis la page elle-même.
+
+Le composant réessaie donc pendant environ deux secondes, puis abandonne.
+
+### Deux compensations que l'on découvre seulement à l'usage
+
+- **Le décalage de l'en-tête collante** (80 + 48 px). Sans lui, la section visée se retrouve
+  *sous* l'en-tête : le défilement a bien eu lieu, mais l'utilisateur ne voit pas son titre et
+  conclut que le lien n'a rien fait.
+- **Le signalement visuel.** Sur une page de plusieurs écrans, arriver au bon endroit sans rien
+  voir changer laisse douter d'avoir atterri où l'on voulait. Un liseré s'estompe en 1,6 s —
+  il signale, il ne décore pas, et il est désactivé si l'utilisateur a demandé moins
+  d'animations.
+
+### Rendre ces pages parcourables, pas seulement atteignables
+
+Un sommaire collant (`SectionNav`) accompagne désormais la page services et les deux documents
+longs. Il répond à une question que ces pages ne réglaient pas : **on y arrive pour un point
+précis, et rien ne disait ce qu'elles contenaient d'autre.**
+
+Le repérage de la section en cours de lecture passe par un `IntersectionObserver` plutôt que
+par un calcul à chaque défilement : le navigateur signale lui-même les entrées et sorties, sans
+faire tourner du code à chaque pixel. Sa marge haute reprend la hauteur de l'en-tête — une
+section masquée derrière elle ne doit pas être comptée comme lue.
+
+Sur écran étroit, le sommaire devient une barre horizontale défilante : un sommaire vertical de
+onze entrées y occuperait un écran entier avant le premier mot du texte.
+
+### Vérifié par recoupement automatique
+
+Plutôt que de cliquer les liens un par un, un contrôle croise les ancres **visées** par le pied
+de page et les `id` **réellement posés** dans chaque page, puis fait de même pour les trois
+sommaires. Résultat : 8 liens et 26 entrées de sommaire, **toutes les cibles existent**.
+
+C'est ce recoupement qui manquait au lot précédent : j'avais vérifié que les `id` étaient là,
+sans vérifier que quelque chose s'en servait.

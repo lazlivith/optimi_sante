@@ -195,6 +195,8 @@ public class AdminEmailService {
             case CENTRE_FORMATION -> "Partenaire CHU";
             case CLIENT_B2B -> "Client professionnel";
             case CLIENT_B2C -> "Client";
+            case ADMIN_ECOMMERCE -> "Administration — Négoce";
+            case ADMIN_MOBILITE -> "Administration — Mobilité";
             case ADMIN, SUPER_ADMIN -> "Administration";
         };
     }

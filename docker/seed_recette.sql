@@ -7,6 +7,9 @@
 -- Usage :
 --   docker exec -i optimisante-postgres psql -U postgres -d optimisante_db < docker/seed_recette.sql
 --
+-- Le hash de mot de passe est repris du compte superadmin@optimi.com : le compte
+-- historique admin@optimi.com a ete retire lors de la scission des roles (V30).
+--
 -- ⚠️ N'EFFACE QUE les données de recette (préfixe `recette-`). Les comptes et dossiers
 -- existants ne sont jamais touchés — ce script est sûr sur une base de travail.
 --
@@ -60,7 +63,7 @@ INSERT INTO users (id, tenant_id, email, password_hash, role, is_active, first_n
 SELECT gen_random_uuid(),
        (SELECT id FROM tenants WHERE code = 'FR_MAIN'),
        'recette-' || step || '@optimisante.test',
-       (SELECT password_hash FROM users WHERE email = 'admin@optimi.com'),
+       (SELECT password_hash FROM users WHERE email = 'superadmin@optimi.com'),
        'MEDECIN', TRUE, prenom, 'Recette'
 FROM (VALUES
     ('revue',      'Amina'),

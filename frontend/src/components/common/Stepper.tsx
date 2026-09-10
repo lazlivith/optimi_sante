@@ -26,11 +26,26 @@ export const ENROLLMENT_STEPS: StepperStep[] = [
  */
 export const ENROLLMENT_EXCEPTION_STATUSES = ['ACTION_REQUIRED', 'REJECTED', 'CANCELLED'];
 
+/**
+ * Position d'un statut dans le parcours.
+ *
+ * `ACTION_REQUIRED` n'est pas une etape : c'est un retour en arriere: le dossier repasse
+ * en revue le temps que le medecin fournisse la piece demandee. Le placer a l'etape de revue
+ * dit la verite du dossier ; le laisser hors du parcours (index -1) affichait une progression
+ * vide, comme si rien n'avait commence.
+ */
+export function stepIndexForStatus(steps: StepperStep[], statusId: string): number {
+  if (statusId === 'ACTION_REQUIRED') {
+    return steps.findIndex((s) => s.id === 'UNDER_OPTIMI_REVIEW');
+  }
+  return steps.findIndex((s) => s.id === statusId);
+}
+
 interface StepperProps {
   steps: StepperStep[];
   currentStepId: string;
   isFailed?: boolean;
-  size?: 'full' | 'compact';
+  size?: 'full' | 'compact' | 'inline';
 }
 
 const getStepColor = (stepIndex: number, currentIndex: number, isFailed: boolean, size: 'full' | 'compact') => {
@@ -46,7 +61,42 @@ const getStepColor = (stepIndex: number, currentIndex: number, isFailed: boolean
  * (size="compact", juste des points reliés — pas de libellé, la StatusBadge s'en charge déjà).
  */
 export function Stepper({ steps, currentStepId, isFailed = false, size = 'full' }: StepperProps) {
-  const currentIndex = steps.findIndex(s => s.id === currentStepId);
+  const currentIndex = stepIndexForStatus(steps, currentStepId);
+
+  /**
+   * Variante de liste : « Etape 3/9 » + le libelle de l'etape en cours + une barre de
+   * progression. Elle remplace neuf pastilles de 8 pixels qui, sans libelle, demandaient de
+   * compter les points pour situer un dossier — et ne distinguaient pas la 6e de la 7e.
+   */
+  if (size === 'inline') {
+    const enAttenteMedecin = currentStepId === 'ACTION_REQUIRED';
+    const position = currentIndex >= 0 ? currentIndex + 1 : 0;
+    const progression = steps.length > 1 && currentIndex >= 0
+      ? (currentIndex / (steps.length - 1)) * 100
+      : 0;
+    const teinte = isFailed ? 'bg-rose-400' : enAttenteMedecin ? 'bg-amber-400' : 'bg-emerald-500';
+
+    return (
+      <div className="min-w-[150px] max-w-[190px]">
+        <div className="flex items-baseline justify-between gap-2 mb-1.5">
+          <span className={`text-xs font-semibold truncate ${
+            isFailed ? 'text-rose-600' : enAttenteMedecin ? 'text-amber-700' : 'text-slate-700'
+          }`}>
+            {enAttenteMedecin ? 'Pièce demandée' : steps[currentIndex]?.label ?? '—'}
+          </span>
+          <span className="text-[11px] text-slate-400 tabular-nums shrink-0">
+            {position}/{steps.length}
+          </span>
+        </div>
+        <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${teinte}`}
+            style={{ width: `${Math.max(progression, currentIndex >= 0 ? 6 : 0)}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (size === 'compact') {
     return (

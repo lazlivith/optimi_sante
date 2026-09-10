@@ -23,6 +23,7 @@ public interface AdminProductRow {
     Boolean getIsActive();
     String getImageUrl();
     UUID getCategoryId();
+    UUID getTrainingId();
     BigDecimal getPromoPrice();
     OffsetDateTime getPromoStartsAt();
     OffsetDateTime getPromoEndsAt();

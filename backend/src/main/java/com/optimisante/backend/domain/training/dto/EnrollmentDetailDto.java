@@ -23,8 +23,21 @@ public class EnrollmentDetailDto {
 
     // ---- Ajouts pour l'écran de suivi et de paiement du médecin ---------------------
 
-    /** Établissement d'accueil (lieu de la session). */
+    /** Établissement d'accueil (lieu de la session) — texte libre, pas une identité. */
     private String hostInstitution;
+
+    /**
+     * CHU partenaire dont relève la formation, remonté depuis
+     * {@code session → training → partnerProfile}.
+     *
+     * <p>Distinct de {@link #hostInstitution}, qui n'est qu'un lieu saisi librement sur la
+     * session (« Amphithéâtre B »). Filtrer les dossiers par établissement demande une
+     * identité stable, pas un libellé : d'où l'identifiant, que l'interface utilise pour le
+     * filtre, et le nom, qu'elle affiche.</p>
+     */
+    private UUID partnerProfileId;
+
+    private String partnerName;
 
     /** Montant des frais de formation restant à régler, en euros. */
     private java.math.BigDecimal tuitionAmount;

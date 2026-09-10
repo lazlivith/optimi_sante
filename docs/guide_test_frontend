@@ -1,113 +1,234 @@
-# Guide de Test Frontend — Par Rôle / Dashboard
+# Guide de test par espace
 
-Ce guide liste les scénarios de test manuels pour chaque espace utilisateur. À suivre dans l'ordre — certains scénarios (CHU, Médecin, Admin) s'enchaînent.
+Scénarios de test manuels, un par espace. Les comptes et les données citées ont été
+**vérifiés sur la plateforme le 9 septembre 2026** : chaque compte listé comme actif se
+connecte réellement, et chaque dossier cité existe à l'étape indiquée.
 
 ## Prérequis
+
 ```powershell
-docker ps   # optimisante-backend, postgres, redis doivent être "Up"
+docker ps          # optimisante-backend, optimisante-postgres, optimisante-redis « Up »
 cd frontend
 npm run dev
 ```
+
 Ouvrez `http://localhost:5173`.
 
-Tous les comptes utilisent le mot de passe **`password123`**.
-
 ---
 
-## 0. Espace Public (non connecté)
+## Comptes de test
 
-| Étape | Action | Résultat attendu |
+Mot de passe unique : **`password123`**.
+
+### Administration
+
+| Espace | Compte | Ce qu'il voit |
 |---|---|---|
-| 1 | Aller sur `/` | Page d'accueil, catalogue vitrine |
-| 2 | Aller sur `/catalog` | Liste des produits, filtres par catégorie |
-| 3 | Aller sur `/formations` | **3 formations réelles** chargées depuis l'API (Échographie, Chirurgie mini-invasive, Réanimation néonatale) — la formation "Échographie" doit afficher un lieu "CHU Bordeaux - Bat A" (créé pendant nos tests) |
-| 4 | Cliquer "Postuler" sur une formation sans être connecté | Ouvre la modale de capture de lead (pas de blocage) |
-| 5 | Cliquer sur un produit → page détail | Fiche produit avec prix, description |
+| Négoce | `ecom.admin@optimi.com` | Chiffre d'affaires, commandes, catalogue, codes promo, devis B2B |
+| Mobilité | `mob.admin@optimi.com` | Dossiers CHU, formations, partenariats, reversements |
+| Gouvernance | `superadmin@optimi.com` | Les trois univers **plus** la gestion des comptes |
 
----
+Chaque administrateur métier reçoit un **403 explicite** sur l'univers de l'autre — c'est le
+comportement attendu, pas une panne.
 
-## 1. Espace Client B2C
+### Médecins — un par étape du cycle
 
-**Compte :** `b2c@optimi.com`
+Cinq comptes placés chacun à une étape différente, pour tester un point précis sans avoir à
+dérouler tout le parcours :
 
-| Étape | Action | Résultat attendu |
+| Compte | Étape du dossier | Qui doit agir |
 |---|---|---|
-| 1 | `/login` → connexion | Redirection vers `/catalog` |
-| 2 | Recharger la page (F5) | **Reste connecté** (avant le correctif, ça déconnectait) |
-| 3 | Menu utilisateur (avatar, en haut à droite) | "Mon Profil", "Mes Commandes", "Se déconnecter" — plus aucun lien mort |
-| 4 | Ajouter un produit au panier → `/cart` → `/checkout` | Paiement par carte (Stripe) ou virement |
-| 5 | Après achat, aller sur **"Mes Commandes"** (`/my-orders`) | La commande apparaît avec montant, statut, type "Commande" |
-| 6 | "Mon Profil" | Champ téléphone visible ; email/rôle en lecture seule |
+| `recette-revue@optimisante.test` | En revue OptimiSanté | l'admin mobilité |
+| `recette-transmis@optimisante.test` | Transmis au CHU | le CHU |
+| `recette-correction@optimisante.test` | Pièce demandée | le médecin |
+| `recette-paiement@optimisante.test` | Paiement attendu | le médecin |
+| `recette-confirme@optimisante.test` | Inscription confirmée | l'admin (convention) |
+
+Autres médecins : `medecin@optimi.com` (3 dossiers, dont un en « Pièce demandée »),
+`medecin.test@optimisante.fr` (2 dossiers avec convention émise).
+
+### Partenaire CHU
+
+| Compte | Établissement |
+|---|---|
+| `chu@optimi.com` | **CHU Test Partenaire** — 11 dossiers, à utiliser en priorité |
+
+### Clients
+
+| Compte | Type |
+|---|---|
+| `b2c@optimi.com`, `clientb2c@optimi.com`, `particulier@test.com` | Particulier |
+| `b2b@optimi.com`, `clientb2b@optimi.com` | Professionnel |
+
+### Comptes présents en base mais **inutilisables**
+
+À ne pas tenter, pour ne pas perdre de temps :
+
+| Compte | Pourquoi |
+|---|---|
+| `admin@optimi.com` | Désactivé et supprimé — ses droits sont passés au superadmin |
+| `leseaux@gmail.com`, `partenaire.test@optimisante.fr`, `boulaz@optimi.com` | Le mot de passe n'est pas `password123` (connexion 401 vérifiée) |
+| `centre@optimi.com` | Rôle CHU **sans profil partenaire** : l'espace se charge mais la page Revenus renvoie 409. Utilisez `chu@optimi.com`. |
 
 ---
 
-## 2. Espace Client B2B
+## 0. Espace public (non connecté)
 
-**Compte :** `b2b@optimi.com` (ou `clientb2b@optimi.com`)
-
-| Étape | Action | Résultat attendu |
+| # | Action | Résultat attendu |
 |---|---|---|
-| 1 | Connexion | Redirection vers `/catalog` |
-| 2 | Ajouter un produit *quote-only* au panier, demander un devis | `POST /orders/quote-request` → devis créé |
-| 3 | Menu utilisateur → **"Mes Devis"** (`/my-orders`) | Liste des devis avec statut "DEVIS ENVOYÉ" et lien PDF si généré |
-| 4 | "Mon Profil" | Champs "Nom de l'entreprise" et "SIRET/FINESS" visibles et modifiables ; sauvegarde fonctionnelle (`PUT /auth/profile`) |
+| 1 | `/` | Page d'accueil |
+| 2 | `/catalog` | Catalogue, filtres par catégorie |
+| 3 | Ouvrir un équipement de laboratoire (cherchez « cryostat », « PCR », « microtome ») | **« Tarif sur demande »** au lieu d'un prix, et **« Demander un devis »** au lieu de « Ajouter au panier ». 139 fiches sont dans ce cas : leur prix n'est pas connu, elles ne sont pas achetables directement. |
+| 4 | `/formations` | Les formations chargées depuis l'API |
+| 5 | Cliquer « Postuler » sans être connecté | Modale de capture de contact, pas de blocage |
 
 ---
 
-## 3. Espace Médecin
+## 1. Espace Admin — Négoce
 
-**Compte :** `medecin@optimi.com`
+**Compte :** `ecom.admin@optimi.com`
 
-| Étape | Action | Résultat attendu |
+| # | Action | Résultat attendu |
 |---|---|---|
-| 1 | Connexion | Redirection vers **`/doctor/vault`** (avant le correctif, cassé) |
-| 2 | Coffre-fort (`/doctor/vault`) | Doit déjà contenir une **Convention Tripartite** (générée pendant nos tests) — lien de téléchargement sécurisé fonctionnel |
-| 3 | "Mon Profil" | Champs Prénom, Nom, Spécialité, N° d'Ordre, Pays, Hôpital visibles et modifiables |
-| 4 | `/formations` → "Postuler" sur "Réanimation néonatale" ou "Chirurgie mini-invasive" | ⚠️ Aucune session ouverte n'existe pour ces 2 formations (seule "Échographie" en a une) — normal de ne rien trouver ; testez plutôt l'inscription sur une formation avec session (voir §6) |
-| 5 | Dossier déjà créé pendant nos tests : `/my-enrollments/68a8000b-fb05-406c-82df-4df21df73389` | Stepper visible, étape "Validé Administratif" active, formulaire d'upload de document en bas |
+| 1 | Connexion | Atterrissage direct sur **`/admin/ventes`**, pas sur une page au hasard |
+| 2 | Regarder la barre latérale | Uniquement **Négoce** et **Supervision**. Ni Dossiers CHU, ni Comptes. |
+| 3 | Taper `/admin/enrollments` dans l'URL | **Page de refus explicite**, avec un retour vers son propre tableau de bord — pas une redirection muette vers l'accueil |
+| 4 | Catalogue → champ de recherche : `compresse` | 18 résultats. La recherche porte sur **tout le catalogue** (1 487 produits), pas sur la page affichée. |
+| 5 | Catalogue → recherche `00007` | 1 résultat : la recherche accepte aussi la référence |
+| 6 | Catalogue → filtre par catégorie | Le menu affiche le **nombre de produits** par catégorie. 211 catégories, dont certaines vides — le compteur évite de choisir un filtre qui ne renverra rien. |
+| 7 | Catalogue → tri « Prix décroissant » | 8 677 € en tête. Puis « Prix croissant » : 0,40 €. |
+| 8 | Catalogue → bouton « Stock bas » | 0 résultat. **C'est exact** : aucun produit n'est actuellement sous son seuil. |
+| 9 | Catalogue → pagination | 60 pages de 25. Avant, seuls les 100 premiers produits étaient atteignables. |
+| 10 | Commandes | 27 commandes, libellés d'articles lisibles |
+| 11 | Codes promo | `OPTIMI26` existe mais **a expiré le 31/08/2026**. Créez-en un nouveau pour tester la remise (voir scénario B2C). |
 
 ---
 
-## 4. Espace CHU / Centre de Formation
+## 2. Espace Admin — Mobilité
+
+**Compte :** `mob.admin@optimi.com`
+
+| # | Action | Résultat attendu |
+|---|---|---|
+| 1 | Connexion | Atterrissage sur **`/admin/mobilite`** |
+| 2 | Tableau de bord | « Actions en attente » ne remonte que ce que **vous** pouvez traiter : un dossier chez le CHU ou en attente de paiement n'y figure pas |
+| 3 | Taper `/admin/finance` dans l'URL | Refus explicite (univers négoce) |
+| 4 | Dossiers CHU | 12 dossiers. Colonne **Avancement** : le libellé de l'étape et un compteur « 3/9 », pas neuf points à déchiffrer. |
+| 5 | Filtre **Tous les CHU** | Deux établissements seulement, avec leur nombre de dossiers — les 3 autres partenaires n'ont aucune candidature et ne sont pas proposés |
+| 6 | Filtre « À traiter par OptimiSanté » | 1 dossier : celui de `recette-revue@optimisante.test` |
+| 7 | Filtre « En attente du médecin » | Les dossiers en pièce demandée ou paiement attendu |
+| 8 | Ouvrir le dossier de `recette-paiement@optimisante.test` | Section **« Pièces du dossier »**, au-dessus du coffre-fort |
+| 9 | « Réclamer une pièce » : libellé `Certificat médical`, classement `Autre pièce`, date limite | Créée, statut **En attente du médecin** |
+| 10 | Réclamer exactement la même chose une seconde fois | **Refus avec un message clair** : la pièce est déjà réclamée |
+| 11 | Bandeau d'avancement | « X validées sur Y » et surtout **qui doit agir** |
+| 12 | Sur une pièce déposée : « Refuser » puis valider l'invite **sans motif** | Refusé : un motif est obligatoire |
+| 13 | « Voir la pièce » | Le document s'ouvre dans un nouvel onglet |
+
+---
+
+## 3. Espace Super Admin — Gouvernance
+
+**Compte :** `superadmin@optimi.com`
+
+| # | Action | Résultat attendu |
+|---|---|---|
+| 1 | Barre latérale | **Quatre** groupes : Négoce, Mobilité, Gouvernance, Supervision |
+| 2 | Comptes (`/admin/users`) | Accessible. C'est le **seul** espace où les deux admins métier reçoivent un 403. |
+| 3 | Emails (`/admin/emails`) | Journal des envois. Accessible aussi aux deux admins métier — c'est de la supervision d'infrastructure. |
+| 4 | Sur une ligne d'email, bouton « Renvoyer » | Visible **uniquement ici**. Cette action régénère un mot de passe : c'est une opération d'identité, réservée à la gouvernance. |
+| 5 | Se reconnecter en `ecom.admin` et rouvrir Emails | Le journal est lisible, le bouton « Renvoyer » **a disparu** |
+
+---
+
+## 4. Espace Médecin
+
+**Comptes :** les cinq `recette-*`, selon l'étape à tester.
+
+| # | Compte | Action | Résultat attendu |
+|---|---|---|---|
+| 1 | `recette-correction@` | Ouvrir son dossier | Le motif de la demande de correction est affiché, pas seulement un statut |
+| 2 | `recette-paiement@` | Ouvrir son dossier | Section **« Mon dossier visa »** avec la pièce réclamée |
+| 3 | `recette-paiement@` | Déposer un fichier sur une pièce en attente | Passe en « En cours de vérification » |
+| 4 | `recette-paiement@` | Après un refus par l'admin | Affiche **« À refaire : motif »** et un bouton « Déposer un nouveau fichier » |
+| 5 | `recette-paiement@` | Bloc de règlement des frais | Montant affiché, paiement Stripe en **mode test** (carte `4242 4242 4242 4242`) |
+| 6 | `recette-confirme@` | Coffre-fort | La convention émise apparaît |
+| 7 | N'importe lequel | Modifier l'URL vers le dossier d'un autre médecin | **403** — la propriété du dossier est revérifiée côté serveur, l'URL ne prouve rien |
+
+---
+
+## 5. Espace CHU / Partenaire
 
 **Compte :** `chu@optimi.com`
 
-| Étape | Action | Résultat attendu |
+| # | Action | Résultat attendu |
 |---|---|---|
-| 1 | Connexion | Redirection vers `/partner/sessions` |
-| 2 | Onglet "Candidatures reçues" | Doit afficher le dossier du médecin créé pendant nos tests (statut "Approuvé Administratif") |
-| 3 | Onglet "Créer une session" → formulaire | ID formation à utiliser : `a1b2c3d4-e5f6-7890-1234-56789abcdef1` (Échographie — c'est la seule formation actuellement rattachée à ce compte CHU) |
-| 4 | Soumettre le formulaire | Toast de succès ; une nouvelle session apparaît dans `/trainings/{id}/sessions` |
-| 5 | ⚠️ Tester avec un autre ID de formation (ex. Chirurgie) | Doit échouer — ce compte CHU n'est pas propriétaire de cette formation (vérification de sécurité active) |
+| 1 | Connexion | Atterrissage sur `/partner/sessions` |
+| 2 | Candidatures | **9 dossiers exactement.** Son établissement en compte 11 en base : les 2 qui ne sont pas encore transmis (en revue OptimiSanté, pièce demandée) lui sont **invisibles**. C'est le contrôle le plus important de cet espace — l'isolation est appliquée par le serveur, pas seulement masquée à l'écran. |
+| 3 | Chercher le dossier de `medecin@optimi.com` rattaché à « clinique les eaux » | Absent : ce n'est pas son établissement |
+| 4 | Ouvrir le dossier de `recette-transmis@optimisante.test` | C'est celui qui attend sa décision : boutons Accepter / Demander une correction |
+| 5 | Revenus | Reversements dus et versés |
 
 ---
 
-## 5. Espace Admin
+## 6. Espace Client B2C
 
-**Compte :** `admin@optimi.com`
+**Compte :** `b2c@optimi.com`
 
-| Étape | Action | Résultat attendu |
+| # | Action | Résultat attendu |
 |---|---|---|
-| 1 | Connexion | Redirection vers `/admin/quotes` |
-| 2 | Modération des devis | Liste des devis B2B, boutons Valider/Rejeter, lien PDF |
-| 3 | Dossier CHU déjà créé : `/admin/enrollments/68a8000b-fb05-406c-82df-4df21df73389` | Détail complet, coffre-fort documentaire (le document "OTHER" uploadé pendant nos tests doit apparaître), bouton "Générer Convention" |
-| 4 | ⚠️ Pas de page de liste `/admin/enrollments` | **Limite connue** — il faut l'URL directe avec l'ID pour l'instant. Documenté dans `journal_erreurs_defis` comme point ouvert. |
+| 1 | Ajouter un produit au panier | Panier mis à jour |
+| 2 | Tenter d'ajouter un équipement « Tarif sur demande » | Bouton « Demander un devis » à la place — l'achat direct est refusé côté serveur également |
+| 3 | Code promo `OPTIMI26` | **Refusé, c'est normal** : expiré le 31/08/2026. Créez-en un depuis l'espace Négoce, avec une date de fin future et un minimum de commande inférieur à votre panier. |
+| 4 | Paiement | Stripe en mode test — carte `4242 4242 4242 4242`, date future, CVC quelconque |
+| 5 | Mes commandes | La commande apparaît avec sa facture |
 
 ---
 
-## 6. Scénario bout-en-bout complet (recommandé pour valider tout le flux Sprint 3-4)
+## 7. Espace Client B2B
 
-1. **CHU** (`chu@optimi.com`) → créer une nouvelle session sur "Chirurgie mini-invasive" (⚠️ échouera, non propriétaire — utilisez plutôt "Échographie", `a1b2c3d4-...`)
-2. Récupérez l'ID de la session créée (visible dans la réponse réseau, onglet DevTools)
-3. **Médecin** (`medecin@optimi.com`, un *nouveau* compte médecin si possible pour repartir d'un dossier vierge) → `/formations/a1b2c3d4-e5f6-7890-1234-56789abcdef1/enroll` → sélectionner la session → s'inscrire
-4. Uploader un document justificatif (type "Passeport")
-5. **Admin** (`admin@optimi.com`) → `/admin/enrollments/{id du nouveau dossier}` → faire avancer le statut étape par étape jusqu'à "Validé Administratif"
-6. Vérifier que la convention se génère **automatiquement** à cette étape
-7. **Médecin** → `/doctor/vault` → la nouvelle convention doit apparaître
+**Compte :** `b2b@optimi.com`
+
+| # | Action | Résultat attendu |
+|---|---|---|
+| 1 | Panier → « Demander un devis » | Devis créé en attente d'approbation |
+| 2 | Espace Négoce (`ecom.admin@optimi.com`) → Devis B2B | Le devis apparaît. **Aucun devis n'est en attente au départ** : il faut en créer un ici pour tester la modération. |
+| 3 | Valider le devis | Le client peut ensuite le régler |
+| 4 | Le prix affiché | La remise B2B s'applique si le profil en porte une |
 
 ---
 
-## Limites connues (pas des bugs — documentées dans `journal_erreurs_defis`)
-- Pas de page de liste globale pour l'admin (dossiers CHU, commandes) — uniquement les vues détail
-- `refreshToken` non exploité : la session expire sèchement après 24h, pas de renouvellement automatique
-- Les brochures des 3 formations de test pointent vers une clé Cloudinary factice (`mock-key`) → le téléchargement de brochure PDF échouera en 404, c'est un problème de **donnée de test**, pas de code
+## 8. Scénario bout-en-bout — le cycle à trois acteurs
+
+Le cœur du métier : OptimiSanté pré-qualifie, le CHU décide, le médecin paie.
+
+1. **`recette-revue@optimisante.test`** a un dossier en revue.
+2. **`mob.admin@optimi.com`** → Dossiers CHU → filtre « À traiter par OptimiSanté » → ouvrir le dossier → **Transmettre au CHU**.
+3. **`chu@optimi.com`** → Candidatures → le dossier apparaît → **Accepter**.
+4. Le dossier passe en **Paiement attendu**.
+5. **`recette-revue@optimisante.test`** → son dossier → régler les frais (carte test).
+6. Le dossier passe en **Inscription confirmée**.
+7. **`mob.admin@optimi.com`** → **Générer la convention**.
+8. **`mob.admin@optimi.com`** → « Réclamer une pièce » : passeport, justificatif d'hébergement.
+9. Le médecin dépose ; l'admin valide → le bandeau affiche **« Dossier complet »**.
+
+À l'étape 2, vérifiez qu'un dossier **non encore transmis** n'est jamais visible du CHU :
+l'isolation est appliquée par le serveur, pas seulement masquée à l'écran.
+
+---
+
+## Limites connues — ce ne sont pas des bugs
+
+- **`OPTIMI26` est expiré.** Créez un code depuis l'espace Négoce pour tester les remises.
+- **Aucune notification** n'est envoyée au médecin quand une pièce lui est réclamée : il la
+  découvre en consultant son dossier. Le branchement des emails est un choix de communication
+  qui reste à trancher.
+- **Les brochures des formations de test** pointent vers une clé Cloudinary factice
+  (`mock-key`) : leur téléchargement échoue en 404. Problème de donnée, pas de code.
+- **Deux dossiers en double** (`Fauteuil Releveur BORAS`, `Cardiomate pc-ecg`) subsistent au
+  catalogue : ils portent des commandes de test et n'ont pas été fusionnés.
+- **139 fiches sont « sur devis »** parce que leur prix n'est pas connu, pas parce qu'elles
+  sont indisponibles.
+- **Toutes les commandes en base sont fictives.** Elles seront purgées avant la mise en
+  production.
+- **Le mot de passe `password123` doit être changé** avant toute mise en ligne, à commencer
+  par celui du superadmin.

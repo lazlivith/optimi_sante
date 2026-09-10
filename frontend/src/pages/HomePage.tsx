@@ -7,6 +7,7 @@ import type { Product } from '../api/catalogService';
 import { useCart } from '../context/CartContext';
 import { ProductImage } from '../components/common/ProductImage';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { PromoHeroSlider } from '../components/home/PromoHeroSlider';
 
 const HOMEPAGE_CATALOG_PREVIEW_COUNT = 8;
 
@@ -521,9 +522,20 @@ export function HomePage() {
 
   const products = productsData?.content ?? [];
 
+  // Les promotions actives, servies par le meme filtre que la page « Promotions » et que le
+  // prix reellement facture : les trois ne peuvent pas diverger.
+  const { data: promoData } = useQuery({
+    queryKey: ['products-promo-home'],
+    queryFn: () => catalogService.getProducts({ promo: true, size: 8 }),
+  });
+  const promos = promoData?.content ?? [];
+
   return (
     <div className="flex flex-col bg-gray-50 min-h-screen">
-      <HeroSlider />
+      {/* Le carrousel montre les vraies promotions. Sans aucune promotion active, il
+          retomberait sur un cadre vide : on garde alors les bannieres statiques, qui restent
+          une presentation valable de l'offre. */}
+      {promos.length > 0 ? <PromoHeroSlider products={promos} /> : <HeroSlider />}
       <FeaturedSection products={products} />
       <CategoriesSection categories={categories} />
       <EssentialEquipmentSection products={products} />
@@ -546,7 +558,9 @@ export function HomePage() {
         />
       )}
 
-      <PromosSection products={products.slice(0, 10)} />
+      {/* Auparavant : products.slice(0, 10), c'est-a-dire les dix premiers produits du
+          catalogue — la section « Nos promos du mois » n'affichait aucune promotion. */}
+      <PromosSection products={promos} />
       <BestSellersSection products={products.slice(5, 11)} />
 
       {/* Events Banner */}
@@ -570,8 +584,6 @@ export function HomePage() {
           </div>
         </div>
       </section>
-
-      <PartnersSection />
 
       {/* All Products Grid */}
       <section className="container mx-auto px-4 md:px-8 py-12 bg-white rounded-t-3xl border-t border-gray-100 shadow-sm mt-8">
@@ -597,6 +609,10 @@ export function HomePage() {
           </Link>
         </div>
       </section>
+
+      {/* Placee apres le catalogue : la preuve sociale a plus de poids une fois l'offre vue
+          qu'avant, ou elle interrompait le parcours entre deux blocs de produits. */}
+      <PartnersSection />
 
       {/* WhatsApp Floating Button */}
       <a

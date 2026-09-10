@@ -68,6 +68,19 @@ public class Product {
     @Column(name = "promo_price", precision = 10, scale = 2)
     private BigDecimal promoPrice;
 
+    /**
+     * Formation qui apprend a utiliser cet equipement. Relation 1:1, garantie par l'index
+     * unique {@code uq_products_training} (V38) — la seule annotation JPA ne l'imposerait pas.
+     *
+     * <p>{@code ManyToOne} plutot que {@code OneToOne} : Hibernate charge un {@code OneToOne}
+     * facultatif de facon anticipee meme declare paresseux, ce qui ferait une requete par
+     * produit sur les listes de catalogue. L'unicite est portee par la base, pas par le
+     * mapping.</p>
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "training_id")
+    private com.optimisante.backend.domain.training.entity.Training training;
+
     @Column(name = "promo_starts_at")
     private OffsetDateTime promoStartsAt;
 

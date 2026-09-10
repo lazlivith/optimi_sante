@@ -4,20 +4,32 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.UUID;
+import com.optimisante.backend.config.security.AnyAdmin;
+import com.optimisante.backend.config.security.PlatformAdmin;
 
 /**
  * Espace « Emails » de l'administration : journal des envois, renvoi d'identifiants,
  * envoi de test et statistiques.
+ *
+ * <p><b>Périmètre transverse.</b> Le journal des envois relève de la supervision de
+ * l'infrastructure, pas d'un métier : un administrateur du négoce doit pouvoir vérifier
+ * qu'un email est bien parti sans dépendre de son homologue mobilité. D'où
+ * {@link AnyAdmin} à la place de {@code @MobilityAdmin}.</p>
+ *
+ * <p><b>Exception : le renvoi d'identifiants.</b> Cet endpoint ne consulte rien, il
+ * <i>régénère le mot de passe</i> du compte destinataire. C'est une opération d'identité,
+ * pas de messagerie : ouverte à tous les administrateurs, elle offrirait à chacun un moyen
+ * de reprendre la main sur n'importe quel compte ayant reçu ses identifiants — y compris un
+ * autre administrateur. Elle reste donc sous {@link PlatformAdmin}.</p>
  */
 @RestController
 @RequestMapping("/api/v1/admin/emails")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+@AnyAdmin
 public class AdminEmailResource {
 
     private final AdminEmailService adminEmailService;
@@ -38,6 +50,7 @@ public class AdminEmailResource {
     }
 
     @PostMapping("/{id}/resend")
+    @PlatformAdmin
     public ResponseEntity<Map<String, String>> resend(@PathVariable UUID id) {
         adminEmailService.resendCredentials(id);
         return ResponseEntity.ok(Map.of(

@@ -1,9 +1,17 @@
 import { type ReactNode, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PageTransition } from './components/common/PageTransition';
 import { ChatWidget } from './components/ai/ChatWidget';
+import { ScrollManager } from './components/common/ScrollManager';
+// Rôles autorisés par univers, lus de la même définition que la sidebar : le layout n'est
+// accessible qu'aux administrateurs, chaque route interne restreint ensuite au métier
+// concerné, pour qu'un admin négoce tombe sur un refus explicite s'il vise une URL de mobilité.
+import {
+  ALL_ADMIN_ROLES, ECOM_ROLES, MOB_ROLES, GOV_ROLES,
+} from './lib/adminUniverses';
 
 // Découpage du bundle par route (code-splitting) : chaque page n'est chargée par le
 // navigateur qu'au moment où elle est visitée, au lieu d'un seul gros bundle initial.
@@ -30,8 +38,11 @@ const TrainingDetailPage = lazy(() => import('./pages/training/TrainingDetailPag
 const MyEnrollmentDetailPage = lazy(() => import('./pages/dashboard/MyEnrollmentDetailPage').then(m => ({ default: m.MyEnrollmentDetailPage })));
 const MyEnrollmentsListPage = lazy(() => import('./pages/dashboard/MyEnrollmentsListPage').then(m => ({ default: m.MyEnrollmentsListPage })));
 const MyOrdersPage = lazy(() => import('./pages/dashboard/MyOrdersPage').then(m => ({ default: m.MyOrdersPage })));
+const MyPersonalDataPage = lazy(() => import('./pages/dashboard/MyPersonalDataPage').then(m => ({ default: m.MyPersonalDataPage })));
 const AdminEnrollmentDetailPage = lazy(() => import('./pages/admin/AdminEnrollmentDetailPage').then(m => ({ default: m.AdminEnrollmentDetailPage })));
-const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })));
+const AdminSalesDashboardPage = lazy(() => import('./pages/admin/AdminSalesDashboardPage').then(m => ({ default: m.AdminSalesDashboardPage })));
+const AdminMobilityDashboardPage = lazy(() => import('./pages/admin/AdminMobilityDashboardPage').then(m => ({ default: m.AdminMobilityDashboardPage })));
+const AdminHomeRedirect = lazy(() => import('./pages/admin/AdminHomeRedirect').then(m => ({ default: m.AdminHomeRedirect })));
 const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage').then(m => ({ default: m.AdminUsersPage })));
 const AdminEnrollmentsListPage = lazy(() => import('./pages/admin/AdminEnrollmentsListPage').then(m => ({ default: m.AdminEnrollmentsListPage })));
 const AdminCatalogPage = lazy(() => import('./pages/admin/AdminCatalogPage').then(m => ({ default: m.AdminCatalogPage })));
@@ -43,6 +54,10 @@ const AdminPromoCodesPage = lazy(() => import('./pages/admin/AdminPromoCodesPage
 const AdminEmailsPage = lazy(() => import('./pages/admin/AdminEmailsPage').then(m => ({ default: m.AdminEmailsPage })));
 const AdminPayoutsPage = lazy(() => import('./pages/admin/AdminPayoutsPage').then(m => ({ default: m.AdminPayoutsPage })));
 const BecomePartnerPage = lazy(() => import('./pages/partnership/BecomePartnerPage').then(m => ({ default: m.BecomePartnerPage })));
+const ServicesPage = lazy(() => import('./pages/ServicesPage').then(m => ({ default: m.ServicesPage })));
+const LegalNoticePage = lazy(() => import('./pages/legal/LegalNoticePage').then(m => ({ default: m.LegalNoticePage })));
+const TermsPage = lazy(() => import('./pages/legal/TermsPage').then(m => ({ default: m.TermsPage })));
+const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
 const PartnerDashboardHomePage = lazy(() => import('./pages/partner/PartnerDashboardHomePage').then(m => ({ default: m.PartnerDashboardHomePage })));
 const PartnerEnrollmentsPage = lazy(() => import('./pages/partner/PartnerEnrollmentsPage').then(m => ({ default: m.PartnerEnrollmentsPage })));
 const PartnerSessionsPage = lazy(() => import('./pages/partner/PartnerSessionsPage').then(m => ({ default: m.PartnerSessionsPage })));
@@ -75,18 +90,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
         <PageTransition>{children}</PageTransition>
       </main>
 
-      <footer className="border-t border-gray-100 text-xs text-gray-500 py-8 mt-4 bg-white">
-        <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p>© 2026 Optimi Santé · SAS, Bordeaux</p>
-          <div className="flex items-center gap-4">
-            <span>Négoce B2B/B2C</span>
-            <span>·</span>
-            <span>Formations médicales</span>
-            <span>·</span>
-            <span>Mobilité Afrique → France</span>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
@@ -94,30 +98,51 @@ const Layout = ({ children }: { children: ReactNode }) => {
 export function App() {
   return (
     <BrowserRouter>
+      {/* Doit vivre DANS le routeur : il lit l'adresse courante pour atteindre l'ancre
+          demandée et remettre le défilement en haut lors d'une navigation ordinaire. */}
+      <ScrollManager />
       <Suspense fallback={<PageFallback />}>
         <Routes>
-          {/* Espace Admin : layout dédié (sidebar), pas la navbar boutique */}
-          <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']} />}>
+            <Route element={<ProtectedRoute allowedRoles={ALL_ADMIN_ROLES} />}>
             <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboardPage />} />
-              <Route path="analytics" element={<AdminAnalyticsPage />} />
-              <Route path="reports" element={<AdminReportsPage />} />
-              <Route path="audit" element={<AdminAuditLogPage />} />
-              <Route path="governance" element={<AdminGovernancePage />} />
-              <Route path="alerts" element={<AdminAlertsPage />} />
-              <Route path="ai" element={<AdminAiPage />} />
-              <Route path="users" element={<AdminUsersPage />} />
-              <Route path="catalog" element={<AdminCatalogPage />} />
-              <Route path="quotes" element={<QuotesAdminPage />} />
-              <Route path="enrollments" element={<AdminEnrollmentsListPage />} />
-              <Route path="enrollments/:id" element={<AdminEnrollmentDetailPage />} />
-              <Route path="partnership-requests" element={<AdminPartnershipRequestsPage />} />
-              <Route path="trainings" element={<AdminTrainingsPage />} />
-              <Route path="finance" element={<AdminFinancePage />} />
-              <Route path="orders" element={<AdminOrdersPage />} />
-              <Route path="promo-codes" element={<AdminPromoCodesPage />} />
-              <Route path="emails" element={<AdminEmailsPage />} />
-              <Route path="payouts" element={<AdminPayoutsPage />} />
+              {/* L'accueil /admin renvoie chacun vers le tableau de bord de son métier. */}
+              <Route index element={<AdminHomeRedirect />} />
+
+              {/* --- Univers Négoce --- */}
+              <Route element={<ProtectedRoute allowedRoles={ECOM_ROLES} />}>
+                <Route path="ventes" element={<AdminSalesDashboardPage />} />
+                <Route path="finance" element={<AdminFinancePage />} />
+                <Route path="orders" element={<AdminOrdersPage />} />
+                <Route path="catalog" element={<AdminCatalogPage />} />
+                <Route path="promo-codes" element={<AdminPromoCodesPage />} />
+                <Route path="quotes" element={<QuotesAdminPage />} />
+              </Route>
+
+              {/* --- Univers Mobilité --- */}
+              <Route element={<ProtectedRoute allowedRoles={MOB_ROLES} />}>
+                <Route path="mobilite" element={<AdminMobilityDashboardPage />} />
+                <Route path="enrollments" element={<AdminEnrollmentsListPage />} />
+                <Route path="enrollments/:id" element={<AdminEnrollmentDetailPage />} />
+                <Route path="trainings" element={<AdminTrainingsPage />} />
+                <Route path="partnership-requests" element={<AdminPartnershipRequestsPage />} />
+                <Route path="payouts" element={<AdminPayoutsPage />} />
+              </Route>
+
+              {/* --- Supervision : transverse aux deux métiers --- */}
+              <Route element={<ProtectedRoute allowedRoles={ALL_ADMIN_ROLES} />}>
+                <Route path="emails" element={<AdminEmailsPage />} />
+                <Route path="alerts" element={<AdminAlertsPage />} />
+                <Route path="ai" element={<AdminAiPage />} />
+              </Route>
+
+              {/* --- Gouvernance --- */}
+              <Route element={<ProtectedRoute allowedRoles={GOV_ROLES} />}>
+                <Route path="users" element={<AdminUsersPage />} />
+                <Route path="analytics" element={<AdminAnalyticsPage />} />
+                <Route path="reports" element={<AdminReportsPage />} />
+                <Route path="audit" element={<AdminAuditLogPage />} />
+                <Route path="governance" element={<AdminGovernancePage />} />
+              </Route>
             </Route>
           </Route>
 
@@ -167,11 +192,21 @@ export function App() {
                   <Route path="/candidature/cancel" element={<CandidatureCancelPage />} />
                   <Route path="/devenir-partenaire" element={<BecomePartnerPage />} />
 
+                  {/* Pages juridiques : publiques par obligation — elles doivent etre
+                      consultables sans compte, y compris par un visiteur qui hesite. */}
+                  {/* Page de presentation, consultable avant tout engagement. */}
+                  <Route path="/services" element={<ServicesPage />} />
+
+                  <Route path="/mentions-legales" element={<LegalNoticePage />} />
+                  <Route path="/cgv" element={<TermsPage />} />
+                  <Route path="/politique-confidentialite" element={<PrivacyPolicyPage />} />
+
                   <Route element={<ProtectedRoute />}>
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/my-orders" element={<MyOrdersPage />} />
                     <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
+                    <Route path="/mes-donnees" element={<MyPersonalDataPage />} />
                   </Route>
                 </Routes>
               </Layout>
