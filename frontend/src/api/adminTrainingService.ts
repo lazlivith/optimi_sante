@@ -29,8 +29,18 @@ export const adminTrainingService = {
     return data;
   },
 
-  approve: async (id: string): Promise<AdminTrainingDto> => {
-    const { data } = await axiosClient.patch<AdminTrainingDto>(`/admin/trainings/${id}/approve`);
+  /**
+   * Valide et publie la formation, en fixant ses frais de dossier dans le meme geste.
+   *
+   * `applicationFee` omis conserve les frais existants ; passe a `null` il retire le tarif
+   * propre et fait revenir la formation a la valeur globale. Les confondre ferait perdre un
+   * tarif deja saisi a chaque revalidation.
+   */
+  approve: async (id: string, applicationFee?: number | null): Promise<AdminTrainingDto> => {
+    const { data } = await axiosClient.patch<AdminTrainingDto>(
+      `/admin/trainings/${id}/approve`,
+      applicationFee === undefined ? undefined : { applicationFee },
+    );
     return data;
   },
 

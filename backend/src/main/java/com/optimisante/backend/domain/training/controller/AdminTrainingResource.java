@@ -46,9 +46,20 @@ public class AdminTrainingResource {
         return ResponseEntity.ok(adminTrainingService.setApplicationFee(id, dto.applicationFee()));
     }
 
+    /**
+     * Valide et publie une formation, en fixant ses frais de dossier dans le meme geste.
+     *
+     * <p>Le corps est <b>facultatif</b> : absent, les frais existants sont conserves. Present
+     * avec {@code applicationFee} nul, il retire le tarif propre et fait revenir la formation
+     * a la valeur globale. Confondre les deux ferait perdre un tarif deja saisi a chaque
+     * revalidation.</p>
+     */
     @PatchMapping("/{id}/approve")
-    public ResponseEntity<AdminTrainingResponseDto> approve(@PathVariable UUID id) {
-        return ResponseEntity.ok(adminTrainingService.approve(id));
+    public ResponseEntity<AdminTrainingResponseDto> approve(
+            @PathVariable UUID id,
+            @Valid @RequestBody(required = false) ApplicationFeeRequestDto dto) {
+        return ResponseEntity.ok(
+                adminTrainingService.approve(id, dto != null, dto == null ? null : dto.applicationFee()));
     }
 
     @PatchMapping("/{id}/reject")

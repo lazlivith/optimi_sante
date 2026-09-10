@@ -12,6 +12,13 @@ export function AdminTrainingsPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
+  // Formation en cours de revue. La validation passe par cet écran plutôt que par un clic
+  // direct : c'est le moment où l'administration examine la proposition du partenaire, et donc
+  // le moment où elle décide des frais de dossier. Valider sans rien demander laisserait
+  // publier une formation dont personne n'a arbitré le tarif.
+  const [enRevue, setEnRevue] = useState<AdminTrainingDto | null>(null);
+  const [fraisSaisis, setFraisSaisis] = useState('');
+
   const fetchTrainings = async () => {
     setIsLoading(true);
     try {
@@ -26,12 +33,18 @@ export function AdminTrainingsPage() {
 
   useEffect(() => { fetchTrainings(); }, []);
 
-  const handleApprove = async (t: AdminTrainingDto) => {
+  const ouvrirRevue = (t: AdminTrainingDto) => {
+    setEnRevue(t);
+    setFraisSaisis(t.applicationFee != null ? String(t.applicationFee) : '');
+  };
+
+  const handleApprove = async (t: AdminTrainingDto, frais: number | null) => {
     setProcessingId(t.id);
     try {
-      const updated = await adminTrainingService.approve(t.id);
+      const updated = await adminTrainingService.approve(t.id, frais);
       setTrainings(prev => prev.map(x => x.id === t.id ? updated : x));
       setToast({ message: `"${t.title}" validée et publiée sur le catalogue.`, type: 'success' });
+      setEnRevue(null);
     } catch (err: any) {
       setToast({ message: err.response?.data?.message || 'Erreur lors de la validation.', type: 'error' });
     } finally {
@@ -160,10 +173,10 @@ export function AdminTrainingsPage() {
                       {t.approvalStatus === 'PENDING_REVIEW' && (
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => handleApprove(t)}
+                            onClick={() => ouvrirRevue(t)}
                             disabled={processingId === t.id}
                             className="inline-flex items-center justify-center p-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition disabled:opacity-50"
-                            title="Valider et publier"
+                            title="Examiner, fixer les frais et publier"
                           >
                             {processingId === t.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                           </button>
@@ -185,6 +198,88 @@ export function AdminTrainingsPage() {
           </div>
         )}
       </div>
+
+      {/* Fenêtre de revue : le partenaire propose, l'administration examine et fixe les frais
+          avant publication. Les deux gestes sont réunis parce qu'ils forment une seule
+          décision — publier une formation, c'est en arrêter le tarif de dossier. */}
+      {enRevue && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl border border-slate-200 overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-100 bg-slate-50">
+              <h2 className="text-lg font-bold text-brand-dark">Valider et publier</h2>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Vérifiez la proposition du partenaire, puis fixez les frais de dossier.
+              </p>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div className="rounded-xl border border-slate-200 p-4">
+                <p className="font-semibold text-brand-dark">{enRevue.title}</p>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  {enRevue.medicalSpecialty} · {enRevue.durationDays} jours ·{' '}
+                  {enRevue.partnerInstitutionName}
+                </p>
+                <p className="text-sm text-slate-600 mt-2">
+                  Prix de la formation, fixé par le partenaire :{' '}
+                  <strong className="text-brand-dark">{enRevue.price.toFixed(2)} €</strong>
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="frais-dossier" className="block text-sm font-semibold text-slate-700 mb-1">
+                  Frais de dossier — recette Optimi Santé
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="frais-dossier" type="number" min="0" step="0.01"
+                    value={fraisSaisis}
+                    onChange={(e) => setFraisSaisis(e.target.value)}
+                    placeholder="Tarif par défaut de la plateforme"
+                    className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                  />
+                  <span className="text-slate-500 font-semibold">€</span>
+                </div>
+                {/* Un champ vide et un zéro ne veulent pas dire la même chose : sans cette
+                    phrase, personne ne peut deviner la différence. */}
+                <p className="text-xs text-slate-500 mt-2">
+                  Laissez vide pour appliquer le tarif par défaut de la plateforme.
+                  Saisissez <strong>0</strong> pour rendre la candidature gratuite.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEnRevue(null)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={processingId === enRevue.id}
+                onClick={() => {
+                  const brut = fraisSaisis.trim();
+                  const valeur = brut === '' ? null : Number(brut.replace(',', '.'));
+                  if (valeur !== null && (Number.isNaN(valeur) || valeur < 0)) {
+                    setToast({ message: 'Montant invalide.', type: 'error' });
+                    return;
+                  }
+                  handleApprove(enRevue, valeur);
+                }}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-green text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+              >
+                {processingId === enRevue.id
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Check className="w-4 h-4" />}
+                Publier la formation
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
     </div>
   );

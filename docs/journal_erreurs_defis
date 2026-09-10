@@ -2546,3 +2546,60 @@ L'apostrophe française a de nouveau cassé du code généré : `s'applique` et 
 script de patch Python ressortent sans leur échappement. Corrigé en passant ces chaînes en
 guillemets doubles. **La règle à retenir : ne jamais faire traverser une apostrophe française à
 deux couches d'échappement — écrire la chaîne JavaScript en guillemets doubles dès le départ.**
+
+---
+
+## Lot 2 (suite) — Rattacher les frais de dossier au moment de la revue
+
+### Ce que la correction change
+
+Le tarif propre existait, mais il se réglait par une action séparée, dans une colonne du
+tableau. Rien n'obligeait à s'en occuper : l'administration pouvait valider et publier une
+formation sans que personne n'ait arbitré ses frais de dossier, et le tarif global s'appliquait
+par défaut sans qu'aucune décision n'ait été prise.
+
+La demande était claire : **le montant se saisit au moment de la revue**, parce que valider une
+formation et en arrêter le tarif sont une seule décision. La validation ouvre désormais une
+fenêtre qui rappelle le titre, le partenaire et le prix fixé par le CHU, puis demande les frais
+avant de publier.
+
+### Le piège : « vide » et « rien dit » ne sont pas la même chose
+
+`approve(id)` recevait auparavant un simple identifiant. En y ajoutant un montant, un cas
+ambigu apparaît : que faire quand l'appelant n'envoie aucun corps ?
+
+Trois intentions distinctes doivent coexister, et deux d'entre elles passent par la valeur
+`null` :
+
+| Intention de l'administrateur | Corps envoyé | Effet attendu |
+|---|---|---|
+| Je fixe un tarif propre | `{"applicationFee": 175}` | 175 € pour cette formation |
+| Je laisse le tarif global | `{"applicationFee": null}` | tarif propre effacé, repli sur 100 € |
+| Je ne parle pas des frais | *aucun corps* | le tarif déjà saisi est **préservé** |
+| Candidature gratuite | `{"applicationFee": 0}` | 0 € — distinct du repli |
+
+Sans distinction entre les deux derniers cas, une re-validation (après un rejet corrigé, par
+exemple) aurait **effacé silencieusement** un tarif déjà arbitré. D'où la signature
+`approve(UUID, boolean feeProvided, BigDecimal fee)` : le booléen porte « l'appelant a-t-il
+parlé des frais », le `BigDecimal` porte « qu'a-t-il dit ». Côté client, `approve(id)` sans
+argument n'envoie aucun corps, là où `approve(id, null)` en envoie un contenant `null`.
+
+La même ambiguïté se rejoue dans l'interface : un champ vide et un zéro se ressemblent à
+l'écran. La fenêtre l'écrit donc noir sur blanc — *« laissez vide pour le tarif par défaut,
+saisissez 0 pour une candidature gratuite »* — car aucun utilisateur ne peut deviner cette
+différence.
+
+### Vérifié sur la plateforme déployée
+
+| Contrôle | Résultat |
+|---|---|
+| Validation avec `175.00` | `APPROVED`, `fee=175.00`, publiée |
+| Re-validation **sans corps** | `fee=175.00` **conservé** |
+| Validation avec `null` | `fee=NULL`, repli sur le tarif global |
+| Montant négatif | **400** |
+| API publique, formation sans tarif propre | `applicationFee=100.0` |
+
+Le partenaire, lui, ne voit ni ne renseigne ce champ : `CreateTrainingRequestDto` ne le porte
+pas, et `PartnerTrainingResponseDto` ne le renvoie pas. L'isolation ne repose donc pas sur un
+contrôle d'accès qu'on pourrait oublier, mais sur l'absence du champ dans le contrat qu'il
+manipule — le CHU ne peut pas fixer la rémunération d'un travail qu'il n'effectue pas.

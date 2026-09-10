@@ -35,10 +35,26 @@ public class AdminTrainingService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Valide et publie la formation, en fixant au passage ses frais de dossier.
+     *
+     * <p>La revue est le moment ou l'administration examine ce que le partenaire a propose ;
+     * c'est donc la, et pas dans un ecran separe, qu'elle decide de la remuneration
+     * d'OptimiSante. Sans cela, une formation pouvait etre publiee sans que personne ait
+     * consciemment arbitre ses frais — elle heritait du tarif global par simple omission.</p>
+     *
+     * @param feeProvided distingue « l'appelant n'a pas parle des frais » (on ne touche a
+     *                    rien) de « l'appelant demande le tarif global » ({@code fee} nul).
+     *                    Sans cette distinction, valider une formation effacerait un tarif
+     *                    deja saisi.
+     */
     @Transactional
-    public AdminTrainingResponseDto approve(UUID trainingId) {
+    public AdminTrainingResponseDto approve(UUID trainingId, boolean feeProvided, java.math.BigDecimal fee) {
         Training training = trainingRepository.findById(trainingId)
-                .orElseThrow(() -> new RuntimeException("Training not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Formation introuvable : " + trainingId));
+        if (feeProvided) {
+            training.setApplicationFee(fee);
+        }
         training.setApprovalStatus(TrainingApprovalStatus.APPROVED);
         training.setIsPublished(true);
         training.setRejectionReason(null);
