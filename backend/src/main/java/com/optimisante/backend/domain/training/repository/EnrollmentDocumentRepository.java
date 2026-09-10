@@ -10,4 +10,8 @@ import java.util.UUID;
 @Repository
 public interface EnrollmentDocumentRepository extends JpaRepository<EnrollmentDocument, UUID> {
     List<EnrollmentDocument> findByEnrollmentId(UUID enrollmentId);
+
+    /** Pieces d'un type donne, la plus recente d'abord. */
+    List<EnrollmentDocument> findByEnrollmentIdAndDocumentTypeOrderByUploadedAtDesc(
+            UUID enrollmentId, com.optimisante.backend.domain.training.entity.DocumentType documentType);
 }

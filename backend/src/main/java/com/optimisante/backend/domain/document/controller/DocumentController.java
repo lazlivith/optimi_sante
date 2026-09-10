@@ -107,7 +107,13 @@ public class DocumentController {
                     .orElseThrow(() -> new RuntimeException("Document not found"));
             Enrollment enrollment = document.getEnrollment();
             boolean isOwnerDoctor = enrollment.getDoctor().getId().equals(currentUserId);
-            boolean isOwnerPartner = enrollment.getSession().getTraining().getPartnerProfile().getUser().getId().equals(currentUserId);
+            // Ecarter la piece de la LISTE du partenaire ne suffit pas : la liste et le
+            // telechargement sont deux chemins distincts, et qui connait l'identifiant
+            // passerait par celui-ci. La regle est donc appliquee aux deux, depuis la meme
+            // source (DocumentType.isVisibleToPartner()).
+            boolean isOwnerPartner =
+                    enrollment.getSession().getTraining().getPartnerProfile().getUser().getId().equals(currentUserId)
+                    && document.getDocumentType().isVisibleToPartner();
             if (!isMobilityAdmin && !isOwnerDoctor && !isOwnerPartner) {
                 return ResponseEntity.status(403).build();
             }

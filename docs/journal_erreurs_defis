@@ -2811,3 +2811,112 @@ Et le PDF réellement déposé au coffre, relu après téléchargement :
 Les objets d'email portent désormais « Entretien en visioconférence », et la confirmation
 contient le lien cliquable — c'est dans sa boîte mail que le destinataire ira le chercher cinq
 minutes avant l'entretien, et non sur la plateforme.
+
+---
+
+## Lot 4 — Services de séjour : assurance, hébergement, transport
+
+### Pourquoi 100 % Optimi Santé
+
+Ces prestations ne sont pas rendues par le CHU : c'est l'agence qui les monte et paie ses
+propres prestataires. Les faire entrer dans la répartition reverserait à l'établissement une
+part d'un travail qu'il n'a pas fourni. Le taux est donc 100, et l'invariant comptable de la
+V27 tient sans exception : `commission = brut`, `part partenaire = 0`.
+
+Le catalogue est tenu par l'administration de la mobilité — **il n'existe aucune route
+partenaire**, et ce n'est pas un oubli. Même règle qu'en V40 pour les frais de dossier : le CHU
+ne fixe pas le prix d'une prestation qu'il ne fournit pas. L'absence de route est ce qui rend la
+règle infranchissable, là où un contrôle peut s'oublier.
+
+### Ce que le lot ne fait pas
+
+Aucun statut de dossier n'est ajouté, aucune transition modifiée. Souscrire un hébergement ne
+fait pas avancer la candidature, et une inscription reste parfaitement valable sans aucune
+option — troisième module de suite à se greffer à côté de l'automate plutôt que dedans, après
+les pièces (V37) et les entretiens (V41).
+
+### Une contrainte que j'avais écrite contre mon propre parcours
+
+La V43 exigeait qu'une souscription encore `SELECTED` n'ait **aucun** paiement rattaché. À
+l'ouverture du règlement, le service rattache pourtant les options à la ligne d'encaissement
+*avant* que Stripe ne confirme quoi que ce soit — c'est ce rattachement qui **fige le panier**.
+Sans lui, un médecin qui souscrirait un service pendant qu'il paie verrait ce service soldé par
+un encaissement qui ne le couvrait pas : le montant prélevé et les prestations rendues
+divergeraient.
+
+Le parcours était juste, la contrainte trop stricte : elle interdisait l'état intermédiaire
+« retenu, paiement ouvert, pas encore confirmé », qui dure le temps du formulaire. La V44 la
+réécrit autour de l'invariant qui compte réellement — **une souscription payée nomme toujours
+l'encaissement qui l'a couverte et la date du règlement**. Rattacher une ligne encore en attente
+ne fait perdre aucune information ; cela en ajoute une.
+
+L'erreur s'est manifestée de la pire façon : une violation de contrainte SQL remontée telle
+quelle au client, en HTTP 400. Elle n'a été trouvée qu'en jouant le parcours complet — aucune
+relecture du code ne l'aurait montrée, puisque le code et la contrainte étaient chacun
+défendables isolément.
+
+### Le CHU voyait ce que le médecin achetait à l'agence
+
+Une fois l'attestation de souscription déposée au coffre, elle apparaissait dans les pièces
+consultables par l'établissement — avec le détail des prestations et **leurs tarifs**. Le
+partenaire y lisait à la fois les achats personnels du candidat et les prix pratiqués par
+l'agence.
+
+Deux chemins mènent à une pièce : la liste et le téléchargement par identifiant. N'en protéger
+qu'un laisse le document accessible à qui connaît l'identifiant. La règle est donc portée par la
+taxonomie elle-même — `DocumentType.isVisibleToPartner()` — et consultée par les deux.
+
+**J'ai d'abord posé le filtre au mauvais endroit** : sur `getEnrollmentDocuments`, la lecture
+générique, ce qui cachait l'attestation au médecin et à l'administration tout en la laissant
+visible au partenaire. Exactement l'inverse de l'effet recherché. Le test l'a montré
+immédiatement — la liste du CHU contenait toujours la pièce alors que le téléchargement, lui,
+était bien refusé. Une incohérence entre deux chemins qui devaient dire la même chose est un
+signal fiable : le correctif n'est pas là où on croit.
+
+### Vérifié sur la base, avant d'écrire du Java
+
+Treize comportements rejoués dans une transaction annulée : tarif négatif, libellé vide, type
+inconnu, deux offres actives du même type, une active plus une désactivée, souscription payée
+sans encaissement nommé, souscription retenue portant une date de paiement, deux souscriptions
+vivantes du même type, une vivante plus une annulée, répartition qui ne somme pas, deux
+paiements sur la même session Stripe, deux paiements distincts sur le même dossier. Chacun a été
+refusé — ou accepté — par la règle prévue, nommément.
+
+### Vérifié sur la plateforme déployée
+
+| Contrôle | Résultat |
+|---|---|
+| Le CHU dépose une offre au catalogue | **403** |
+| Le médecin dépose une offre | **403** |
+| Tarif négatif · type de service inconnu | **400** · **400** |
+| L'admin mobilité dépose 3 offres | **200** |
+| Nouvelle offre du même type | l'ancienne est retirée — 3 actives sur 4 lignes |
+| Souscrire sur un dossier encore en revue | **409** |
+| Un autre médecin souscrit sur ce dossier | **403** |
+| Souscrire une offre retirée du catalogue | **409** |
+| Deux fois le même type | **409** |
+| Services déjà retenus | disparaissent des offres proposées |
+| Retirer un service non réglé, puis resouscrire | **200** puis **200** |
+| Ouverture du règlement | **200**, `clientSecret` reçu |
+| Webhook signé | **200** — 3 services soldés, attestation déposée |
+| Webhook mal signé | **400** |
+| Webhook rejoué | 1 seul encaissement, 1 seule attestation |
+| Répartition enregistrée | brut 1330 · commission 1330 · partenaire **0** |
+| Statut du dossier après tout le parcours | `CONFIRMED`, **inchangé** |
+| Attestation : liste du CHU · téléchargement CHU | **écartée** · **403** |
+| Attestation : médecin · admin mobilité | **200** · **200** |
+
+Le webhook a été rejoué en signant nous-mêmes un `checkout.session.completed` avec le secret de
+l'environnement local — seul moyen d'exercer réellement le dispatcher, le handler, le service,
+l'attestation et l'idempotence sans dépendre d'un paiement Stripe réel.
+
+Et l'attestation elle-même, relue après téléchargement : titre, les trois services et leurs
+montants, le total, la réserve sur l'assurance et la mention « ne préjuge pas de la décision ».
+
+### Une réserve que le document devait porter
+
+Optimi Santé n'est pas l'assureur. La plateforme ne peut donc pas émettre une *attestation
+d'assurance* en son nom : le document établit que les services ont été **souscrits et réglés**
+auprès de l'agence, et dit explicitement qu'il **ne tient pas lieu de certificat d'assurance**,
+lequel est émis par l'assureur en son nom propre. La réserve n'apparaît que lorsqu'une assurance
+figure au panier — ailleurs elle n'aurait aucun objet et brouillerait la lecture.

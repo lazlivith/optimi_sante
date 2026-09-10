@@ -8,6 +8,7 @@ import { TuitionPaymentCard } from '../../components/training/TuitionPaymentCard
 import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
 import { MyVisaDossierPanel } from '../../components/enrollment/MyVisaDossierPanel';
 import { MyInterviewPanel } from '../../components/enrollment/MyInterviewPanel';
+import { MyServiceOptionsPanel } from '../../components/enrollment/MyServiceOptionsPanel';
 
 export function MyEnrollmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -177,6 +178,14 @@ export function MyEnrollmentDetailPage() {
             que dans ce cas, il ne prend donc jamais la place pour rien. */}
         <div className="mb-8">
           <MyInterviewPanel enrollmentId={enrollment.id} />
+        </div>
+
+        {/* Services de sejour. Places apres l'entretien et avant les pieces : ils se
+            souscrivent une fois la candidature acceptee, mais ils sont facultatifs — ils
+            passent donc apres ce qui appelle une action, et le panneau disparait quand rien
+            n'est propose. */}
+        <div className="mb-8">
+          <MyServiceOptionsPanel enrollmentId={enrollment.id} />
         </div>
 
         {/* Dossier visa : ce qu'OptimiSanté reclame, suivi piece par piece. Place avant

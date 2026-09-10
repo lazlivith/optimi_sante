@@ -26,7 +26,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class EnrollmentPaymentService {
 
-    /** Les frais de dossier reviennent intégralement à la plateforme. */
+    /** Frais de dossier et services organisés par l'agence reviennent intégralement à la plateforme. */
     private static final BigDecimal FULL_PLATFORM_RATE = new BigDecimal("100.00");
 
     private final EnrollmentPaymentRepository paymentRepository;
@@ -111,6 +111,37 @@ public class EnrollmentPaymentService {
         log.info("Paiement de formation ouvert pour le dossier {} : {} EUR "
                         + "(commission {} EUR, part partenaire {} EUR)",
                 enrollmentId, split.grossAmount(), split.commissionAmount(), split.partnerPayoutAmount());
+        return payment;
+    }
+
+    /**
+     * Ouvre une ligne d'encaissement pour les services souscrits, entièrement acquise à la
+     * plateforme.
+     *
+     * <p>Aucun contrôle « déjà payé » ici, contrairement aux frais de formation : plusieurs
+     * paiements de services sur un même dossier sont légitimes. C'est l'appelant qui décide
+     * quels services entrent dans ce panier, et la session Stripe qui porte l'idempotence.</p>
+     */
+    @Transactional
+    public EnrollmentPayment openServiceOptionsPayment(UUID enrollmentId, BigDecimal gross) {
+        if (gross == null || gross.signum() <= 0) {
+            throw new IllegalStateException("Aucun service à régler sur ce dossier.");
+        }
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+        var split = FinancialSplitCalculator.calculateSplit(gross, FULL_PLATFORM_RATE);
+
+        EnrollmentPayment payment = paymentRepository.save(EnrollmentPayment.builder()
+                .enrollment(enrollment)
+                .paymentType(PaymentType.SERVICE_OPTIONS)
+                .grossAmount(split.grossAmount())
+                .commissionRate(split.commissionRate())
+                .commissionAmount(split.commissionAmount())
+                .partnerPayoutAmount(split.partnerPayoutAmount())
+                .status(PaymentStatus.PENDING)
+                .build());
+
+        log.info("Paiement de services ouvert pour le dossier {} : {} EUR, 100 % plateforme",
+                enrollmentId, split.grossAmount());
         return payment;
     }
 

@@ -681,7 +681,12 @@ public class EnrollmentService {
             throw new RuntimeException("Vous n'êtes pas autorisé à consulter ce dossier");
         }
 
-        return enrollmentDocumentRepository.findByEnrollmentId(enrollmentId);
+        // Les pieces commerciales entre OptimiSante et le medecin sont ecartees : voir
+        // DocumentType.isVisibleToPartner(). Le partenaire instruit un dossier de mobilite ;
+        // il n'a a connaitre ni les achats du candidat aupres de l'agence, ni leurs tarifs.
+        return enrollmentDocumentRepository.findByEnrollmentId(enrollmentId).stream()
+                .filter(d -> d.getDocumentType().isVisibleToPartner())
+                .toList();
     }
 
     private EnrollmentResponseDto toResponseDto(Enrollment enrollment) {

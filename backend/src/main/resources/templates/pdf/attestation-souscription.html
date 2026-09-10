@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Attestation de souscription aux services</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 20mm;
+            @bottom-center { content: element(footer); }
+        }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 13px; color: #333; line-height: 1.5; }
+        .footer { position: running(footer); }
+        .cert-header { text-align: center; margin-top: 40px; margin-bottom: 32px; }
+        .section-title { border-bottom: 2px solid #154D44; color: #154D44; padding-bottom: 5px; margin-top: 28px; margin-bottom: 12px; }
+        table.services { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        table.services th { background-color: #F1F6F3; color: #154D44; text-align: left; padding: 8px 10px; font-size: 12px; }
+        table.services td { padding: 8px 10px; border-bottom: 1px solid #e5e5e5; }
+        table.services td.montant { text-align: right; white-space: nowrap; }
+        table.services tr.total td { font-weight: bold; color: #154D44; border-top: 2px solid #154D44; border-bottom: none; }
+        /* La reserve sur l'assurance n'est pas une note de bas de page : elle dit ce que le
+           document ne vaut PAS, et doit se lire avant qu'on le presente a un tiers. */
+        .reserve { background-color: #FFF6E8; border-left: 4px solid #D98A3C; padding: 12px 14px; margin: 20px 0; }
+        .avis { margin-top: 32px; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 12px; }
+    </style>
+</head>
+<body>
+
+    <div th:replace="~{components/header :: header}"></div>
+
+    <div class="cert-header">
+        <h2 style="color: #154D44; margin-bottom: 5px;">ATTESTATION DE SOUSCRIPTION AUX SERVICES</h2>
+        <p style="margin: 0; color: #666;">Réf : <span th:text="${reference}">SRV-00000000</span></p>
+    </div>
+
+    <p>
+        Optimi Santé atteste que
+        <strong>Dr. <span th:text="${doctorName}">Nom du médecin</span></strong>
+        a souscrit et réglé les services ci-dessous, dans le cadre de sa formation
+        <strong th:text="${trainingTitle}">Titre de la formation</strong>
+        auprès de <strong th:text="${institutionName}">Établissement</strong>.
+    </p>
+
+    <h3 class="section-title">Services souscrits</h3>
+    <table class="services">
+        <thead>
+            <tr>
+                <th style="width: 22%;">Nature</th>
+                <th>Prestation</th>
+                <th style="width: 20%; text-align: right;">Montant</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="s : ${services}">
+                <td th:text="${s.type}">Nature</td>
+                <td th:text="${s.label}">Prestation</td>
+                <td class="montant"><span th:text="${s.price}">0.00</span> €</td>
+            </tr>
+            <tr class="total">
+                <td colspan="2">Total réglé</td>
+                <td class="montant"><span th:text="${total}">0.00</span> €</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Affichee seulement quand une assurance figure au panier : sur un dossier qui n'en
+         comporte pas, cette reserve n'aurait aucun objet et brouillerait la lecture. -->
+    <div class="reserve" th:if="${hasInsurance}">
+        <p style="margin: 0 0 6px 0; font-weight: bold; color: #8a5a1c;">
+            Au sujet de l'assurance
+        </p>
+        <p style="margin: 0;">
+            Optimi Santé n'est pas l'assureur. La présente attestation établit que la couverture
+            a été souscrite auprès de la plateforme et réglée&nbsp;; <strong>elle ne tient pas lieu
+            de certificat d'assurance</strong>. Le certificat est émis par l'assureur en son nom
+            propre et vous sera transmis&nbsp;: c'est ce document-là qu'il convient de produire
+            auprès d'un consulat ou d'un établissement de soins.
+        </p>
+    </div>
+
+    <h3 class="section-title">Ce que vaut ce document</h3>
+    <p>
+        Cette attestation constate la souscription et le règlement des prestations énumérées
+        ci-dessus. <strong>Elle ne préjuge pas de la décision de l'établissement d'accueil</strong>
+        sur la candidature, ni de la délivrance d'un visa.
+    </p>
+    <p>
+        Toute demande de modification ou d'annulation d'un service déjà réglé doit être adressée
+        à Optimi Santé.
+    </p>
+
+    <div class="avis">
+        <p style="margin: 0;">
+            Document émis le <span th:text="${issuedAt}">date</span> par Optimi Santé,
+            à l'attention de <span th:text="${doctorEmail}">email</span>.
+        </p>
+    </div>
+
+    <div th:replace="~{components/footer :: footer}"></div>
+
+</body>
+</html>

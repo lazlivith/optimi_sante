@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Loader2, GraduationCap, Check, X, Image as ImageIcon, Video, Wallet } from 'lucide-react';
+import { Loader2, GraduationCap, Check, X, Image as ImageIcon, Video, Wallet, Package } from 'lucide-react';
 import { adminTrainingService, type AdminTrainingDto } from '../../api/adminTrainingService';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Toast, type ToastType } from '../../components/common/Toast';
+import { AdminServiceCatalogPanel } from '../../components/enrollment/AdminServiceCatalogPanel';
 
 export function AdminTrainingsPage() {
   const [trainings, setTrainings] = useState<AdminTrainingDto[]>([]);
@@ -16,6 +17,9 @@ export function AdminTrainingsPage() {
   // direct : c'est le moment où l'administration examine la proposition du partenaire, et donc
   // le moment où elle décide des frais de dossier. Valider sans rien demander laisserait
   // publier une formation dont personne n'a arbitré le tarif.
+  // Formation dont on tient le catalogue de services. Ouvert depuis la liste : c'est en
+  // regardant une formation qu'on decide de ce qu'on propose autour d'elle.
+  const [catalogueDe, setCatalogueDe] = useState<AdminTrainingDto | null>(null);
   const [enRevue, setEnRevue] = useState<AdminTrainingDto | null>(null);
   const [fraisSaisis, setFraisSaisis] = useState('');
 
@@ -129,6 +133,7 @@ export function AdminTrainingsPage() {
                   <th className="px-6 py-4">Prix</th>
                   <th className="px-6 py-4">Médias</th>
                   <th className="px-6 py-4">Frais dossier</th>
+                  <th className="px-6 py-4">Services</th>
                   <th className="px-6 py-4">Statut</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
@@ -166,6 +171,18 @@ export function AdminTrainingsPage() {
                         {t.applicationFee != null
                           ? `${t.applicationFee.toFixed(0)} €`
                           : <span className="text-slate-400 font-normal">par défaut</span>}
+                      </button>
+                    </td>
+                    {/* Assurance, hebergement, transport : recette 100 % OptimiSante, donc
+                        tarifee ici et jamais depuis l'espace du partenaire. */}
+                    <td className="px-6 py-4">
+                      <button
+                        type="button"
+                        onClick={() => setCatalogueDe(t)}
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-brand-green transition-colors"
+                      >
+                        <Package className="w-3.5 h-3.5 text-slate-400" />
+                        Catalogue
                       </button>
                     </td>
                     <td className="px-6 py-4"><StatusBadge status={t.approvalStatus} /></td>
@@ -278,6 +295,14 @@ export function AdminTrainingsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {catalogueDe && (
+        <AdminServiceCatalogPanel
+          trainingId={catalogueDe.id}
+          trainingTitle={catalogueDe.title}
+          onClose={() => setCatalogueDe(null)}
+        />
       )}
 
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
