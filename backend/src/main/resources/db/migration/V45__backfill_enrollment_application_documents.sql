@@ -1,5 +1,5 @@
 -- =====================================================================================
--- V34 — Rattacher au coffre-fort les pieces deposees a la candidature
+-- V45 — Rattacher au coffre-fort les pieces deposees a la candidature
 -- =====================================================================================
 -- Les trois pieces exigees a la candidature (diplome, attestation d'ordre, passeport)
 -- etaient ecrites uniquement dans les colonnes `enrollments.*_url`. Or le coffre-fort

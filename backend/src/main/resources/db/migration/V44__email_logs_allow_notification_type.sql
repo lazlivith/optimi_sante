@@ -1,5 +1,5 @@
 -- =====================================================================================
--- V33 — Autoriser le type d'email `NOTIFICATION` dans le journal des envois
+-- V44 — Autoriser le type d'email `NOTIFICATION` dans le journal des envois
 -- =====================================================================================
 -- Le NotificationDispatcher (alertes & notifications) envoie des emails transactionnels
 -- via EmailService.sendHtml. Depuis la fusion avec le journal des emails (V24), tout envoi
