@@ -55,7 +55,8 @@ public final class NotificationEvents {
 
     /** Dossier pré-qualifié par OptimiSanté et transmis au CHU pour décision. */
     public record EnrollmentSubmittedToPartner(UUID enrollmentId, UUID doctorUserId, String doctorEmail,
-                                               String trainingTitle, String institutionName) {
+                                               String doctorName, String trainingTitle,
+                                               UUID partnerUserId, String institutionName) {
     }
 
     /** OptimiSanté réclame une pièce au médecin : {@code note} dit laquelle, et pourquoi. */
@@ -67,6 +68,50 @@ public final class NotificationEvents {
     public record EnrollmentResubmitted(UUID enrollmentId, String doctorName, String trainingTitle) {
     }
 
+    /** Le médecin a depose ou remplace des pieces : l'equipe admin a de quoi instruire. */
+    public record EnrollmentDocumentsSubmitted(UUID enrollmentId, String doctorName,
+                                               String trainingTitle) {
+    }
+
+    /** Frais de formation regles : la place est definitivement acquise. */
+    public record TuitionPaid(UUID enrollmentId, UUID doctorUserId, String doctorName,
+                              String trainingTitle, UUID partnerUserId,
+                              java.math.BigDecimal amount) {
+    }
+
+    /**
+     * Une piece officielle vient d'etre emise par l'administration (convention tripartite,
+     * attestation d'accueil). {@code kind} porte le libelle affichable.
+     */
+    public record EnrollmentDocumentIssued(UUID enrollmentId, UUID doctorUserId, String doctorEmail,
+                                           String kind, UUID partnerUserId, String doctorName) {
+    }
+
+    /** Etape du parcours de mobilite franchie (convention, visa, depart). */
+    public record MobilityAdvanced(UUID enrollmentId, UUID doctorUserId, String doctorEmail,
+                                   String newStatus) {
+    }
+
+    /** Dossier annule par l'administration : medecin et etablissement doivent le savoir. */
+    public record EnrollmentCancelled(UUID enrollmentId, UUID doctorUserId, String doctorEmail,
+                                      String doctorName, UUID partnerUserId, String reason) {
+    }
+
+    /** Une formation est soumise (ou resoumise) par un CHU et attend la validation admin. */
+    public record TrainingSubmittedForApproval(UUID trainingId, String title,
+                                               String institutionName) {
+    }
+
+    /** Verdict de l'administration sur une formation proposee par un CHU. */
+    public record TrainingApprovalDecided(UUID trainingId, UUID partnerUserId, String title,
+                                          boolean approved, String reason) {
+    }
+
+    /** Demande de partenariat refusee : le candidat n'a pas de compte, seul l'e-mail le joint. */
+    public record PartnershipRequestRejected(String institutionName, String contactEmail,
+                                             String reason) {
+    }
+
     /** Le CHU réclame une pièce complémentaire ; le dossier revient à OptimiSanté. */
     public record PartnerCorrectionRequested(UUID enrollmentId, UUID doctorUserId, String doctorName,
                                              String doctorEmail, String institutionName, String note) {
@@ -74,6 +119,7 @@ public final class NotificationEvents {
 
     /** Décision du CHU sur une candidature : acceptée ou refusée. */
     public record PartnerDecisionMade(UUID enrollmentId, UUID doctorUserId, String doctorEmail,
-                                      String institutionName, boolean accepted, String reason) {
+                                      String doctorName, String institutionName,
+                                      boolean accepted, String reason) {
     }
 }

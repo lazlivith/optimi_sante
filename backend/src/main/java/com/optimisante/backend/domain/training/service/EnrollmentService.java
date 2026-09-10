@@ -129,7 +129,13 @@ public class EnrollmentService {
         registerVaultDocument(enrollment, DocumentType.PASSPORT, dto.passportUrl());
 
         log.info("Documents submitted for enrollment {} by doctor {}", enrollmentId, doctorId);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentDocumentsSubmitted(
+                saved.getId(), doctorDisplayName(saved),
+                saved.getSession().getTraining().getTitle()));
+
+        return toResponseDto(saved);
     }
 
     /**
@@ -208,6 +214,9 @@ public class EnrollmentService {
             String publicId = storageService.uploadGeneratedPdf(pdfBytes, "docs/conventions", fileName);
             enrollment.setConventionS3Key(publicId);
             log.info("Convention generated and uploaded for enrollment {} with key {}", enrollmentId, publicId);
+            eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentDocumentIssued(
+                    enrollment.getId(), enrollment.getDoctor().getId(), enrollment.getDoctor().getEmail(),
+                    "convention tripartite", partnerUserId(enrollment), doctorDisplayName(enrollment)));
         } catch (Exception e) {
             log.error("Failed to upload convention PDF to Cloudinary for enrollment {}", enrollmentId, e);
             throw new RuntimeException("Failed to upload convention", e);
@@ -256,6 +265,9 @@ public class EnrollmentService {
             String publicId = storageService.uploadGeneratedPdf(pdfBytes, "docs/attestations", fileName);
             enrollment.setAttestationS3Key(publicId);
             log.info("Attestation d'accueil générée et uploadée pour l'inscription {} avec la clé {}", enrollmentId, publicId);
+            eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentDocumentIssued(
+                    enrollment.getId(), enrollment.getDoctor().getId(), enrollment.getDoctor().getEmail(),
+                    "attestation d'accueil", null, doctorDisplayName(enrollment)));
         } catch (Exception e) {
             log.error("Échec de l'upload de l'attestation d'accueil pour l'inscription {}", enrollmentId, e);
             throw new RuntimeException("Failed to upload attestation", e);
@@ -291,7 +303,8 @@ public class EnrollmentService {
 
         eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentSubmittedToPartner(
                 saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
-                saved.getSession().getTraining().getTitle(), institutionName(saved)));
+                doctorDisplayName(saved), saved.getSession().getTraining().getTitle(),
+                partnerUserId(saved), institutionName(saved)));
 
         return toResponseDto(saved);
     }
@@ -390,7 +403,7 @@ public class EnrollmentService {
 
         eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.PartnerDecisionMade(
                 saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
-                institutionName(saved), accept, reason));
+                doctorDisplayName(saved), institutionName(saved), accept, reason));
 
         return toResponseDto(saved);
     }
@@ -451,7 +464,13 @@ public class EnrollmentService {
 
         enrollment.setStatus(newStatus);
         log.info("Dossier {} avancé au statut de mobilité {}", enrollmentId, newStatus);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.MobilityAdvanced(
+                saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
+                newStatus.name()));
+
+        return toResponseDto(saved);
     }
 
     /** Annulation administrative : possible depuis tout état non terminal, motif obligatoire. */
@@ -467,7 +486,13 @@ public class EnrollmentService {
         enrollment.setRejectionReason(reason.trim());
 
         log.info("Dossier {} annulé : {}", enrollmentId, reason);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentCancelled(
+                saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
+                doctorDisplayName(saved), partnerUserId(saved), saved.getRejectionReason()));
+
+        return toResponseDto(saved);
     }
 
     /**
@@ -517,6 +542,11 @@ public class EnrollmentService {
         log.info("Formation réglée pour le dossier {} : {} EUR (commission {} EUR, partenaire {} EUR)",
                 enrollmentId, payment.getGrossAmount(), payment.getCommissionAmount(),
                 payment.getPartnerPayoutAmount());
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.TuitionPaid(
+                enrollment.getId(), enrollment.getDoctor().getId(), doctorDisplayName(enrollment),
+                enrollment.getSession().getTraining().getTitle(), partnerUserId(enrollment),
+                payment.getGrossAmount()));
 
         return toResponseDto(issueEnrollmentDocuments(enrollmentId));
     }
@@ -632,6 +662,16 @@ public class EnrollmentService {
      */
     private static final java.util.Set<EnrollmentStatus> DOCTOR_EDITABLE_STATUSES =
             java.util.EnumSet.of(EnrollmentStatus.UNDER_OPTIMI_REVIEW, EnrollmentStatus.ACTION_REQUIRED);
+
+    /**
+     * Compte du partenaire d'accueil, destinataire de ses notifications. {@code null} si la
+     * formation n'a pas de partenaire rattache : l'envoi est alors simplement ignore, plutot
+     * que de faire echouer l'action metier pour une notification.
+     */
+    private UUID partnerUserId(Enrollment enrollment) {
+        var partner = enrollment.getSession().getTraining().getPartnerProfile();
+        return partner == null || partner.getUser() == null ? null : partner.getUser().getId();
+    }
 
     /** Etablissement d'accueil de la session, pour situer le dossier dans les messages. */
     private String institutionName(Enrollment enrollment) {

@@ -51,10 +51,20 @@ export function AdminPartnershipRequestsPage() {
   };
 
   const handleReject = async (id: string) => {
-    if (!window.confirm('Rejeter cette demande de partenariat ?')) return;
+    // Le motif part dans l'e-mail envoye a l'etablissement : un refus sans explication
+    // laisserait un candidat sans rien pour comprendre, ni corriger sa demande.
+    const reason = window.prompt(
+      'Motif du refus (obligatoire) :\n\n'
+      + "Ce texte est envoyé par e-mail à l'établissement candidat.",
+    );
+    if (reason === null) return;
+    if (!reason.trim()) {
+      setToast({ message: 'Un motif est obligatoire pour refuser une demande.', type: 'error' });
+      return;
+    }
     setProcessingId(id);
     try {
-      const updated = await adminPartnershipService.reject(id);
+      const updated = await adminPartnershipService.reject(id, reason.trim());
       setRequests(prev => prev.map(r => r.id === id ? updated : r));
       setToast({ message: 'Demande rejetée.', type: 'success' });
     } catch (err: any) {

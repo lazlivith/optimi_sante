@@ -118,6 +118,14 @@ public class NotificationDispatcher {
                 "Dossier transmis à l'établissement", body,
                 "/doctor/enrollments/" + e.enrollmentId(), null,
                 "ENROLLMENT_TO_PARTNER:" + e.enrollmentId());
+        // Le CHU est le destinataire reel de cette etape : sans cette ligne, un dossier
+        // arrivait dans son espace sans que personne ne l'en informe, et pouvait y dormir.
+        notifications.notifyUser(e.partnerUserId(), "ENROLLMENT_TO_REVIEW", NotificationSeverity.WARNING,
+                "Nouveau dossier à examiner",
+                "Le dossier de " + e.doctorName() + " pour « " + e.trainingTitle()
+                        + " » a été pré-qualifié par OptimiSanté et attend votre décision.",
+                "/partner/enrollments", null, "ENROLLMENT_TO_REVIEW:" + e.enrollmentId());
+
         if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
             emailService.sendHtml(e.doctorEmail(),
                     "Optimi Santé — Votre dossier est transmis à l'établissement",
@@ -170,9 +178,6 @@ public class NotificationDispatcher {
                 "L'établissement demande une pièce", body,
                 "/admin/enrollments/" + e.enrollmentId(), null,
                 "PARTNER_CORRECTION:" + e.enrollmentId());
-        emailAdmins("Optimi Santé — L'établissement réclame une pièce",
-                "Demande de pièce complémentaire", "<p>" + body + "</p>");
-
         // Le medecin est aussi prevenu : c'est lui qui doit deposer la piece, et son dossier
         // est deja repasse en ACTION_REQUIRED. Le message reste emis par OptimiSante — le
         // CHU ne s'adresse jamais directement au candidat.
@@ -181,6 +186,9 @@ public class NotificationDispatcher {
                 "Pièce à fournir dans votre dossier", doctorBody,
                 "/doctor/enrollments/" + e.enrollmentId(), null,
                 "ENROLLMENT_ACTION:" + e.enrollmentId());
+
+        emailAdmins("Optimi Santé — L'établissement réclame une pièce",
+                "Demande de pièce complémentaire", "<p>" + body + "</p>");
         if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
             emailService.sendHtml(e.doctorEmail(),
                     "Optimi Santé — Une pièce complémentaire est demandée",
@@ -204,6 +212,19 @@ public class NotificationDispatcher {
                 e.accepted() ? "Candidature acceptée" : "Candidature refusée", body,
                 "/doctor/enrollments/" + e.enrollmentId(), null,
                 "PARTNER_DECISION:" + e.enrollmentId());
+        // L'administration pilote la suite (relance du paiement, convention) : elle doit
+        // apprendre la decision sans avoir a surveiller la liste des dossiers.
+        notifications.notifyAdmins("PARTNER_DECISION",
+                e.accepted() ? NotificationSeverity.SUCCESS : NotificationSeverity.WARNING,
+                e.accepted() ? "Candidature acceptée par le CHU" : "Candidature refusée par le CHU",
+                e.institutionName() + (e.accepted() ? " a accepté " : " a refusé ")
+                        + "le dossier de " + e.doctorName()
+                        + (e.accepted()
+                           ? ". Le médecin doit désormais régler les frais de formation."
+                           : (e.reason() == null || e.reason().isBlank() ? "." : " : " + e.reason())),
+                "/admin/enrollments/" + e.enrollmentId(), null,
+                "PARTNER_DECISION_ADMIN:" + e.enrollmentId());
+
         if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
             emailService.sendHtml(e.doctorEmail(),
                     e.accepted()
@@ -212,6 +233,149 @@ public class NotificationDispatcher {
                     e.accepted() ? "Candidature acceptée" : "Candidature refusée",
                     "<p>" + body + "</p>");
         }
+    }
+
+    // =====================================================================================
+    // Suite du parcours : paiement, pieces officielles, mobilite, annulation
+    // =====================================================================================
+
+    /** Pieces deposees ou remplacees par le medecin : le dossier est pret a etre instruit. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onEnrollmentDocumentsSubmitted(NotificationEvents.EnrollmentDocumentsSubmitted e) {
+        notifications.notifyAdmins("ENROLLMENT_DOCUMENTS", NotificationSeverity.INFO,
+                "Pièces déposées",
+                e.doctorName() + " a déposé ses pièces pour « " + e.trainingTitle()
+                        + " ». Le dossier peut être vérifié.",
+                "/admin/enrollments/" + e.enrollmentId(), null,
+                "ENROLLMENT_DOCUMENTS:" + e.enrollmentId());
+    }
+
+    /** Frais regles : l'admin enchaine sur la convention, le CHU sait la place acquise. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onTuitionPaid(NotificationEvents.TuitionPaid e) {
+        notifications.notifyAdmins("TUITION_PAID", NotificationSeverity.SUCCESS,
+                "Frais de formation réglés",
+                e.doctorName() + " a réglé " + e.amount() + " € pour « " + e.trainingTitle()
+                        + " ». La convention tripartite peut être émise.",
+                "/admin/enrollments/" + e.enrollmentId(), null,
+                "TUITION_PAID:" + e.enrollmentId());
+
+        notifications.notifyUser(e.partnerUserId(), "TUITION_PAID", NotificationSeverity.SUCCESS,
+                "Inscription confirmée",
+                e.doctorName() + " a réglé ses frais pour « " + e.trainingTitle()
+                        + " » : sa place est définitivement acquise.",
+                "/partner/enrollments", null, "TUITION_PAID_PARTNER:" + e.enrollmentId());
+    }
+
+    /** Convention ou attestation emise : la piece est disponible pour ceux qu'elle engage. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onEnrollmentDocumentIssued(NotificationEvents.EnrollmentDocumentIssued e) {
+        String body = "Votre " + e.kind() + " est disponible dans votre espace.";
+        notifications.notifyUser(e.doctorUserId(), "DOCUMENT_ISSUED", NotificationSeverity.SUCCESS,
+                "Document disponible", body,
+                "/doctor/enrollments/" + e.enrollmentId(), null,
+                "DOCUMENT_ISSUED:" + e.enrollmentId() + ":" + e.kind());
+        // La convention tripartite engage aussi l'etablissement d'accueil, qui la contresigne.
+        if (e.partnerUserId() != null && e.kind().toLowerCase().contains("convention")) {
+            notifications.notifyUser(e.partnerUserId(), "DOCUMENT_ISSUED", NotificationSeverity.INFO,
+                    "Convention tripartite émise",
+                    "La convention du dossier de " + e.doctorName() + " est disponible.",
+                    "/partner/enrollments", null,
+                    "DOCUMENT_ISSUED_PARTNER:" + e.enrollmentId());
+        }
+
+        if (notifications.emailAllowed(e.doctorUserId(), "DOCUMENT_ISSUED")) {
+            emailService.sendHtml(e.doctorEmail(), "Optimi Santé — " + capitalize(e.kind()) + " disponible",
+                    "Votre document est prêt", "<p>" + body + "</p>");
+        }
+    }
+
+    /** Etape de mobilite franchie (visa, depart) : seul le medecin est concerne. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onMobilityAdvanced(NotificationEvents.MobilityAdvanced e) {
+        String body = "Votre dossier est désormais « " + humanize(e.newStatus()) + " ».";
+        notifications.notifyUser(e.doctorUserId(), "ENROLLMENT_STATUS", NotificationSeverity.INFO,
+                "Avancement de votre mobilité", body,
+                "/doctor/enrollments/" + e.enrollmentId(), null,
+                "MOBILITY:" + e.enrollmentId() + ":" + e.newStatus());
+        if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
+            emailService.sendHtml(e.doctorEmail(), "Optimi Santé — Avancement de votre dossier",
+                    "Votre dossier avance", "<p>" + body + "</p>");
+        }
+    }
+
+    /** Annulation administrative : le medecin et l'etablissement cessent d'attendre. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onEnrollmentCancelled(NotificationEvents.EnrollmentCancelled e) {
+        String body = "Votre dossier de formation a été annulé"
+                + (e.reason() == null || e.reason().isBlank() ? "." : " : " + e.reason());
+        notifications.notifyUser(e.doctorUserId(), "ENROLLMENT_STATUS", NotificationSeverity.WARNING,
+                "Dossier annulé", body,
+                "/doctor/enrollments/" + e.enrollmentId(), null,
+                "ENROLLMENT_CANCELLED:" + e.enrollmentId());
+        notifications.notifyUser(e.partnerUserId(), "ENROLLMENT_STATUS", NotificationSeverity.WARNING,
+                "Dossier annulé",
+                "Le dossier de " + e.doctorName() + " a été annulé par OptimiSanté.",
+                "/partner/enrollments", null, "ENROLLMENT_CANCELLED_PARTNER:" + e.enrollmentId());
+
+        if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
+            emailService.sendHtml(e.doctorEmail(), "Optimi Santé — Votre dossier a été annulé",
+                    "Dossier annulé", "<p>" + body + "</p>");
+        }
+    }
+
+    // =====================================================================================
+    // Catalogue de formations et partenariats
+    // =====================================================================================
+
+    /** Formation soumise par un CHU : elle reste invisible du public tant qu'elle attend. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onTrainingSubmittedForApproval(NotificationEvents.TrainingSubmittedForApproval e) {
+        notifications.notifyAdmins("TRAINING_APPROVAL", NotificationSeverity.WARNING,
+                "Formation à valider",
+                e.institutionName() + " a soumis « " + e.title() + " ». "
+                        + "Elle reste hors catalogue tant qu'elle n'est pas validée.",
+                "/admin/trainings", null, "TRAINING_APPROVAL:" + e.trainingId());
+    }
+
+    /** Verdict sur une formation : sans lui, le CHU ignorait si son offre etait publiee. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onTrainingApprovalDecided(NotificationEvents.TrainingApprovalDecided e) {
+        String body = e.approved()
+                ? "« " + e.title() + " » est validée et désormais visible au catalogue."
+                : "« " + e.title() + " » n'a pas été validée"
+                  + (e.reason() == null || e.reason().isBlank() ? "." : " : " + e.reason());
+        notifications.notifyUser(e.partnerUserId(), "TRAINING_APPROVAL",
+                e.approved() ? NotificationSeverity.SUCCESS : NotificationSeverity.WARNING,
+                e.approved() ? "Formation validée" : "Formation refusée", body,
+                "/partner/trainings", null, "TRAINING_DECISION:" + e.trainingId());
+    }
+
+    /** Refus de partenariat : le candidat n'a pas de compte, l'e-mail est le seul canal. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onPartnershipRequestRejected(NotificationEvents.PartnershipRequestRejected e) {
+        emailService.sendHtml(e.contactEmail(),
+                "Optimi Santé — Réponse à votre demande de partenariat",
+                "Votre demande de partenariat",
+                "<p>Bonjour,</p><p>Après examen, la demande de partenariat de "
+                        + e.institutionName() + " n'a pas été retenue"
+                        + (e.reason() == null || e.reason().isBlank() ? "." : " : " + e.reason())
+                        + "</p><p>Vous pouvez nous recontacter si votre situation évolue.</p>");
+    }
+
+    private static String capitalize(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        return Character.toUpperCase(value.charAt(0)) + value.substring(1);
     }
 
     /** Envoi groupe a l'equipe d'administration, best-effort comme tout le reste du dispatcher. */

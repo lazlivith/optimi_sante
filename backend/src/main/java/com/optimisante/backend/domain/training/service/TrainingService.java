@@ -23,6 +23,7 @@ import com.optimisante.backend.domain.training.repository.TrainingRepository;
 import com.optimisante.backend.domain.training.repository.TrainingSessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,6 +39,7 @@ import java.util.stream.Collectors;
 public class TrainingService {
 
     private final TrainingRepository trainingRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final TrainingSessionRepository trainingSessionRepository;
     private final ProspectLeadRepository prospectLeadRepository;
     private final PartnerProfileRepository partnerProfileRepository;
@@ -180,7 +182,14 @@ public class TrainingService {
                 .approvalStatus(TrainingApprovalStatus.PENDING_REVIEW)
                 .build();
 
-        return toPartnerResponseDto(trainingRepository.save(training));
+        Training saved = trainingRepository.save(training);
+
+        // La formation reste hors catalogue tant qu'un admin ne l'a pas validee : il faut
+        // donc le lui signaler, sinon l'offre attend indefiniment sans que personne ne sache.
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.TrainingSubmittedForApproval(
+                saved.getId(), saved.getTitle(), partnerProfile.getInstitutionName()));
+
+        return toPartnerResponseDto(saved);
     }
 
     @Transactional
@@ -198,7 +207,15 @@ public class TrainingService {
         training.setIsPublished(false);
         training.setRejectionReason(null);
 
-        return toPartnerResponseDto(trainingRepository.save(training));
+        Training saved = trainingRepository.save(training);
+
+        // Une modification depublie la formation : elle repasse en validation, donc en
+        // attente d'un admin — meme raison de le signaler qu'a la creation.
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.TrainingSubmittedForApproval(
+                saved.getId(), saved.getTitle(),
+                saved.getPartnerProfile().getInstitutionName()));
+
+        return toPartnerResponseDto(saved);
     }
 
     @Transactional
