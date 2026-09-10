@@ -1,22 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Loader2, CalendarCheck, CalendarClock, Video, Phone, MapPin, Info, CheckCircle2, Download,
+  Loader2, CalendarCheck, CalendarClock, Video, Info, CheckCircle2, Download, ExternalLink,
 } from 'lucide-react';
 import {
-  interviewService, formatCreneau, estPasse, interviewModeLabel,
-  type InterviewSchedule, type InterviewMode,
+  interviewService, formatCreneau, estPasse, type InterviewSchedule,
 } from '../../api/interviewService';
 import { vaultService } from '../../api/vaultService';
 import { Toast, type ToastType } from '../common/Toast';
 
-const ICONE_MODE: Record<InterviewMode, typeof Video> = {
-  VIDEO: Video,
-  PHONE: Phone,
-  ON_SITE: MapPin,
-};
-
 /**
- * « Mon entretien », côté médecin : les créneaux qu'on lui propose, et son choix.
+ * « Mon entretien en visioconférence », côté médecin : les créneaux qu'on lui propose, son
+ * choix, puis le lien pour se connecter le jour venu.
  *
  * Le panneau ne s'affiche que lorsqu'un entretien lui a été transmis. Tant que le CHU n'a fait
  * que déposer des créneaux, il n'y a rien à montrer — les afficher reviendrait à laisser
@@ -48,7 +42,7 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
       const maj = await interviewService.confirm(entretien.id, choix);
       setEntretien(maj);
       setToast({
-        message: 'Rendez-vous confirmé. Votre convocation est dans vos documents.',
+        message: 'Visioconférence confirmée. Le lien et votre convocation sont ci-dessous.',
         type: 'success',
       });
     } catch (err: any) {
@@ -84,7 +78,6 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
   // Rien à montrer plutôt qu'un cadre vide : la plupart des dossiers n'ont pas d'entretien.
   if (!entretien) return null;
 
-  const IconeMode = ICONE_MODE[entretien.mode];
   const confirme = entretien.status === 'CONFIRMED';
   const creneauRetenu = entretien.slots.find((s) => s.confirmed);
   const disponibles = entretien.slots.filter((s) => !estPasse(s));
@@ -98,7 +91,9 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
             : <CalendarClock className="w-6 h-6 text-brand-green shrink-0 mt-0.5" />}
           <div>
             <h2 className="text-lg font-bold text-brand-dark">
-              {confirme ? 'Votre entretien est confirmé' : 'Entretien de sélection'}
+              {confirme
+                ? 'Votre entretien en visioconférence est confirmé'
+                : 'Entretien de sélection en visioconférence'}
             </h2>
             <p className="text-sm text-slate-600 mt-0.5">
               {entretien.partnerInstitutionName} · {entretien.trainingTitle}
@@ -108,15 +103,10 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
       </div>
 
       <div className="px-8 py-6 space-y-5">
-        <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
-          <span className="inline-flex items-center gap-2 text-slate-700">
-            <IconeMode className="w-4 h-4 text-slate-400" />
-            {interviewModeLabel(entretien.mode)}
-          </span>
-          {entretien.locationOrLink && (
-            <span className="text-slate-700 break-all">{entretien.locationOrLink}</span>
-          )}
-        </div>
+        <p className="inline-flex items-center gap-2 text-sm text-slate-700">
+          <Video className="w-4 h-4 text-slate-400" />
+          Entretien à distance — aucun déplacement n'est nécessaire.
+        </p>
 
         {/* Les deux notes restent séparées et attribuées : le médecin doit pouvoir distinguer
             une consigne de l'établissement d'une précision d'Optimi Santé. */}
@@ -133,22 +123,51 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
               <CheckCircle2 className="w-5 h-5" />
               {formatCreneau(creneauRetenu)}
             </p>
-            {entretien.convocationDocumentId && (
-              <button
-                type="button"
-                onClick={ouvrirConvocation}
-                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-emerald-300 text-emerald-800 text-sm font-semibold hover:bg-emerald-100 transition-colors"
+            <div className="mt-4 rounded-xl bg-white border border-emerald-200 p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                Lien de la réunion en ligne
+              </p>
+              <a
+                href={entretien.meetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-brand-green underline break-all mt-1 inline-block"
               >
-                <Download className="w-4 h-4" />
-                Ouvrir ma convocation
-              </button>
-            )}
+                {entretien.meetingLink}
+              </a>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mt-4">
+              <a
+                href={entretien.meetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-green text-white text-sm font-bold hover:bg-[#0f3c35] transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Rejoindre la visioconférence
+              </a>
+              {entretien.convocationDocumentId && (
+                <button
+                  type="button"
+                  onClick={ouvrirConvocation}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-emerald-300 text-emerald-800 text-sm font-semibold hover:bg-emerald-100 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Ma convocation visio
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-emerald-800/80 mt-3">
+              Connectez-vous quelques minutes à l'avance et vérifiez votre micro et votre caméra.
+            </p>
           </div>
         ) : (
           <>
             <p className="text-sm text-slate-600">
               Choisissez le créneau qui vous convient. Votre choix vaut confirmation du
-              rendez-vous, et votre convocation sera déposée dans vos documents.
+              rendez-vous : vous recevrez alors le lien de connexion, et votre convocation visio
+              sera déposée dans vos documents.
             </p>
 
             {disponibles.length === 0 ? (

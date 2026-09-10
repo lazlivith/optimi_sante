@@ -20,7 +20,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * Planification de l'entretien de selection, a trois mains.
+ * Planification de l'entretien de selection en visioconference, a trois mains.
  *
  * <p><b>Le CHU propose, OptimiSante transmet, le medecin choisit.</b> Le detour par
  * l'administration n'est pas une lourdeur : c'est la regle deja inscrite dans
@@ -72,11 +72,11 @@ public class InterviewSchedulingService {
                             + "). Annulez-le avant d'en proposer un autre.");
                 });
 
-        String lieu = trimOrNull(dto.getLocationOrLink());
-        if (dto.getMode() != InterviewMode.PHONE && lieu == null) {
-            throw new IllegalArgumentException(dto.getMode() == InterviewMode.VIDEO
-                    ? "Un entretien en visioconférence a besoin d'un lien de connexion."
-                    : "Un entretien sur place a besoin d'une adresse complète.");
+        // L'entretien se tient toujours en ligne : sans lien, le rendez-vous est injoignable.
+        String lien = trimOrNull(dto.getMeetingLink());
+        if (lien == null) {
+            throw new IllegalArgumentException(
+                    "Indiquez le lien de la réunion en ligne (Teams, Meet, Zoom…).");
         }
 
         // Un seul créneau n'est pas un choix : c'est une convocation déguisée, sans que le
@@ -90,8 +90,7 @@ public class InterviewSchedulingService {
         InterviewSchedule entretien = InterviewSchedule.builder()
                 .enrollment(enrollment)
                 .status(InterviewScheduleStatus.PROPOSED)
-                .mode(dto.getMode())
-                .locationOrLink(lieu)
+                .meetingLink(lien)
                 .partnerNote(trimOrNull(dto.getPartnerNote()))
                 .proposedBy(partnerUserId)
                 .build();
@@ -344,8 +343,7 @@ public class InterviewSchedulingService {
             donnees.put("institutionName", formation.getPartnerProfile().getInstitutionName());
             donnees.put("interviewDate", formatter(creneau.getStartsAt()));
             donnees.put("interviewEnd", heure(creneau.getEndsAt()));
-            donnees.put("modeLabel", libelleMode(entretien.getMode()));
-            donnees.put("locationOrLink", entretien.getLocationOrLink());
+            donnees.put("meetingLink", entretien.getMeetingLink());
             donnees.put("partnerNote", entretien.getPartnerNote());
             donnees.put("adminNote", entretien.getAdminNote());
             donnees.put("reference", "ENT-" + entretien.getId().toString().substring(0, 8).toUpperCase());
@@ -377,20 +375,17 @@ public class InterviewSchedulingService {
         Training formation = dossier.getSession().getTraining();
         String medecin = nomMedecin(dossier);
         String creneauLisible = formatter(creneau.getStartsAt());
-        String modeLabel = libelleMode(entretien.getMode());
 
         emailService.sendInterviewConfirmedEmail(
                 dossier.getDoctor().getEmail(), medecin, medecin, formation.getTitle(),
-                creneauLisible, modeLabel, entretien.getLocationOrLink(),
-                dossier.getDoctor().getId());
+                creneauLisible, entretien.getMeetingLink(), dossier.getDoctor().getId());
 
         // L'etablissement est prevenu du meme rendez-vous : c'est lui qui recevra le candidat.
         String emailPartenaire = formation.getPartnerProfile().getContactEmail();
         if (emailPartenaire != null && !emailPartenaire.isBlank()) {
             emailService.sendInterviewConfirmedEmail(
                     emailPartenaire, formation.getPartnerProfile().getInstitutionName(), medecin,
-                    formation.getTitle(), creneauLisible, modeLabel, entretien.getLocationOrLink(),
-                    null);
+                    formation.getTitle(), creneauLisible, entretien.getMeetingLink(), null);
         }
     }
 
@@ -409,8 +404,7 @@ public class InterviewSchedulingService {
                 .id(e.getId())
                 .enrollmentId(dossier.getId())
                 .status(e.getStatus())
-                .mode(e.getMode())
-                .locationOrLink(e.getLocationOrLink())
+                .meetingLink(e.getMeetingLink())
                 .partnerNote(e.getPartnerNote())
                 .adminNote(e.getAdminNote())
                 .proposedAt(e.getProposedAt())
@@ -453,14 +447,6 @@ public class InterviewSchedulingService {
         return doctorProfileRepository.findByUserId(dossier.getDoctor().getId())
                 .map(p -> p.getFirstName() + " " + p.getLastName())
                 .orElse(dossier.getDoctor().getEmail());
-    }
-
-    private String libelleMode(InterviewMode mode) {
-        return switch (mode) {
-            case VIDEO -> "Visioconférence";
-            case PHONE -> "Entretien téléphonique";
-            case ON_SITE -> "Entretien sur place";
-        };
     }
 
     private String formatter(OffsetDateTime moment) {

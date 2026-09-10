@@ -1,16 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Loader2, CalendarClock, Send, XCircle, CheckCircle2, Video, Phone, MapPin, Info,
+  Loader2, CalendarClock, Send, XCircle, CheckCircle2, Video, Info,
 } from 'lucide-react';
 import {
-  interviewService, formatCreneau, estPasse, interviewModeLabel,
-  INTERVIEW_STATUS_LABELS, type InterviewSchedule, type InterviewMode,
+  interviewService, formatCreneau, estPasse,
+  INTERVIEW_STATUS_LABELS, type InterviewSchedule,
 } from '../../api/interviewService';
 import { Toast, type ToastType } from '../common/Toast';
-
-const ICONE_MODE: Record<InterviewMode, typeof Video> = {
-  VIDEO: Video, PHONE: Phone, ON_SITE: MapPin,
-};
 
 const COULEUR_STATUT: Record<string, string> = {
   PROPOSED: 'bg-amber-100 text-amber-800',
@@ -20,7 +16,8 @@ const COULEUR_STATUT: Record<string, string> = {
 };
 
 /**
- * Entretien de sélection, côté administration : transmettre au médecin, ou annuler.
+ * Entretien de sélection en visioconférence, côté administration : transmettre le lien et les
+ * créneaux au médecin, ou annuler.
  *
  * <p>La transmission est le geste central du circuit — c'est lui, et lui seul, qui rend les
  * créneaux visibles au médecin. Tant qu'il n'a pas eu lieu, la proposition du CHU reste un
@@ -50,7 +47,7 @@ export function AdminInterviewPanel({ enrollmentId }: { enrollmentId: string }) 
     try {
       const maj = await interviewService.transmit(e.id, noteAdmin[e.id]?.trim() || null);
       setEntretiens((prev) => prev.map((x) => (x.id === e.id ? maj : x)));
-      setToast({ message: 'Créneaux transmis au médecin. Il a été prévenu par email.', type: 'success' });
+      setToast({ message: 'Créneaux et lien transmis au médecin. Il a été prévenu par email.', type: 'success' });
     } catch (err: any) {
       setToast({ message: err?.response?.data?.message ?? 'La transmission a échoué.', type: 'error' });
     } finally {
@@ -94,18 +91,17 @@ export function AdminInterviewPanel({ enrollmentId }: { enrollmentId: string }) 
           Entretien de sélection
         </h2>
         <p className="text-sm text-slate-500 mt-0.5">
-          L'établissement propose, vous transmettez, le médecin choisit.
+          L'établissement propose le lien et les créneaux, vous transmettez, le médecin choisit.
         </p>
       </div>
 
       {entretiens.length === 0 ? (
         <p className="px-6 py-8 text-sm text-slate-500 text-center">
-          Aucun entretien proposé sur ce dossier.
+          Aucune visioconférence proposée sur ce dossier.
         </p>
       ) : (
         <div className="divide-y divide-slate-100">
           {entretiens.map((e) => {
-            const IconeMode = ICONE_MODE[e.mode];
             const retenu = e.slots.find((s) => s.confirmed);
             const enCours = busyId === e.id;
 
@@ -114,12 +110,19 @@ export function AdminInterviewPanel({ enrollmentId }: { enrollmentId: string }) 
                 <div className="flex items-start justify-between gap-4">
                   <div className="text-sm">
                     <span className="inline-flex items-center gap-2 font-semibold text-slate-800">
-                      <IconeMode className="w-4 h-4 text-slate-400" />
-                      {interviewModeLabel(e.mode)}
+                      <Video className="w-4 h-4 text-slate-400" />
+                      Visioconférence
                     </span>
-                    {e.locationOrLink && (
-                      <p className="text-slate-600 mt-1 break-all">{e.locationOrLink}</p>
-                    )}
+                    {/* Le lien est montré en entier : c'est ce que l'administration vérifie
+                        avant de transmettre — un lien tronqué ne se contrôle pas. */}
+                    <a
+                      href={e.meetingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-brand-green underline mt-1 break-all"
+                    >
+                      {e.meetingLink}
+                    </a>
                     <p className="text-xs text-slate-400 mt-1">
                       Proposé par {e.partnerInstitutionName} le{' '}
                       {new Date(e.proposedAt).toLocaleDateString('fr-FR')}
@@ -208,7 +211,7 @@ export function AdminInterviewPanel({ enrollmentId }: { enrollmentId: string }) 
                 {e.status === 'CONFIRMED' && retenu && (
                   <div className="flex items-center justify-between gap-4 pt-1">
                     <p className="text-sm text-emerald-700">
-                      Confirmé par le médecin. Convocation déposée au dossier.
+                      Confirmé par le médecin. Convocation visio déposée au dossier.
                     </p>
                     <BoutonAnnuler onClick={() => annuler(e)} disabled={enCours} />
                   </div>

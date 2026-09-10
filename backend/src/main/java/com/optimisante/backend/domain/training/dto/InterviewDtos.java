@@ -1,8 +1,8 @@
 package com.optimisante.backend.domain.training.dto;
 
-import com.optimisante.backend.domain.training.entity.InterviewMode;
 import com.optimisante.backend.domain.training.entity.InterviewScheduleStatus;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -33,15 +33,13 @@ public final class InterviewDtos {
         private OffsetDateTime endsAt;
     }
 
-    /** Ce que le CHU depose : le cadre de l'entretien et les creneaux qu'il ouvre. */
+    /** Ce que le CHU depose : le lien de la reunion en ligne et les creneaux qu'il ouvre. */
     @Data
     public static class ProposeRequest {
-        @NotNull(message = "Precisez la forme de l'entretien.")
-        private InterviewMode mode;
-
-        /** Adresse pour un entretien sur place, lien pour une visio. Verifie cote service. */
+        /** Lien Teams, Meet ou Zoom. Sans lui, le rendez-vous est injoignable. */
+        @NotBlank(message = "Indiquez le lien de la réunion en ligne (Teams, Meet, Zoom…).")
         @Size(max = 512)
-        private String locationOrLink;
+        private String meetingLink;
 
         @Size(max = 4000)
         private String partnerNote;
@@ -94,8 +92,7 @@ public final class InterviewDtos {
         private UUID id;
         private UUID enrollmentId;
         private InterviewScheduleStatus status;
-        private InterviewMode mode;
-        private String locationOrLink;
+        private String meetingLink;
         private String partnerNote;
         private String adminNote;
         private OffsetDateTime proposedAt;

@@ -25,9 +25,19 @@ import com.optimisante.backend.domain.training.finance.PartnerPayout;
 public class DocumentController {
 
     private static final Set<String> ORDER_TYPES = Set.of("QUOTE", "INVOICE");
-    private static final Set<String> ENROLLMENT_DOCUMENT_TYPES = Set.of(
-            "PASSPORT", "DIPLOMA", "MEDICAL_COUNCIL_CERT", "FINANCIAL_GUARANTEE",
-            "VISA_GRANT", "CONSULAR_LETTER", "ACCOMMODATION_PROOF", "OTHER");
+    /**
+     * Types de pieces d'un dossier de mobilite, <b>derives de l'enumeration</b> plutot que
+     * recopies.
+     *
+     * <p>Cette liste etait auparavant ecrite a la main. Elle formait une quatrieme copie de la
+     * taxonomie — apres {@code DocumentType} et les deux contraintes SQL — et c'est celle qu'on
+     * a oubliee en ajoutant {@code INTERVIEW_CONVOCATION} : le medecin ouvrant sa convocation
+     * recevait « Type de document inconnu ». La deriver supprime la copie, donc l'oubli.</p>
+     */
+    private static final Set<String> ENROLLMENT_DOCUMENT_TYPES =
+            java.util.Arrays.stream(com.optimisante.backend.domain.training.entity.DocumentType.values())
+                    .map(Enum::name)
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     private final StorageService storageService;
     private final OrderRepository orderRepository;

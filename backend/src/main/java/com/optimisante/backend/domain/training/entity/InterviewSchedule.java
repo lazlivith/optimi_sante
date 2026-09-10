@@ -10,7 +10,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Entretien de selection : le CHU propose des creneaux, OptimiSante transmet, le medecin choisit.
+ * Entretien de selection en visioconference : le CHU propose des creneaux et le lien de reunion,
+ * OptimiSante transmet, le medecin choisit.
  *
  * <p>Le passage par l'administration reprend la regle deja portee par
  * {@link EnrollmentTransitions} — le partenaire ne s'adresse jamais directement au medecin.
@@ -45,13 +46,15 @@ public class InterviewSchedule {
     @Builder.Default
     private InterviewScheduleStatus status = InterviewScheduleStatus.PROPOSED;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private InterviewMode mode;
-
-    /** Adresse pour un entretien sur place, lien pour une visio. Facultatif au telephone. */
-    @Column(name = "location_or_link", length = 512)
-    private String locationOrLink;
+    /**
+     * Lien de la reunion en ligne (Teams, Meet, Zoom...).
+     *
+     * <p>Obligatoire : l'entretien se tient toujours a distance, et un entretien en ligne sans
+     * lien n'est pas un entretien — c'est un rendez-vous auquel personne ne peut se joindre.
+     * La V42 le rend {@code NOT NULL} et refuse la chaine vide.</p>
+     */
+    @Column(name = "meeting_link", nullable = false, length = 512)
+    private String meetingLink;
 
     /** Consignes du CHU : jury, duree, pieces a preparer. Le medecin les lit telles quelles. */
     @Column(name = "partner_note", columnDefinition = "TEXT")

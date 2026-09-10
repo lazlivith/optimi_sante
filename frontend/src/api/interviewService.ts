@@ -1,8 +1,12 @@
 import { axiosClient } from './axiosClient';
 
 /**
- * Entretien de sélection : le CHU propose des créneaux, Optimi Santé les transmet,
- * le médecin en retient un.
+ * Entretien de sélection en visioconférence : le CHU propose des créneaux et le lien de
+ * réunion, Optimi Santé les transmet, le médecin en retient un.
+ *
+ * L'entretien se tient toujours à distance — Teams, Meet, Zoom. Le lien de connexion n'est
+ * donc pas un détail de mise en forme mais l'information sans laquelle le rendez-vous n'existe
+ * pas : il est obligatoire de bout en bout.
  *
  * Les trois espaces passent par ce même fichier mais par des routes distinctes — un préfixe
  * par rôle, exactement comme le backend. Aucun appel ne permet au partenaire de s'adresser
@@ -10,22 +14,10 @@ import { axiosClient } from './axiosClient';
  */
 
 export type InterviewStatus = 'PROPOSED' | 'TRANSMITTED' | 'CONFIRMED' | 'CANCELLED';
-export type InterviewMode = 'VIDEO' | 'PHONE' | 'ON_SITE';
-
-export const INTERVIEW_MODES: { value: InterviewMode; label: string; aide: string }[] = [
-  { value: 'VIDEO', label: 'Visioconférence', aide: 'Lien de connexion' },
-  { value: 'ON_SITE', label: 'Sur place', aide: 'Adresse complète' },
-  // Le téléphone est le seul mode qui n'exige rien : c'est le CHU qui appelle.
-  { value: 'PHONE', label: 'Par téléphone', aide: 'Facultatif' },
-];
-
-export const interviewModeLabel = (mode: InterviewMode) =>
-  INTERVIEW_MODES.find((m) => m.value === mode)?.label ?? mode;
-
 export const INTERVIEW_STATUS_LABELS: Record<InterviewStatus, string> = {
   PROPOSED: 'En attente de transmission',
   TRANSMITTED: 'En attente du choix du médecin',
-  CONFIRMED: 'Rendez-vous confirmé',
+  CONFIRMED: 'Visioconférence confirmée',
   CANCELLED: 'Annulé',
 };
 
@@ -41,8 +33,8 @@ export interface InterviewSchedule {
   id: string;
   enrollmentId: string;
   status: InterviewStatus;
-  mode: InterviewMode;
-  locationOrLink: string | null;
+  /** Lien Teams, Meet ou Zoom. Toujours renseigné : le serveur refuse un entretien sans lien. */
+  meetingLink: string;
   /** Consignes du CHU. Distinct de `adminNote` : le médecin doit savoir qui lui dit quoi. */
   partnerNote: string | null;
   adminNote: string | null;
@@ -64,8 +56,7 @@ export interface SlotInput {
 }
 
 export interface ProposeInput {
-  mode: InterviewMode;
-  locationOrLink?: string | null;
+  meetingLink: string;
   partnerNote?: string | null;
   slots: SlotInput[];
 }

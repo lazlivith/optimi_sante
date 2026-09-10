@@ -110,7 +110,7 @@ public class EmailService {
     public void sendInterviewSlotsEmail(String toEmail, String doctorName, String trainingTitle,
                                         String institutionName, int nombreCreneaux,
                                         UUID recipientUserId) {
-        String subject = "Optimi Santé — Entretien de sélection : créneaux à choisir";
+        String subject = "Optimi Santé — Entretien en visioconférence : créneaux à choisir";
         String dossierUrl = frontendBaseUrl + "/doctor/enrollments";
         String html = """
                 <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1a2e29;">
@@ -120,10 +120,12 @@ public class EmailService {
                     <div style="border: 1px solid #E2EBE5; border-top: none; padding: 32px; border-radius: 0 0 12px 12px;">
                         <p>Bonjour %s,</p>
                         <p><strong>%s</strong> vous propose un entretien de sélection pour la formation
-                        <strong>%s</strong>.</p>
+                        <strong>%s</strong>. Il se tiendra <strong>en visioconférence</strong> : aucun
+                        déplacement n'est nécessaire.</p>
                         <p><strong>%d créneaux</strong> vous sont proposés. Choisissez celui qui vous convient
-                        depuis votre dossier : votre choix vaut confirmation du rendez-vous, et votre
-                        convocation sera déposée dans vos documents.</p>
+                        depuis votre dossier : votre choix vaut confirmation du rendez-vous. Vous recevrez
+                        alors le lien de connexion, et votre convocation visio sera déposée dans vos
+                        documents.</p>
                         <a href="%s" style="display: inline-block; background-color: #154D44; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; margin-top: 16px;">Choisir mon créneau</a>
                         <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
                     </div>
@@ -134,19 +136,19 @@ public class EmailService {
     }
 
     /**
-     * Confirme le rendez-vous retenu.
+     * Confirme le rendez-vous retenu, avec le lien de connexion.
      *
-     * <p>Celui-ci porte bien la date : elle est désormais arrêtée, et c'est précisément
-     * l'information que le destinataire voudra retrouver dans sa boîte mail. Le même message
-     * sert au médecin et à l'établissement — ils ont besoin du même rendez-vous.</p>
+     * <p>Celui-ci porte la date <b>et le lien</b> : l'entretien se tient en visioconférence, et
+     * c'est dans sa boîte mail que le destinataire ira chercher par où se connecter, le jour
+     * venu. Un message qui renverrait vers la plateforme obligerait à s'y reconnecter cinq
+     * minutes avant l'entretien — précisément le moment où on ne veut pas chercher.</p>
+     *
+     * <p>Le même message sert au médecin et à l'établissement : ils rejoignent la même réunion.</p>
      */
     public void sendInterviewConfirmedEmail(String toEmail, String destinataire, String doctorName,
-                                            String trainingTitle, String creneau, String modeLabel,
-                                            String lieuOuLien, UUID recipientUserId) {
-        String subject = "Optimi Santé — Entretien confirmé : " + creneau;
-        String lieuLigne = (lieuOuLien == null || lieuOuLien.isBlank())
-                ? ""
-                : "<p style=\"margin: 4px 0;\"><strong>Lieu / lien :</strong> " + lieuOuLien + "</p>";
+                                            String trainingTitle, String creneau,
+                                            String meetingLink, UUID recipientUserId) {
+        String subject = "Optimi Santé — Entretien en visioconférence confirmé : " + creneau;
         String html = """
                 <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1a2e29;">
                     <div style="background-color: #154D44; padding: 24px; border-radius: 12px 12px 0 0;">
@@ -155,17 +157,22 @@ public class EmailService {
                     <div style="border: 1px solid #E2EBE5; border-top: none; padding: 32px; border-radius: 0 0 12px 12px;">
                         <p>Bonjour %s,</p>
                         <p>L'entretien de sélection de <strong>Dr. %s</strong> pour la formation
-                        <strong>%s</strong> est confirmé.</p>
+                        <strong>%s</strong> est confirmé. Il se tiendra <strong>en visioconférence</strong> :
+                        aucun déplacement n'est nécessaire.</p>
                         <div style="background-color: #F6F7F5; border-radius: 8px; padding: 16px; margin: 24px 0;">
                             <p style="margin: 4px 0;"><strong>Date :</strong> %s</p>
-                            <p style="margin: 4px 0;"><strong>Forme :</strong> %s</p>
-                            %s
+                            <p style="margin: 12px 0 4px 0;"><strong>Lien de la réunion en ligne :</strong></p>
+                            <p style="margin: 0; word-break: break-all;"><a href="%s" style="color: #154D44;">%s</a></p>
                         </div>
-                        <p>La convocation est disponible dans les documents du dossier.</p>
+                        <a href="%s" style="display: inline-block; background-color: #154D44; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px;">Rejoindre la visioconférence</a>
+                        <p style="margin-top: 20px; font-size: 13px; color: #5b6b66;">Connectez-vous quelques minutes
+                        à l'avance et vérifiez votre micro et votre caméra. La convocation est disponible dans les
+                        documents du dossier.</p>
                         <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
                     </div>
                 </div>
-                """.formatted(destinataire, doctorName, trainingTitle, creneau, modeLabel, lieuLigne);
+                """.formatted(destinataire, doctorName, trainingTitle, creneau,
+                              meetingLink, meetingLink, meetingLink);
 
         send(toEmail, subject, html, EmailType.INTERVIEW_CONFIRMED, recipientUserId);
     }

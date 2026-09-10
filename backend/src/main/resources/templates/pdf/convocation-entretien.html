@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8" />
-    <title>Convocation à l'entretien de sélection</title>
+    <title>Convocation à l'entretien en visioconférence</title>
     <style>
         @page {
             size: A4 portrait;
@@ -15,8 +15,12 @@
         .section-title { border-bottom: 2px solid #154D44; color: #154D44; padding-bottom: 5px; margin-top: 28px; margin-bottom: 12px; }
         .rendezvous { background-color: #F1F6F3; border-left: 4px solid #154D44; padding: 16px; margin: 20px 0; }
         .rendezvous .date { font-size: 17px; font-weight: bold; color: #154D44; }
+        /* Le lien est la seule information sans laquelle le document ne sert a rien :
+           il est mis en evidence, et ecrit en entier pour rester utilisable sur papier. */
+        .lien-visio { background-color: #ffffff; border: 1px dashed #154D44; padding: 12px; margin-top: 12px; word-break: break-all; font-family: 'Courier New', monospace; font-size: 12px; color: #0f3c35; }
         .note { background-color: #f5f5f5; padding: 12px; margin: 12px 0; border-radius: 4px; }
         .avis { margin-top: 32px; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 12px; }
+        .distanciel { background-color: #EAF3EF; padding: 10px 14px; border-radius: 4px; margin: 16px 0; font-weight: bold; color: #154D44; }
     </style>
 </head>
 <body>
@@ -24,7 +28,7 @@
     <div th:replace="~{components/header :: header}"></div>
 
     <div class="cert-header">
-        <h2 style="color: #154D44; margin-bottom: 5px;">CONVOCATION À L'ENTRETIEN DE SÉLECTION</h2>
+        <h2 style="color: #154D44; margin-bottom: 5px;">CONVOCATION À L'ENTRETIEN EN VISIOCONFÉRENCE</h2>
         <p style="margin: 0; color: #666;">Réf : <span th:text="${reference}">ENT-00000000</span></p>
     </div>
 
@@ -36,17 +40,30 @@
         <strong th:text="${trainingTitle}">Titre de la formation</strong>.
     </p>
 
+    <div class="distanciel">
+        Cet entretien se tient intégralement à distance, en visioconférence.
+        Aucun déplacement n'est nécessaire.
+    </div>
+
     <!-- Le créneau vient du choix du médecin lui-même : ce document confirme sa décision,
          il ne la lui impose pas. -->
     <div class="rendezvous">
         <p style="margin: 0 0 6px 0;" class="date" th:text="${interviewDate}">Date et heure</p>
         <p style="margin: 4px 0;">Fin prévue : <span th:text="${interviewEnd}">00h00</span></p>
-        <p style="margin: 4px 0;"><strong>Forme :</strong> <span th:text="${modeLabel}">Mode</span></p>
-        <p style="margin: 4px 0;" th:if="${locationOrLink}">
-            <strong>Lieu / lien de connexion :</strong>
-            <span th:text="${locationOrLink}">Adresse ou lien</span>
-        </p>
+        <p style="margin: 12px 0 0 0;"><strong>Lien de la réunion en ligne :</strong></p>
+        <div class="lien-visio" th:text="${meetingLink}">https://…</div>
     </div>
+
+    <h3 class="section-title">Se connecter le jour de l'entretien</h3>
+    <ul style="margin: 0; padding-left: 18px;">
+        <li>Ouvrez le lien ci-dessus dans votre navigateur, ou dans l'application de
+            visioconférence si elle est installée.</li>
+        <li>Connectez-vous <strong>quelques minutes avant l'heure</strong> et vérifiez votre
+            micro, votre caméra et votre connexion.</li>
+        <li>Préparez une pièce d'identité : l'établissement peut vous demander de la présenter
+            à l'écran.</li>
+        <li>En cas de difficulté de connexion le jour même, contactez Optimi Santé sans attendre.</li>
+    </ul>
 
     <div th:if="${partnerNote}">
         <h3 class="section-title">Consignes de l'établissement</h3>
@@ -60,7 +77,8 @@
 
     <h3 class="section-title">Ce que vaut ce document</h3>
     <p>
-        Cette convocation atteste du rendez-vous convenu entre vous et l'établissement d'accueil.
+        Cette convocation atteste du rendez-vous en visioconférence convenu entre vous et
+        l'établissement d'accueil.
         <strong>Elle ne préjuge pas de la décision de l'établissement</strong> sur votre candidature :
         l'entretien accompagne cette décision, il ne l'anticipe pas.
     </p>

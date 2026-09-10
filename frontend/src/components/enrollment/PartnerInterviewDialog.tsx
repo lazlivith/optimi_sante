@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Loader2, CalendarPlus, Plus, Trash2, X } from 'lucide-react';
+import { Loader2, CalendarPlus, Plus, Trash2, X, Video } from 'lucide-react';
 import {
-  interviewService, formatCreneau, INTERVIEW_MODES, INTERVIEW_STATUS_LABELS,
-  type InterviewMode, type InterviewSchedule,
+  interviewService, formatCreneau, INTERVIEW_STATUS_LABELS, type InterviewSchedule,
 } from '../../api/interviewService';
 import { Toast, type ToastType } from '../common/Toast';
 
@@ -16,7 +15,7 @@ interface CreneauSaisi {
 const CRENEAU_VIDE: CreneauSaisi = { jour: '', debut: '09:00', fin: '10:00' };
 
 /**
- * Proposition de créneaux d'entretien, côté établissement.
+ * Proposition d'un entretien en visioconférence, côté établissement.
  *
  * <p>Le CHU dépose ici ses disponibilités. <b>Elles ne partent pas directement au médecin</b> :
  * Optimi Santé les transmet. Le texte de la fenêtre le dit explicitement, faute de quoi
@@ -31,8 +30,7 @@ export function PartnerInterviewDialog({
 }) {
   const [existants, setExistants] = useState<InterviewSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [mode, setMode] = useState<InterviewMode>('VIDEO');
-  const [lieu, setLieu] = useState('');
+  const [lienReunion, setLienReunion] = useState('');
   const [note, setNote] = useState('');
   // Deux créneaux d'emblée : proposer un seul n'est pas un choix, et le serveur le refuse.
   const [creneaux, setCreneaux] = useState<CreneauSaisi[]>([{ ...CRENEAU_VIDE }, { ...CRENEAU_VIDE }]);
@@ -47,7 +45,6 @@ export function PartnerInterviewDialog({
   }, [enrollmentId]);
 
   const actif = existants.find((e) => e.status !== 'CANCELLED');
-  const aideLieu = INTERVIEW_MODES.find((m) => m.value === mode)?.aide ?? '';
 
   const majCreneau = (i: number, champ: keyof CreneauSaisi, valeur: string) =>
     setCreneaux((prev) => prev.map((c, j) => (j === i ? { ...c, [champ]: valeur } : c)));
@@ -58,11 +55,9 @@ export function PartnerInterviewDialog({
       setToast({ message: 'Proposez au moins deux créneaux complets.', type: 'error' });
       return;
     }
-    if (mode !== 'PHONE' && !lieu.trim()) {
+    if (!lienReunion.trim()) {
       setToast({
-        message: mode === 'VIDEO'
-          ? 'Un entretien en visioconférence a besoin d\'un lien de connexion.'
-          : 'Un entretien sur place a besoin d\'une adresse complète.',
+        message: "Indiquez le lien de la réunion en ligne (Teams, Meet, Zoom…).",
         type: 'error',
       });
       return;
@@ -77,14 +72,13 @@ export function PartnerInterviewDialog({
         endsAt: new Date(`${c.jour}T${c.fin}`).toISOString(),
       }));
       const cree = await interviewService.propose(enrollmentId, {
-        mode,
-        locationOrLink: lieu.trim() || null,
+        meetingLink: lienReunion.trim(),
         partnerNote: note.trim() || null,
         slots,
       });
       setExistants((prev) => [cree, ...prev]);
       setToast({
-        message: 'Créneaux déposés. Optimi Santé les transmettra au médecin.',
+        message: 'Créneaux et lien déposés. Optimi Santé les transmettra au médecin.',
         type: 'success',
       });
     } catch (err: any) {
@@ -102,7 +96,9 @@ export function PartnerInterviewDialog({
       <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-slate-200">
         <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between gap-4 sticky top-0">
           <div>
-            <h2 className="text-lg font-bold text-brand-dark">Proposer un entretien</h2>
+            <h2 className="text-lg font-bold text-brand-dark">
+              Proposer un entretien en visioconférence
+            </h2>
             <p className="text-sm text-slate-500 mt-0.5">
               Candidature de {doctorName}
             </p>
@@ -135,37 +131,29 @@ export function PartnerInterviewDialog({
           </div>
         ) : (
           <div className="px-6 py-5 space-y-5">
-            <p className="text-sm text-slate-600 bg-sky-50 border border-sky-200 rounded-xl p-3">
-              Vos créneaux ne partent pas directement au médecin : Optimi Santé les lui
-              transmet, puis vous informe du créneau retenu.
+            <p className="inline-flex items-start gap-2 text-sm text-slate-600 bg-sky-50 border border-sky-200 rounded-xl p-3">
+              <Video className="w-4 h-4 mt-0.5 shrink-0 text-sky-600" />
+              <span>
+                L'entretien se tient à distance. Vos créneaux et votre lien de réunion ne
+                partent pas directement au médecin : Optimi Santé les lui transmet, puis vous
+                informe du créneau retenu.
+              </span>
             </p>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="mode" className="block text-sm font-semibold text-slate-700 mb-1">
-                  Forme de l'entretien
-                </label>
-                <select
-                  id="mode" value={mode}
-                  onChange={(e) => setMode(e.target.value as InterviewMode)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
-                >
-                  {INTERVIEW_MODES.map((m) => (
-                    <option key={m.value} value={m.value}>{m.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="lieu" className="block text-sm font-semibold text-slate-700 mb-1">
-                  {aideLieu}
-                </label>
-                <input
-                  id="lieu" type="text" value={lieu}
-                  onChange={(e) => setLieu(e.target.value)}
-                  placeholder={mode === 'ON_SITE' ? 'CHU, bâtiment, étage…' : mode === 'VIDEO' ? 'https://…' : 'Facultatif'}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
-                />
-              </div>
+            <div>
+              <label htmlFor="lien-reunion" className="block text-sm font-semibold text-slate-700 mb-1">
+                Lien de la réunion en ligne
+              </label>
+              <input
+                id="lien-reunion" type="url" value={lienReunion}
+                onChange={(e) => setLienReunion(e.target.value)}
+                placeholder="https://teams.microsoft.com/… · https://meet.google.com/… · https://zoom.us/j/…"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Teams, Google Meet, Zoom — le lien que le médecin ouvrira le jour de l'entretien.
+                Le même pour tous les créneaux proposés.
+              </p>
             </div>
 
             <div>

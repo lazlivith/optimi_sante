@@ -2726,3 +2726,88 @@ propre commentaire promettait d'ailleurs une trace que le code détruisait.
 | Annulation, puis nouvelle proposition | **200** puis **200** |
 | Statut du dossier après tout le circuit | `SUBMITTED_TO_PARTNER`, **inchangé** |
 | File d'attente admin, 7 entretiens | **2 requêtes SQL** |
+
+---
+
+## V42 — L'entretien est toujours une visioconférence
+
+### Supprimer la colonne plutôt que la contraindre
+
+La V41 prévoyait trois formes d'entretien : visio, téléphone, sur place. La réalité métier n'en
+connaît qu'une — l'entretien se tient en ligne, sur Teams, Meet ou Zoom, et le candidat ne se
+déplace jamais.
+
+La correction la plus évidente aurait été de contraindre `mode` à `'VIDEO'`. Elle aurait été
+mauvaise : une colonne qui n'admet qu'une valeur ne distingue rien, tout en continuant d'occuper
+un champ dans chaque écran, chaque DTO et chaque test. Et surtout, tant que « sur place » reste
+sélectionnable, un CHU peut le choisir — la plateforme éditerait alors une convocation sur place
+pour un entretien qui se tiendra en ligne.
+
+**La colonne a donc disparu**, et `location_or_link` est devenue `meeting_link`, obligatoire :
+un entretien en ligne sans lien de connexion n'est pas un entretien, c'est un rendez-vous auquel
+personne ne peut se joindre. La contrainte conditionnelle de la V41 (« obligatoire sauf au
+téléphone ») n'avait plus d'objet.
+
+Trois lignes de test proposées par téléphone n'étaient pas convertibles : rien ne permettait
+d'inventer l'adresse de réunion à leur place, et une convocation vers une réunion inventée aurait
+été pire que pas de convocation. La migration les supprime, en le disant.
+
+### Une quatrième copie de la taxonomie, et l'oubli qu'elle a causé
+
+En ouvrant sa convocation, le médecin recevait **« Type de document inconnu :
+INTERVIEW_CONVOCATION »**.
+
+`DocumentController` portait la liste des types de pièces dans un `Set.of(...)` **recopié à la
+main** — une quatrième copie de la taxonomie, après l'énumération Java et les deux contraintes
+SQL. Ajouter `INTERVIEW_CONVOCATION` en V41 avait mis à jour les trois premières et laissé la
+quatrième en arrière. Le bouton « Ma convocation visio » que je venais de câbler pointait
+précisément dessus.
+
+La liste **dérive désormais de `DocumentType`**. Ce n'est pas seulement le correctif du jour :
+c'est la suppression de la copie, donc de la possibilité de l'oubli. Les deux contraintes SQL
+restent à synchroniser à la main — la base ne peut pas lire l'énumération Java — mais elles
+échouent bruyamment à l'écriture, là où cette liste-ci échouait silencieusement à la lecture,
+sur un chemin que rien ne parcourt avant qu'un utilisateur ne clique.
+
+### Un `\r` invisible dans un en-tête HTTP
+
+Mes appels de vérification ont soudain renvoyé des `400` sans corps, y compris sur des requêtes
+valides. Tomcat journalisait `Error parsing HTTP request header` — le problème n'était donc pas
+dans la charge utile mais dans les en-têtes.
+
+J'avais généré les jetons en redirigeant la sortie d'un script Python vers un fichier. Sous
+Windows, Python écrit `\r\n` en mode texte ; le `\r` restait collé au jeton, et
+`Authorization: Bearer eyJ…\r` n'est pas un en-tête valide. Les appels précédents passaient par
+une substitution de commande, qui l'avait masqué.
+
+**Un `400` sans corps ne vient pas de l'application.** Le corps vide et la page d'erreur Tomcat
+disent que la requête a été rejetée avant d'atteindre le contrôleur — chercher le défaut dans le
+JSON était une perte de temps.
+
+### Vérifié sur la plateforme déployée
+
+| Contrôle | Résultat |
+|---|---|
+| Proposition sans lien de réunion | **400** — « Indiquez le lien de la réunion en ligne » |
+| Lien composé d'espaces | **400** |
+| Proposition avec lien Teams | **200**, `PROPOSED` |
+| Champ `mode` dans la réponse | **absent** |
+| Colonne `mode` en base | **supprimée** |
+| Transmission puis confirmation | **200**, lien renvoyé au médecin |
+| Coffre, ouverture de la convocation | **200** (400 avant correction) |
+
+Et le PDF réellement déposé au coffre, relu après téléchargement :
+
+| Ce que la convocation doit porter | Présent |
+|---|---|
+| Titre « Convocation à l'entretien en visioconférence » | oui |
+| Mention explicite du caractère distanciel | oui |
+| « Aucun déplacement n'est nécessaire » | oui |
+| Rappel du lien de la réunion en ligne | oui |
+| Le lien lui-même, écrit en entier | oui |
+| Consignes de connexion (micro, caméra, avance) | oui |
+| Réserve : ne préjuge pas de la décision de l'établissement | oui |
+
+Les objets d'email portent désormais « Entretien en visioconférence », et la confirmation
+contient le lien cliquable — c'est dans sa boîte mail que le destinataire ira le chercher cinq
+minutes avant l'entretien, et non sur la plateforme.
