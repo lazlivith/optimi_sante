@@ -2920,3 +2920,114 @@ d'assurance* en son nom : le document établit que les services ont été **sous
 auprès de l'agence, et dit explicitement qu'il **ne tient pas lieu de certificat d'assurance**,
 lequel est émis par l'assureur en son nom propre. La réserve n'apparaît que lorsqu'une assurance
 figure au panier — ailleurs elle n'aurait aucun objet et brouillerait la lecture.
+
+---
+
+## Lot 5 — Les frais de formation se règlent en deux fois
+
+### Ce que l'échéancier change pour le candidat
+
+Acompte de 60 % à l'admission, solde de 40 % à la délivrance du visa. Le médecin n'avance plus
+l'intégralité d'un séjour qui dépend encore d'une décision consulaire. L'établissement, lui, est
+payé à chaque échéance : les deux lignes alimentent le même reversement, et la machinerie de
+reversement — qui travaille par ligne de paiement et non par dossier — n'a eu besoin d'aucune
+modification.
+
+### Une colonne, pas un nouveau type de paiement
+
+Ajouter `TUITION_DEPOSIT` et `TUITION_BALANCE` à `payment_type` aurait obligé à réécrire toutes
+les lectures existantes : reversements partenaires, état comptable, relevés PDF, toutes filtrent
+sur `TUITION_FEE`. Or ces deux encaissements **sont** des frais de formation — même répartition,
+même reversement. Ce qui les distingue n'est pas leur nature mais leur rang dans un échéancier.
+C'est donc une colonne, et rien de ce qui existait n'a bougé.
+
+Aucun statut de dossier n'est ajouté non plus. L'acompte fait passer à `CONFIRMED` exactement
+comme le paiement unique d'avant ; le solde ne fait avancer aucun statut — il acquitte une
+dette, il ne franchit pas une étape. Faire avancer l'automate à l'encaissement aurait fait
+passer un dossier à « prêt à démarrer » sans que l'administration l'ait constaté.
+
+### Une contrainte qui se croyait respectée
+
+Écrite d'abord ainsi :
+
+```sql
+(payment_type =  'TUITION_FEE' AND installment IN ('DEPOSIT', 'BALANCE', 'FULL'))
+OR (payment_type <> 'TUITION_FEE' AND installment IS NULL)
+```
+
+Le test « frais de formation sans rang d'échéance » **est passé**, alors qu'il devait échouer.
+En logique à trois valeurs, `installment IN (...)` avec une colonne nulle vaut `NULL` — et non
+`FALSE`. La contrainte entière vaut alors `NULL`, et **PostgreSQL considère une contrainte
+`NULL` comme satisfaite**. La ligne sans rang passait, précisément le cas que la contrainte
+existait pour interdire — et, n'ayant pas de rang, elle aurait échappé à l'index d'unicité
+`(enrollment_id, installment)`, ouvrant la porte à un double débit du même acompte.
+
+Corrigé par un `installment IS NOT NULL` explicite. **La leçon n'est pas SQL, elle est de
+méthode** : je n'ai vu le problème qu'en comptant les erreurs attendues face aux erreurs
+obtenues. Trois refus attendus, deux obtenus. Sans ce décompte, la contrainte aurait été
+déployée en paraissant fonctionner — les deux autres cas échouaient bien.
+
+*(Au passage : le décompte suivant a signalé 4 erreurs pour 3 attendues. Cette fois c'était mon
+attente qui était fausse — le test d'unicité en produisait une aussi. Un écart de comptage
+demande à être expliqué, pas corrigé d'office dans un sens ou dans l'autre.)*
+
+### Le vrai risque du déploiement : les sessions déjà ouvertes
+
+Une session de paiement ouverte **avant** la mise en place de l'échéancier porte le prix plein.
+Si elle se conclut après le déploiement, son webhook arrive sans métadonnée `tuition_installment`.
+
+Mon premier réflexe a été de traiter ce cas comme un acompte. C'était faux, et coûteux : le
+registre aurait inscrit 1 920 € là où la caisse avait prélevé 3 200 €, puis la plateforme aurait
+réclamé au candidat un solde de 1 280 € qu'il venait de payer. Une session sans rang est un
+**règlement unique** (`FULL`), parce que c'est exactement ce qu'elle était au moment de son
+ouverture.
+
+Le filet de reconstruction est restreint dans la foulée : rouvrir une ligne absente au tarif
+d'aujourd'hui inscrirait 60 % pour un prélèvement de 100 %. Sans ligne correspondante, un
+règlement plein est désormais signalé pour rattachement manuel plutôt que reconstruit de
+travers.
+
+Vérifié en reconstituant l'état exact qu'un vrai déploiement laisse derrière lui — dossier en
+attente de règlement portant une ligne `FULL PENDING` au prix plein, webhook sans métadonnée :
+la ligne pleine est soldée, aucune ligne d'acompte n'est créée, le rejeu ne change rien.
+
+### Le contrat et la caisse changent ensemble
+
+Les CGV annonçaient **100 % à l'admission** — avec, en commentaire, la raison : l'échéancier
+n'existait pas, et promettre 60 % aurait décrit un barème que la plateforme n'appliquait pas.
+Ce lot lève les deux en même temps.
+
+`partExigeeALAdmission` devient configurable (`VITE_LEGAL_PART_ACOMPTE`), et
+`partExigeeAuVisa` en est **dérivé** — `100 - acompte` — pour que les deux chiffres du contrat
+ne puissent pas diverger. Trois endroits portent désormais le taux : `application.yml`,
+`TUITION_DEPOSIT_RATE` dans `docker-compose.yml` qui prime, et la valeur des CGV. C'est
+exactement la configuration qui avait dérapé sur les frais de dossier, où le défaut du fichier
+n'était pas la valeur déployée : le taux effectivement servi par le conteneur a donc été relu
+après déploiement (**60**).
+
+L'article 3.5 a suivi : un refus de visa n'ouvre plus droit au remboursement « des frais de
+formation déjà réglés » sans plus de précision, mais **de l'acompte**, le solde n'étant pas
+appelé en l'absence de visa.
+
+### Le départ est subordonné au règlement
+
+Sans cette garde, l'échéancier ne serait qu'une facilité de paiement sans échéance réelle : le
+dossier irait jusqu'au bout et l'établissement accueillerait un candidat dont la formation n'est
+payée qu'à 60 %. `READY_TO_START` exige donc un solde nul. Ce n'est pas un nouvel état ni une
+transition modifiée — c'est une condition préalable à une transition qui existait déjà.
+
+### Vérifié sur la plateforme déployée
+
+| Contrôle | Résultat |
+|---|---|
+| Échéancier affiché au médecin | 3 200 € = **1 920 € (60 %) + 1 280 €** |
+| Solde appelé avant le visa | **409** |
+| Acompte ouvert puis réglé | 1 920 € · dossier → `CONFIRMED` |
+| `READY_TO_START` avec solde dû | **409** — « 1 280,00 € restants » |
+| Solde ouvert puis réglé | 1 280 € · statut **inchangé** (`VISA_GRANTED`) |
+| Webhook du solde rejoué | un seul encaissement |
+| `READY_TO_START` après règlement | **200** |
+| Total encaissé | **3 200,00 €**, au centime près |
+| Lignes reversables au partenaire | **2** (1 632 € + 1 088 € = 2 720 €) |
+| Session ouverte avant la V45 | soldée en `FULL` à 3 200 €, aucune ligne d'acompte créée |
+| Dossier réglé en une fois | reste dû **0** · départ autorisé sans solde |

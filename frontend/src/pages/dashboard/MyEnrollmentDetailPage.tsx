@@ -5,6 +5,7 @@ import { enrollmentService } from '../../api/enrollmentService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { ArrowLeft, UploadCloud, FileText, Loader2, XCircle, AlertTriangle, Send } from 'lucide-react';
 import { TuitionPaymentCard } from '../../components/training/TuitionPaymentCard';
+import { TuitionBalanceCard } from '../../components/training/TuitionBalanceCard';
 import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
 import { MyVisaDossierPanel } from '../../components/enrollment/MyVisaDossierPanel';
 import { MyInterviewPanel } from '../../components/enrollment/MyInterviewPanel';
@@ -160,14 +161,33 @@ export function MyEnrollmentDetailPage() {
           </div>
         )}
 
-        {/* Règlement des frais de formation */}
+        {/* Acompte : exigible une fois la candidature acceptée. */}
         {enrollment.status === 'PENDING_TUITION_FEE' && (
           <div className="mb-8">
             <TuitionPaymentCard
               enrollmentId={enrollment.id}
               trainingTitle={enrollment.trainingTitle}
               hostInstitution={enrollment.hostInstitution}
-              amount={enrollment.tuitionAmount}
+              amount={enrollment.tuitionDepositAmount ?? enrollment.tuitionAmount}
+              totalAmount={enrollment.tuitionAmount}
+              balanceAmount={enrollment.tuitionBalanceAmount}
+              depositRate={enrollment.tuitionDepositRate}
+              onError={(message) => setToast({ message, type: 'error' })}
+            />
+          </div>
+        )}
+
+        {/* Solde : appelé à la délivrance du visa, et seulement s'il reste effectivement dû.
+            Un dossier réglé en une fois avant la mise en place de l'échéancier n'affiche
+            rien — il ne doit plus rien. */}
+        {enrollment.status === 'VISA_GRANTED'
+          && (enrollment.tuitionOutstanding ?? 0) > 0 && (
+          <div className="mb-8">
+            <TuitionBalanceCard
+              enrollmentId={enrollment.id}
+              trainingTitle={enrollment.trainingTitle}
+              amount={enrollment.tuitionOutstanding}
+              totalAmount={enrollment.tuitionAmount}
               onError={(message) => setToast({ message, type: 'error' })}
             />
           </div>

@@ -36,6 +36,17 @@ public class EnrollmentPayment {
     @Column(name = "payment_type", nullable = false, length = 20)
     private PaymentType paymentType;
 
+    /**
+     * Rang dans l'echeancier, pour les seuls frais de formation.
+     *
+     * <p>{@code null} pour les autres types d'encaissement : les frais de dossier et les
+     * services ne s'echelonnent pas. La contrainte de la V45 impose cette correspondance dans
+     * les deux sens.</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "installment", length = 20)
+    private PaymentInstallment installment;
+
     @Column(name = "gross_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal grossAmount;
 

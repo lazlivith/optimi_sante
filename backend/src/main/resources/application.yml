@@ -84,6 +84,15 @@ app:
     # Valeur de repli, appliquée quand la formation ne fixe pas ses propres frais
     # (trainings.application_fee, V40).
     fee-amount: ${DOCTOR_APPLICATION_FEE:100.00}
+  tuition:
+    # Part des frais de formation exigée à l'admission (acompte). Le solde est appelé à la
+    # délivrance du visa.
+    #
+    # ⚠️ Trois endroits portent cette valeur et doivent rester alignés : ce fichier,
+    # `TUITION_DEPOSIT_RATE` dans docker-compose.yml — qui prime sur ce défaut — et
+    # `VITE_LEGAL_PART_ACOMPTE` côté frontend, qui alimente les CGV. Annoncer un taux dans le
+    # contrat et en prélever un autre est exactement l'incident survenu sur les frais de dossier.
+    deposit-rate: ${TUITION_DEPOSIT_RATE:60}
   aws:
     s3:
       endpoint: ${AWS_S3_ENDPOINT:http://localhost:4566}

@@ -29,6 +29,16 @@ public class EnrollmentPaymentService {
     /** Frais de dossier et services organisés par l'agence reviennent intégralement à la plateforme. */
     private static final BigDecimal FULL_PLATFORM_RATE = new BigDecimal("100.00");
 
+    /**
+     * Part exigee a l'admission. Le solde suit a la delivrance du visa.
+     *
+     * <p>Lue en configuration, jamais ecrite en dur : le contrat opposable (CGV) annonce ce
+     * taux, et un chiffre fige dans le code se serait desynchronise du contrat au premier
+     * changement — l'incident survenu sur les frais de dossier.</p>
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.tuition.deposit-rate}")
+    private BigDecimal depositRate;
+
     private final EnrollmentPaymentRepository paymentRepository;
     private final EnrollmentRepository enrollmentRepository;
 
@@ -63,6 +73,7 @@ public class EnrollmentPaymentService {
         EnrollmentPayment payment = paymentRepository.save(EnrollmentPayment.builder()
                 .enrollment(enrollment)
                 .paymentType(PaymentType.DOSSIER_FEE)
+                // Pas de rang : les frais de dossier ne s'echelonnent pas (contrainte V45).
                 .grossAmount(split.grossAmount())
                 .commissionRate(split.commissionRate())
                 .commissionAmount(split.commissionAmount())
@@ -77,30 +88,106 @@ public class EnrollmentPaymentService {
     }
 
     /**
-     * Ouvre une ligne de paiement de formation en attente, avec sa répartition déjà calculée
-     * au taux en vigueur pour ce partenaire — figé dès maintenant sur la ligne.
+     * Ouvre l'acompte de formation, exigible une fois la candidature acceptee.
      *
-     * <p>Le montant vient de la session ; à défaut, du tarif de la formation. Une session
-     * peut en effet porter un prix propre (tarif négocié pour une promotion donnée).</p>
+     * <p>La repartition avec le partenaire est calculee au taux en vigueur et <b>figee des
+     * maintenant</b> sur la ligne, comme depuis la V27 : renegocier le taux d'un partenaire ne
+     * doit pas reecrire un historique deja constate.</p>
      */
     @Transactional
-    public EnrollmentPayment openTuitionPayment(UUID enrollmentId) {
-        Optional<EnrollmentPayment> alreadyPaid = paymentRepository
-                .findByEnrollmentIdAndPaymentTypeAndStatus(
-                        enrollmentId, PaymentType.TUITION_FEE, PaymentStatus.PAID);
-        if (alreadyPaid.isPresent()) {
-            throw new IllegalStateException("La formation de ce dossier est déjà réglée.");
+    public EnrollmentPayment openTuitionDeposit(UUID enrollmentId) {
+        if (findPaidTuition(enrollmentId, PaymentInstallment.DEPOSIT).isPresent()
+                || findPaidTuition(enrollmentId, PaymentInstallment.FULL).isPresent()) {
+            throw new IllegalStateException("L'acompte de ce dossier est déjà réglé.");
         }
 
         Enrollment enrollment = requireEnrollment(enrollmentId);
-        BigDecimal gross = resolveTuitionAmount(enrollment);
-        BigDecimal rate = resolveCommissionRate(enrollment);
+        var echeancier = TuitionInstallmentCalculator.split(
+                resolveTuitionAmount(enrollment), depositRate);
 
+        return ouvrirEcheance(enrollment, PaymentInstallment.DEPOSIT,
+                echeancier.depositAmount(), resolveCommissionRate(enrollment));
+    }
+
+    /**
+     * Ouvre le solde de formation, exigible a la delivrance du visa.
+     *
+     * <p><b>Le taux de commission est repris de l'acompte</b>, et non relu sur le profil du
+     * partenaire. Les deux echeances reglent une meme inscription, conclue a des conditions
+     * donnees : une renegociation intervenue entre-temps s'appliquerait sinon a la moitie du
+     * prix d'un contrat deja forme.</p>
+     */
+    @Transactional
+    public EnrollmentPayment openTuitionBalance(UUID enrollmentId) {
+        if (findPaidTuition(enrollmentId, PaymentInstallment.FULL).isPresent()) {
+            throw new IllegalStateException(
+                    "Ce dossier a été réglé en une fois : aucun solde n'est dû.");
+        }
+        EnrollmentPayment acompte = findPaidTuition(enrollmentId, PaymentInstallment.DEPOSIT)
+                .orElseThrow(() -> new IllegalStateException(
+                        "L'acompte doit être réglé avant que le solde puisse être appelé."));
+        if (findPaidTuition(enrollmentId, PaymentInstallment.BALANCE).isPresent()) {
+            throw new IllegalStateException("Le solde de ce dossier est déjà réglé.");
+        }
+
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+        var echeancier = TuitionInstallmentCalculator.split(
+                resolveTuitionAmount(enrollment), depositRate);
+        if (!echeancier.hasBalance()) {
+            throw new IllegalStateException("Aucun solde n'est dû sur ce dossier.");
+        }
+
+        return ouvrirEcheance(enrollment, PaymentInstallment.BALANCE,
+                echeancier.balanceAmount(), acompte.getCommissionRate());
+    }
+
+    /** Ce qui reste du au titre de la formation, zero si tout est regle. */
+    @Transactional(readOnly = true)
+    public BigDecimal outstandingTuition(UUID enrollmentId) {
+        if (findPaidTuition(enrollmentId, PaymentInstallment.FULL).isPresent()) {
+            return BigDecimal.ZERO;
+        }
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+        var echeancier = TuitionInstallmentCalculator.split(
+                resolveTuitionAmount(enrollment), depositRate);
+
+        BigDecimal du = BigDecimal.ZERO;
+        if (findPaidTuition(enrollmentId, PaymentInstallment.DEPOSIT).isEmpty()) {
+            du = du.add(echeancier.depositAmount());
+        }
+        if (findPaidTuition(enrollmentId, PaymentInstallment.BALANCE).isEmpty()) {
+            du = du.add(echeancier.balanceAmount());
+        }
+        return du;
+    }
+
+    /** L'echeancier tel qu'il s'applique a ce dossier, pour l'affichage. */
+    @Transactional(readOnly = true)
+    public TuitionInstallmentCalculator.TuitionSchedule scheduleFor(Enrollment enrollment) {
+        return TuitionInstallmentCalculator.split(resolveTuitionAmount(enrollment), depositRate);
+    }
+
+    public Optional<EnrollmentPayment> findPaidTuition(UUID enrollmentId,
+                                                       PaymentInstallment installment) {
+        return paymentRepository.findByEnrollmentIdAndPaymentTypeAndInstallmentAndStatus(
+                enrollmentId, PaymentType.TUITION_FEE, installment, PaymentStatus.PAID);
+    }
+
+    /** Ligne en attente pour une echeance donnee, s'il en existe une. */
+    public Optional<EnrollmentPayment> findPendingTuition(UUID enrollmentId,
+                                                          PaymentInstallment installment) {
+        return paymentRepository.findByEnrollmentIdAndPaymentTypeAndInstallmentAndStatus(
+                enrollmentId, PaymentType.TUITION_FEE, installment, PaymentStatus.PENDING);
+    }
+
+    private EnrollmentPayment ouvrirEcheance(Enrollment enrollment, PaymentInstallment rang,
+                                             BigDecimal gross, BigDecimal rate) {
         var split = FinancialSplitCalculator.calculateSplit(gross, rate);
 
         EnrollmentPayment payment = paymentRepository.save(EnrollmentPayment.builder()
                 .enrollment(enrollment)
                 .paymentType(PaymentType.TUITION_FEE)
+                .installment(rang)
                 .grossAmount(split.grossAmount())
                 .commissionRate(split.commissionRate())
                 .commissionAmount(split.commissionAmount())
@@ -108,9 +195,10 @@ public class EnrollmentPaymentService {
                 .status(PaymentStatus.PENDING)
                 .build());
 
-        log.info("Paiement de formation ouvert pour le dossier {} : {} EUR "
+        log.info("Échéance {} ouverte pour le dossier {} : {} EUR "
                         + "(commission {} EUR, part partenaire {} EUR)",
-                enrollmentId, split.grossAmount(), split.commissionAmount(), split.partnerPayoutAmount());
+                rang, enrollment.getId(), split.grossAmount(),
+                split.commissionAmount(), split.partnerPayoutAmount());
         return payment;
     }
 
@@ -133,6 +221,7 @@ public class EnrollmentPaymentService {
         EnrollmentPayment payment = paymentRepository.save(EnrollmentPayment.builder()
                 .enrollment(enrollment)
                 .paymentType(PaymentType.SERVICE_OPTIONS)
+                // Pas de rang : les services ne s'echelonnent pas (contrainte V45).
                 .grossAmount(split.grossAmount())
                 .commissionRate(split.commissionRate())
                 .commissionAmount(split.commissionAmount())

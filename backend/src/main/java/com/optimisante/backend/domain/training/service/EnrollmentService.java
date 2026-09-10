@@ -36,6 +36,7 @@ import com.optimisante.backend.domain.training.finance.EnrollmentPayment;
 import com.optimisante.backend.domain.training.finance.EnrollmentPaymentRepository;
 import com.optimisante.backend.domain.training.finance.EnrollmentPaymentService;
 import com.optimisante.backend.domain.training.finance.PaymentStatus;
+import com.optimisante.backend.domain.training.finance.PaymentInstallment;
 import com.optimisante.backend.domain.training.finance.PaymentType;
 
 @Slf4j
@@ -404,54 +405,109 @@ public class EnrollmentService {
     }
 
     /**
-     * Confirme l'encaissement des frais de formation (appelé par le webhook Stripe) :
-     * solde la ligne du registre, fait passer le dossier en CONFIRMED, puis déclenche
-     * l'émission des documents.
+     * Confirme l'echeance qui <b>reserve la place</b> : l'acompte, ou le reglement unique d'une
+     * session ouverte avant la mise en place de l'echeancier (V45).
      *
-     * <p><b>Idempotent</b> : un webhook rejoué par Stripe — ce qui arrive normalement en
-     * production — ne doit ni encaisser deux fois, ni régénérer les documents. Le contrôle
-     * applicatif ci-dessous est doublé en base par l'index unique partiel
-     * {@code uq_enrollment_paid_tuition}.</p>
+     * <p>Les deux cas se traitent identiquement — ils font passer le dossier a
+     * {@code CONFIRMED} et declenchent l'emission des documents. Seule change la ligne du
+     * registre qu'ils soldent, et donc le montant.</p>
+     *
+     * <p><b>Idempotent</b> : un webhook rejoue par Stripe — ce qui arrive normalement en
+     * production — ne doit ni encaisser deux fois, ni regenerer les documents. Le controle
+     * applicatif ci-dessous est double en base par l'index unique partiel
+     * {@code uq_enrollment_paid_tuition_installment}.</p>
      */
     @Transactional
     public EnrollmentResponseDto confirmTuitionPayment(UUID enrollmentId, String checkoutSessionId,
-                                                       String paymentIntentId) {
+                                                       String paymentIntentId,
+                                                       PaymentInstallment rang) {
         Enrollment enrollment = requireEnrollment(enrollmentId);
 
-        if (paymentRepository.findByEnrollmentIdAndPaymentTypeAndStatus(
-                enrollmentId, PaymentType.TUITION_FEE, PaymentStatus.PAID).isPresent()) {
-            log.info("Webhook rejoué pour le dossier {} : frais de formation déjà encaissés, ignoré.",
-                    enrollmentId);
+        if (enrollmentPaymentService.findPaidTuition(enrollmentId, rang).isPresent()) {
+            log.info("Webhook rejoué pour le dossier {} : échéance {} déjà encaissée, ignoré.",
+                    enrollmentId, rang);
             return toResponseDto(enrollment);
         }
 
-        EnrollmentPayment payment = paymentRepository
-                .findByEnrollmentIdAndPaymentTypeAndStatus(
-                        enrollmentId, PaymentType.TUITION_FEE, PaymentStatus.PENDING)
+        EnrollmentPayment payment = enrollmentPaymentService
+                .findPendingTuition(enrollmentId, rang)
                 .orElseGet(() -> {
                     // Filet : le paiement a abouti chez Stripe sans ligne en attente côté
                     // plateforme (session ouverte puis base restaurée, par exemple). On
                     // reconstruit la ligne plutôt que de perdre la trace d'un encaissement réel.
-                    log.warn("Aucune ligne de paiement en attente pour le dossier {} : reconstruction.",
+                    //
+                    // Réservé à l'acompte : une session au prix plein date d'avant l'échéancier,
+                    // et rouvrir sa ligne au tarif d'aujourd'hui inscrirait 60 % là où 100 % ont
+                    // été prélevés. Sans ligne, l'encaissement est signalé pour rattachement
+                    // manuel plutôt que reconstruit de travers.
+                    if (rang != PaymentInstallment.DEPOSIT) {
+                        throw new IllegalStateException(
+                                "Aucune ligne " + rang + " en attente sur le dossier " + enrollmentId
+                                + " : encaissement à rattacher manuellement.");
+                    }
+                    log.warn("Aucune ligne d'acompte en attente pour le dossier {} : reconstruction.",
                             enrollmentId);
-                    return enrollmentPaymentService.openTuitionPayment(enrollmentId);
+                    return enrollmentPaymentService.openTuitionDeposit(enrollmentId);
                 });
 
-        payment.setStatus(PaymentStatus.PAID);
-        payment.setPaidAt(OffsetDateTime.now());
-        payment.setStripeCheckoutSessionId(checkoutSessionId);
-        payment.setStripePaymentIntentId(paymentIntentId);
-        paymentRepository.save(payment);
+        solder(payment, checkoutSessionId, paymentIntentId);
 
         EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.CONFIRMED);
         enrollment.setStatus(EnrollmentStatus.CONFIRMED);
         enrollmentRepository.save(enrollment);
 
-        log.info("Formation réglée pour le dossier {} : {} EUR (commission {} EUR, partenaire {} EUR)",
-                enrollmentId, payment.getGrossAmount(), payment.getCommissionAmount(),
+        log.info("Échéance {} réglée pour le dossier {} : {} EUR "
+                        + "(commission {} EUR, partenaire {} EUR)",
+                rang, enrollmentId, payment.getGrossAmount(), payment.getCommissionAmount(),
                 payment.getPartnerPayoutAmount());
 
         return toResponseDto(issueEnrollmentDocuments(enrollmentId));
+    }
+
+    /**
+     * Confirme le <b>solde</b> de formation, appele a la delivrance du visa.
+     *
+     * <p><b>Aucun statut n'est touche.</b> Le dossier est deja au-dela de la reservation : le
+     * solde acquitte une dette, il ne fait pas franchir une etape. Faire avancer l'automate ici
+     * ferait passer un dossier a « pret a demarrer » sur un simple encaissement, sans que
+     * l'administration l'ait constate.</p>
+     *
+     * <p>Idempotent, comme l'acompte.</p>
+     */
+    @Transactional
+    public EnrollmentResponseDto confirmTuitionBalance(UUID enrollmentId, String checkoutSessionId,
+                                                       String paymentIntentId) {
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+
+        if (enrollmentPaymentService.findPaidTuition(enrollmentId, PaymentInstallment.BALANCE).isPresent()) {
+            log.info("Webhook rejoué pour le dossier {} : solde déjà encaissé, ignoré.", enrollmentId);
+            return toResponseDto(enrollment);
+        }
+
+        EnrollmentPayment payment = enrollmentPaymentService
+                .findPendingTuition(enrollmentId, PaymentInstallment.BALANCE)
+                .orElseGet(() -> {
+                    log.warn("Aucune ligne de solde en attente pour le dossier {} : reconstruction.",
+                            enrollmentId);
+                    return enrollmentPaymentService.openTuitionBalance(enrollmentId);
+                });
+
+        solder(payment, checkoutSessionId, paymentIntentId);
+
+        log.info("Solde de formation réglé pour le dossier {} : {} EUR "
+                        + "(commission {} EUR, partenaire {} EUR). Statut inchangé : {}.",
+                enrollmentId, payment.getGrossAmount(), payment.getCommissionAmount(),
+                payment.getPartnerPayoutAmount(), enrollment.getStatus());
+
+        return toResponseDto(enrollment);
+    }
+
+    private void solder(EnrollmentPayment payment, String checkoutSessionId, String paymentIntentId) {
+        payment.setStatus(PaymentStatus.PAID);
+        payment.setPaidAt(OffsetDateTime.now());
+        payment.setStripeCheckoutSessionId(checkoutSessionId);
+        payment.setStripePaymentIntentId(paymentIntentId);
+        paymentRepository.save(payment);
     }
 
     /**
@@ -499,6 +555,22 @@ public class EnrollmentService {
      * silencieux : l'écran de suivi doit rester consultable même si un tarif manque —
      * c'est l'ouverture du paiement, et elle seule, qui doit alors échouer explicitement.
      */
+    private void appliquerEcheancier(EnrollmentDetailDto.EnrollmentDetailDtoBuilder builder,
+                                     Enrollment enrollment) {
+        try {
+            var echeancier = enrollmentPaymentService.scheduleFor(enrollment);
+            builder.tuitionDepositAmount(echeancier.depositAmount())
+                    .tuitionBalanceAmount(echeancier.balanceAmount())
+                    .tuitionDepositRate(echeancier.depositRate())
+                    .tuitionOutstanding(enrollmentPaymentService.outstandingTuition(enrollment.getId()));
+        } catch (RuntimeException e) {
+            // Meme choix que pour le montant : un tarif absent ou invalide ne doit pas empecher
+            // l'affichage du dossier, qui porte bien d'autres informations utiles.
+            log.debug("Échéancier indisponible pour le dossier {} : {}",
+                    enrollment.getId(), e.getMessage());
+        }
+    }
+
     private java.math.BigDecimal resolveTuitionAmountQuietly(Enrollment enrollment) {
         try {
             return enrollmentPaymentService.resolveTuitionAmount(enrollment);
@@ -522,6 +594,20 @@ public class EnrollmentService {
         // automate que les méthodes métier : sans cette garde, l'interface aurait
         // contourné toutes les règles posées par EnrollmentTransitions.
         EnrollmentTransitions.assertAllowed(enrollment.getStatus(), newStatus);
+
+        // Le solde de formation conditionne le passage a « pret a demarrer ». Sans cette
+        // garde, l'echeancier ne serait qu'une facilite de paiement sans echeance reelle : le
+        // dossier irait au bout et l'etablissement accueillerait un candidat dont la formation
+        // n'est payee qu'a 60 %. La transition reste inchangee dans l'automate — c'est une
+        // condition prealable, pas un nouvel etat.
+        if (newStatus == EnrollmentStatus.READY_TO_START) {
+            java.math.BigDecimal restant = enrollmentPaymentService.outstandingTuition(enrollmentId);
+            if (restant.signum() > 0) {
+                throw new IllegalStateException(
+                        "Le solde de formation n'est pas réglé (" + restant + " € restants). "
+                        + "Le dossier ne peut pas passer à « prêt à démarrer ».");
+            }
+        }
 
         boolean wasNotConfirmed = enrollment.getStatus() != EnrollmentStatus.CONFIRMED;
         enrollment.setStatus(newStatus);
@@ -746,6 +832,11 @@ public class EnrollmentService {
                 // Montant résolu depuis la session (ou le tarif de la formation) : c'est ce
                 // que le médecin devra régler, affiché avant même l'ouverture du paiement.
                 .tuitionAmount(resolveTuitionAmountQuietly(enrollment));
+
+        // L'echeancier n'est renseigne que lorsqu'un tarif existe : sur une formation dont le
+        // prix n'est pas encore fixe, afficher « acompte de 0 € » serait plus trompeur que de
+        // n'afficher aucun echeancier.
+        appliquerEcheancier(builder, enrollment);
 
         if (includeDoctorName) {
             String doctorEmail = enrollment.getDoctor().getEmail();

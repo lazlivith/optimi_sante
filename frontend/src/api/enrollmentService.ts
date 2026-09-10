@@ -44,6 +44,11 @@ export interface EnrollmentDetailDto {
   hostInstitution?: string | null;
   /** Frais de formation à régler, en euros. */
   tuitionAmount?: number | null;
+  /** Échéancier calculé côté serveur : l'écran ne recalcule aucun pourcentage. */
+  tuitionDepositAmount?: number | null;
+  tuitionBalanceAmount?: number | null;
+  tuitionDepositRate?: number | null;
+  tuitionOutstanding?: number | null;
   /** Pièce ou correction réclamée, affichée au médecin en ACTION_REQUIRED. */
   actionRequiredNote?: string | null;
   /** Motif de refus ou d'annulation. */
@@ -84,6 +89,20 @@ export const enrollmentService = {
   createTuitionCheckout: async (enrollmentId: string): Promise<TuitionCheckoutDto> => {
     const { data } = await axiosClient.post<TuitionCheckoutDto>(
       `/enrollments/${enrollmentId}/tuition-checkout`,
+    );
+    return data;
+  },
+
+  /**
+   * Ouvre le règlement du solde, appelé à la délivrance du visa.
+   *
+   * Route distincte de l'acompte : les deux moments n'ont ni les mêmes conditions ni les mêmes
+   * effets — l'acompte réserve la place, le solde acquitte une dette sans faire avancer le
+   * dossier.
+   */
+  createBalanceCheckout: async (enrollmentId: string): Promise<TuitionCheckoutDto> => {
+    const { data } = await axiosClient.post<TuitionCheckoutDto>(
+      `/enrollments/${enrollmentId}/tuition-balance-checkout`,
     );
     return data;
   },

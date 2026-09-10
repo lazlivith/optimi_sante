@@ -61,6 +61,9 @@ services:
       # Doit rester aligne sur VITE_LEGAL_FRAIS_DOSSIER cote frontend, faute de quoi la page
       # annoncerait un montant et la caisse en preleverait un autre.
       - DOCTOR_APPLICATION_FEE=${DOCTOR_APPLICATION_FEE:-100.00}
+      # Acompte exigé à l'admission, solde à la délivrance du visa. Doit rester aligné sur
+      # `app.tuition.deposit-rate` (application.yml) et sur VITE_LEGAL_PART_ACOMPTE (CGV).
+      - TUITION_DEPOSIT_RATE=${TUITION_DEPOSIT_RATE:-60}
       # Clés Stripe à renseigner une fois disponibles (dashboard.stripe.com, mode Test) —
       # tant qu'elles sont absentes, le paiement échoue proprement (erreur loggée : "Invalid
       # API Key"), sans bloquer le reste du parcours ni corrompre de données.

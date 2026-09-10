@@ -47,5 +47,10 @@ public interface EnrollmentPaymentRepository extends JpaRepository<EnrollmentPay
     BigDecimal sumPendingPayout(@Param("partnerProfileId") UUID partnerProfileId);
 
     /** Lignes rattachées à un reversement, pour le détail du relevé PDF. */
+    /** Ligne d'une echeance precise : c'est le couple (dossier, rang) qui est unique (V45). */
+    Optional<EnrollmentPayment> findByEnrollmentIdAndPaymentTypeAndInstallmentAndStatus(
+            UUID enrollmentId, PaymentType paymentType,
+            PaymentInstallment installment, PaymentStatus status);
+
     List<EnrollmentPayment> findByPartnerPayoutId(UUID partnerPayoutId);
 }

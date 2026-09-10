@@ -83,14 +83,23 @@ export const CONDITIONS_MOBILITE = {
   fraisDossier: lire(env.VITE_LEGAL_FRAIS_DOSSIER) ?? '100,00 €',
 
   /**
-   * Part des frais de formation exigée à la confirmation d'admission.
+   * Part des frais de formation exigée à la confirmation d'admission — l'acompte.
    *
-   * ⚠️ **100 % aujourd'hui.** Le paiement échelonné (acompte de 60 % puis solde) n'est pas
-   * implémenté : `EnrollmentPaymentService` ouvre un encaissement unique du montant total au
-   * passage en `PENDING_TUITION_FEE`. Tant que ce n'est pas développé, annoncer 60 % dans les
-   * CGV promettrait un échéancier que la plateforme ne respecte pas.
+   * ⚠️ **Doit rester alignée sur `app.tuition.deposit-rate` (application.yml) et sur
+   * `TUITION_DEPOSIT_RATE` (docker-compose.yml), qui prime.** Cette valeur alimente les CGV :
+   * annoncer un taux dans le contrat et en prélever un autre est exactement l'incident survenu
+   * sur les frais de dossier, où le défaut du fichier de configuration n'était pas la valeur
+   * déployée.
+   *
+   * L'échéancier est effectivement appliqué depuis la V45 : `TuitionPaymentService` ouvre
+   * l'acompte au passage en `PENDING_TUITION_FEE`, puis le solde à `VISA_GRANTED`.
    */
-  partExigeeALAdmission: 100,
+  partExigeeALAdmission: Number(lire(env.VITE_LEGAL_PART_ACOMPTE) ?? '60'),
+
+  /** Le complément, appelé à la délivrance du visa. Dérivé : les deux ne peuvent pas diverger. */
+  get partExigeeAuVisa() {
+    return 100 - this.partExigeeALAdmission;
+  },
 } as const;
 
 /** Champ obligatoire non renseigné : affiché en évidence plutôt que laissé vide. */

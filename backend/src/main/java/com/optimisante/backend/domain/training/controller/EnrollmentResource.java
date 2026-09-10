@@ -59,7 +59,7 @@ public class EnrollmentResource {
     }
 
     /**
-     * Ouvre le paiement des frais de formation. Accessible uniquement lorsque le dossier
+     * Ouvre l'<b>acompte</b> des frais de formation. Accessible uniquement lorsque le dossier
      * a été accepté par l'établissement et attend le règlement.
      */
     @PostMapping("/enrollments/{id}/tuition-checkout")
@@ -68,6 +68,21 @@ public class EnrollmentResource {
             @PathVariable UUID id, Authentication auth) {
         UUID doctorId = UUID.fromString(auth.getPrincipal().toString());
         return ResponseEntity.ok(tuitionPaymentService.createTuitionCheckoutSession(id, doctorId));
+    }
+
+    /**
+     * Ouvre le <b>solde</b> des frais de formation, appelé à la délivrance du visa.
+     *
+     * <p>Route distincte de l'acompte plutôt qu'un paramètre : les deux moments n'ont ni les
+     * mêmes conditions d'ouverture ni les mêmes effets — l'acompte réserve la place, le solde
+     * acquitte une dette sans faire avancer le dossier.</p>
+     */
+    @PostMapping("/enrollments/{id}/tuition-balance-checkout")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public ResponseEntity<TuitionPaymentService.TuitionCheckoutDto> createBalanceCheckout(
+            @PathVariable UUID id, Authentication auth) {
+        UUID doctorId = UUID.fromString(auth.getPrincipal().toString());
+        return ResponseEntity.ok(tuitionPaymentService.createBalanceCheckoutSession(id, doctorId));
     }
 
     /** Le médecin resoumet son dossier après avoir déposé les pièces demandées. */

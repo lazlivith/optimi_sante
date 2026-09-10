@@ -43,6 +43,21 @@ public class EnrollmentDetailDto {
     private java.math.BigDecimal tuitionAmount;
 
     /**
+     * Echeancier des frais de formation : acompte a l'admission, solde a la delivrance du visa.
+     *
+     * <p>Les trois montants sont envoyes ensemble pour que l'ecran n'ait aucun calcul a refaire.
+     * Recalculer un pourcentage cote client ferait apparaitre, sur certains montants, un centime
+     * d'ecart avec ce que la caisse prelevera reellement.</p>
+     */
+    private java.math.BigDecimal tuitionDepositAmount;
+    private java.math.BigDecimal tuitionBalanceAmount;
+    /** Part exigee a l'admission, en pourcentage. Alimente les libelles (« acompte de 60 % »). */
+    private java.math.BigDecimal tuitionDepositRate;
+
+    /** Ce qui reste du au titre de la formation, toutes echeances confondues. */
+    private java.math.BigDecimal tuitionOutstanding;
+
+    /**
      * Pièce ou correction réclamée. Renseignée en ACTION_REQUIRED — sans elle, le médecin
      * verrait son dossier bloqué sans savoir ce qu'on attend de lui.
      */

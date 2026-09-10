@@ -288,9 +288,12 @@ export function ServicesPage() {
                   Après admission
                 </p>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  Indiqués sur chaque session. Ils ne sont exigibles qu'une fois votre
-                  candidature acceptée par l'établissement — et à hauteur de{' '}
-                  {CONDITIONS_MOBILITE.partExigeeALAdmission} % à ce moment.
+                  Indiqués sur chaque session, réglés en deux fois :{' '}
+                  <strong>{CONDITIONS_MOBILITE.partExigeeALAdmission} %</strong> une fois votre
+                  candidature acceptée par l'établissement, puis{' '}
+                  <strong>{CONDITIONS_MOBILITE.partExigeeAuVisa} %</strong> à la délivrance de
+                  votre visa. Vous n'avancez pas la totalité d'un séjour qui dépend encore
+                  d'une décision consulaire.
                 </p>
               </div>
             </div>

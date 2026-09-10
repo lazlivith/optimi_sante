@@ -167,16 +167,30 @@ export function TermsPage() {
         dans les conditions du 3.6.
       </p>
 
-      <h3>3.4 Frais de formation</h3>
+      <h3>3.4 Frais de formation — échéancier en deux versements</h3>
       <p>
         Le montant des frais de formation est indiqué sur la fiche de la session concernée. Il
-        est exigible <strong>à la confirmation d'admission par l'établissement d'accueil</strong>,
-        à hauteur de <strong>{CONDITIONS_MOBILITE.partExigeeALAdmission} %</strong> du montant
-        total.
+        est réglé en <strong>deux versements</strong> :
       </p>
+      <ul>
+        <li>
+          un <strong>acompte de {CONDITIONS_MOBILITE.partExigeeALAdmission} %</strong> du montant
+          total, exigible <strong>à la confirmation d'admission par l'établissement
+          d'accueil</strong> ; son règlement confirme définitivement l'inscription ;
+        </li>
+        <li>
+          le <strong>solde, soit {CONDITIONS_MOBILITE.partExigeeAuVisa} %</strong>, exigible
+          <strong> à la délivrance du visa</strong> par les autorités consulaires.
+        </li>
+      </ul>
       <p>
         Aucun règlement de frais de formation n'est demandé avant que l'établissement d'accueil
-        n'ait accepté la candidature.
+        n'ait accepté la candidature. <strong>Aucun solde n'est appelé tant que le visa n'est pas
+        accordé</strong> : le candidat n'avance pas l'intégralité d'un séjour qui dépend encore
+        d'une décision consulaire.
+      </p>
+      <p>
+        Le départ en formation est subordonné au règlement intégral des frais de formation.
       </p>
 
       <h3>3.5 Annulation, report et force majeure</h3>
@@ -186,9 +200,10 @@ export function TermsPage() {
       </p>
       <p>
         <strong>Refus de visa consulaire</strong> — dûment justifié par la notification des
-        autorités, il ouvre droit au remboursement des frais de formation déjà réglés, déduction
-        faite des prestations déjà exécutées et des frais engagés auprès de l'établissement
-        d'accueil. Les frais de dossier restent acquis.
+        autorités, il ouvre droit au remboursement des frais de formation déjà réglés — soit
+        l'acompte, le solde n'étant pas appelé en l'absence de visa — déduction faite des
+        prestations déjà exécutées et des frais engagés auprès de l'établissement d'accueil. Les
+        frais de dossier restent acquis.
       </p>
       <p>
         <strong>Désistement du candidat</strong> après confirmation d'admission — les frais de
