@@ -61,8 +61,23 @@ public class DoctorApplicationService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
 
+    /** Repli, appliqué quand la formation ne fixe pas ses propres frais. */
     @Value("${app.doctor-application.fee-amount}")
     private BigDecimal feeAmount;
+
+    /**
+     * Frais de dossier applicables à une session.
+     *
+     * <p>La formation prime, la valeur globale sert de repli. {@code null} sur la formation
+     * veut dire « pas de tarif propre », pas « gratuit » : traiter les deux de la même façon
+     * rendrait toute nouvelle formation gratuite par omission.</p>
+     */
+    private BigDecimal resolveApplicationFee(TrainingSession session) {
+        BigDecimal propre = session.getTraining() == null
+                ? null
+                : session.getTraining().getApplicationFee();
+        return propre != null ? propre : feeAmount;
+    }
 
     @Value("${app.mail.frontend-base-url}")
     private String frontendBaseUrl;
@@ -97,7 +112,7 @@ public class DoctorApplicationService {
                 .medicalCouncilNumber(dto.getMedicalCouncilNumber())
                 .currentHospital(dto.getCurrentHospital())
                 .passportNumber(dto.getPassportNumber())
-                .feeAmount(feeAmount)
+                .feeAmount(resolveApplicationFee(session))
                 .status(DoctorApplicationStatus.PENDING_PAYMENT)
                 .build();
         application = doctorApplicationRepository.saveAndFlush(application);
@@ -109,7 +124,7 @@ public class DoctorApplicationService {
             String returnUrl = frontendBaseUrl + "/candidature/success?session_id={CHECKOUT_SESSION_ID}";
             Session stripeSession = stripePaymentService.createElementsCheckoutSessionForNewCustomer(
                     application.getId(),
-                    feeAmount,
+                    application.getFeeAmount(),
                     email,
                     returnUrl,
                     "Frais de dossier - Candidature " + session.getTraining().getTitle(),

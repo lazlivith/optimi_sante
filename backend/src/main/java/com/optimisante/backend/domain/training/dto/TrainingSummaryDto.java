@@ -20,4 +20,13 @@ public class TrainingSummaryDto {
     private String imageUrl;
     private String videoUrl;
     private BigDecimal price;
+
+    /**
+     * Frais de dossier reellement applicables a cette formation, repli global deja resolu.
+     *
+     * <p>Le repli est calcule cote serveur, pas laisse au client : deux interfaces qui
+     * dupliqueraient la regle finiraient par afficher deux montants differents — et l'un des
+     * deux ne serait pas celui preleve.</p>
+     */
+    private BigDecimal applicationFee;
 }

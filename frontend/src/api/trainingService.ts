@@ -25,6 +25,8 @@ export interface TrainingSummaryDto {
   imageUrl: string | null;
   videoUrl: string | null;
   price: number;
+  /** Frais de dossier applicables, repli global deja resolu par le serveur. */
+  applicationFee: number | null;
 }
 
 export const trainingService = {

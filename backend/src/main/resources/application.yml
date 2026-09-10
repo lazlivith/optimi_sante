@@ -81,7 +81,9 @@ app:
       api-token: ${MAILTRAP_API_TOKEN:}
       account-id: ${MAILTRAP_ACCOUNT_ID:}
   doctor-application:
-    fee-amount: ${DOCTOR_APPLICATION_FEE:50.00} # Frais de dossier fixes, indépendants du prix de la formation
+    # Valeur de repli, appliquée quand la formation ne fixe pas ses propres frais
+    # (trainings.application_fee, V40).
+    fee-amount: ${DOCTOR_APPLICATION_FEE:100.00}
   aws:
     s3:
       endpoint: ${AWS_S3_ENDPOINT:http://localhost:4566}

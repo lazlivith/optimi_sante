@@ -2439,3 +2439,110 @@ script de patch Python est ressorti sans son échappement, produisant une chaîn
 terminée. Corrigé en passant la chaîne en guillemets doubles — plus simple que d'échapper à
 travers deux couches. C'est la même famille de friction que les heredocs bash abandonnés plus
 tôt dans ce projet.
+
+## 78. Lot 2 — Frais de dossier par formation (V40)
+
+### Qui a le droit de fixer ce montant
+
+Le point de conception du lot, et il n'était pas dans la spécification.
+
+Une formation est **créée et modifiée par le CHU partenaire** ; l'administration de la mobilité
+ne fait que l'approuver. Or les frais de dossier sont une **recette OptimiSanté** : ils
+rémunèrent l'instruction du dossier, un travail que l'établissement n'effectue pas. Exposer le
+champ dans le formulaire du partenaire lui aurait laissé fixer la rémunération d'autrui.
+
+La colonne vit donc sur `trainings`, mais un endpoint dédié `PATCH /admin/trainings/{id}/
+application-fee` la règle, sous `@MobilityAdmin`. Vérifié au passage : `updateTraining` côté
+partenaire ne recopie que six champs et ne touchera pas la colonne.
+
+Cet endpoint **ne renvoie pas la formation en validation**, contrairement à une modification par
+le partenaire : le contenu pédagogique n'a pas changé.
+
+### `NULL` veut dire « valeur globale », pas « gratuit »
+
+Distinction essentielle, portée par la colonne nullable et commentée aux trois endroits qui la
+manipulent. Sans elle, deux conséquences : il aurait fallu renseigner chaque formation avant de
+pouvoir déployer, et **toute formation créée ensuite sans tarif explicite serait devenue
+gratuite par omission**.
+
+Zéro reste possible et signifie réellement gratuit — c'est un choix commercial légitime, que la
+contrainte `CHECK` autorise tout en refusant les montants négatifs.
+
+### Le repli est résolu côté serveur, une seule fois
+
+`TrainingSummaryDto.applicationFee` renvoie le montant **déjà résolu**. Laisser le client faire
+`fee ?? défaut` aurait dupliqué la règle dans chaque interface, et deux interfaces qui
+dupliquent une règle finissent par afficher deux montants — dont l'un ne serait pas celui
+prélevé.
+
+La même règle existe dans `DoctorApplicationService` au moment du prélèvement. Les deux doivent
+dire la même chose ; le commentaire de chacune renvoie à l'autre.
+
+**Correction au passage :** le montant envoyé à Stripe venait de la valeur globale
+(`feeAmount`) alors que la candidature enregistrait déjà son propre montant. Tant que les deux
+étaient identiques, personne ne pouvait le voir. Dès qu'une formation fixe son tarif, la
+candidature aurait affiché un montant et la caisse en aurait prélevé un autre. Stripe reçoit
+désormais `application.getFeeAmount()` — la valeur enregistrée, pas la valeur par défaut.
+
+### Aucun effet rétroactif
+
+`doctor_applications.fee_amount` fige déjà le montant payé. Changer le tarif d'une formation ne
+modifie donc aucune candidature passée.
+
+### Le contrat ne peut plus annoncer un montant unique
+
+Les CGV disaient « les frais de dossier s'élèvent à X ». Avec un tarif par formation, cette
+phrase devient fausse dès le premier tarif propre. Elle devient : « indiqués sur la fiche de
+chaque formation ; à défaut, X ». Même ajustement sur la page services et dans sa FAQ.
+
+Le repli global passe de **50 à 100 €** comme arbitré, des deux côtés simultanément —
+`DOCTOR_APPLICATION_FEE` côté serveur et `CONDITIONS_MOBILITE.fraisDossier` côté légal. Les
+changer séparément aurait fait diverger l'affichage et la facturation le temps d'un déploiement.
+
+### Le candidat voit le montant avant de postuler
+
+La fiche formation affiche les frais **au-dessus du bouton « Postuler »**. Les découvrir à
+l'écran de paiement serait une mauvaise surprise sur le seul montant demandé à ce stade.
+
+### Deux échecs de vérification, dans le même lot
+
+**Le premier : une compilation incrémentale trompeuse.** `./mvnw compile` a répondu succès sur
+un fichier qu'il n'avait pas recompilé. Le build Docker, qui fait `mvn clean package`, a échoué
+sur une variable de lambda nommée `t` au lieu de `training` — une faute triviale, invisible en
+incrémental. Pire : mon `grep | tail` a masqué l'échec, `docker compose up` a redémarré
+**l'ancienne image**, et le conteneur affichait « Up » comme si tout allait bien.
+
+Corrigé en écrivant la sortie dans un fichier et en **testant le code de retour réel**, au lieu
+de lire quelques lignes filtrées. C'est la troisième fois dans ce projet qu'un tube masque un
+code de sortie ; la règle est désormais explicite : *ne jamais juger un build sur une sortie
+filtrée.*
+
+**Le second : la variable d'environnement l'emportait.** Après déploiement, la vérification
+affichait **50 €** au lieu de 100. J'avais changé le défaut dans `application.yml` et dans la
+configuration juridique, mais `docker-compose.yml` fixe `DOCTOR_APPLICATION_FEE=50.00`, qui
+prime. Le défaut d'un fichier de configuration n'est pas la valeur déployée.
+
+Sans la vérification sur la plateforme réelle, la page aurait annoncé 100 € pendant que la
+caisse prélevait 50 — exactement la divergence que ce lot cherchait à éviter. **Trois endroits
+portent désormais la même valeur** : `application.yml`, `docker-compose.yml` et
+`VITE_LEGAL_FRAIS_DOSSIER`, chacun commenté pour renvoyer aux deux autres.
+
+### Vérifié en conditions réelles, 5 contrôles
+
+| Contrôle | Résultat |
+|---|---|
+| Repli global appliqué à une formation sans tarif propre | **100 €** |
+| L'admin mobilité fixe 250 € | 200 |
+| La fiche publique reflète le tarif propre | **250 €**, les autres restent à 100 € |
+| Montant négatif | **400** |
+| L'admin **négoce** tente de fixer le tarif | **403** |
+
+Le tarif de démonstration a été retiré : aucune formation ne porte plus de tarif propre.
+
+### Une friction d'outillage, trois fois de suite
+
+L'apostrophe française a de nouveau cassé du code généré : `s'applique` et `
+` écrits dans un
+script de patch Python ressortent sans leur échappement. Corrigé en passant ces chaînes en
+guillemets doubles. **La règle à retenir : ne jamais faire traverser une apostrophe française à
+deux couches d'échappement — écrire la chaîne JavaScript en guillemets doubles dès le départ.**

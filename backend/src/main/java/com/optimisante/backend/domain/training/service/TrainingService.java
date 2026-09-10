@@ -37,6 +37,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TrainingService {
 
+    /** Repli quand la formation ne fixe pas ses propres frais de dossier (V40). */
+    @org.springframework.beans.factory.annotation.Value("${app.doctor-application.fee-amount}")
+    private java.math.BigDecimal defaultApplicationFee;
+
+
     private final TrainingRepository trainingRepository;
     private final TrainingSessionRepository trainingSessionRepository;
     private final ProspectLeadRepository prospectLeadRepository;
@@ -95,6 +100,7 @@ public class TrainingService {
                             .orElse(null);
 
                     return TrainingSummaryDto.builder()
+                            .applicationFee(resolveApplicationFee(training))
                             .id(training.getId())
                             .title(training.getTitle())
                             .medicalSpecialty(training.getMedicalSpecialty())
@@ -184,6 +190,17 @@ public class TrainingService {
     }
 
     @Transactional
+    /**
+     * Frais de dossier applicables : ceux de la formation, sinon la valeur globale.
+     *
+     * <p>Meme regle que {@code DoctorApplicationService} au moment du prelevement. Les deux
+     * doivent dire la meme chose, sans quoi la fiche annoncerait un montant et la caisse en
+     * prendrait un autre.</p>
+     */
+    private java.math.BigDecimal resolveApplicationFee(Training t) {
+        return t.getApplicationFee() != null ? t.getApplicationFee() : defaultApplicationFee;
+    }
+
     public PartnerTrainingResponseDto updateTraining(UUID trainingId, CreateTrainingRequestDto dto, UUID partnerUserId) {
         Training training = requireOwnedTraining(trainingId, partnerUserId);
 

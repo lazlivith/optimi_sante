@@ -18,6 +18,9 @@ public class AdminTrainingResponseDto {
     private Integer durationDays;
     private Boolean isLongStay;
     private BigDecimal price;
+
+    /** Frais de dossier propres a la formation. {@code null} = valeur globale appliquee. */
+    private BigDecimal applicationFee;
     private Boolean isPublished;
     private String approvalStatus;
     private String rejectionReason;

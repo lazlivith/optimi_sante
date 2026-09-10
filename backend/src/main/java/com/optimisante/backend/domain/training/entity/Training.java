@@ -58,6 +58,17 @@ public class Training {
     @Column(nullable = false)
     private BigDecimal price;
 
+    /**
+     * Frais de dossier propres a cette formation.
+     *
+     * <p>{@code null} signifie « appliquer la valeur globale », pas « gratuit » — la nuance
+     * est portee par {@code DoctorApplicationService}. C'est une recette OptimiSante :
+     * elle n'est jamais fixee par l'etablissement partenaire, et la mise a jour cote
+     * partenaire ne la touche pas.</p>
+     */
+    @Column(name = "application_fee")
+    private BigDecimal applicationFee;
+
     @Column(name = "is_published")
     private Boolean isPublished;
 

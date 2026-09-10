@@ -55,6 +55,24 @@ public class AdminTrainingService {
         return toResponseDto(trainingRepository.save(training));
     }
 
+    /**
+     * Fixe ou retire les frais de dossier propres a la formation.
+     *
+     * <p>{@code null} n'est pas une erreur : il retire le tarif propre et fait revenir la
+     * formation a la valeur globale. Le distinguer de zero est essentiel — zero voudrait dire
+     * « candidature gratuite ».</p>
+     *
+     * <p>N'altere ni le statut de validation ni la publication : le contenu pedagogique n'a
+     * pas change, seule la remuneration d'OptimiSante.</p>
+     */
+    @Transactional
+    public AdminTrainingResponseDto setApplicationFee(UUID trainingId, java.math.BigDecimal fee) {
+        Training training = trainingRepository.findById(trainingId)
+                .orElseThrow(() -> new IllegalArgumentException("Formation introuvable : " + trainingId));
+        training.setApplicationFee(fee);
+        return toResponseDto(trainingRepository.save(training));
+    }
+
     private AdminTrainingResponseDto toResponseDto(Training training) {
         return AdminTrainingResponseDto.builder()
                 .id(training.getId())
@@ -64,6 +82,7 @@ public class AdminTrainingService {
                 .durationDays(training.getDurationDays())
                 .isLongStay(training.getIsLongStay())
                 .price(training.getPrice())
+                .applicationFee(training.getApplicationFee())
                 .isPublished(training.getIsPublished())
                 .approvalStatus(training.getApprovalStatus().name())
                 .rejectionReason(training.getRejectionReason())

@@ -72,8 +72,15 @@ export const LEGAL = {
  * opposable : facturer autrement que ce qu'on a annoncé.</p>
  */
 export const CONDITIONS_MOBILITE = {
-  /** Aligné sur `DOCTOR_APPLICATION_FEE` côté serveur (50,00 € par défaut). */
-  fraisDossier: lire(env.VITE_LEGAL_FRAIS_DOSSIER) ?? '50,00 €',
+  /**
+   * Frais de dossier **par défaut**, alignés sur `DOCTOR_APPLICATION_FEE` côté serveur.
+   *
+   * Depuis la V40, chaque formation peut fixer les siens ; cette valeur ne s'applique qu'à
+   * défaut. Les pages qui affichent un montant pour une formation précise doivent lire
+   * `applicationFee` renvoyé par l'API, pas cette constante — elle ne sert qu'aux textes
+   * généraux, où aucune formation n'est encore choisie.
+   */
+  fraisDossier: lire(env.VITE_LEGAL_FRAIS_DOSSIER) ?? '100,00 €',
 
   /**
    * Part des frais de formation exigée à la confirmation d'admission.

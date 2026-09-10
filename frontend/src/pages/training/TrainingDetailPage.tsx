@@ -157,6 +157,24 @@ export function TrainingDetailPage() {
               </div>
             </div>
 
+            {/* Frais de dossier annonces AVANT le bouton « Postuler » : c'est le seul montant
+                demande a ce stade, et le decouvrir a l'ecran de paiement serait une mauvaise
+                surprise. Le montant vient du serveur, repli deja resolu — le calculer ici
+                dupliquerait la regle et finirait par afficher autre chose que le prelevement. */}
+            {training?.applicationFee != null && (
+              <div className="flex items-baseline justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 mb-4">
+                <div>
+                  <p className="font-semibold text-brand-dark">Frais de dossier</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Réglés au dépôt · non remboursables
+                  </p>
+                </div>
+                <p className="text-2xl font-bold text-brand-green whitespace-nowrap">
+                  {training.applicationFee.toFixed(0)} €
+                </p>
+              </div>
+            )}
+
             {/* Rappel synthetique de l'accompagnement, renvoye vers /services. Detailler
                 l'assurance, le logement et le visa ici noierait le programme medical, qui est
                 la raison pour laquelle on ouvre cette page. */}

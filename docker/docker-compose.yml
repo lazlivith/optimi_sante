@@ -57,7 +57,10 @@ services:
       - MAILTRAP_API_TOKEN=${MAILTRAP_API_TOKEN:-}
       - MAILTRAP_ACCOUNT_ID=${MAILTRAP_ACCOUNT_ID:-}
       - FRONTEND_BASE_URL=http://localhost:5173
-      - DOCTOR_APPLICATION_FEE=${DOCTOR_APPLICATION_FEE:-50.00}
+      # Repli quand la formation ne fixe pas ses propres frais (trainings.application_fee, V40).
+      # Doit rester aligne sur VITE_LEGAL_FRAIS_DOSSIER cote frontend, faute de quoi la page
+      # annoncerait un montant et la caisse en preleverait un autre.
+      - DOCTOR_APPLICATION_FEE=${DOCTOR_APPLICATION_FEE:-100.00}
       # Clés Stripe à renseigner une fois disponibles (dashboard.stripe.com, mode Test) —
       # tant qu'elles sont absentes, le paiement échoue proprement (erreur loggée : "Invalid
       # API Key"), sans bloquer le reste du parcours ni corrompre de données.

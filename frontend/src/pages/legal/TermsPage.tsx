@@ -155,9 +155,11 @@ export function TermsPage() {
 
       <h3>3.3 Frais de dossier</h3>
       <p>
-        Les frais de dossier s'élèvent à <strong>{CONDITIONS_MOBILITE.fraisDossier}</strong>.
-        Ils rémunèrent l'instruction du dossier et sa transmission à l'établissement, travail
-        effectué indépendamment de l'issue de la candidature.
+        Les frais de dossier sont <strong>indiqués sur la fiche de chaque formation</strong> et
+        rappelés avant tout règlement. À défaut de tarif propre, ils s'élèvent à{' '}
+        <strong>{CONDITIONS_MOBILITE.fraisDossier}</strong>. Ils rémunèrent l'instruction du
+        dossier et sa transmission à l'établissement, travail effectué indépendamment de l'issue
+        de la candidature.
       </p>
       <p>
         Ils sont <strong>non remboursables</strong>, y compris en cas de refus de

@@ -98,9 +98,10 @@ const FAQ = [
   },
   {
     q: "Les frais de dossier sont-ils remboursables ?",
-    r: `Non. Ils s'élèvent à ${CONDITIONS_MOBILITE.fraisDossier} et rémunèrent l'instruction de `
-      + `votre dossier, la vérification de vos pièces et sa transmission à l'établissement — un `
-      + `travail effectué quelle que soit l'issue de la candidature.`,
+    r: `Non. Leur montant est indiqué sur la fiche de chaque formation — ${CONDITIONS_MOBILITE.fraisDossier} `
+      + `à défaut de tarif propre — et ils rémunèrent l'instruction de votre dossier, la `
+      + `vérification de vos pièces et sa transmission à l'établissement : un travail effectué `
+      + `quelle que soit l'issue de la candidature.`,
   },
   {
     q: "Les options logistiques sont-elles obligatoires ?",
@@ -272,11 +273,13 @@ export function ServicesPage() {
               <div className="bg-white rounded-2xl border border-slate-200 p-5">
                 <h3 className="font-bold text-brand-dark mb-2">Frais de dossier</h3>
                 <p className="text-2xl font-bold text-brand-green mb-2">
-                  {CONDITIONS_MOBILITE.fraisDossier}
+                  à partir de {CONDITIONS_MOBILITE.fraisDossier}
                 </p>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  Réglés au dépôt de la candidature. Ils rémunèrent l'instruction du dossier et
-                  sa transmission à l'établissement, et ne sont pas remboursables.
+                  Réglés au dépôt de la candidature et <strong>indiqués sur la fiche de chaque
+                  formation</strong>, le montant dépendant de la durée du stage. Ils rémunèrent
+                  l'instruction du dossier et sa transmission à l'établissement, et ne sont pas
+                  remboursables.
                 </p>
               </div>
               <div className="bg-white rounded-2xl border border-slate-200 p-5">
