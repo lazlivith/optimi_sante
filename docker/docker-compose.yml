@@ -16,7 +16,9 @@ services:
     image: redis:7-alpine
     container_name: optimisante-redis
     ports:
-      - "6379:6379"
+      # Port hôte 6380 (6379 déjà utilisé par un autre projet sur cette machine).
+      # Le backend joint Redis via "redis:6379" sur le réseau Docker interne.
+      - "6380:6379"
     volumes:
       - optimisante-redisdata:/data
     restart: unless-stopped
@@ -69,11 +71,58 @@ services:
       # API Key"), sans bloquer le reste du parcours ni corrompre de données.
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-sk_test_PLACEHOLDER}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-whsec_PLACEHOLDER}
+      # Worker Python de reporting (Sprint 5). Absent => onglet "Rapports" désactivé proprement.
+      - REPORTING_WORKER_URL=http://analytics:8100
+      # Service IA (extraction Gemini + assistant Mistral). Absent => fonctions IA désactivées.
+      - AI_WORKER_URL=http://ai:8200
     depends_on:
       - postgres
       - redis
     restart: unless-stopped
 
+  # Sprint 5 — Worker Python FastAPI : rapports batch nocturnes & exports analytiques à la demande.
+  analytics:
+    build:
+      context: ../workers/analytics_service
+      dockerfile: Dockerfile
+    container_name: optimisante-analytics
+    ports:
+      - "8100:8100"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:Investx2026@postgres:5432/optimisante_db
+      - EXPORT_DIR=/exports
+      - SCHEDULER_ENABLED=true
+      - SCHEDULE_CRON_HOUR=2
+      - SCHEDULE_CRON_MINUTE=0
+    volumes:
+      - optimisante-exports:/exports
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # Service IA — extraction documentaire (Gemini) & assistant conversationnel (Mistral).
+  # Sans clé API, le conteneur démarre quand même : /health annonce les capacités comme
+  # désactivées et le backend affiche un message explicite. Rien d'autre n'est bloqué.
+  ai:
+    build:
+      context: ../workers/ai_service
+      dockerfile: Dockerfile
+    container_name: optimisante-ai
+    ports:
+      - "8200:8200"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - EXTRACTION_MODEL=${EXTRACTION_MODEL:-gemini/gemini-3.6-flash}
+      - CHAT_MODEL=${CHAT_MODEL:-mistral/mistral-small-latest}
+      - DRAFT_MODEL=${DRAFT_MODEL:-mistral/mistral-small-latest}
+      - BACKEND_BASE_URL=http://backend:8080
+      - DATABASE_URL=postgresql+psycopg2://postgres:Investx2026@postgres:5432/optimisante_db
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
 volumes:
   optimisante-pgdata:
   optimisante-redisdata:
+  optimisante-exports:

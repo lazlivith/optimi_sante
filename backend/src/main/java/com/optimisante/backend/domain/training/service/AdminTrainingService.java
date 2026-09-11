@@ -7,6 +7,7 @@ import com.optimisante.backend.domain.training.entity.TrainingApprovalStatus;
 import com.optimisante.backend.domain.training.repository.TrainingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ public class AdminTrainingService {
 
     private final TrainingRepository trainingRepository;
     private final StorageService storageService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<AdminTrainingResponseDto> listTrainings(TrainingApprovalStatus statusFilter) {
@@ -58,7 +60,15 @@ public class AdminTrainingService {
         training.setApprovalStatus(TrainingApprovalStatus.APPROVED);
         training.setIsPublished(true);
         training.setRejectionReason(null);
-        return toResponseDto(trainingRepository.save(training));
+        Training saved = trainingRepository.save(training);
+
+        // Sans cette notification, un CHU ne savait pas si son offre etait publiee : il lui
+        // fallait revenir la consulter au hasard dans son espace.
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.TrainingApprovalDecided(
+                saved.getId(), saved.getPartnerProfile().getUser().getId(), saved.getTitle(),
+                true, null));
+
+        return toResponseDto(saved);
     }
 
     @Transactional
@@ -68,7 +78,13 @@ public class AdminTrainingService {
         training.setApprovalStatus(TrainingApprovalStatus.REJECTED);
         training.setIsPublished(false);
         training.setRejectionReason(reason);
-        return toResponseDto(trainingRepository.save(training));
+        Training saved = trainingRepository.save(training);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.TrainingApprovalDecided(
+                saved.getId(), saved.getPartnerProfile().getUser().getId(), saved.getTitle(),
+                false, reason));
+
+        return toResponseDto(saved);
     }
 
     /**

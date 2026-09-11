@@ -4,6 +4,7 @@ import { PageTransition } from '../components/common/PageTransition';
 import {
   FileStack, ShieldCheck, UserCog, Store, LogOut, Stethoscope
 } from 'lucide-react';
+import { NotificationBell } from '../components/common/NotificationBell';
 
 const NAV_ITEMS = [
   { to: '/doctor', label: 'Mes dossiers', icon: FileStack, end: true },
@@ -83,6 +84,9 @@ export function DoctorLayout() {
       </aside>
 
       <main className="flex-1 min-w-0 overflow-y-auto">
+        <div className="h-14 border-b border-slate-200 bg-white flex items-center justify-end px-6 sticky top-0 z-30">
+          <NotificationBell />
+        </div>
         <PageTransition>
           <Outlet />
         </PageTransition>

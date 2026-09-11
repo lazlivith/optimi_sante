@@ -4,6 +4,7 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PageTransition } from './components/common/PageTransition';
+import { ChatWidget } from './components/ai/ChatWidget';
 import { ScrollManager } from './components/common/ScrollManager';
 // Rôles autorisés par univers, lus de la même définition que la sidebar : le layout n'est
 // accessible qu'aux administrateurs, chaque route interne restreint ensuite au métier
@@ -61,6 +62,14 @@ const PartnerDashboardHomePage = lazy(() => import('./pages/partner/PartnerDashb
 const PartnerEnrollmentsPage = lazy(() => import('./pages/partner/PartnerEnrollmentsPage').then(m => ({ default: m.PartnerEnrollmentsPage })));
 const PartnerSessionsPage = lazy(() => import('./pages/partner/PartnerSessionsPage').then(m => ({ default: m.PartnerSessionsPage })));
 const PartnerTrainingsPage = lazy(() => import('./pages/partner/PartnerTrainingsPage').then(m => ({ default: m.PartnerTrainingsPage })));
+const AdminAnalyticsPage = lazy(() => import('./pages/admin/AdminAnalyticsPage').then(m => ({ default: m.AdminAnalyticsPage })));
+const AdminReportsPage = lazy(() => import('./pages/admin/AdminReportsPage').then(m => ({ default: m.AdminReportsPage })));
+const AdminAuditLogPage = lazy(() => import('./pages/admin/AdminAuditLogPage').then(m => ({ default: m.AdminAuditLogPage })));
+const AdminGovernancePage = lazy(() => import('./pages/admin/AdminGovernancePage').then(m => ({ default: m.AdminGovernancePage })));
+const AdminAlertsPage = lazy(() => import('./pages/admin/AdminAlertsPage').then(m => ({ default: m.AdminAlertsPage })));
+const AdminAiPage = lazy(() => import('./pages/admin/AdminAiPage').then(m => ({ default: m.AdminAiPage })));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
+const NotificationSettingsPage = lazy(() => import('./pages/NotificationSettingsPage').then(m => ({ default: m.NotificationSettingsPage })));
 const PartnerFinancePage = lazy(() => import('./pages/partner/PartnerFinancePage').then(m => ({ default: m.PartnerFinancePage })));
 const AdminLayout = lazy(() => import('./layouts/AdminLayout').then(m => ({ default: m.AdminLayout })));
 const PartnerLayout = lazy(() => import('./layouts/PartnerLayout').then(m => ({ default: m.PartnerLayout })));
@@ -122,11 +131,17 @@ export function App() {
               {/* --- Supervision : transverse aux deux métiers --- */}
               <Route element={<ProtectedRoute allowedRoles={ALL_ADMIN_ROLES} />}>
                 <Route path="emails" element={<AdminEmailsPage />} />
+                <Route path="alerts" element={<AdminAlertsPage />} />
+                <Route path="ai" element={<AdminAiPage />} />
               </Route>
 
               {/* --- Gouvernance --- */}
               <Route element={<ProtectedRoute allowedRoles={GOV_ROLES} />}>
                 <Route path="users" element={<AdminUsersPage />} />
+                <Route path="analytics" element={<AdminAnalyticsPage />} />
+                <Route path="reports" element={<AdminReportsPage />} />
+                <Route path="audit" element={<AdminAuditLogPage />} />
+                <Route path="governance" element={<AdminGovernancePage />} />
               </Route>
             </Route>
           </Route>
@@ -138,7 +153,7 @@ export function App() {
               <Route path="trainings" element={<PartnerTrainingsPage />} />
               <Route path="enrollments" element={<PartnerEnrollmentsPage />} />
               <Route path="sessions" element={<PartnerSessionsPage />} />
-            <Route path="finance" element={<PartnerFinancePage />} />
+              <Route path="finance" element={<PartnerFinancePage />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
           </Route>
@@ -189,6 +204,8 @@ export function App() {
                   <Route element={<ProtectedRoute />}>
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/my-orders" element={<MyOrdersPage />} />
+                    <Route path="/notifications" element={<NotificationsPage />} />
+                    <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
                     <Route path="/mes-donnees" element={<MyPersonalDataPage />} />
                   </Route>
                 </Routes>
@@ -197,6 +214,10 @@ export function App() {
           />
         </Routes>
       </Suspense>
+
+      {/* Assistant conversationnel — disponible sur tous les espaces, y compris hors connexion
+          (catalogue et formations uniquement dans ce cas). */}
+      <ChatWidget />
     </BrowserRouter>
   );
 }

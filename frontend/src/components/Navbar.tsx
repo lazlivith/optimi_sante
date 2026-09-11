@@ -4,6 +4,7 @@ import { adminHomeFor, ALL_ADMIN_ROLES } from '../lib/adminUniverses';
 import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, Settings, Search, Home, Briefcase, Database as DatabaseIcon, ShieldCheck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { NotificationBell } from './common/NotificationBell';
 
 /**
  * Logo de l'en-tete : declinaison coloree, decoupee de la planche de marque et detouree.
@@ -130,6 +131,9 @@ export const Navbar = () => {
               </span>
             )}
           </Link>
+
+          {/* Notifications */}
+          {isAuthenticated && user && <NotificationBell />}
 
           {/* User */}
           {isAuthenticated && user ? (

@@ -115,6 +115,14 @@ export const enrollmentService = {
     return data;
   },
 
+  /**
+   * Retrait de sa propre candidature. Possible tant que le dossier n'a pas ete transmis
+   * a l'etablissement ; au-dela le serveur repond 409 et le dossier reste en place.
+   */
+  deleteMyEnrollment: async (enrollmentId: string): Promise<void> => {
+    await axiosClient.delete(`/enrollments/${enrollmentId}`);
+  },
+
   uploadDocument: async (enrollmentId: string, file: File, documentType: string, onProgress?: (percent: number) => void) => {
     const formData = new FormData();
     formData.append('file', file);

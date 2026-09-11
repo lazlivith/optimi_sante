@@ -5,6 +5,8 @@ import com.optimisante.backend.domain.identity.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -15,4 +17,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
     Page<User> findByRole(Role role, Pageable pageable);
+
+    /** Identifiant de tenant sans charger l'entité User (association LAZY) — utilisé par les notifications. */
+    @Query("SELECT u.tenant.id FROM User u WHERE u.id = :id")
+    Optional<UUID> findTenantIdById(@Param("id") UUID id);
 }

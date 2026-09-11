@@ -16,6 +16,7 @@ import com.optimisante.backend.domain.training.entity.EnrollmentStatus;
 import org.springframework.security.core.Authentication;
 import java.util.Map;
 import com.optimisante.backend.config.security.MobilityAdmin;
+import com.optimisante.backend.config.security.PlatformAdmin;
 
 @RestController
 @RequestMapping("/api/v1/admin/enrollments")
@@ -100,6 +101,18 @@ public class AdminEnrollmentResource {
     public ResponseEntity<EnrollmentResponseDto> cancel(@PathVariable UUID id,
                                                         @RequestBody Map<String, String> body) {
         return ResponseEntity.ok(enrollmentService.cancelEnrollment(id, body.get("reason")));
+    }
+
+    /**
+     * Retrait definitif d'une candidature. Refuse des que le dossier est parti au CHU :
+     * l'annulation motivee prend alors le relais, en conservant la trace du dossier.
+     */
+    @DeleteMapping("/{id}")
+    @PlatformAdmin
+    public ResponseEntity<Void> deleteEnrollment(@PathVariable UUID id, Authentication auth) {
+        UUID adminId = UUID.fromString(auth.getPrincipal().toString());
+        enrollmentService.deleteEnrollment(id, adminId, true);
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/status")

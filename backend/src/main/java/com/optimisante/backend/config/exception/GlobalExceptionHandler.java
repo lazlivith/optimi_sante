@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -75,6 +77,26 @@ public class GlobalExceptionHandler {
      * interne (`com.optimisante.backend.domain.identity.entity.FacilityType`) au client :
      * message illisible pour l'utilisateur et divulgation inutile de la structure du code.
      */
+    /**
+     * Paramètre de requête absent ou de type incompatible.
+     *
+     * <p>Sans ce traitement, ces deux cas tombaient dans le gestionnaire générique et
+     * répondaient <b>500 « Une erreur interne est survenue »</b>. Or rien n'est en panne :
+     * l'appelant a simplement omis un paramètre. Le message envoyait chercher un défaut de
+     * serveur inexistant, alors que la correction est du côté de l'appel — et il nommait
+     * d'autant moins la cause que le paramètre manquant, lui, était connu.</p>
+     */
+    @ExceptionHandler({MissingServletRequestParameterException.class,
+                       MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<Map<String, String>> handleBadParameter(Exception ex) {
+        String message = ex instanceof MissingServletRequestParameterException manquant
+                ? "Paramètre obligatoire absent : « " + manquant.getParameterName() + " »."
+                : "Paramètre invalide : « "
+                    + ((MethodArgumentTypeMismatchException) ex).getName() + " ».";
+        log.warn("Paramètre de requête refusé : {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", message));
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, String>> handleUnreadableBody(HttpMessageNotReadableException ex) {
         String message = "Requête invalide : une valeur envoyée n'est pas reconnue.";

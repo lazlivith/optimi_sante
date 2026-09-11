@@ -53,6 +53,7 @@ public class EnrollmentService {
     private final EnrollmentDocumentRepository enrollmentDocumentRepository;
     private final com.optimisante.backend.domain.document.service.PdfGeneratorService pdfGeneratorService;
     private final com.optimisante.backend.common.storage.StorageService storageService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     /** Statuts du suivi de mobilité, seuls pilotables via advanceMobility. */
     private static final java.util.Set<EnrollmentStatus> MOBILITY_STATUSES = java.util.EnumSet.of(
@@ -90,7 +91,15 @@ public class EnrollmentService {
                 .session(session)
                 .build();
 
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        // Sans cet evenement, un dossier deposé n'apparaissait que si un administrateur
+        // pensait de lui-meme a ouvrir la liste : rien ne signalait son arrivee.
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentSubmitted(
+                saved.getId(), doctorDisplayName(saved), doctor.getEmail(),
+                saved.getSession().getTraining().getTitle()));
+
+        return toResponseDto(saved);
     }
 
     @Transactional
@@ -112,10 +121,43 @@ public class EnrollmentService {
         if (dto.passportUrl() != null)
             enrollment.setPassportUrl(dto.passportUrl());
 
-        // enrollment.setStatus(EnrollmentStatus.UNDER_REVIEW); // L'Admin changera le statut manuellement
+        // Les trois pieces de la candidature etaient jusqu'ici ecrites UNIQUEMENT dans ces
+        // colonnes, alors que le coffre-fort (admin, CHU, medecin) ne lit que la table
+        // enrollment_documents : diplome, passeport et attestation d'ordre etaient donc
+        // invisibles et non telechargeables pour ceux qui doivent instruire le dossier.
+        // On les inscrit desormais aussi comme pieces du coffre-fort, seule source consultee.
+        registerVaultDocument(enrollment, DocumentType.DIPLOMA, dto.diplomaUrl());
+        registerVaultDocument(enrollment, DocumentType.MEDICAL_COUNCIL_CERT, dto.medicalBoardRegistrationUrl());
+        registerVaultDocument(enrollment, DocumentType.PASSPORT, dto.passportUrl());
 
         log.info("Documents submitted for enrollment {} by doctor {}", enrollmentId, doctorId);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentDocumentsSubmitted(
+                saved.getId(), doctorDisplayName(saved),
+                saved.getSession().getTraining().getTitle()));
+
+        return toResponseDto(saved);
+    }
+
+    /**
+     * Inscrit une piece de candidature au coffre-fort, ou met a jour la reference existante
+     * si le medecin redepose la meme piece apres une demande de correction — sans quoi un
+     * dossier corrige plusieurs fois accumulerait des doublons dans la liste de l'admin.
+     */
+    private void registerVaultDocument(Enrollment enrollment, DocumentType type, String publicId) {
+        if (publicId == null || publicId.isBlank()) {
+            return;
+        }
+        EnrollmentDocument document = enrollmentDocumentRepository
+                .findFirstByEnrollmentIdAndDocumentType(enrollment.getId(), type)
+                .orElseGet(() -> EnrollmentDocument.builder()
+                        .enrollment(enrollment)
+                        .documentType(type)
+                        .isVerified(false)
+                        .build());
+        document.setCloudinaryPublicId(publicId);
+        enrollmentDocumentRepository.save(document);
     }
 
     @Transactional(readOnly = true)
@@ -174,6 +216,9 @@ public class EnrollmentService {
             String publicId = storageService.uploadGeneratedPdf(pdfBytes, "docs/conventions", fileName);
             enrollment.setConventionS3Key(publicId);
             log.info("Convention generated and uploaded for enrollment {} with key {}", enrollmentId, publicId);
+            eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentDocumentIssued(
+                    enrollment.getId(), enrollment.getDoctor().getId(), enrollment.getDoctor().getEmail(),
+                    "convention tripartite", partnerUserId(enrollment), doctorDisplayName(enrollment)));
         } catch (Exception e) {
             log.error("Failed to upload convention PDF to Cloudinary for enrollment {}", enrollmentId, e);
             throw new RuntimeException("Failed to upload convention", e);
@@ -222,6 +267,9 @@ public class EnrollmentService {
             String publicId = storageService.uploadGeneratedPdf(pdfBytes, "docs/attestations", fileName);
             enrollment.setAttestationS3Key(publicId);
             log.info("Attestation d'accueil générée et uploadée pour l'inscription {} avec la clé {}", enrollmentId, publicId);
+            eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentDocumentIssued(
+                    enrollment.getId(), enrollment.getDoctor().getId(), enrollment.getDoctor().getEmail(),
+                    "attestation d'accueil", null, doctorDisplayName(enrollment)));
         } catch (Exception e) {
             log.error("Échec de l'upload de l'attestation d'accueil pour l'inscription {}", enrollmentId, e);
             throw new RuntimeException("Failed to upload attestation", e);
@@ -253,7 +301,14 @@ public class EnrollmentService {
         enrollment.setActionRequiredNote(null);
 
         log.info("Dossier {} pré-qualifié par l'admin {} et transmis au partenaire", enrollmentId, adminId);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentSubmittedToPartner(
+                saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
+                doctorDisplayName(saved), saved.getSession().getTraining().getTitle(),
+                partnerUserId(saved), institutionName(saved)));
+
+        return toResponseDto(saved);
     }
 
     /**
@@ -274,7 +329,15 @@ public class EnrollmentService {
         enrollment.setOptimiReviewedBy(adminId);
 
         log.info("Corrections demandées sur le dossier {} par l'admin {}", enrollmentId, adminId);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        // Le motif voyage AVEC l'evenement : le medecin doit savoir quelle piece corriger,
+        // pas seulement que son dossier a change d'etat.
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentActionRequired(
+                saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
+                saved.getActionRequiredNote()));
+
+        return toResponseDto(saved);
     }
 
     /** Le médecin a déposé les pièces demandées et resoumet son dossier à la revue. */
@@ -290,7 +353,13 @@ public class EnrollmentService {
         enrollment.setActionRequiredNote(null);
 
         log.info("Dossier {} resoumis par le médecin {} après corrections", enrollmentId, doctorId);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentResubmitted(
+                saved.getId(), doctorDisplayName(saved),
+                saved.getSession().getTraining().getTitle()));
+
+        return toResponseDto(saved);
     }
 
     /**
@@ -332,7 +401,13 @@ public class EnrollmentService {
             log.info("Dossier {} refusé par le partenaire {}", enrollmentId, partnerUserId);
         }
 
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.PartnerDecisionMade(
+                saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
+                doctorDisplayName(saved), institutionName(saved), accept, reason));
+
+        return toResponseDto(saved);
     }
 
     /**
@@ -365,7 +440,13 @@ public class EnrollmentService {
 
         log.info("Le partenaire {} demande des pièces complémentaires sur le dossier {}",
                 partnerUserId, enrollmentId);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.PartnerCorrectionRequested(
+                saved.getId(), saved.getDoctor().getId(), doctorDisplayName(saved),
+                saved.getDoctor().getEmail(), institutionName(saved), saved.getActionRequiredNote()));
+
+        return toResponseDto(saved);
     }
 
     /**
@@ -385,7 +466,13 @@ public class EnrollmentService {
 
         enrollment.setStatus(newStatus);
         log.info("Dossier {} avancé au statut de mobilité {}", enrollmentId, newStatus);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.MobilityAdvanced(
+                saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
+                newStatus.name()));
+
+        return toResponseDto(saved);
     }
 
     /** Annulation administrative : possible depuis tout état non terminal, motif obligatoire. */
@@ -401,7 +488,13 @@ public class EnrollmentService {
         enrollment.setRejectionReason(reason.trim());
 
         log.info("Dossier {} annulé : {}", enrollmentId, reason);
-        return toResponseDto(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentCancelled(
+                saved.getId(), saved.getDoctor().getId(), saved.getDoctor().getEmail(),
+                doctorDisplayName(saved), partnerUserId(saved), saved.getRejectionReason()));
+
+        return toResponseDto(saved);
     }
 
     /**
@@ -460,6 +553,11 @@ public class EnrollmentService {
                         + "(commission {} EUR, partenaire {} EUR)",
                 rang, enrollmentId, payment.getGrossAmount(), payment.getCommissionAmount(),
                 payment.getPartnerPayoutAmount());
+
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.TuitionPaid(
+                enrollment.getId(), enrollment.getDoctor().getId(), doctorDisplayName(enrollment),
+                enrollment.getSession().getTraining().getTitle(), partnerUserId(enrollment),
+                payment.getGrossAmount()));
 
         return toResponseDto(issueEnrollmentDocuments(enrollmentId));
     }
@@ -579,6 +677,81 @@ public class EnrollmentService {
         }
     }
 
+    /**
+     * Retrait d'une candidature, par le medecin lui-meme ou par l'administration.
+     *
+     * <p>Le retrait n'est possible que tant que le dossier releve encore d'OptimiSante. Une
+     * fois transmis au CHU, il engage un tiers qui l'examine : le faire disparaitre sous ses
+     * yeux n'est pas un cas d'usage, et les etapes suivantes (acceptation, paiement, convention)
+     * s'appuient dessus. Passe ce point, la sortie legitime est l'annulation motivee, qui
+     * conserve la trace du dossier.</p>
+     *
+     * <p>La place reservee dans la session est rendue : sans cela, chaque retrait amputerait
+     * definitivement la capacite de la session.</p>
+     *
+     * @param requesterId auteur de la demande ; ignore si {@code isAdmin}, sinon doit etre le
+     *                    medecin proprietaire du dossier.
+     */
+    @Transactional
+    public void deleteEnrollment(UUID enrollmentId, UUID requesterId, boolean isAdmin) {
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+
+        if (!isAdmin && !enrollment.getDoctor().getId().equals(requesterId)) {
+            throw new AccessDeniedException("Ce dossier ne vous appartient pas.");
+        }
+
+        if (!DOCTOR_EDITABLE_STATUSES.contains(enrollment.getStatus())) {
+            throw new IllegalStateException(
+                    "Ce dossier a deja ete transmis a l'etablissement : il ne peut plus etre "
+                            + "supprime. Utilisez l'annulation, qui en conserve la trace.");
+        }
+
+        UUID sessionId = enrollment.getSession().getId();
+        enrollmentRepository.delete(enrollment);
+        // Force l'ordre : la suppression doit atteindre la base avant que la place ne soit
+        // rendue, sinon le plafond de capacite refuserait l'increment.
+        enrollmentRepository.flush();
+        trainingSessionRepository.incrementAvailableSeats(sessionId);
+
+        log.info("Dossier {} supprime par {} ({})", enrollmentId, requesterId,
+                isAdmin ? "administration" : "le medecin");
+    }
+
+    /**
+     * Nom affichable d'un medecin pour les notifications destinees a l'equipe admin.
+     * Repli sur l'e-mail : un dossier tout juste cree peut ne pas encore avoir de profil.
+     */
+    private String doctorDisplayName(Enrollment enrollment) {
+        User doctor = enrollment.getDoctor();
+        return doctorProfileRepository.findByUserId(doctor.getId())
+                .map(p -> "Dr. " + p.getFirstName() + " " + p.getLastName())
+                .orElse(doctor.getEmail());
+    }
+
+    /**
+     * Etats dans lesquels le dossier est encore entre les mains du medecin et d'OptimiSante :
+     * il peut y etre complete, corrige, ou retire. Des qu'il part au CHU, il devient une piece
+     * sur laquelle un tiers doit statuer, et se fige.
+     */
+    private static final java.util.Set<EnrollmentStatus> DOCTOR_EDITABLE_STATUSES =
+            java.util.EnumSet.of(EnrollmentStatus.UNDER_OPTIMI_REVIEW, EnrollmentStatus.ACTION_REQUIRED);
+
+    /**
+     * Compte du partenaire d'accueil, destinataire de ses notifications. {@code null} si la
+     * formation n'a pas de partenaire rattache : l'envoi est alors simplement ignore, plutot
+     * que de faire echouer l'action metier pour une notification.
+     */
+    private UUID partnerUserId(Enrollment enrollment) {
+        var partner = enrollment.getSession().getTraining().getPartnerProfile();
+        return partner == null || partner.getUser() == null ? null : partner.getUser().getId();
+    }
+
+    /** Etablissement d'accueil de la session, pour situer le dossier dans les messages. */
+    private String institutionName(Enrollment enrollment) {
+        var partner = enrollment.getSession().getTraining().getPartnerProfile();
+        return partner == null ? "l'etablissement d'accueil" : partner.getInstitutionName();
+    }
+
     private Enrollment requireEnrollment(UUID enrollmentId) {
         return enrollmentRepository.findById(enrollmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Dossier introuvable"));
@@ -610,10 +783,19 @@ public class EnrollmentService {
         }
 
         boolean wasNotConfirmed = enrollment.getStatus() != EnrollmentStatus.CONFIRMED;
+        EnrollmentStatus previousStatus = enrollment.getStatus();
         enrollment.setStatus(newStatus);
 
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
         log.info("Enrollment {} status updated to {}", enrollmentId, newStatus);
+
+        if (previousStatus != newStatus) {
+            eventPublisher.publishEvent(
+                    new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentStatusChanged(
+                            savedEnrollment.getId(), savedEnrollment.getDoctor().getId(),
+                            savedEnrollment.getDoctor().getEmail(),
+                            previousStatus == null ? null : previousStatus.name(), newStatus.name()));
+        }
 
         // --- SPRINT 4: Génération automatique de la convention tripartite ---
         // Volontairement non bloquant : le changement de statut est une décision administrative
@@ -687,6 +869,15 @@ public class EnrollmentService {
                 || role == com.optimisante.backend.domain.identity.entity.Role.ADMIN_MOBILITE;
         if (!isAdmin && !enrollment.getDoctor().getId().equals(userId)) {
             throw new AccessDeniedException("Vous n'êtes pas autorisé à déposer une pièce sur ce dossier.");
+        }
+
+        // Une fois le dossier transmis au CHU, son contenu est fige pour le candidat : le
+        // partenaire doit statuer sur les pieces exactes qui lui ont ete presentees.
+        // L'administration conserve le droit d'ajouter des pieces (lettre consulaire,
+        // attestation d'hebergement), qui relevent d'etapes posterieures.
+        if (!isAdmin && !DOCTOR_EDITABLE_STATUSES.contains(enrollment.getStatus())) {
+            throw new IllegalStateException(
+                    "Votre dossier a ete transmis a l'etablissement : il n'est plus modifiable.");
         }
 
         String publicId = storageService.uploadFile(file, "docs/enrollments");

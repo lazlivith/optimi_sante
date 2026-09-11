@@ -2,24 +2,13 @@ import { useEffect, useState } from 'react';
 import { partnerService, type EnrollmentDto, type PartnerTrainingDto } from '../../api/partnerService';
 import { PartnerInterviewDialog } from '../../components/enrollment/PartnerInterviewDialog';
 import type { DocumentItemDto } from '../../api/vaultService';
-import { vaultService } from '../../api/vaultService';
+import { vaultService, getDocumentLabel } from '../../api/vaultService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Avatar } from '../../components/common/Avatar';
 import { Loader2, CheckCircle, FileText, Filter, FolderOpen, X, ExternalLink, CalendarPlus} from 'lucide-react';
-
-const DOCUMENT_TYPE_LABELS: Record<string, string> = {
-  PASSPORT: 'Passeport',
-  DIPLOMA: 'Diplôme de médecine',
-  MEDICAL_COUNCIL_CERT: "Certificat de l'Ordre des Médecins",
-  FINANCIAL_GUARANTEE: 'Garantie financière',
-  VISA_GRANT: 'Attestation de visa',
-  CONSULAR_LETTER: "Lettre d'Accompagnement Consulaire",
-  ACCOMMODATION_PROOF: "Attestation d'Hébergement",
-  OTHER: 'Autre pièce justificative',
-};
 
 export function PartnerEnrollmentsPage() {
   const [enrollments, setEnrollments] = useState<EnrollmentDto[]>([]);
@@ -256,7 +245,7 @@ export function PartnerEnrollmentsPage() {
                         <FileText className="w-5 h-5 text-slate-400 shrink-0" />
                         <div className="min-w-0">
                           <div className="text-sm font-semibold text-slate-800 truncate">
-                            {DOCUMENT_TYPE_LABELS[doc.type] || doc.type}
+                            {getDocumentLabel(doc.type)}
                           </div>
                           <div className="text-xs text-slate-400">{new Date(doc.date).toLocaleDateString('fr-FR')}</div>
                         </div>

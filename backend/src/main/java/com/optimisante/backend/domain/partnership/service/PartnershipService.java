@@ -42,6 +42,7 @@ public class PartnershipService {
     private final PdfGeneratorService pdfGeneratorService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     /**
      * Génère (à la volée, comme les autres documents du projet) le modèle vierge de convention
@@ -59,7 +60,24 @@ public class PartnershipService {
             String institutionName, String finessAccreditation, String contactPersonName,
             String contactEmail, String contactPhone, String address, MultipartFile conventionFile) {
 
-        String fileKey = storageService.uploadFile(conventionFile, "docs/partnership-requests");
+        if (conventionFile == null || conventionFile.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "La convention de partenariat signée est obligatoire.");
+        }
+
+        // Sans ce filtre, une erreur du fournisseur de stockage remontait telle quelle a
+        // l'etablissement candidat — « Missing required parameter - api_key » — un message
+        // qui ne lui dit rien et qu'il ne peut pas corriger. La cause technique reste dans
+        // les logs, cote exploitant, ou elle est reellement actionnable.
+        String fileKey;
+        try {
+            fileKey = storageService.uploadFile(conventionFile, "docs/partnership-requests");
+        } catch (Exception e) {
+            log.error("Depot de convention impossible pour {} : {}", institutionName, e.getMessage(), e);
+            throw new IllegalStateException(
+                    "L'envoi de votre convention a échoué. Merci de réessayer dans quelques "
+                            + "instants ; si le problème persiste, contactez-nous directement.");
+        }
 
         PartnershipRequest request = PartnershipRequest.builder()
                 .institutionName(institutionName)
@@ -72,7 +90,11 @@ public class PartnershipService {
                 .status(PartnershipStatus.PENDING)
                 .build();
 
-        return toDto(partnershipRequestRepository.saveAndFlush(request));
+        PartnershipRequestResponseDto dto = toDto(partnershipRequestRepository.saveAndFlush(request));
+        eventPublisher.publishEvent(
+                new com.optimisante.backend.domain.notification.event.NotificationEvents.PartnershipRequestSubmitted(
+                        institutionName, contactEmail));
+        return dto;
     }
 
     @Transactional(readOnly = true)
@@ -131,12 +153,20 @@ public class PartnershipService {
         emailService.sendCredentialsEmail(
                 request.getContactEmail(), request.getContactPersonName(), temporaryPassword, "Partenaire CHU", user);
 
+        eventPublisher.publishEvent(
+                new com.optimisante.backend.domain.notification.event.NotificationEvents.PartnerAccountValidated(
+                        user.getId(), user.getEmail(), request.getContactPersonName(), request.getInstitutionName()));
+
         log.info("Demande de partenariat {} approuvée, compte {} créé", requestId, user.getEmail());
         return toDto(request);
     }
 
     @Transactional
     public PartnershipRequestResponseDto rejectRequest(UUID requestId, String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Un motif est obligatoire pour refuser une demande de partenariat.");
+        }
         PartnershipRequest request = partnershipRequestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Partnership request not found"));
 
@@ -145,9 +175,16 @@ public class PartnershipService {
         }
 
         request.setStatus(PartnershipStatus.REJECTED);
-        request.setRejectionReason(reason);
+        request.setRejectionReason(reason.trim());
         request.setReviewedAt(OffsetDateTime.now());
-        return toDto(partnershipRequestRepository.save(request));
+        PartnershipRequest saved = partnershipRequestRepository.save(request);
+
+        // Le candidat n'a pas encore de compte : l'e-mail est le seul canal qui l'atteigne.
+        // Sans lui, une demande refusee restait sans reponse, indefiniment.
+        eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.PartnershipRequestRejected(
+                saved.getInstitutionName(), saved.getContactEmail(), saved.getRejectionReason()));
+
+        return toDto(saved);
     }
 
     private UUID requireTenantId() {

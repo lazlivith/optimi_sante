@@ -3031,3 +3031,117 @@ transition modifiée — c'est une condition préalable à une transition qui ex
 | Lignes reversables au partenaire | **2** (1 632 € + 1 088 € = 2 720 €) |
 | Session ouverte avant la V45 | soldée en `FULL` à 3 200 €, aucune ligne d'acompte créée |
 | Dossier réglé en une fois | reste dû **0** · départ autorisé sans solde |
+
+---
+
+## Fusion des deux branches — `optimisante`
+
+Deux personnes ont travaillé en parallèle pendant plusieurs semaines : `main` a construit les
+cinq lots de la mobilité, `John` a construit gouvernance, audit, analytics, notifications et
+assistant IA. 145 fichiers, près de 12 000 lignes à réunir.
+
+### Ce que git a signalé, et ce qu'il n'a pas signalé
+
+La simulation de fusion annonçait **4 fichiers en conflit**. Elle disait vrai — et c'était le
+moindre des problèmes.
+
+Les deux branches avaient numéroté leurs migrations **V40 à V45**. Douze fichiers, six numéros
+en double, **zéro conflit git** : les noms de fichiers différaient, alors git les a tous placés
+dans le même répertoire sans un mot. Flyway, lui, aurait refusé de démarrer.
+
+Et parmi ces migrations, une bombe silencieuse. La `V44` de John :
+
+```sql
+CHECK (email_type IN ('CREDENTIALS', 'TEST', 'NOTIFICATION'));
+```
+
+Renumérotée et exécutée après la `V41` de `main`, elle **supprimait** `INTERVIEW_SLOTS` et
+`INTERVIEW_CONFIRMED`. PostgreSQL ne sait pas étendre un CHECK : il faut le recréer, et toute
+recréation doit réénumérer l'intégralité des valeurs. Celle-ci ne connaissait pas les deux
+autres.
+
+Rien ne l'aurait signalé. Pas de conflit git. Pas d'erreur de compilation — l'enum Java et la
+contrainte SQL sont deux sources de vérité indépendantes. Pas d'échec au démarrage — la
+contrainte est syntaxiquement valide. **La panne ne serait apparue qu'à la première convocation
+d'entretien**, après que l'email soit parti, sur l'écriture de sa trace.
+
+La règle inscrite dans la V50 corrigée : une contrainte recréée part **toujours** de l'enum Java
+complet, jamais des seules valeurs que l'on croit connaître.
+
+*Vérifié après fusion :* les cinq types coexistent en base, avec des lignes réelles pour
+`INTERVIEW_SLOTS`, `INTERVIEW_CONFIRMED` **et** `NOTIFICATION`.
+
+### Une contradiction que la fusion a rendue atteignable
+
+`main` portait un défaut dormant depuis la V37, dans une table que j'avais écrite moi-même :
+
+* la clé étrangère vers `enrollment_documents` est `ON DELETE SET NULL`, avec ce commentaire —
+  *« si le fichier disparaît, la demande subsiste et redevient à satisfaire »* ;
+* la contrainte de cohérence exige `document_id IS NOT NULL` pour les statuts `SUBMITTED` et
+  `ACCEPTED`.
+
+Supprimer un fichier réclame donc de mettre à NULL une colonne qui l'interdit. La suppression
+échoue, et la demande ne « redevient » rien du tout. **Mon commentaire décrivait un
+comportement que ma propre contrainte rendait impossible.**
+
+Personne ne l'avait vu parce qu'aucun parcours ne supprimait de pièce déposée. John en a ajouté
+un — la suppression d'un dossier cascade vers ses documents — et le défaut est devenu un 500
+sur un geste ordinaire de l'administration.
+
+La V52 tient la promesse plutôt que de l'abandonner : un déclencheur ramène à `PENDING` les
+demandes qui désignaient la pièce supprimée. Un déclencheur et non un contrôle applicatif, parce
+que la suppression peut venir d'une cascade, d'un script ou d'un écran futur — une règle posée
+dans un service ne couvrirait que le chemin connu aujourd'hui, exactement l'erreur que cette
+migration répare.
+
+### Le menu qui mentait
+
+Décision validée : les quatre modules transverses (analytics, alertes, rapports, IA) restent
+sous `@PlatformAdmin`. Leurs données croisent les deux métiers — l'écran d'analytics affiche le
+chiffre d'affaires *et* l'entonnoir de candidatures — et les ouvrir à un administrateur de
+périmètre lui montrerait les chiffres de l'autre.
+
+Or John avait rangé « Alertes » et « Intelligence artificielle » dans l'univers *Supervision*,
+visible des deux administrateurs de périmètre. Un admin négoce aurait vu deux entrées dans sa
+barre latérale, cliqué, et reçu un 403.
+
+Les deux entrées ont rejoint l'univers *Gouvernance*. **Le menu doit dire la même chose que le
+serveur, sinon il ment** — et l'utilisateur conclut à une panne là où il n'y a qu'une règle.
+
+### Ce que la recette a encore trouvé
+
+Le jeu de données de recette a échoué **deux fois** avant de passer :
+
+1. Il reprenait le mot de passe de `superadmin@optimi.com`, compte qu'**aucune migration ne
+   crée** — il n'existait que sur la base de travail partagée. Inutilisable sur toute
+   installation fraîche. Il se rabat désormais sur le premier compte d'administration présent.
+2. Il insérait un paiement de formation **sans rang d'échéance**, écrit avant que le lot 5 ne
+   découpe les frais en acompte et solde. La ligne porte maintenant `DEPOSIT` et son montant
+   réel, 1 920 € — et non le prix plein, qui aurait laissé croire à un règlement unique.
+
+### Vérifié sur la plateforme fusionnée
+
+**Étanchéité**, jouée avec les cinq comptes réels sur neuf familles de routes :
+
+| | Négoce | Mobilité | Emails | Analytics · Audit · RGPD · Alertes · Rapports · IA |
+|---|---|---|---|---|
+| `SUPER_ADMIN` | ✅ | ✅ | ✅ | ✅ |
+| `ADMIN_ECOMMERCE` | ✅ | **403** | ✅ | **403** |
+| `ADMIN_MOBILITE` | **403** | ✅ | ✅ | **403** |
+| `CENTRE_FORMATION` · `MEDECIN` · `CLIENT_B2C` | **403** | **403** | **403** | **403** |
+
+Aucun écart avec la spécification.
+
+**Non-régression des cinq lots** : entretien visio complet (proposition, 204 avant transmission,
+transmission, confirmation, convocation au coffre), échéancier exact au centime
+(`3 200 € = 1 920 € + 1 280 €`), solde refusé avant le visa (409), catalogue de services et
+frais de dossier intacts.
+
+**Modules de John sur les données réelles de `main`** : 12 dossiers en analytics, journal
+d'audit alimenté, 7 rapports, notifications livrées dans la bonne boîte, assistant IA dégradant
+proprement sans clé (409 explicite).
+
+**Trois défauts corrigés au passage** : en-tête d'export `Jour;Nouveaux comptes` au lieu d'une
+colonne « Revenu » toujours nulle ; paramètre manquant répondant `400 Paramètre obligatoire
+absent : « dataset »` au lieu de « erreur interne » ; et douze gardes d'accès écrites à la main
+remplacées par les annotations composées — il n'en reste aucune dans le backend.

@@ -72,6 +72,33 @@ public class EmailService {
     }
 
     /**
+     * Envoi d'un e-mail transactionnel générique : {@code innerHtml} est le corps du message,
+     * inséré dans la charte visuelle commune (en-tête vert, pied de page). Échec non bloquant,
+     * comme {@link #sendCredentialsEmail} — utilisé par le {@code NotificationDispatcher}.
+     */
+    public void sendHtml(String to, String subject, String heading, String innerHtml) {
+        if (to == null || to.isBlank()) {
+            return;
+        }
+        send(to, subject, wrap(heading, innerHtml), EmailType.NOTIFICATION, null);
+    }
+
+    private String wrap(String heading, String innerHtml) {
+        return """
+                <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1a2e29;">
+                    <div style="background-color: #154D44; padding: 24px; border-radius: 12px 12px 0 0;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">Optimi Santé</h1>
+                    </div>
+                    <div style="border: 1px solid #E2EBE5; border-top: none; padding: 32px; border-radius: 0 0 12px 12px;">
+                        <h2 style="margin: 0 0 16px; font-size: 16px; color: #154D44;">%s</h2>
+                        %s
+                        <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
+                    </div>
+                </div>
+                """.formatted(heading, innerHtml);
+    }
+
+    /**
      * Email de vérification déclenché manuellement depuis l'espace d'administration :
      * permet de contrôler la configuration SMTP et le rendu réel dans une vraie boîte mail.
      * Contrairement aux autres envois, celui-ci propage l'échec afin que l'administrateur

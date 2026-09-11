@@ -83,6 +83,9 @@ app:
   doctor-application:
     # Valeur de repli, appliquée quand la formation ne fixe pas ses propres frais
     # (trainings.application_fee, V40).
+    #
+    # 100,00 € et non 50,00 : la valeur de John date d'avant la V40. Le montant est annoncé
+    # dans les CGV, un écart entre le contrat et la caisse est un incident déjà survenu.
     fee-amount: ${DOCTOR_APPLICATION_FEE:100.00}
   tuition:
     # Part des frais de formation exigée à l'admission (acompte). Le solde est appelé à la
@@ -93,6 +96,14 @@ app:
     # `VITE_LEGAL_PART_ACOMPTE` côté frontend, qui alimente les CGV. Annoncer un taux dans le
     # contrat et en prélever un autre est exactement l'incident survenu sur les frais de dossier.
     deposit-rate: ${TUITION_DEPOSIT_RATE:60}
+  reporting:
+    # Worker Python FastAPI de reporting analytique. Vide => fonctionnalité "Rapports" désactivée
+    # proprement (message explicite côté admin). docker-compose fournit http://analytics:8100.
+    worker-base-url: ${REPORTING_WORKER_URL:}
+  ai:
+    # Service IA Python (extraction documentaire Gemini, assistant Mistral). Vide => toutes les
+    # fonctions IA sont désactivées proprement. docker-compose fournit http://ai:8200.
+    worker-base-url: ${AI_WORKER_URL:}
   aws:
     s3:
       endpoint: ${AWS_S3_ENDPOINT:http://localhost:4566}

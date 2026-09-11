@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { PageTransition } from '../components/common/PageTransition';
 import { Store, LogOut, ShieldCheck } from 'lucide-react';
 import { universesFor } from '../lib/adminUniverses';
+import { NotificationBell } from '../components/common/NotificationBell';
 
 /** Libellé du rattachement, affiché sous l'email en pied de sidebar. */
 const ROLE_LABELS: Record<string, string> = {
@@ -108,6 +109,9 @@ export function AdminLayout() {
 
       {/* Main content */}
       <main className="flex-1 min-w-0 overflow-y-auto">
+        <div className="h-14 border-b border-slate-200 bg-white flex items-center justify-end px-6 sticky top-0 z-30">
+          <NotificationBell />
+        </div>
         <PageTransition>
           <Outlet />
         </PageTransition>

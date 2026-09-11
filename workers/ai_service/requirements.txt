@@ -1,0 +1,18 @@
+# Bornes plutôt que versions figées : LiteLLM contraint lui-même httpx / pydantic, et un
+# épinglage strict des deux côtés rend la résolution impossible (httpx==0.28.1 vs
+# litellm qui exige httpx<0.28). On fixe les bornes majeures, pip choisit le reste.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.34,<1
+python-multipart>=0.0.20
+
+# Couche de portabilité : un seul appel `completion(model=...)` pour Gemini, Mistral, Groq,
+# Ollama... Changer de fournisseur = changer une variable d'environnement.
+litellm>=1.55,<2
+
+pydantic>=2.9,<3
+pydantic-settings>=2.7,<3
+python-dotenv>=1.0
+# Borne basse seulement : la borne haute est imposée par litellm.
+httpx>=0.27
+SQLAlchemy>=2.0,<3
+psycopg2-binary>=2.9

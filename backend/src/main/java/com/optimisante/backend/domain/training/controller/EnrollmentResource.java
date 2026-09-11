@@ -94,6 +94,18 @@ public class EnrollmentResource {
         return ResponseEntity.ok(enrollmentService.resubmitAfterAction(id, doctorId));
     }
 
+    /**
+     * Retrait de sa propre candidature par le medecin. Possible tant que le dossier est
+     * chez OptimiSante ; une fois transmis au CHU, il n'est plus ni modifiable ni supprimable.
+     */
+    @DeleteMapping("/enrollments/{id}")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public ResponseEntity<Void> deleteMyEnrollment(@PathVariable UUID id, Authentication auth) {
+        UUID doctorId = UUID.fromString(auth.getPrincipal().toString());
+        enrollmentService.deleteEnrollment(id, doctorId, false);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/enrollments/{id}/documents")
     @PreAuthorize("hasRole('MEDECIN')")
     public ResponseEntity<EnrollmentResponseDto> submitDocuments(

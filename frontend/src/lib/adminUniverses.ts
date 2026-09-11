@@ -1,6 +1,7 @@
 import {
   LayoutDashboard, TrendingUp, ShoppingBag, Package, Tag, FileText,
   GraduationCap, BookOpen, Building2, Mail, Banknote, Users,
+  BarChart3, FileSpreadsheet, ScrollText, ShieldCheck, BellRing, Bot,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -83,6 +84,24 @@ export const GOUVERNANCE_UNIVERSE: AdminUniverse = {
   home: '/admin/users',
   items: [
     { to: '/admin/users', label: 'Comptes', icon: Users },
+    // Analytics et rapports croisent le negoce ET la mobilite : les rattacher a l'un des
+    // deux metiers donnerait a son administrateur une vue sur les chiffres de l'autre.
+    // Ils restent donc ici, avec le journal d'audit et le RGPD, reserves aux roles
+    // qui ont deja la vue d'ensemble.
+    { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+    { to: '/admin/reports', label: 'Rapports', icon: FileSpreadsheet },
+    // Alertes et assistant IA rejoignent cet univers plutot que la supervision : leurs
+    // controleurs sont gardes par @PlatformAdmin, et les laisser dans un univers visible des
+    // admins de perimetre leur aurait montre deux entrees menant a un 403. Le menu doit dire
+    // la meme chose que le serveur, sinon il ment.
+    //
+    // Les seuils d'alerte portent d'ailleurs sur les deux metiers a la fois (commandes
+    // impayees ET dossiers dormants), et les outils de l'assistant interrogent le catalogue
+    // ET les formations CHU : ni l'un ni l'autre n'est rattachable a un metier.
+    { to: '/admin/alerts', label: 'Alertes', icon: BellRing },
+    { to: '/admin/ai', label: 'Intelligence artificielle', icon: Bot },
+    { to: '/admin/audit', label: "Journal d'audit", icon: ScrollText },
+    { to: '/admin/governance', label: 'Gouvernance / RGPD', icon: ShieldCheck },
   ],
 };
 

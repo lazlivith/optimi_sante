@@ -60,6 +60,7 @@ public class DoctorApplicationService {
     private final com.optimisante.backend.domain.training.finance.EnrollmentPaymentService enrollmentPaymentService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     /** Repli, appliqué quand la formation ne fixe pas ses propres frais. */
     @Value("${app.doctor-application.fee-amount}")
@@ -132,6 +133,10 @@ public class DoctorApplicationService {
 
             application.setStripeCheckoutSessionId(stripeSession.getId());
             doctorApplicationRepository.save(application);
+
+            eventPublisher.publishEvent(
+                    new com.optimisante.backend.domain.notification.event.NotificationEvents.DoctorApplicationSubmitted(
+                            dto.getFirstName() + " " + dto.getLastName(), dto.getMedicalSpecialty(), email));
 
             return toDto(application, stripeSession.getClientSecret());
         } catch (StripeException e) {
@@ -219,6 +224,11 @@ public class DoctorApplicationService {
         // permet à l'admin de renvoyer les identifiants depuis l'espace « Emails ».
         emailService.sendCredentialsEmail(application.getEmail(),
                 application.getFirstName() + " " + application.getLastName(), temporaryPassword, "Médecin", user);
+
+        eventPublisher.publishEvent(
+                new com.optimisante.backend.domain.notification.event.NotificationEvents.DoctorAccountValidated(
+                        user.getId(), user.getEmail(),
+                        application.getFirstName() + " " + application.getLastName()));
 
         log.info("Candidature {} payée, compte {} créé et inscrit à la session {}",
                 applicationId, user.getEmail(), application.getSession().getId());

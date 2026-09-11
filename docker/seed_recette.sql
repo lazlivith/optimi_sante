@@ -7,8 +7,10 @@
 -- Usage :
 --   docker exec -i optimisante-postgres psql -U postgres -d optimisante_db < docker/seed_recette.sql
 --
--- Le hash de mot de passe est repris du compte superadmin@optimi.com : le compte
--- historique admin@optimi.com a ete retire lors de la scission des roles (V30).
+-- Le hash de mot de passe est repris du PREMIER compte d'administration present, quel que
+-- soit son email. Viser `superadmin@optimi.com` nommement rendait ce script inutilisable
+-- sur toute base fraiche : ce compte n'est cree par aucune migration, il n'existait que
+-- sur la base de travail partagee. Le script echouait alors sur `password_hash` NULL.
 --
 -- ⚠️ N'EFFACE QUE les données de recette (préfixe `recette-`). Les comptes et dossiers
 -- existants ne sont jamais touchés — ce script est sûr sur une base de travail.
@@ -63,7 +65,9 @@ INSERT INTO users (id, tenant_id, email, password_hash, role, is_active, first_n
 SELECT gen_random_uuid(),
        (SELECT id FROM tenants WHERE code = 'FR_MAIN'),
        'recette-' || step || '@optimisante.test',
-       (SELECT password_hash FROM users WHERE email = 'superadmin@optimi.com'),
+       (SELECT password_hash FROM users
+        WHERE role IN ('SUPER_ADMIN', 'ADMIN') AND password_hash IS NOT NULL
+        ORDER BY created_at LIMIT 1),
        'MEDECIN', TRUE, prenom, 'Recette'
 FROM (VALUES
     ('revue',      'Amina'),
@@ -99,9 +103,9 @@ FROM users u WHERE u.email LIKE 'recette-%@optimisante.test';
 
 -- Le dossier en attente de paiement a sa ligne de règlement ouverte, comme après une
 -- acceptation réelle par le partenaire.
-INSERT INTO enrollment_payments (enrollment_id, payment_type, gross_amount,
+INSERT INTO enrollment_payments (enrollment_id, payment_type, installment, gross_amount,
     commission_rate, commission_amount, partner_payout_amount, status)
-SELECT e.id, 'TUITION_FEE', 3200.00, 15.00, 480.00, 2720.00, 'PENDING'
+SELECT e.id, 'TUITION_FEE', 'DEPOSIT', 1920.00, 15.00, 288.00, 1632.00, 'PENDING'
 FROM enrollments e
 JOIN users u ON u.id = e.doctor_id
 WHERE u.email = 'recette-paiement@optimisante.test';
