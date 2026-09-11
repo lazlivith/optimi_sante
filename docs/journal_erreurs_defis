@@ -3145,3 +3145,56 @@ proprement sans clé (409 explicite).
 colonne « Revenu » toujours nulle ; paramètre manquant répondant `400 Paramètre obligatoire
 absent : « dataset »` au lieu de « erreur interne » ; et douze gardes d'accès écrites à la main
 remplacées par les annotations composées — il n'en reste aucune dans le backend.
+
+---
+
+## Catalogue vide : une projection qui mentait sur son type
+
+### Le symptôme
+
+L'administration du négoce affichait « 0 produit au catalogue » et un bandeau
+« Impossible de charger le catalogue » — alors que la base en compte **1 487**.
+
+### La cause
+
+`/admin/catalog/products` répondait **400** :
+
+```
+Cannot project java.time.Instant to java.time.OffsetDateTime;
+Target type is not an interface and no matching Converter found
+```
+
+`AdminProductRow` est une projection d'interface sur une requête **native** — native pour
+contourner le `@SQLRestriction` de `Product`, sans quoi l'administration ne verrait jamais ses
+produits désactivés. Elle déclarait ses deux dates de promotion en `OffsetDateTime`. Or un
+`timestamptz` remonté par une requête native arrive sous forme d'`Instant`, et Spring Data ne
+convertit pas d'un type temporel vers un autre.
+
+### Pourquoi le défaut a dormi si longtemps
+
+**Une colonne nulle ne déclenche aucune conversion.** Tant qu'aucun produit ne portait de
+promotion, la projection paraissait juste : la requête passait, la page s'affichait. Les quatre
+produits mis en promotion pour le carrousel ont suffi — **quatre lignes sur 1 487** — et il
+suffit qu'une seule d'entre elles tombe dans la page consultée pour que la requête entière
+échoue.
+
+D'où un symptôme trompeur : l'écran annonce « 0 produit », ce qui se lit comme un catalogue
+vide, alors que la lecture n'a jamais abouti.
+
+### La correction
+
+La projection déclare désormais ce que la requête renvoie réellement — des `Instant` — et la
+conversion vers `OffsetDateTime` se fait explicitement dans le mappeur, **en UTC** : un
+`Instant` ne porte aucun décalage, en inventer un depuis l'horloge de la machine ferait varier
+la date affichée selon l'endroit où tourne le conteneur.
+
+### Ce que ce défaut apprend
+
+Il n'a rien à voir avec la fusion : la projection date de la V38. Mais il illustre une famille
+entière de pièges — **une erreur qui ne se déclenche que sur des données particulières**. Ni la
+compilation, ni le démarrage, ni un test sur une base fraîche ne l'auraient montrée : il fallait
+des données en promotion. C'est exactement le même schéma que la contrainte `email_logs` de la
+fusion, qui n'aurait cassé qu'à la première convocation d'entretien.
+
+*Vérifié après correction :* 1 487 produits remontent, le produit en promotion s'affiche avec
+son prix barré, l'admin mobilité reste refusé (403).

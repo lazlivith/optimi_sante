@@ -199,6 +199,17 @@ public class AdminCatalogService {
                 .build();
     }
 
+    /**
+     * Convertit une date remontee par une requete native vers le type du contrat public.
+     *
+     * <p>UTC et non le fuseau du serveur : un {@code Instant} ne porte aucun decalage, en
+     * inventer un depuis l'horloge de la machine ferait varier la date affichee selon l'endroit
+     * ou tourne le conteneur.</p>
+     */
+    private static java.time.OffsetDateTime enOffset(java.time.Instant instant) {
+        return instant == null ? null : instant.atOffset(java.time.ZoneOffset.UTC);
+    }
+
     private AdminProductResponseDto toResponseDto(AdminProductRow row, String categoryName) {
         return AdminProductResponseDto.builder()
                 .id(row.getId())
@@ -215,8 +226,8 @@ public class AdminCatalogService {
                 .categoryId(row.getCategoryId())
                 .categoryName(categoryName)
                 .promoPrice(row.getPromoPrice())
-                .promoStartsAt(row.getPromoStartsAt())
-                .promoEndsAt(row.getPromoEndsAt())
+                .promoStartsAt(enOffset(row.getPromoStartsAt()))
+                .promoEndsAt(enOffset(row.getPromoEndsAt()))
                 .trainingId(row.getTrainingId())
                 .build();
     }
