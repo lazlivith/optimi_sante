@@ -42,6 +42,7 @@ public class AdminCatalogService {
                                                       UUID categoryId,
                                                       String activeState,
                                                       boolean lowStock,
+                                                      boolean needsVisual,
                                                       String sortBy,
                                                       Pageable pageable) {
         // Requête native (voir ProductRepository.searchForAdmin) : contourne volontairement
@@ -52,6 +53,7 @@ public class AdminCatalogService {
                 categoryId != null ? categoryId.toString() : null,
                 blankToNull(activeState),
                 lowStock,
+                needsVisual,
                 whitelistSort(sortBy),
                 pageable);
 

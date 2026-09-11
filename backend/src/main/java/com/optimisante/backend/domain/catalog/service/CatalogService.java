@@ -4,6 +4,7 @@ import com.optimisante.backend.config.tenant.TenantContext;
 import com.optimisante.backend.domain.catalog.dto.CategoryResponseDto;
 import com.optimisante.backend.domain.catalog.dto.CategorySummaryDto;
 import com.optimisante.backend.domain.catalog.dto.RelatedTrainingDto;
+import com.optimisante.backend.domain.catalog.dto.ProductMediaDtos;
 import com.optimisante.backend.domain.catalog.dto.ProductResponseDto;
 import com.optimisante.backend.domain.catalog.entity.Category;
 import com.optimisante.backend.domain.catalog.entity.Product;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 public class CatalogService {
 
     private final ProductRepository productRepository;
+    private final com.optimisante.backend.domain.catalog.repository.ProductGalleryImageRepository galleryRepository;
     private final CategoryRepository categoryRepository;
     private final CompanyProfileRepository companyProfileRepository;
 
@@ -101,7 +103,18 @@ public class CatalogService {
                 .orElseThrow(() -> new RuntimeException("Product not found"));
                 
         BigDecimal b2bDiscountRate = getB2BDiscountRate();
-        return mapToProductDto(product, b2bDiscountRate);
+        // Une seule requete supplementaire, pour un seul produit : c'est la fiche detaillee
+        // qui affiche le carrousel, jamais la liste.
+        return mapToProductDto(product, b2bDiscountRate,
+                galleryRepository.findByProductIdOrderByDisplayOrderAscCreatedAtAsc(product.getId())
+                        .stream()
+                        .map(g -> ProductMediaDtos.GalleryImageView.builder()
+                                .id(g.getId())
+                                .imageUrl(g.getImageUrl())
+                                .caption(g.getCaption())
+                                .displayOrder(g.getDisplayOrder())
+                                .build())
+                        .toList());
     }
 
     private BigDecimal getB2BDiscountRate() {
@@ -130,6 +143,16 @@ public class CatalogService {
     }
 
     private ProductResponseDto mapToProductDto(Product product, BigDecimal b2bDiscountRate) {
+        return mapToProductDto(product, b2bDiscountRate, null);
+    }
+
+    /**
+     * @param galerie visuels secondaires, ou {@code null} en liste : une page de catalogue
+     *                n'affiche que des vignettes, et les charger produit par produit
+     *                declencherait une requete par ligne.
+     */
+    private ProductResponseDto mapToProductDto(Product product, BigDecimal b2bDiscountRate,
+                                               java.util.List<ProductMediaDtos.GalleryImageView> galerie) {
         // Le prix promotionnel (s'il est actif) sert de base au calcul, la remise B2B
         // s'applique ensuite par-dessus — même point de vérité que le calcul au checkout
         // (Product.getEffectiveBasePrice), pour ne jamais afficher un prix qui ne serait pas
@@ -178,7 +201,11 @@ public class CatalogService {
                 categoryDto,
                 product.isPromoActive(),
                 product.isPromoActive() ? product.getPromoEndsAt() : null,
-                formationLiee
+                formationLiee,
+                product.getVideoUrl(),
+                product.getVideoProvider(),
+                Boolean.TRUE.equals(product.getIsVideoPromoted()),
+                galerie == null ? java.util.List.of() : galerie
         );
     }
 }

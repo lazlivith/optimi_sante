@@ -50,6 +50,9 @@ public class AdminCatalogResource {
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) String activeState,
             @RequestParam(defaultValue = "false") boolean lowStock,
+            // Filtre du traitement en lot des fiches incomplètes : image absente,
+            // illustration générique ou photo temporaire.
+            @RequestParam(defaultValue = "false") boolean needsVisual,
             @RequestParam(required = false) String sortBy,
             @PageableDefault(size = 20) Pageable pageable) {
         // Seules la page et sa taille sont retenues : un tri fourni par le client serait
@@ -57,7 +60,7 @@ public class AdminCatalogResource {
         // par `sortBy`, dont les valeurs sont validées par une liste blanche.
         Pageable unsorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
         return ResponseEntity.ok(adminCatalogService.listProducts(
-                search, categoryId, activeState, lowStock, sortBy, unsorted));
+                search, categoryId, activeState, lowStock, needsVisual, sortBy, unsorted));
     }
 
     @PostMapping("/products")

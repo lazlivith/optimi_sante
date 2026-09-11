@@ -87,6 +87,26 @@ public class Product {
     @Column(name = "promo_ends_at")
     private OffsetDateTime promoEndsAt;
 
+    /**
+     * Video de demonstration du produit : televersee sur Cloudinary, ou lien d'integration.
+     *
+     * <p>Trois regles sont imposees par la base (V53) et non par l'ecran : une video exige son
+     * hebergeur, un hebergeur exige sa video, et la mise en vedette exige qu'une video existe.
+     * Sans elles, une carte produit pourrait s'animer en page d'accueil sur un cadre vide.</p>
+     */
+    @Column(name = "video_url", length = 1000)
+    private String videoUrl;
+
+    /** {@code CLOUDINARY}, {@code YOUTUBE}, {@code VIMEO} ou {@code LOOM}. Dit au lecteur s'il
+     *  doit poser une balise video ou une iframe. */
+    @Column(name = "video_provider", length = 20)
+    private String videoProvider;
+
+    /** Joue la video en boucle sur la carte produit des sections Promotion et Hero. */
+    @Column(name = "is_video_promoted", nullable = false)
+    @Builder.Default
+    private Boolean isVideoPromoted = false;
+
     @Version
     @Builder.Default
     private Integer version = 1;

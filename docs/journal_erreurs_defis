@@ -3198,3 +3198,104 @@ fusion, qui n'aurait cassé qu'à la première convocation d'entretien.
 
 *Vérifié après correction :* 1 487 produits remontent, le produit en promotion s'affiche avec
 son prix barré, l'admin mobilité reste refusé (403).
+
+---
+
+## V53 — Autonomie média : galerie, vidéo, et la fin de la dépendance
+
+### Pourquoi ce lot existe
+
+Le catalogue ne portait qu'une image par produit, importée depuis l'ancien site WordPress.
+Chaque correction supposait d'interroger un serveur tiers — dont l'équipe se plaignait, à juste
+titre, que nos requêtes dégradaient leur infrastructure. Donner à l'administration les moyens de
+téléverser elle-même coupe ce fil : les 111 produits sans visuel propre se traitent en interne.
+
+### Ce que la spécification annonçait, et ce que la base imposait
+
+La spécification fournie décrivait la table de galerie ainsi :
+
+```sql
+id BIGSERIAL PRIMARY KEY,
+product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE
+```
+
+`products.id` est un **uuid**. PostgreSQL aurait refusé la clé étrangère, Flyway aurait échoué,
+et **l'application entière n'aurait pas démarré** — pas seulement la fonctionnalité nouvelle.
+Les identifiants suivent donc la convention du projet, `uuid PRIMARY KEY DEFAULT
+gen_random_uuid()`, comme toutes les tables depuis la V26.
+
+Deux autres écarts, moins graves mais réels : les routes proposées sous `/api/admin/...`
+auraient échappé au filtre de sécurité, branché sur `/api/v1` ; et les rôles y étaient nommés
+`ECOM_ADMIN` là où le code utilise `ADMIN_ECOMMERCE`.
+
+### Trois états que la spécification laissait passer
+
+La base les refuse désormais, parce qu'aucun écran ne devrait avoir à s'en souvenir :
+
+| État | Ce qu'il aurait produit |
+|---|---|
+| Vidéo sans hébergeur | Le lecteur ne sait pas s'il pose une balise `<video>` ou une `<iframe>` |
+| Hébergeur sans vidéo | Une valeur qui ne désigne rien |
+| « Vidéo en vedette » sans vidéo | Une carte animée sur un cadre vide, en page d'accueil |
+
+S'y ajoute l'unicité d'un visuel dans une galerie : un double clic aurait affiché deux fois la
+même photo dans le carrousel.
+
+### L'obstacle que seul le code réel pouvait révéler
+
+`Product` porte `@SQLRestriction("deleted_at IS NULL AND is_active = true")`. **Un produit
+désactivé est invisible à l'entité** — or c'est très exactement celui qu'on corrige : on
+désactive un produit *parce que* sa fiche est incomplète.
+
+Les écritures média passent donc par des requêtes natives, comme le fait déjà
+`setActiveForAdmin` pour la même raison. Sans cela, un produit désactivé aurait été
+définitivement incorrigible : invisible à la lecture, impossible à mettre à jour.
+
+### La limite de 50 Mo tient sur deux niveaux, pas un
+
+La limite de téléversement du servlet était à **30 Mo**. Une vidéo de 50 Mo aurait été rejetée
+**avant d'atteindre le code métier** — donc avec une erreur technique, jamais le message
+attendu. Trois niveaux coopèrent maintenant :
+
+| Niveau | Valeur | Rôle |
+|---|---|---|
+| Servlet | 55 Mo | Laisse passer, pour que la règle métier puisse parler |
+| Métier | **50 Mo** | « La vidéo dépasse la limite autorisée de 50,0 Mo (fichier reçu : 63,2 Mo). » |
+| Filet | 413 | Si les deux se désalignent, message clair au lieu d'un 500 |
+
+**L'ordre compte** : la limite haute doit rester au-dessus de la limite métier, faute de quoi le
+message soigné n'est jamais atteint.
+
+### Un piège évité sur la fiche publique
+
+Un seul mappeur sert la liste du catalogue *et* la fiche détaillée. Y charger la galerie aurait
+déclenché **une requête par produit** à chaque page — le défaut mesuré et corrigé à plusieurs
+reprises sur ce projet. Le mappeur accepte donc la galerie en paramètre : `null` en liste, où
+seule la vignette s'affiche de toute façon ; chargée en fiche, pour un seul produit.
+
+Les champs vidéo, eux, voyagent partout : ce sont des colonnes de `products`, leur lecture est
+gratuite, et les cartes de promotion doivent pouvoir s'animer sans relire chaque produit.
+
+*Vérifié :* la fiche renvoie ses 2 visuels et sa vidéo, la liste renvoie la vidéo et une galerie
+vide.
+
+### Une lecture qui écrivait
+
+Mon premier `GET /media` appelait `setVideoPromoted(id, false)` — une méthode d'**écriture** —
+et renvoyait `null`. Reliquat d'écriture rapide, signalé par le compilateur seulement parce que
+les types ne concordaient pas : avec une signature compatible, un GET qui remet une valeur à
+zéro serait passé inaperçu jusqu'à ce qu'un administrateur perde sa mise en vedette en
+consultant sa fiche.
+
+### Vérifié sur la plateforme déployée
+
+| Contrôle | Résultat |
+|---|---|
+| Filtre « visuel à mettre à jour » | **111 produits** sur 1 487 |
+| Hébergeur vidéo inconnu · adresse vide | **400** · **400** |
+| Retrait de la vidéo | la mise en vedette retombe seule |
+| Mise en vedette sans vidéo | **409** |
+| PDF déguisé en image | **400**, formats rappelés |
+| Image de 11 Mo | **400**, limite et taille nommées |
+| Admin mobilité sur le catalogue | **403** |
+| Galerie : fiche · liste | **2 visuels** · **0** |

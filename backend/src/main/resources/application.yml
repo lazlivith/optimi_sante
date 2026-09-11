@@ -7,8 +7,13 @@ spring:
     multipart:
       # Relevé au-delà du défaut (1 MB) pour permettre l'upload d'une courte vidéo
       # d'illustration de formation (image de formation, brochures restent bien en-dessous).
-      max-file-size: 30MB
-      max-request-size: 35MB
+      # 55 Mo, soit au-dessus de la limite métier de 50 Mo appliquée par ProductMediaService.
+      # Cet ordre compte : si le servlet refusait en premier, l'administrateur recevrait une
+      # erreur technique au lieu du message qui nomme la limite et la taille de son fichier.
+      max-file-size: 55MB
+      # Une galerie se dépose en plusieurs visuels à la fois : la requête porte davantage que
+      # le plus gros fichier seul.
+      max-request-size: 120MB
 
 ---
 spring:

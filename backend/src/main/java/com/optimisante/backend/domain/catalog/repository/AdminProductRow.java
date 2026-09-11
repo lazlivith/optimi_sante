@@ -40,4 +40,8 @@ public interface AdminProductRow {
      */
     Instant getPromoStartsAt();
     Instant getPromoEndsAt();
+
+    String getVideoUrl();
+    String getVideoProvider();
+    Boolean getIsVideoPromoted();
 }

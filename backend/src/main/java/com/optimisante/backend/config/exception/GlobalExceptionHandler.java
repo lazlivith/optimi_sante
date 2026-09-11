@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
@@ -86,6 +87,24 @@ public class GlobalExceptionHandler {
      * serveur inexistant, alors que la correction est du côté de l'appel — et il nommait
      * d'autant moins la cause que le paramètre manquant, lui, était connu.</p>
      */
+    /**
+     * Fichier plus lourd que ce que le servlet accepte.
+     *
+     * <p>Sans ce traitement, un televersement trop volumineux remontait en <b>500</b> : une
+     * panne serveur, aux yeux de l'administrateur, alors qu'il suffisait de compresser la
+     * video. La limite metier de ProductMediaService reste la premiere a repondre — elle nomme
+     * la taille du fichier recu — mais elle ne peut rien dire si le servlet coupe avant elle.
+     * Ce filet ne se declenche donc que si les deux limites ont ete mal alignees, ou sur un
+     * envoi multiple dont la somme depasse la requete.</p>
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        log.warn("Téléversement refusé, taille dépassée : {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(Map.of("message",
+                "Le fichier envoyé est trop volumineux. La limite est de 50 Mo pour une vidéo "
+                + "et de 10 Mo pour une image."));
+    }
+
     @ExceptionHandler({MissingServletRequestParameterException.class,
                        MethodArgumentTypeMismatchException.class})
     public ResponseEntity<Map<String, String>> handleBadParameter(Exception ex) {
