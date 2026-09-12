@@ -20,6 +20,7 @@ public enum DocumentType {
     ACCOMMODATION_PROOF   ("Attestation d'hébergement"),
     INTERVIEW_CONVOCATION ("Convocation à l'entretien visio"),
     SERVICE_SUBSCRIPTION  ("Attestation de souscription"),
+    PAYMENT_RECEIPT       ("Reçu de paiement"),
     OTHER                 ("Autre pièce justificative");
 
     private final String libelle;
@@ -33,7 +34,14 @@ public enum DocumentType {
         return libelle;
     }
 
+    /**
+     * Le centre partenaire voit-il cette pièce ?
+     *
+     * <p>Ce qui touche à l'argent du médecin ne le regarde pas : ni l'attestation de
+     * souscription, ni les reçus de ses règlements. Il vérifie un dossier de candidature, pas
+     * une situation financière.</p>
+     */
     public boolean isVisibleToPartner() {
-        return this != SERVICE_SUBSCRIPTION;
+        return this != SERVICE_SUBSCRIPTION && this != PAYMENT_RECEIPT;
     }
 }

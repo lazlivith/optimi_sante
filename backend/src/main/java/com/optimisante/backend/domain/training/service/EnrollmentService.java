@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.training.service;
 
 import com.optimisante.backend.domain.identity.entity.DoctorProfile;
+import com.optimisante.backend.domain.document.recu.MotifPaiement;
 import com.optimisante.backend.domain.identity.entity.User;
 import com.optimisante.backend.domain.identity.repository.DoctorProfileRepository;
 import com.optimisante.backend.domain.identity.repository.UserRepository;
@@ -606,6 +607,13 @@ public class EnrollmentService {
         payment.setStripeCheckoutSessionId(checkoutSessionId);
         payment.setStripePaymentIntentId(paymentIntentId);
         paymentRepository.save(payment);
+
+        // Point de passage unique de l'acompte ET du solde : les brancher ici, plutôt qu'à
+        // chacun de leurs deux appelants, évite qu'un futur mode de règlement en réchappe.
+        enrollmentPaymentService.emettreRecu(payment,
+                payment.getInstallment() == PaymentInstallment.BALANCE
+                        ? MotifPaiement.SOLDE_SCOLARITE
+                        : MotifPaiement.ACOMPTE_SCOLARITE);
     }
 
     /**

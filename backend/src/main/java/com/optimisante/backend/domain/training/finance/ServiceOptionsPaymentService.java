@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.training.finance;
 
 import com.optimisante.backend.domain.document.service.PdfGeneratorService;
+import com.optimisante.backend.domain.document.recu.MotifPaiement;
 import com.optimisante.backend.domain.identity.repository.DoctorProfileRepository;
 import com.optimisante.backend.domain.orders.service.StripePaymentService;
 import com.optimisante.backend.domain.training.dto.ServiceOptionDtos.ServiceCheckoutView;
@@ -159,6 +160,9 @@ public class ServiceOptionsPaymentService {
 
         payment.setStatus(PaymentStatus.PAID);
         payment.setPaidAt(OffsetDateTime.now());
+        // L'attestation de souscription était émise, mais aucun reçu : le médecin avait la
+        // preuve de ce qu'il avait souscrit, pas celle de ce qu'il avait payé.
+        enrollmentPaymentService.emettreRecu(payment, MotifPaiement.OPTIONS_SERVICE);
         payment.setStripeCheckoutSessionId(session.getId());
         payment.setStripePaymentIntentId(session.getPaymentIntent());
         paymentRepository.save(payment);

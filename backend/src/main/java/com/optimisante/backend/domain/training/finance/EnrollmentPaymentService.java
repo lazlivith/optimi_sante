@@ -1,6 +1,8 @@
 package com.optimisante.backend.domain.training.finance;
 
 import com.optimisante.backend.domain.training.entity.Enrollment;
+import com.optimisante.backend.domain.document.recu.Encaissement;
+import com.optimisante.backend.domain.document.recu.MotifPaiement;
 import com.optimisante.backend.domain.training.repository.EnrollmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +42,7 @@ public class EnrollmentPaymentService {
     private BigDecimal depositRate;
 
     private final EnrollmentPaymentRepository paymentRepository;
+    private final com.optimisante.backend.domain.document.recu.PaymentReceiptIssuer receiptIssuer;
     private final EnrollmentRepository enrollmentRepository;
 
     @Transactional(readOnly = true)
@@ -55,6 +58,35 @@ public class EnrollmentPaymentService {
      * {@code uq_enrollment_paid_dossier} sert de second rempart côté base.</p>
      */
     @Transactional
+    /**
+     * Émet le reçu d'une ligne de paiement réglée.
+     *
+     * <p>Rassemble ici ce que chaque parcours devrait sinon reconstruire : la référence qui porte
+     * l'idempotence, le bénéficiaire, le dossier de rattachement. Un parcours qui oublierait un
+     * de ces éléments produirait un reçu orphelin, ou un doublon au premier webhook rejoué.</p>
+     */
+    public void emettreRecu(EnrollmentPayment payment, MotifPaiement motif) {
+        var enrollment = payment.getEnrollment();
+        var utilisateur = enrollment == null ? null : enrollment.getDoctor();
+
+        receiptIssuer.emettre(new Encaissement(
+                // La référence Stripe quand elle existe ; sinon l'identifiant de la ligne, qui
+                // est tout aussi unique et stable.
+                payment.getStripePaymentIntentId() != null ? payment.getStripePaymentIntentId()
+                        : payment.getStripeCheckoutSessionId() != null ? payment.getStripeCheckoutSessionId()
+                        : "payment:" + payment.getId(),
+                motif,
+                payment.getGrossAmount(),
+                java.math.BigDecimal.ZERO,
+                "Carte bancaire (Stripe)",
+                payment.getPaidAt(),
+                java.util.List.of(Encaissement.LigneEncaissement.unique(
+                        motif.libelle(), payment.getGrossAmount())),
+                utilisateur == null ? null : utilisateur.getId(),
+                enrollment == null ? null : enrollment.getId(),
+                null));
+    }
+
     public Optional<EnrollmentPayment> reflectDossierFee(UUID enrollmentId, BigDecimal feeAmount,
                                                          OffsetDateTime paidAt) {
         if (feeAmount == null || feeAmount.signum() <= 0) {
@@ -81,6 +113,10 @@ public class EnrollmentPaymentService {
                 .status(PaymentStatus.PAID)
                 .paidAt(paidAt != null ? paidAt : OffsetDateTime.now())
                 .build());
+
+        // Le médecin réglait ses frais de dossier et ne recevait qu'un e-mail d'identifiants :
+        // aucune trace écrite du paiement, nulle part.
+        emettreRecu(payment, MotifPaiement.FRAIS_DE_DOSSIER);
 
         log.info("Frais de dossier reflétés au registre pour le dossier {} : {} EUR",
                 enrollmentId, split.grossAmount());

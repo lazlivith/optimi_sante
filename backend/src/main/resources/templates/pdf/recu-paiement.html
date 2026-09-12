@@ -1,86 +1,119 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8" />
-    <title>Reçu de Paiement</title>
+    <!-- Le titre passe dans les métadonnées du PDF : c'est ce qu'annonce un lecteur d'écran
+         à l'ouverture, à la place du nom du fichier. -->
+    <title th:text="'Reçu de paiement ' + ${numero} + ' — Optimi Santé'">Reçu de paiement</title>
     <style>
         @page {
             size: A4 portrait;
             margin: 20mm;
-            @bottom-center {
-                content: element(footer);
-            }
+            @bottom-center { content: element(footer); }
         }
         body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 12px; color: #333; }
         .footer { position: running(footer); }
         .watermark {
-            position: absolute;
-            top: 30%;
-            left: 20%;
-            font-size: 80px;
-            color: rgba(0, 150, 136, 0.15);
-            transform: rotate(-45deg);
-            z-index: -1;
-            font-weight: bold;
+            position: absolute; top: 32%; left: 22%;
+            font-size: 80px; color: rgba(0, 150, 136, 0.14);
+            transform: rotate(-45deg); z-index: -1; font-weight: bold;
         }
-        .info-table { width: 100%; margin-top: 30px; margin-bottom: 30px; }
-        .info-table td { vertical-align: top; }
-        .summary-box { background-color: #f1f8e9; border: 1px solid #c5e1a5; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+        h1 { font-size: 20px; color: #004D40; margin: 20px 0 4px; }
+        .sous-titre { color: #555; margin: 0 0 24px; }
+        .info-table { width: 100%; margin-bottom: 22px; }
+        .info-table td { vertical-align: top; padding-bottom: 4px; }
+        table.lignes { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+        table.lignes th, table.lignes td { border-bottom: 1px solid #e0e0e0; padding: 7px 6px; }
+        table.lignes th { background: #f1f8e9; text-align: left; font-size: 11px;
+                          text-transform: uppercase; letter-spacing: .4px; color: #33691E; }
+        table.lignes td.nombre, table.lignes th.nombre { text-align: right; }
+        .totaux { width: 55%; margin-left: 45%; border-collapse: collapse; }
+        .totaux td { padding: 5px 6px; }
+        .totaux td.valeur { text-align: right; }
+        .totaux tr.paye td { border-top: 2px solid #33691E; font-weight: bold;
+                             font-size: 15px; color: #33691E; padding-top: 9px; }
+        .mention { margin-top: 26px; color: #555; }
     </style>
 </head>
 <body>
 
     <div th:replace="~{components/header :: header}"></div>
 
-    <div class="watermark">PAYÉ / ACQUITTÉ</div>
+    <div class="watermark">PAYÉ</div>
 
-    <h2 style="text-align: center; color: #004D40; margin-top: 20px;">REÇU DE PAIEMENT / FACTURE ACQUITTÉE</h2>
-    
+    <!-- Le document s'intitulait « REÇU DE PAIEMENT / FACTURE ACQUITTÉE » et affirmait faire
+         office de facture. Optimi Santé n'émet pas de factures : un client B2B qui présentait
+         ce document à sa comptabilité s'appuyait sur une promesse qu'il ne tenait pas. -->
+    <h1 th:text="'REÇU DE PAIEMENT N° ' + ${numero}">REÇU DE PAIEMENT</h1>
+    <p class="sous-titre" th:text="${motif}">Objet du règlement</p>
+
     <table class="info-table">
         <tr>
             <td width="50%">
                 <strong>Émetteur :</strong><br/>
-                <!-- Dénomination et adresse réelles, issues de app.legal.* -->
                 <span th:text="${societe.denominationAffichee()}">Dénomination</span><br/>
                 <span th:text="${societe.adresseAffichee()}">Adresse du siège</span>
             </td>
             <td width="50%" style="text-align: right;">
-                <strong>Client :</strong><br/>
-                <span th:text="${clientName}">Nom du Client</span><br/>
-                <span th:text="${clientEmail}">client@email.com</span>
+                <!-- Le nom, et non l'adresse e-mail : c'est sous ce nom que le document sera
+                     classé par le service comptable du client. -->
+                <strong>Réglé par :</strong><br/>
+                <span th:text="${clientNom}">Nom du client</span><br/>
+                <span th:text="${clientEmail}">client@exemple.fr</span>
             </td>
         </tr>
     </table>
 
-    <div class="summary-box">
-        <h3 style="margin-top: 0; color: #33691E;">Détails de la transaction</h3>
-        <table width="100%">
-            <tr>
-                <td width="50%"><strong>Référence Reçu :</strong> <span th:text="${receiptReference}">REC-2026-0001</span></td>
-                <td width="50%"><strong>Date de paiement :</strong> <span th:text="${date}">01/01/2026</span></td>
-            </tr>
-            <tr>
-                <td><strong>Méthode de paiement :</strong> <span th:text="${paymentMethod}">Stripe / Carte Bancaire</span></td>
-                <td><strong>ID Transaction :</strong> <span th:text="${transactionId}">pi_123456789</span></td>
-            </tr>
-            <tr>
-                <td colspan="2" style="padding-top: 10px;">
-                    <strong>Montant Total Payé :</strong> 
-                    <span style="font-size: 16px; font-weight: bold; color: #33691E;" th:text="${#numbers.formatDecimal(totalAmount, 1, 'WHITESPACE', 2, 'POINT')} + ' €'">100.00 €</span>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2">
-                    <strong>Solde restant à payer :</strong> 0.00 €
-                </td>
-            </tr>
-        </table>
-    </div>
+    <table class="info-table">
+        <tr>
+            <td width="50%"><strong>Date du règlement :</strong> <span th:text="${date}">01/01/2026</span></td>
+            <td width="50%"><strong>Moyen de paiement :</strong> <span th:text="${moyenPaiement}">Carte bancaire</span></td>
+        </tr>
+        <tr>
+            <td colspan="2"><strong>Référence de la transaction :</strong>
+                <span th:text="${reference}">pi_000000</span></td>
+        </tr>
+    </table>
 
-    <div style="margin-top: 40px;">
-        <p>Nous vous remercions pour votre confiance.</p>
-        <p>Ce document fait office de facture acquittée. Conservez-le précieusement.</p>
-    </div>
+    <!-- Cette boucle n'existait pas : le code calculait le détail des articles, le transmettait,
+         et le gabarit l'ignorait. Aucune ligne n'a jamais été imprimée sur un reçu. -->
+    <table class="lignes" th:if="${!#lists.isEmpty(lignes)}">
+        <thead>
+            <tr>
+                <!-- scope="col" : sans lui, un lecteur d'écran ne relie pas la cellule à sa colonne. -->
+                <th scope="col">Désignation</th>
+                <th scope="col" class="nombre">Qté</th>
+                <th scope="col" class="nombre">Prix unitaire</th>
+                <th scope="col" class="nombre">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="ligne : ${lignes}">
+                <td th:text="${ligne.designation}">Article</td>
+                <td class="nombre" th:text="${ligne.quantite}">1</td>
+                <td class="nombre" th:text="${ligne.prixUnitaire}">0,00 €</td>
+                <td class="nombre" th:text="${ligne.total}">0,00 €</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table class="totaux">
+        <!-- La remise était absente du document : le total imprimé venait de la somme des
+             lignes, et dépassait donc ce que le client avait réellement réglé. -->
+        <tr th:if="${aRemise}">
+            <td>Remise déduite</td>
+            <td class="valeur" th:text="'− ' + ${remise}">− 0,00 €</td>
+        </tr>
+        <tr class="paye">
+            <td>Montant réglé</td>
+            <td class="valeur" th:text="${montantPaye}">0,00 €</td>
+        </tr>
+    </table>
+
+    <p class="mention">
+        Ce document atteste du règlement ci-dessus. Il ne constitue pas une facture.
+        Conservez-le avec vos justificatifs.
+    </p>
 
     <div th:replace="~{components/footer :: footer}"></div>
 

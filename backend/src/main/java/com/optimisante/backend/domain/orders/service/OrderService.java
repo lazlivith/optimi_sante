@@ -6,6 +6,8 @@ import com.optimisante.backend.domain.catalog.repository.ProductRepository;
 import com.optimisante.backend.domain.catalog.service.StockReservationService;
 import com.optimisante.backend.domain.catalog.repository.StockReservationRepository;
 import com.optimisante.backend.domain.catalog.entity.StockReservation;
+import com.optimisante.backend.domain.document.recu.Encaissement;
+import com.optimisante.backend.domain.document.recu.MotifPaiement;
 import com.optimisante.backend.domain.identity.entity.Role;
 import com.optimisante.backend.domain.identity.entity.Tenant;
 import com.optimisante.backend.domain.identity.entity.User;
@@ -40,7 +42,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OrderService {
 
+
     private final OrderRepository orderRepository;
+    private final com.optimisante.backend.domain.document.recu.PaymentReceiptIssuer receiptIssuer;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final TenantRepository tenantRepository;
@@ -303,34 +307,38 @@ public class OrderService {
             stockReservationRepository.deleteAll(reservations);
         }
 
-        // --- SPRINT 4: Génération PDF (Reçu) ---
-        try {
-            java.util.Map<String, Object> receiptData = new java.util.HashMap<>();
-            receiptData.put("documentTitle", "REÇU DE PAIEMENT");
-            receiptData.put("orderNumber", order.getOrderNumber());
-            receiptData.put("currentDate", java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-            receiptData.put("customerName", order.getUser().getEmail());
-            
-            BigDecimal totalAmount = order.getItems().stream().map(OrderItem::getSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
-            receiptData.put("totalAmount", totalAmount.toString());
-            
-            List<java.util.Map<String, Object>> itemsList = order.getItems().stream().map(i -> {
-                java.util.Map<String, Object> map = new java.util.HashMap<>();
-                map.put("name", libelleLigne(i));
-                map.put("quantity", i.getQuantity());
-                map.put("unitPrice", i.getUnitPrice().toString());
-                map.put("subtotal", i.getSubtotal().toString());
-                return map;
-            }).collect(Collectors.toList());
-            receiptData.put("items", itemsList);
-
-            String pdfUrl = pdfGeneratorService.generateAndUploadPdf("recu-paiement", receiptData, "docs/receipts", "RECEIPT-" + order.getOrderNumber());
-            order.setDocumentS3Key(pdfUrl);
-            orderRepository.save(order);
-            log.info("Reçu PDF généré avec succès pour la commande: {}", order.getOrderNumber());
-        } catch (Exception e) {
-            log.error("Erreur lors de la génération du reçu PDF", e);
-        }
+        // --- Reçu de paiement ---
+        // Le bloc précédent assemblait une Map à la main : aucune de ses clés ne correspondait
+        // au gabarit, et six champs du reçu restaient blancs. Il recalculait aussi le total en
+        // additionnant les lignes, ce qui ignorait la remise — un reçu annonçait 63 144,43 €
+        // pour une commande réglée 56 829,99 €.
+        receiptIssuer.emettre(new Encaissement(
+                // Référence du paiement chez Stripe si elle existe, identifiant de commande
+                // sinon : il en faut une, c'est elle qui rend l'émission idempotente.
+                order.getStripePaymentIntentId() != null
+                        ? order.getStripePaymentIntentId()
+                        : "order:" + order.getId(),
+                MotifPaiement.COMMANDE,
+                order.getTotalAmount(),          // ce qui a été réglé, lu et non recalculé
+                order.getDiscountAmount(),
+                order.getPaymentMethod() == null ? "Carte bancaire"
+                        : order.getPaymentMethod().libelle(),
+                order.getCreatedAt(),
+                order.getItems().stream()
+                        .map(i -> new Encaissement.LigneEncaissement(
+                                libelleLigne(i), i.getQuantity(), i.getUnitPrice(), i.getSubtotal()))
+                        .toList(),
+                order.getUser() == null ? null : order.getUser().getId(),
+                null,
+                order.getId()
+        )).ifPresent(recu -> {
+            // La commande continue de porter la clé du document : c'est ce que lit « Mes
+            // commandes » pour proposer « Ouvrir le PDF ».
+            if (recu.getDocumentKey() != null) {
+                order.setDocumentS3Key(recu.getDocumentKey());
+                orderRepository.save(order);
+            }
+        });
 
         log.info("Order {} payment confirmed. Stock deducted.", orderId);
 
