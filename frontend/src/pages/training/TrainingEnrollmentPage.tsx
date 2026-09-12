@@ -170,7 +170,7 @@ export function TrainingEnrollmentPage() {
                 <button
                   onClick={handleCreateEnrollment}
                   disabled={!selectedSession || isSubmitting}
-                  className="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  className="px-6 py-3 bg-brand text-white font-semibold rounded-xl hover:bg-brand-fonce transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                 >
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
                   Continuer vers les justificatifs
@@ -222,7 +222,7 @@ export function TrainingEnrollmentPage() {
                 <button
                   onClick={handleSubmitDocuments}
                   disabled={!diplomaUrl || !orderRegistrationUrl || !passportUrl || isSubmitting}
-                  className="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  className="px-6 py-3 bg-brand text-white font-semibold rounded-xl hover:bg-brand-fonce transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                 >
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
                   Soumettre le dossier

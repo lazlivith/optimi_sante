@@ -144,7 +144,7 @@ export function DoctorApplicationPage() {
                 <button
                   onClick={() => setCurrentStep(2)}
                   disabled={!selectedSession}
-                  className="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  className="px-6 py-3 bg-brand text-white font-semibold rounded-xl hover:bg-brand-fonce transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                 >
                   Continuer vers mes informations
                   <ChevronRight className="w-5 h-5 ml-2" />
@@ -215,7 +215,7 @@ export function DoctorApplicationPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  className="px-6 py-3 bg-brand text-white font-semibold rounded-xl hover:bg-brand-fonce transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                 >
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <CreditCard className="w-5 h-5 mr-2" />}
                   Continuer vers le paiement

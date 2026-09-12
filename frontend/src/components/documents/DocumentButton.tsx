@@ -120,7 +120,7 @@ export function DocumentButton({
         : 'text-amber-700')
     : (variante === 'bouton'
         ? 'bg-brand text-white hover:bg-brand/90 disabled:opacity-60'
-        : 'text-emerald-600 hover:text-emerald-700 hover:underline disabled:opacity-60');
+        : 'text-brand hover:text-brand-fonce hover:underline disabled:opacity-60');
 
   return (
     <>

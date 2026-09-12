@@ -262,7 +262,7 @@ export function AdminDocumentRequestsPanel({ enrollmentId }: { enrollmentId: str
                           <>
                             <button
                               type="button" disabled={enCours} onClick={() => decider(d, true)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success text-white text-xs font-bold hover:bg-success/90 disabled:opacity-50 transition-colors"
                             >
                               {enCours ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                               Valider

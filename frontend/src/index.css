@@ -20,6 +20,9 @@
      elle tient donc aussi bien en texte qu'en fond de bouton. */
   --color-brand: #117098;
 
+  /* Survol de la couleur d'action : 7,63:1 sur blanc. */
+  --color-brand-fonce: #0E5A78;
+
   /* Orange assombri, 5,13:1 sur blanc. L'orange de la charte plafonne a 3,00:1 :
      il convient a un aplat ou a un gros titre, jamais a du texte courant. */
   --color-brand-accent: #B4500D;
@@ -31,6 +34,22 @@
   --color-brand-dark: #0B2430;
   --color-brand-light: #E3EEF2;
   --color-brand-cream: #F7F8F6;
+
+  /* ── Couleurs de SENS, distinctes de l'identite ──────────────────────────────────
+     Tant que la marque etait verte, le vert disait a la fois « Optimi Sante » et
+     « c'est valide » : les deux roles se confondaient. La marque etant devenue bleue,
+     le vert est libre de ne plus signifier que le succes — a condition de le nommer,
+     sinon la distinction reste dans la tete de celui qui a ecrit la ligne.
+
+     Les nuances retenues sont celles qui passent le seuil de 4,5:1 sur blanc : les
+     nuances -600 employees jusqu'ici n'y parvenaient pas (succes 3,77:1, alerte 3,19:1). */
+  --color-success: #047857;   /* 5,48:1 sur blanc, et blanc dessus */
+  --color-warning: #B45309;   /* 5,02:1 */
+  --color-danger:  #BE123C;   /* 6,29:1 */
+
+  /* L'information prend la couleur de la marque : le bleu ne peut plus dire autre chose
+     sans entrer en concurrence avec elle. */
+  --color-info: #117098;
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
