@@ -5,6 +5,7 @@ import { partnershipService } from '../../api/partnershipService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { usePageMeta } from '../../hooks/usePageMeta';
 import { DocumentButton } from '../../components/documents/DocumentButton';
+import { DossierExcelPanel } from '../../components/partnership/DossierExcelPanel';
 
 const CONDITIONS = [
   "Structure de santé agréée (numéro FINESS requis), capable d'accueillir des stagiaires cliniques encadrés.",
@@ -122,6 +123,10 @@ export function BecomePartnerPage() {
               </button>
             </div>
           </div>
+
+          {/* Placé avant le parcours : l'établissement télécharge et contrôle son classeur
+              d'abord, puis suit les étapes. L'ordre de la page suit l'ordre des gestes. */}
+          <DossierExcelPanel />
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
             <h2 className="font-bold text-brand-dark mb-6">Parcours du dossier</h2>
