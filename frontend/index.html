@@ -11,7 +11,11 @@
       content="Optimi Santé : dispositifs médicaux certifiés CE, formations cliniques dans les CHU partenaires et accompagnement mobilité médicale Afrique → France."
     />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://www.optimisante.fr/" />
+    <!-- La canonique n'est PAS figée ici : elle dépend du domaine, et doit varier d'une page
+         à l'autre. Elle est posée par usePageMeta à partir de VITE_SITE_URL, et n'est émise
+         que si ce domaine est renseigné. Une canonique absente vaut infiniment mieux qu'une
+         canonique fausse : celle qui se trouvait ici désignait un domaine redirigeant (301)
+         vers l'ancien site WordPress, à qui elle offrait le référencement de nos pages. -->
 
     <!-- Open Graph / réseaux sociaux -->
     <meta property="og:type" content="website" />
