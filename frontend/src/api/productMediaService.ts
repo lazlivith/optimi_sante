@@ -50,14 +50,18 @@ export const productMediaService = {
   replaceMainImage: async (productId: string, file: File): Promise<ProductMedia> => {
     const corps = new FormData();
     corps.append('file', file);
-    const { data } = await axiosClient.put<ProductMedia>(`${BASE}/${productId}/media`, corps);
+    const { data } = await axiosClient.put<ProductMedia>(
+      `${BASE}/${productId}/media`, corps,
+      { headers: { 'Content-Type': 'multipart/form-data' } });
     return data;
   },
 
   uploadVideo: async (productId: string, file: File): Promise<ProductMedia> => {
     const corps = new FormData();
     corps.append('file', file);
-    const { data } = await axiosClient.post<ProductMedia>(`${BASE}/${productId}/video`, corps);
+    const { data } = await axiosClient.post<ProductMedia>(
+      `${BASE}/${productId}/video`, corps,
+      { headers: { 'Content-Type': 'multipart/form-data' } });
     return data;
   },
 
@@ -83,7 +87,9 @@ export const productMediaService = {
   addToGallery: async (productId: string, files: File[]): Promise<GalleryImage[]> => {
     const corps = new FormData();
     files.forEach((f) => corps.append('files', f));
-    const { data } = await axiosClient.post<GalleryImage[]>(`${BASE}/${productId}/gallery`, corps);
+    const { data } = await axiosClient.post<GalleryImage[]>(
+      `${BASE}/${productId}/gallery`, corps,
+      { headers: { 'Content-Type': 'multipart/form-data' } });
     return data;
   },
 
