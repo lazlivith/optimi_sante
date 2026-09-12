@@ -43,8 +43,19 @@ export const LEGAL = {
   tvaIntracom: lire(env.VITE_LEGAL_TVA),
   capitalSocial: lire(env.VITE_LEGAL_CAPITAL),
 
-  emailContact: lire(env.VITE_LEGAL_EMAIL_CONTACT) ?? 'contact@optimisante.com',
-  emailDpo: lire(env.VITE_LEGAL_EMAIL_DPO) ?? 'dpo@optimisante.com',
+  /**
+   * Adresses de contact et du délégué à la protection des données.
+   *
+   * <p>Le repli est volontairement <b>fictif et non routable</b> : le domaine `.invalid` est
+   * réservé par la RFC 2606 et ne peut, par construction, être enregistré ni résolu — aucun
+   * courrier ne partira jamais vers quiconque. Les replis précédents étaient sur le domaine
+   * de l'ancien site : les demandes RGPD de nos clients seraient arrivées chez un tiers.</p>
+   *
+   * <p>« a-definir » plutôt qu'un nom crédible : une adresse fictive <i>plausible</i> se lit
+   * comme une vraie et part en production sans qu'on la voie. Celle-ci se dénonce.</p>
+   */
+  emailContact: lire(env.VITE_LEGAL_EMAIL_CONTACT) ?? 'contact@a-definir.invalid',
+  emailDpo: lire(env.VITE_LEGAL_EMAIL_DPO) ?? 'dpo@a-definir.invalid',
   telephone: lire(env.VITE_LEGAL_TELEPHONE),
 
   /**

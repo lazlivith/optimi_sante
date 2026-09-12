@@ -86,7 +86,8 @@ app:
     adresse:         ${LEGAL_ADRESSE:}
     iban:            ${LEGAL_IBAN:}
     bic:             ${LEGAL_BIC:}
-    email:           ${LEGAL_EMAIL:contact@optimisante.com}
+    # Domaine .invalid (RFC 2606) : fictif et non routable par construction.
+    email:           ${LEGAL_EMAIL:contact@a-definir.invalid}
     telephone:       ${LEGAL_TELEPHONE:}
     numero-agrement: ${LEGAL_NUMERO_AGREMENT:}
 
