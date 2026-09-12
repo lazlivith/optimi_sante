@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Building2, ExternalLink, Check, X } from 'lucide-react';
+import { Loader2, Building2, Check, X } from 'lucide-react';
 import { adminPartnershipService } from '../../api/adminPartnershipService';
 import type { PartnershipRequestDto } from '../../api/partnershipService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 export function AdminPartnershipRequestsPage() {
   const [requests, setRequests] = useState<PartnershipRequestDto[]>([]);
@@ -27,15 +28,6 @@ export function AdminPartnershipRequestsPage() {
   };
 
   useEffect(() => { fetchRequests(); }, []);
-
-  const handleViewDocument = async (id: string) => {
-    try {
-      const url = await adminPartnershipService.getDocumentUrl(id);
-      window.open(url, '_blank');
-    } catch {
-      setToast({ message: 'Impossible d\'ouvrir le document.', type: 'error' });
-    }
-  };
 
   const handleApprove = async (id: string) => {
     setProcessingId(id);
@@ -109,9 +101,10 @@ export function AdminPartnershipRequestsPage() {
                     </td>
                     <td className="px-6 py-4 text-slate-500">{new Date(r.createdAt).toLocaleDateString('fr-FR')}</td>
                     <td className="px-6 py-4">
-                      <button onClick={() => handleViewDocument(r.id)} className="inline-flex items-center text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline">
-                        <ExternalLink className="w-3 h-3 mr-1" /> Voir le document
-                      </button>
+                      <DocumentButton
+                        libelle="Voir le document"
+                        obtenirLien={() => adminPartnershipService.getDocumentUrl(r.id)}
+                      />
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={r.status} />

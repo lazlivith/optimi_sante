@@ -11,7 +11,8 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { FileUploadDropzone } from '../../components/common/FileUploadDropzone';
 import { AdminDocumentRequestsPanel } from '../../components/enrollment/AdminDocumentRequestsPanel';
 import { AdminInterviewPanel } from '../../components/enrollment/AdminInterviewPanel';
-import { ArrowLeft, Loader2, CheckCircle, FileText, Download, Lock, FileSignature, Stamp, Upload, Send, AlertTriangle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle, FileText, Lock, FileSignature, Stamp, Upload, Send, AlertTriangle, Trash2 } from 'lucide-react';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 const STEPS = ENROLLMENT_STEPS.map(s => s.id);
 
@@ -173,16 +174,6 @@ export function AdminEnrollmentDetailPage() {
     }
   };
 
-  const handleDownloadDocument = async (documentId: string, documentType: string) => {
-    try {
-      const url = await vaultService.getPresignedUrl(documentType, documentId);
-      window.open(url, '_blank');
-    } catch (err) {
-      console.error('Erreur lors de la récupération du lien sécurisé', err);
-      setToast({ message: 'Erreur lors de la récupération du lien sécurisé.', type: 'error' });
-    }
-  };
-
   if (isLoading || !enrollment) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-green" /></div>;
   }
@@ -303,14 +294,16 @@ export function AdminEnrollmentDetailPage() {
               {(enrollment.conventionS3Key || enrollment.attestationS3Key) && (
                 <div className="flex gap-4 pt-4">
                   {enrollment.conventionS3Key && (
-                    <button onClick={() => handleDownloadDocument(enrollment.id, 'CONVENTION')} className="inline-flex items-center text-xs font-semibold text-emerald-700 hover:underline">
-                      <Download className="w-3.5 h-3.5 mr-1.5" /> Voir la convention
-                    </button>
+                    <DocumentButton
+                      libelle="Voir la convention"
+                      obtenirLien={() => vaultService.getPresignedUrl('CONVENTION', enrollment.id)}
+                    />
                   )}
                   {enrollment.attestationS3Key && (
-                    <button onClick={() => handleDownloadDocument(enrollment.id, 'ATTESTATION')} className="inline-flex items-center text-xs font-semibold text-indigo-700 hover:underline">
-                      <Download className="w-3.5 h-3.5 mr-1.5" /> Voir l'attestation
-                    </button>
+                    <DocumentButton
+                      libelle="Voir l'attestation"
+                      obtenirLien={() => vaultService.getPresignedUrl('ATTESTATION', enrollment.id)}
+                    />
                   )}
                 </div>
               )}
@@ -386,13 +379,10 @@ export function AdminEnrollmentDetailPage() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => handleDownloadDocument(doc.id, doc.type)}
-                            className="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Télécharger / Visualiser sécurisé"
-                          >
-                            <Download className="w-5 h-5" />
-                          </button>
+                          <DocumentButton
+                            libelle="Ouvrir"
+                            obtenirLien={() => vaultService.getPresignedUrl(doc.type, doc.id)}
+                          />
                         </td>
                       </tr>
                     ))}

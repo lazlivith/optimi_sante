@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, CheckCircle, Settings, Loader2 } from 'lucide-react';
+import { CheckCircle, Settings, Loader2 } from 'lucide-react';
 import { LeadCaptureModal } from './LeadCaptureModal';
 import { TrainingBrochureModal } from '../../components/training/TrainingBrochureModal';
 import { useAuth } from '../../context/AuthContext';
 import { trainingService, type TrainingSummaryDto } from '../../api/trainingService';
 import { ProductImage } from '../../components/common/ProductImage';
 import { usePageMeta } from '../../hooks/usePageMeta';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 const formatDuration = (durationDays: number, isLongStay: boolean): string => {
   if (isLongStay) {
@@ -122,18 +123,15 @@ export function TrainingsPage() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-3 mt-auto">
-                <button
-                  onClick={() => {
-                    if (training.brochureUrl) {
-                      window.open(training.brochureUrl, '_blank');
-                    }
-                  }}
-                  disabled={!training.brochureUrl}
-                  className="flex-1 flex items-center justify-center px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-brand-dark hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Brochure
-                </button>
+                {/* L'adresse est déjà dans la fiche : aucun appel réseau ici, mais le
+                    composant apporte l'annonce du format et de l'ouverture en onglet. */}
+                <DocumentButton
+                  libelle="Brochure"
+                  variante="bouton"
+                  obtenirLien={async () => training.brochureUrl ?? null}
+                  messageIndisponible="La brochure de cette formation n'est pas encore en ligne."
+                  className="flex-1 justify-center px-4 py-2.5 rounded-xl border border-slate-200 !bg-white !text-brand-dark hover:!bg-slate-50"
+                />
                 <button
                   onClick={() => {
                     if (isAuthenticated) {

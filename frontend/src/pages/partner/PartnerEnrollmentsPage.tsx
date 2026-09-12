@@ -8,7 +8,8 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Avatar } from '../../components/common/Avatar';
-import { Loader2, CheckCircle, FileText, Filter, FolderOpen, X, ExternalLink, CalendarPlus} from 'lucide-react';
+import { Loader2, CheckCircle, FileText, Filter, FolderOpen, X, CalendarPlus } from 'lucide-react';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 export function PartnerEnrollmentsPage() {
   const [enrollments, setEnrollments] = useState<EnrollmentDto[]>([]);
@@ -94,15 +95,6 @@ export function PartnerEnrollmentsPage() {
       setViewingDocsFor(null);
     } finally {
       setIsLoadingDocs(false);
-    }
-  };
-
-  const handleOpenDocument = async (doc: DocumentItemDto) => {
-    try {
-      const url = await vaultService.getPresignedUrl(doc.type, doc.id);
-      window.open(url, '_blank');
-    } catch {
-      setToast({ message: "Impossible d'ouvrir le document.", type: 'error' });
     }
   };
 
@@ -250,12 +242,11 @@ export function PartnerEnrollmentsPage() {
                           <div className="text-xs text-slate-400">{new Date(doc.date).toLocaleDateString('fr-FR')}</div>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleOpenDocument(doc)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-green bg-brand-light rounded-lg hover:bg-brand-green hover:text-white transition-colors shrink-0"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" /> Ouvrir
-                      </button>
+                      <DocumentButton
+                        libelle="Ouvrir"
+                        obtenirLien={() => vaultService.getPresignedUrl(doc.type, doc.id)}
+                        className="shrink-0"
+                      />
                     </div>
                   ))}
                 </div>

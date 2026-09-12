@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Loader2, CheckCircle2, Clock, UploadCloud, AlertTriangle, FolderCheck, Download,
-} from 'lucide-react';
+import { Loader2, CheckCircle2, Clock, UploadCloud, AlertTriangle, FolderCheck } from 'lucide-react';
 import {
   documentRequestService, documentTypeLabel,
   type DossierSummary, type DocumentRequestView,
@@ -9,6 +7,7 @@ import {
 import { vaultService } from '../../api/vaultService';
 import { DossierProgress } from './DossierProgress';
 import { Toast, type ToastType } from '../common/Toast';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 /**
  * « Mon dossier visa », côté médecin : ce qu'on lui réclame, ce qu'il a déposé, ce qui a été
@@ -51,16 +50,6 @@ export function MyVisaDossierPanel({ enrollmentId }: { enrollmentId: string }) {
       });
     } finally {
       setBusyId(null);
-    }
-  };
-
-  const ouvrirPiece = async (demande: DocumentRequestView) => {
-    if (!demande.documentId) return;
-    try {
-      const url = await vaultService.getPresignedUrl(demande.documentType, demande.documentId);
-      window.open(url, '_blank');
-    } catch {
-      setToast({ message: 'Le lien sécurisé n\'a pas pu être obtenu.', type: 'error' });
     }
   };
 
@@ -173,12 +162,11 @@ export function MyVisaDossierPanel({ enrollmentId }: { enrollmentId: string }) {
                     </>
                   )}
                   {d.documentId && (
-                    <button
-                      type="button" onClick={() => ouvrirPiece(d)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                    >
-                      <Download className="w-3.5 h-3.5" /> Voir mon envoi
-                    </button>
+                    <DocumentButton
+                      libelle="Voir mon envoi"
+                      obtenirLien={() => vaultService.getPresignedUrl(d.documentType, d.documentId!)}
+                      className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
+                    />
                   )}
                 </div>
               </li>

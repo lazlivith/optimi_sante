@@ -5,7 +5,8 @@ import { vaultService } from '../../api/vaultService';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
-import { Check, X, FileText, Loader2, Search, ExternalLink } from 'lucide-react';
+import { Check, X, FileText, Loader2, Search } from 'lucide-react';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 export function QuotesAdminPage() {
   const [quotes, setQuotes] = useState<OrderResponseDto[]>([]);
@@ -38,15 +39,6 @@ export function QuotesAdminPage() {
       alert("Une erreur est survenue lors de la mise à jour du devis.");
     } finally {
       setProcessingId(null);
-    }
-  };
-
-  const handleOpenDocument = async (orderId: string) => {
-    try {
-      const url = await vaultService.getPresignedUrl('QUOTE', orderId);
-      window.open(url, '_blank');
-    } catch {
-      alert('Impossible d\'ouvrir le document.');
     }
   };
 
@@ -113,13 +105,10 @@ export function QuotesAdminPage() {
                       </td>
                       <td className="px-6 py-4">
                         {quote.documentS3Key ? (
-                          <button
-                            onClick={() => handleOpenDocument(quote.id)}
-                            className="inline-flex items-center text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline"
-                          >
-                            <ExternalLink className="w-3 h-3 mr-1" />
-                            Ouvrir le PDF
-                          </button>
+                          <DocumentButton
+                            libelle="Ouvrir le devis"
+                            obtenirLien={() => vaultService.getPresignedUrl('QUOTE', quote.id)}
+                          />
                         ) : (
                           <span className="text-xs text-slate-400 italic">Non généré</span>
                         )}

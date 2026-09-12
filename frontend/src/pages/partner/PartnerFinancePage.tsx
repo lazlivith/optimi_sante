@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Banknote, Clock, CheckCircle2, Users, Inbox, Loader2, Receipt, Download } from 'lucide-react';
+import { Banknote, Clock, CheckCircle2, Users, Inbox, Loader2, Receipt } from 'lucide-react';
 import {
   financeService, formatMoney, formatDate,
   type PartnerFinancialSummary, type PartnerPaymentRow, type PayoutDto,
@@ -9,6 +9,7 @@ import { StatCard } from '../../components/common/StatCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Toast, type ToastType } from '../../components/common/Toast';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 /**
  * Suivi financier de l'établissement partenaire.
@@ -38,20 +39,6 @@ export function PartnerFinancePage() {
       })
       .finally(() => setIsLoading(false));
   }, []);
-
-  const handleDownloadStatement = async (payoutId: string) => {
-    try {
-      const url = await financeService.getStatementUrl(payoutId);
-      if (!url) {
-        setToast({ message: "Ce relevé n'est pas encore disponible.", type: 'error' });
-        return;
-      }
-      window.open(url, '_blank');
-    } catch (err: any) {
-      console.error('Échec du téléchargement du relevé', err);
-      setToast({ message: "Le relevé n'a pas pu être téléchargé.", type: 'error' });
-    }
-  };
 
   const lastPayout = payouts.find((p) => p.status === 'PAID');
 
@@ -183,14 +170,11 @@ export function PartnerFinancePage() {
                     <td className="px-4 py-3 text-slate-500">{formatDate(p.paidAt)}</td>
                     <td className="px-4 py-3 text-right">
                       {p.statementAvailable ? (
-                        <button
-                          type="button"
-                          onClick={() => handleDownloadStatement(p.id)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          Télécharger
-                        </button>
+                        <DocumentButton
+                          libelle="Télécharger"
+                          obtenirLien={() => financeService.getStatementUrl(p.id)}
+                          messageIndisponible="Ce relevé n'est pas encore disponible."
+                        />
                       ) : (
                         <span className="text-xs text-slate-400">Bientôt disponible</span>
                       )}

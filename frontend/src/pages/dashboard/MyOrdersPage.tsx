@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { orderService } from '../../api/orderService';
 import type { OrderResponseDto } from '../../api/orderService';
 import { vaultService } from '../../api/vaultService';
-import { Package, Loader2, FileText, ExternalLink } from 'lucide-react';
+import { Package, Loader2, FileText } from 'lucide-react';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 export function MyOrdersPage() {
   const [orders, setOrders] = useState<OrderResponseDto[]>([]);
@@ -21,15 +22,6 @@ export function MyOrdersPage() {
     };
     fetchOrders();
   }, []);
-
-  const handleOpenDocument = async (order: OrderResponseDto) => {
-    try {
-      const url = await vaultService.getPresignedUrl(order.isQuote ? 'QUOTE' : 'INVOICE', order.id);
-      window.open(url, '_blank');
-    } catch {
-      alert('Impossible d\'ouvrir le document.');
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -100,16 +92,20 @@ export function MyOrdersPage() {
                       </td>
                       <td className="px-6 py-4">
                         {order.documentS3Key ? (
-                          <button
-                            onClick={() => handleOpenDocument(order)}
-                            className="inline-flex items-center text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline"
-                          >
-                            <ExternalLink className="w-3 h-3 mr-1" />
-                            Ouvrir le PDF
-                          </button>
+                          <DocumentButton
+                            libelle={order.isQuote ? 'Ouvrir le devis' : 'Ouvrir le reçu'}
+                            obtenirLien={() => vaultService.getPresignedUrl(
+                              order.isQuote ? 'QUOTE' : 'INVOICE', order.id)}
+                          />
                         ) : (
+                          /* « Non disponible » ne disait ni pourquoi, ni s'il fallait attendre
+                             ou signaler. Le reçu naît de la confirmation du paiement : tant
+                             qu'elle n'a pas eu lieu, il n'y a rien à produire. */
                           <span className="text-xs text-slate-400 italic inline-flex items-center">
-                            <FileText className="w-3 h-3 mr-1" /> Non disponible
+                            <FileText className="w-3 h-3 mr-1" />
+                            {order.paymentStatus === 'PAID'
+                              ? 'Reçu en cours de préparation'
+                              : 'Disponible après le paiement'}
                           </span>
                         )}
                       </td>

@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, UploadCloud, CheckCircle2, Building2, ShieldCheck } from 'lucide-react';
+import { UploadCloud, CheckCircle2, Building2, ShieldCheck } from 'lucide-react';
 import { partnershipService } from '../../api/partnershipService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { usePageMeta } from '../../hooks/usePageMeta';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 const CONDITIONS = [
   "Structure de santé agréée (numéro FINESS requis), capable d'accueillir des stagiaires cliniques encadrés.",
@@ -27,7 +28,6 @@ const STEP_BADGE_STYLES: Record<(typeof STEPS)[number]['tone'], string> = {
 
 export function BecomePartnerPage() {
   usePageMeta('Devenir centre partenaire', "Rejoignez le réseau de CHU et centres de formation partenaires d'Optimi Santé pour accueillir des stagiaires cliniques dans le cadre de conventions tripartites.");
-  const [isDownloading, setIsDownloading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
@@ -38,19 +38,6 @@ export function BecomePartnerPage() {
     institutionName: '', finessAccreditation: '', contactPersonName: '',
     contactEmail: '', contactPhone: '', address: ''
   });
-
-  const handleDownloadTemplate = async () => {
-    setIsDownloading(true);
-    try {
-      const url = await partnershipService.getConventionTemplateUrl();
-      window.open(url, '_blank');
-    } catch (err) {
-      console.error('Erreur lors de la génération du modèle de convention', err);
-      setToast({ message: "Impossible de générer le modèle pour le moment.", type: 'error' });
-    } finally {
-      setIsDownloading(false);
-    }
-  };
 
   const scrollToForm = () => {
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -121,13 +108,12 @@ export function BecomePartnerPage() {
             </ul>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={handleDownloadTemplate}
-                disabled={isDownloading}
-                className="inline-flex items-center justify-center px-5 py-3 border border-brand-green text-brand-green font-bold rounded-xl hover:bg-brand-light transition-colors disabled:opacity-50"
-              >
-                <Download className="w-4 h-4 mr-2" /> {isDownloading ? 'Génération...' : 'Télécharger la convention type (.pdf)'}
-              </button>
+              <DocumentButton
+                libelle="Télécharger la convention type"
+                variante="bouton"
+                obtenirLien={() => partnershipService.getConventionTemplateUrl()}
+                className="px-5 py-3 rounded-xl border border-brand-green !bg-white !text-brand-green hover:!bg-brand-light"
+              />
               <button
                 onClick={scrollToForm}
                 className="inline-flex items-center justify-center px-5 py-3 bg-brand-dark text-white font-bold rounded-xl hover:bg-slate-800 transition-colors"

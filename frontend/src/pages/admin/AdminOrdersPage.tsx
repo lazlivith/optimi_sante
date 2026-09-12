@@ -6,7 +6,8 @@ import { Toast, type ToastType } from '../../components/common/Toast';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
-import { ShoppingBag, Loader2, ExternalLink, Check } from 'lucide-react';
+import { ShoppingBag, Loader2, Check } from 'lucide-react';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   STRIPE_CARD: 'Carte (Stripe)',
@@ -46,15 +47,6 @@ export function AdminOrdersPage() {
       setToast({ message: err.response?.data?.message || 'Erreur lors de la confirmation.', type: 'error' });
     } finally {
       setProcessingId(null);
-    }
-  };
-
-  const handleOpenDocument = async (order: OrderResponseDto) => {
-    try {
-      const url = await vaultService.getPresignedUrl(order.isQuote ? 'QUOTE' : 'INVOICE', order.id);
-      window.open(url, '_blank');
-    } catch {
-      setToast({ message: "Impossible d'ouvrir le document.", type: 'error' });
     }
   };
 
@@ -99,9 +91,11 @@ export function AdminOrdersPage() {
                     </td>
                     <td className="px-6 py-4">
                       {order.documentS3Key ? (
-                        <button onClick={() => handleOpenDocument(order)} className="inline-flex items-center text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline">
-                          <ExternalLink className="w-3 h-3 mr-1" /> Ouvrir
-                        </button>
+                        <DocumentButton
+                          libelle="Ouvrir"
+                          obtenirLien={() => vaultService.getPresignedUrl(
+                            order.isQuote ? 'QUOTE' : 'INVOICE', order.id)}
+                        />
                       ) : (
                         <span className="text-xs text-slate-400 italic">—</span>
                       )}

@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, ShieldCheck, Loader2, Calendar } from 'lucide-react';
+import { FileText, ShieldCheck, Loader2, Calendar } from 'lucide-react';
 import { vaultService, getDocumentLabel } from '../../api/vaultService';
 import type { DocumentItemDto } from '../../api/vaultService';
 import { HeroBanner } from '../../components/common/HeroBanner';
 import { EmptyState } from '../../components/common/EmptyState';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 export function DoctorVaultPage() {
   const [documents, setDocuments] = useState<DocumentItemDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchVault();
@@ -23,19 +23,6 @@ export function DoctorVaultPage() {
       console.error("Failed to fetch vault", error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleDownload = async (doc: DocumentItemDto) => {
-    try {
-      setDownloadingId(doc.id);
-      const url = await vaultService.getPresignedUrl(doc.type.toLowerCase(), doc.id);
-      window.open(url, '_blank');
-    } catch (error) {
-      console.error("Failed to get presigned URL", error);
-      alert("Erreur lors de la récupération du document.");
-    } finally {
-      setDownloadingId(null);
     }
   };
 
@@ -101,18 +88,12 @@ export function DoctorVaultPage() {
                   {new Date(doc.date).toLocaleDateString('fr-FR')}
                 </div>
                 
-                <button
-                  onClick={() => handleDownload(doc)}
-                  disabled={downloadingId === doc.id}
-                  className="w-full py-2.5 px-4 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition flex items-center justify-center disabled:opacity-75"
-                >
-                  {downloadingId === doc.id ? (
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  ) : (
-                    <Download className="w-5 h-5 mr-2" />
-                  )}
-                  {downloadingId === doc.id ? 'Génération...' : 'Télécharger PDF'}
-                </button>
+                <DocumentButton
+                  libelle="Télécharger"
+                  variante="bouton"
+                  obtenirLien={() => vaultService.getPresignedUrl(doc.type.toLowerCase(), doc.id)}
+                  className="w-full justify-center !bg-slate-900 hover:!bg-slate-800 rounded-xl py-2.5"
+                />
               </div>
             ))}
           </div>

@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Plus, Loader2, CheckCircle2, XCircle, Clock, Download, Ban, AlertTriangle, X,
-} from 'lucide-react';
+import { Plus, Loader2, CheckCircle2, XCircle, Clock, Ban, AlertTriangle, X } from 'lucide-react';
 import {
   documentRequestService, documentTypeLabel, DOCUMENT_TYPES,
   type DossierSummary, type DocumentRequestView, type DocumentTypeValue,
@@ -9,6 +7,7 @@ import {
 import { vaultService } from '../../api/vaultService';
 import { DossierProgress } from './DossierProgress';
 import { Toast, type ToastType } from '../common/Toast';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 /** Rendu d'un état de demande : couleur, icône et libellé au même endroit. */
 const ETATS: Record<string, { label: string; classe: string; Icone: typeof Clock }> = {
@@ -115,16 +114,6 @@ export function AdminDocumentRequestsPanel({ enrollmentId }: { enrollmentId: str
       setToast({ message: messageErreur(err, 'La demande n\'a pas pu être retirée.'), type: 'error' });
     } finally {
       setBusyId(null);
-    }
-  };
-
-  const ouvrirPiece = async (demande: DocumentRequestView) => {
-    if (!demande.documentId) return;
-    try {
-      const url = await vaultService.getPresignedUrl(demande.documentType, demande.documentId);
-      window.open(url, '_blank');
-    } catch (err) {
-      setToast({ message: 'Le lien sécurisé n\'a pas pu être obtenu.', type: 'error' });
     }
   };
 
@@ -263,12 +252,11 @@ export function AdminDocumentRequestsPanel({ enrollmentId }: { enrollmentId: str
 
                       <div className="flex flex-wrap items-center gap-2 mt-3">
                         {d.documentId && (
-                          <button
-                            type="button" onClick={() => ouvrirPiece(d)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                          >
-                            <Download className="w-3.5 h-3.5" /> Voir la pièce
-                          </button>
+                          <DocumentButton
+                            libelle="Voir la pièce"
+                            obtenirLien={() => vaultService.getPresignedUrl(d.documentType, d.documentId!)}
+                            className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
+                          />
                         )}
                         {d.status === 'SUBMITTED' && (
                           <>

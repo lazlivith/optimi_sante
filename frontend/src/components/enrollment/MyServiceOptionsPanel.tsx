@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Loader2, ShieldCheck, Home, Bus, Check, Trash2, CreditCard, Download, Lock,
-} from 'lucide-react';
+import { Loader2, ShieldCheck, Home, Bus, Check, Trash2, CreditCard, Lock } from 'lucide-react';
 import {
   serviceOptionService, serviceOptionTypeLabel,
   type ServiceOptionType, type ServiceSummary,
@@ -10,6 +8,7 @@ import { vaultService } from '../../api/vaultService';
 import { StripeEmbeddedCheckout } from '../payment/StripeEmbeddedCheckout';
 import { formatAmount } from '../training/TuitionPaymentCard';
 import { Toast, type ToastType } from '../common/Toast';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 const ICONE: Record<ServiceOptionType, typeof Home> = {
   INSURANCE: ShieldCheck,
@@ -83,18 +82,6 @@ export function MyServiceOptionsPanel({ enrollmentId }: { enrollmentId: string }
       echec(err, "Le paiement n'a pas pu être ouvert.");
     } finally {
       setBusy(false);
-    }
-  };
-
-  const ouvrirAttestation = async () => {
-    if (!resume?.subscriptionDocumentId) return;
-    try {
-      const url = await vaultService.getPresignedUrl(
-        'SERVICE_SUBSCRIPTION', resume.subscriptionDocumentId,
-      );
-      window.open(url, '_blank', 'noopener');
-    } catch {
-      setToast({ message: "L'attestation n'a pas pu être ouverte.", type: 'error' });
     }
   };
 
@@ -266,14 +253,13 @@ export function MyServiceOptionsPanel({ enrollmentId }: { enrollmentId: string }
               Déjà réglé : <strong className="text-slate-800">{formatAmount(resume.amountPaid)}</strong>
             </p>
             {resume.subscriptionDocumentId && (
-              <button
-                type="button"
-                onClick={ouvrirAttestation}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Mon attestation de souscription
-              </button>
+              <DocumentButton
+                libelle="Mon attestation de souscription"
+                variante="bouton"
+                obtenirLien={() => vaultService.getPresignedUrl(
+                  'SERVICE_SUBSCRIPTION', resume.subscriptionDocumentId!)}
+                className="rounded-xl border border-slate-300 !bg-white !text-slate-700 hover:!bg-slate-50"
+              />
             )}
           </div>
         )}

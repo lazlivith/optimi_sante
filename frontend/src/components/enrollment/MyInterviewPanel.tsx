@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Loader2, CalendarCheck, CalendarClock, Video, Info, CheckCircle2, Download, ExternalLink,
-} from 'lucide-react';
+import { Loader2, CalendarCheck, CalendarClock, Video, Info, CheckCircle2, ExternalLink } from 'lucide-react';
 import {
   interviewService, formatCreneau, estPasse, type InterviewSchedule,
 } from '../../api/interviewService';
 import { vaultService } from '../../api/vaultService';
 import { Toast, type ToastType } from '../common/Toast';
+import { DocumentButton } from '../../components/documents/DocumentButton';
 
 /**
  * « Mon entretien en visioconférence », côté médecin : les créneaux qu'on lui propose, son
@@ -52,18 +51,6 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
       });
     } finally {
       setEnvoiEnCours(false);
-    }
-  };
-
-  const ouvrirConvocation = async () => {
-    if (!entretien?.convocationDocumentId) return;
-    try {
-      const url = await vaultService.getPresignedUrl(
-        'INTERVIEW_CONVOCATION', entretien.convocationDocumentId,
-      );
-      window.open(url, '_blank', 'noopener');
-    } catch {
-      setToast({ message: "La convocation n'a pas pu être ouverte.", type: 'error' });
     }
   };
 
@@ -148,14 +135,13 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
                 Rejoindre la visioconférence
               </a>
               {entretien.convocationDocumentId && (
-                <button
-                  type="button"
-                  onClick={ouvrirConvocation}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-emerald-300 text-emerald-800 text-sm font-semibold hover:bg-emerald-100 transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                  Ma convocation visio
-                </button>
+                <DocumentButton
+                  libelle="Ma convocation visio"
+                  variante="bouton"
+                  obtenirLien={() => vaultService.getPresignedUrl(
+                    'INTERVIEW_CONVOCATION', entretien.convocationDocumentId!)}
+                  className="rounded-xl border border-emerald-300 !bg-white !text-emerald-800 hover:!bg-emerald-100"
+                />
               )}
             </div>
             <p className="text-xs text-emerald-800/80 mt-3">
