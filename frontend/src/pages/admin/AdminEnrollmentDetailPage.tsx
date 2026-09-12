@@ -370,7 +370,7 @@ export function AdminEnrollmentDetailPage() {
                         <td className="px-6 py-4">
                           <div className="flex items-center font-semibold text-brand-dark">
                             <FileText className="w-4 h-4 mr-2 text-slate-400" />
-                            {getDocumentLabel(doc.type || doc.title)}
+                            {getDocumentLabel(doc.type || doc.title, doc.typeLabel)}
                           </div>
                         </td>
                         <td className="px-6 py-4 text-slate-500">

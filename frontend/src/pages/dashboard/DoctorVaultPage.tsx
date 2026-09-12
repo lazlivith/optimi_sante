@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FileText, Download, ShieldCheck, Loader2, Calendar } from 'lucide-react';
-import { vaultService } from '../../api/vaultService';
+import { vaultService, getDocumentLabel } from '../../api/vaultService';
 import type { DocumentItemDto } from '../../api/vaultService';
 import { HeroBanner } from '../../components/common/HeroBanner';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -48,11 +48,13 @@ export function DoctorVaultPage() {
     }
   };
 
-  const DOC_TYPE_BADGE: Record<string, { label: string; color: string }> = {
-    CONVENTION: { label: 'Convention', color: 'bg-emerald-100 text-emerald-700' },
-    ATTESTATION: { label: "Attestation d'accueil", color: 'bg-indigo-100 text-indigo-700' },
-    INVOICE: { label: 'Facture', color: 'bg-blue-100 text-blue-700' },
-    QUOTE: { label: 'Devis', color: 'bg-blue-100 text-blue-700' },
+  // Quatrième table de traduction du projet, supprimée : seule la couleur reste locale,
+  // parce qu'elle relève de l'habillage. Le texte vient du serveur, via getDocumentLabel.
+  const COULEUR_TYPE: Record<string, string> = {
+    CONVENTION: 'bg-emerald-100 text-emerald-700',
+    ATTESTATION: 'bg-indigo-100 text-indigo-700',
+    INVOICE: 'bg-blue-100 text-blue-700',
+    QUOTE: 'bg-blue-100 text-blue-700',
   };
 
   return (
@@ -85,8 +87,8 @@ export function DoctorVaultPage() {
                   <div className="p-2 bg-slate-50 rounded-lg">
                     {getDocIcon(doc.type)}
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${DOC_TYPE_BADGE[doc.type]?.color || 'bg-slate-100 text-slate-600'}`}>
-                    {DOC_TYPE_BADGE[doc.type]?.label || doc.type}
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${COULEUR_TYPE[doc.type] || 'bg-slate-100 text-slate-600'}`}>
+                    {getDocumentLabel(doc.type, doc.typeLabel)}
                   </span>
                 </div>
                 

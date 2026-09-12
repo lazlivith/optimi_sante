@@ -45,6 +45,7 @@ public class AdminEnrollmentResource {
                         .id(doc.getId())
                         .title(doc.getDocumentType().name())
                         .type(doc.getDocumentType().name())
+                        .typeLabel(doc.getDocumentType().libelle())
                         .date(doc.getUploadedAt().atOffset(java.time.ZoneOffset.UTC))
                         .status(Boolean.TRUE.equals(doc.getIsVerified()) ? "VERIFIED" : "PENDING")
                         .documentKey(doc.getCloudinaryPublicId())

@@ -1,45 +1,38 @@
 package com.optimisante.backend.domain.training.entity;
 
 /**
- * Taxonomie des pieces d'un dossier de mobilite.
+ * Pièces justificatives du dossier d'un candidat.
  *
- * ⚠️ Toute valeur ajoutee ici doit l'etre simultanement dans **deux** contraintes SQL :
- * {@code enrollment_documents_document_type_check} et
- * {@code enrollment_document_requests_type_check} (voir V37, puis V41 et V43).
+ * <p><b>Le libellé vit ici, et nulle part ailleurs.</b> Trois tables de traduction coexistaient
+ * côté navigateur, chacune incomplète à sa manière : celle du coffre-fort ignorait
+ * {@code INTERVIEW_CONVOCATION} et {@code SERVICE_SUBSCRIPTION}, pourtant présents en base, si
+ * bien qu'un administrateur ou un CHU consultant un dossier lisait le nom technique. Le serveur
+ * transmet désormais le libellé avec la pièce : une table côté navigateur ne peut plus diverger
+ * de l'énumération, puisqu'il n'y en a plus.</p>
  */
 public enum DocumentType {
-    PASSPORT,
-    DIPLOMA,
-    MEDICAL_COUNCIL_CERT,
-    FINANCIAL_GUARANTEE,
-    VISA_GRANT,
-    CONSULAR_LETTER,
-    ACCOMMODATION_PROOF,
-    /** Convocation a l'entretien de selection, deposee automatiquement a la confirmation. */
-    INTERVIEW_CONVOCATION,
-    /**
-     * Attestation des services souscrits aupres d'OptimiSante (assurance, hebergement,
-     * transport) et de leur reglement.
-     *
-     * <p>Ce n'est <b>pas</b> un certificat d'assurance : OptimiSante n'est pas l'assureur.
-     * L'attestation etablit la souscription et le paiement ; le certificat est emis par
-     * l'assureur en son nom propre.</p>
-     */
-    SERVICE_SUBSCRIPTION,
-    OTHER;
+    PASSPORT              ("Passeport"),
+    DIPLOMA               ("Diplôme de médecine"),
+    MEDICAL_COUNCIL_CERT  ("Certificat de l'Ordre des Médecins"),
+    FINANCIAL_GUARANTEE   ("Garantie financière"),
+    VISA_GRANT            ("Attestation de visa"),
+    CONSULAR_LETTER       ("Lettre d'accompagnement consulaire"),
+    ACCOMMODATION_PROOF   ("Attestation d'hébergement"),
+    INTERVIEW_CONVOCATION ("Convocation à l'entretien visio"),
+    SERVICE_SUBSCRIPTION  ("Attestation de souscription"),
+    OTHER                 ("Autre pièce justificative");
 
-    /**
-     * Cette piece peut-elle etre montree a l'etablissement d'accueil ?
-     *
-     * <p>Le partenaire instruit le <b>dossier de mobilite</b> du candidat : passeport, diplome,
-     * visa, hebergement. Il n'a pas a connaitre ce que le medecin achete a OptimiSante ni a
-     * quel prix — l'attestation de souscription enonce les tarifs de l'agence et les achats
-     * personnels du candidat, deux informations qui ne le regardent pas.</p>
-     *
-     * <p>La regle est portee ici, et non dans les ecrans : la liste des pieces et leur
-     * telechargement sont deux chemins distincts, et n'en proteger qu'un laisserait la piece
-     * accessible a qui connait son identifiant.</p>
-     */
+    private final String libelle;
+
+    DocumentType(String libelle) {
+        this.libelle = libelle;
+    }
+
+    /** Ce que lit un humain. Jamais le nom de la constante. */
+    public String libelle() {
+        return libelle;
+    }
+
     public boolean isVisibleToPartner() {
         return this != SERVICE_SUBSCRIPTION;
     }

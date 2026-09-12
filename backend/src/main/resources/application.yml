@@ -72,6 +72,24 @@ spring:
           protocol: smtp
 
 app:
+  # Identité légale imprimée au pied de chaque document (devis, reçus, conventions).
+  # Une valeur absente s'affiche « à compléter » sur le document, et empêche le démarrage
+  # en production — cf. CompanyIdentityGuard. Mieux vaut un serveur arrêté qu'une pièce
+  # portant une immatriculation inventée.
+  legal:
+    denomination:    ${LEGAL_DENOMINATION:}
+    forme-juridique: ${LEGAL_FORME_JURIDIQUE:}
+    capital-social:  ${LEGAL_CAPITAL_SOCIAL:}
+    siret:           ${LEGAL_SIRET:}
+    tva-intracom:    ${LEGAL_TVA_INTRACOM:}
+    rcs:             ${LEGAL_RCS:}
+    adresse:         ${LEGAL_ADRESSE:}
+    iban:            ${LEGAL_IBAN:}
+    bic:             ${LEGAL_BIC:}
+    email:           ${LEGAL_EMAIL:contact@optimisante.com}
+    telephone:       ${LEGAL_TELEPHONE:}
+    numero-agrement: ${LEGAL_NUMERO_AGREMENT:}
+
   security:
     jwt:
       secret: ${JWT_SECRET:default-dev-secret-key-at-least-32-chars-long!}

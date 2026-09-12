@@ -40,9 +40,9 @@
         <tr>
             <td width="50%">
                 <strong>Émetteur :</strong><br/>
-                OptimiSanté SAS<br/>
-                123 Avenue de la Médecine<br/>
-                75000 Paris, France
+                <!-- Dénomination et adresse réelles, issues de app.legal.* -->
+                <span th:text="${societe.denominationAffichee()}">Dénomination</span><br/>
+                <span th:text="${societe.adresseAffichee()}">Adresse du siège</span>
             </td>
             <td width="50%" style="text-align: right;">
                 <strong>Client :</strong><br/>

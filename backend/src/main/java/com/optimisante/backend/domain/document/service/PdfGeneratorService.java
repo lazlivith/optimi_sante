@@ -3,11 +3,7 @@ package com.optimisante.backend.domain.document.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.thymeleaf.TemplateEngine;
-import org.thymeleaf.context.Context;
-import org.xhtmlrenderer.pdf.ITextRenderer;
 
-import java.io.ByteArrayOutputStream;
 import java.util.Map;
 
 import com.optimisante.backend.common.storage.StorageService;
@@ -16,44 +12,27 @@ import com.optimisante.backend.common.storage.StorageService;
 @Service
 public class PdfGeneratorService {
 
-    private final TemplateEngine templateEngine;
+    private final DocumentRenderer documentRenderer;
     private final StorageService storageService;
 
-    public PdfGeneratorService(@org.springframework.beans.factory.annotation.Qualifier("pdfTemplateEngine") TemplateEngine templateEngine, StorageService storageService) {
-        this.templateEngine = templateEngine;
+    public PdfGeneratorService(DocumentRenderer documentRenderer, StorageService storageService) {
+        this.documentRenderer = documentRenderer;
         this.storageService = storageService;
     }
 
     /**
      * Génère un fichier PDF en mémoire à partir d'un template Thymeleaf.
-     * 
-     * @param templateName Nom du template sans extension (ex: "pdf/devis-b2b")
+     *
+     * <p>Délègue à {@link DocumentRenderer}, qui est désormais le seul endroit où un document est
+     * rendu — c'est ce qui garantit que l'identité légale figure au pied de chacun. Cette méthode
+     * subsiste pour que les appelants existants continuent de fonctionner sans changement.</p>
+     *
+     * @param templateName Nom du template sans extension (ex: "devis-b2b")
      * @param variables Map contenant les variables à injecter dans le template
      * @return Le tableau d'octets (byte[]) représentant le fichier PDF généré
      */
     public byte[] generatePdfFromTemplate(String templateName, Map<String, Object> variables) {
-        try {
-            Context context = new Context();
-            context.setVariables(variables);
-            
-            // Render HTML
-            String html = templateEngine.process(templateName, context);
-            
-            // Convert HTML to PDF using Flying Saucer (OpenPDF)
-            try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-                ITextRenderer renderer = new ITextRenderer();
-                
-                // Set Document String and Base URL (for finding classpath resources like CSS/Images)
-                renderer.setDocumentFromString(html);
-                renderer.layout();
-                renderer.createPDF(outputStream);
-                
-                return outputStream.toByteArray();
-            }
-        } catch (Exception e) {
-            log.error("Erreur lors de la génération du PDF pour le template {}: {}", templateName, e.getMessage(), e);
-            throw new RuntimeException("Erreur de génération PDF", e);
-        }
+        return documentRenderer.rendreGabarit(templateName, variables);
     }
 
     /**

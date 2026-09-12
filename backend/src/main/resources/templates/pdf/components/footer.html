@@ -1,10 +1,19 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
-    <div th:fragment="footer" class="footer" style="text-align: center; border-top: 1px solid #ddd; padding-top: 10px; font-size: 10px; color: #777;">
-        <p style="margin: 0;">OptimiSanté SAS - 123 Avenue de la Médecine, 75000 Paris - SIRET: 123 456 789 00012 - TVA: FR 12 3456789</p>
-        <p style="margin: 3px 0 0 0;">IBAN: FR76 1234 5678 9012 3456 7890 123 - BIC/SWIFT: OPTIFRXX</p>
-        <p style="margin: 3px 0 0 0;">Contact: contact@optimisante.com | Tél: +33 1 23 45 67 89</p>
+    <!--
+      Les mentions légales viennent de la configuration (app.legal.*), injectée dans chaque rendu
+      par DocumentRenderer. Elles étaient écrites en dur ici : un SIRET, une adresse et un IBAN
+      inventés s'imprimaient sur les devis, les reçus et les conventions remis aux CHU.
+
+      Une mention absente s'affiche « à compléter » — jamais une valeur plausible, qui se croirait
+      juste et circulerait. Le contraste est #666 (5,74:1) et non #777 (4,48:1), qui passait sous
+      le seuil de 4,5:1 du critère WCAG 1.4.3.
+    -->
+    <div th:fragment="footer" class="footer" style="text-align: center; border-top: 1px solid #ddd; padding-top: 10px; font-size: 10px; color: #666;">
+        <p style="margin: 0;" th:text="${societe.ligneIdentite()}">Dénomination — adresse — SIRET — TVA</p>
+        <p style="margin: 3px 0 0 0;" th:text="${societe.ligneBancaire()}">IBAN — BIC</p>
+        <p style="margin: 3px 0 0 0;" th:text="${societe.ligneContact()}">Contact — Téléphone</p>
         <p style="margin: 5px 0 0 0;">Page <span id="pagenumber"></span> sur <span id="pagecount"></span></p>
     </div>
 </body>

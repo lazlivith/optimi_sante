@@ -8,6 +8,8 @@ export interface DocumentItemDto {
   status: string;
   documentKey: string;
   sha256Checksum?: string;
+  /** Libellé calculé par le serveur à partir de son énumération — fait foi quand il est là. */
+  typeLabel?: string;
 }
 
 /**
@@ -28,11 +30,25 @@ const DOCUMENT_LABELS: Record<string, string> = {
   ATTESTATION: "Attestation d'accueil",
   INVOICE: 'Facture',
   QUOTE: 'Devis',
+  INTERVIEW_CONVOCATION: "Convocation à l'entretien visio",
+  SERVICE_SUBSCRIPTION: 'Attestation de souscription',
   OTHER: 'Autre pièce justificative',
 };
 
-/** Repli sur le type brut : une pièce d'un type inconnu reste affichée, jamais masquée. */
-export const getDocumentLabel = (type: string): string => DOCUMENT_LABELS[type] ?? type;
+/**
+ * Libellé d'une pièce.
+ *
+ * <p>Le serveur envoie désormais `typeLabel` avec chaque document : c'est la source qui fait
+ * foi, et elle ne peut pas diverger de l'énumération puisqu'elle en vient. La table ci-dessus
+ * n'est plus qu'un repli pour les quelques types fabriqués côté serveur sans libellé (le
+ * coffre-fort du médecin), et pour les réponses d'une version antérieure.</p>
+ *
+ * <p>Elle avait d'ailleurs divergé : `INTERVIEW_CONVOCATION` et `SERVICE_SUBSCRIPTION`
+ * existaient en base sans y figurer, si bien qu'un administrateur vérifiant un dossier lisait
+ * le nom technique.</p>
+ */
+export const getDocumentLabel = (type: string, typeLabel?: string): string =>
+  typeLabel || DOCUMENT_LABELS[type] || type;
 
 export const vaultService = {
   getDoctorVault: async (): Promise<DocumentItemDto[]> => {

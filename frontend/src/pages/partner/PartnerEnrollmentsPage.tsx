@@ -245,7 +245,7 @@ export function PartnerEnrollmentsPage() {
                         <FileText className="w-5 h-5 text-slate-400 shrink-0" />
                         <div className="min-w-0">
                           <div className="text-sm font-semibold text-slate-800 truncate">
-                            {getDocumentLabel(doc.type)}
+                            {getDocumentLabel(doc.type, doc.typeLabel)}
                           </div>
                           <div className="text-xs text-slate-400">{new Date(doc.date).toLocaleDateString('fr-FR')}</div>
                         </div>

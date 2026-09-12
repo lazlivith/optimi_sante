@@ -30,7 +30,8 @@
     <p class="ref">Optimi Santé — Réseau de Centres de Formation Partenaires</p>
 
     <p>
-        Entre <strong>Optimi Santé SAS</strong>, dont le siège est situé 123 Avenue de la Médecine, 75000 Paris, France,
+        Entre <strong th:text="${societe.denominationAffichee()}">Dénomination</strong>, dont le siège est situé
+        <span th:text="${societe.adresseAffichee()}">adresse du siège</span>,
         ci-après désignée « Optimi Santé »,
     </p>
     <p>Et l'établissement soussigné, ci-après désigné « le Partenaire » :</p>
