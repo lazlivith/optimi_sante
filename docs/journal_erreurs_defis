@@ -3323,3 +3323,53 @@ retombait à la ligne (`space-x-2` sur un conteneur en flux ne tient pas quand l
 resserre — remplacé par un flex), et « Stock bas » se retrouvait seul sur une deuxième ligne
 (les deux filtres à bascule sont désormais groupés dans un conteneur commun, ils passent à la
 ligne ensemble).
+
+---
+
+## Coupure définitive avec l'ancien site
+
+### Ce que l'audit a trouvé, et qu'on ne cherchait pas
+
+La coupure devait se limiter à retirer trois variables d'environnement et un script. L'inventaire
+complet a révélé un **lien vivant que la base de données ne montrait pas**.
+
+`TrainingService` renvoyait, en l'absence de brochure, une adresse écrite en dur :
+
+```java
+downloadUrl = "https://optimisante.com/brochures/default-brochure.pdf";
+```
+
+Deux vérifications ont suffi à mesurer la portée. La première : **cette adresse répond 404**. La
+seconde : le front faisait `window.open(response.brochureDownloadUrl, '_blank')`.
+
+Autrement dit, **chaque prospect demandant la documentation d'une formation sans brochure
+laissait ses coordonnées et recevait, dans un nouvel onglet, une page d'erreur de l'ancien
+site**. Ce n'était pas une dépendance résiduelle : c'était un parcours client cassé, en
+production, invisible de la base — et invisible aussi de l'analyse précédente, qui n'avait
+cherché les traces de l'ancien domaine que dans les données.
+
+**La leçon de méthode :** chercher une dépendance dans la base ne suffit pas. Une adresse écrite
+en dur dans le code n'y laisse aucune trace.
+
+### La correction
+
+Plus aucun repli inventé. Une brochure absente se dit : `brochureDownloadUrl` reste nul, l'écran
+annonce que la documentation sera transmise par l'équipe, et aucun onglet ne s'ouvre. La demande
+du prospect est enregistrée dans tous les cas — le contact compte davantage que le fichier.
+
+### L'état après coupure
+
+| Élément | Sort |
+|---|---|
+| `WC_URL`, `WC_CONSUMER_KEY`, `WC_CONSUMER_SECRET` | retirés de `.env` **et** de `.env.example` |
+| `woocommerce_migration.py` | supprimé — c'est lui qui bouclait sur l'API REST, 100 produits par page |
+| Lien de brochure par défaut | retiré du backend et du front |
+| Adresses vers l'ancien site dans le code exécutable | **0** |
+
+`import_woocommerce_csv.py` est conservé : il travaille à partir d'un fichier, jamais d'une API.
+Le `README.md` des workers porte toutefois un avertissement — si le CSV fourni contient des
+adresses d'images pointant vers l'ancien site, l'exécuter y renverrait du trafic. Dans ce cas, il
+faut demander les fichiers images et les déposer par l'interface.
+
+*Vérifié après déploiement :* une demande de brochure sur une formation sans documentation
+renvoie `brochureDownloadUrl: null`.

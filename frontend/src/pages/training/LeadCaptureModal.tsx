@@ -22,6 +22,9 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  // Vrai si une brochure a réellement été ouverte : le message de confirmation en
+  // dépend, et promettre un document qu'on n'a pas envoyé serait mentir.
+  const [brochureOuverte, setBrochureOuverte] = useState(false);
   // const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -37,9 +40,9 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
     try {
       const response = await trainingService.captureLead(trainingId, formData);
       setSuccess(true);
-      // setDownloadUrl(response.brochureDownloadUrl);
       if (response.brochureDownloadUrl) {
-        window.open(response.brochureDownloadUrl, '_blank');
+        window.open(response.brochureDownloadUrl, '_blank', 'noopener');
+        setBrochureOuverte(true);
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors de la candidature.');
@@ -65,7 +68,16 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
             </div>
             <h3 className="text-2xl font-bold text-brand-dark">Candidature envoyée</h3>
             <p className="text-slate-600">
-              Votre dossier de candidature a été transmis avec succès. Notre équipe vous contactera prochainement.
+              Votre dossier de candidature a été transmis avec succès. Notre équipe vous
+              contactera prochainement.
+            </p>
+            {/* Le sort de la brochure est dit explicitement. Auparavant, un onglet s'ouvrait
+                systématiquement sur une adresse qui répondait 404 : le prospect laissait ses
+                coordonnées et recevait une page d'erreur. */}
+            <p className="text-sm text-slate-500">
+              {brochureOuverte
+                ? "La documentation s'est ouverte dans un nouvel onglet."
+                : 'La documentation détaillée vous sera transmise par notre équipe.'}
             </p>
             <button 
               onClick={onClose}

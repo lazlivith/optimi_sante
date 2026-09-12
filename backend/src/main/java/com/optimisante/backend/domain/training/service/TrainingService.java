@@ -69,20 +69,26 @@ public class TrainingService {
                 .build();
         prospectLeadRepository.save(lead);
 
-        // Generate download URL for brochure
+        // Lien de telechargement de la brochure, s'il y en a une.
+        //
+        // Aucun repli vers une adresse ecrite en dur. Le repli precedent renvoyait le prospect
+        // vers `https://optimisante.com/brochures/default-brochure.pdf`, sur l'ancien site :
+        // cette adresse repond 404, et le front ouvrait quand meme un onglet dessus. Le
+        // visiteur laissait ses coordonnees et recevait une page d'erreur.
+        //
+        // Une brochure absente se dit : elle ne s'invente pas. L'adresse reste nulle, et
+        // l'ecran annonce que la documentation sera transmise par l'equipe.
         String downloadUrl = null;
         if (training.getBrochureS3Key() != null && !training.getBrochureS3Key().isBlank()) {
             try {
                 // Generate a presigned URL valid for 60 minutes
                 downloadUrl = storageService.generatePresignedOrSignedUrl(training.getBrochureS3Key(), 60);
             } catch (Exception e) {
-                log.error("Failed to generate presigned URL for brochure {}: {}", training.getBrochureS3Key(), e.getMessage());
-                // Optional: Fallback to a default brochure or generic page if Cloudinary fails
-                downloadUrl = "https://optimisante.com/brochures/default-brochure.pdf";
+                log.error("Failed to generate presigned URL for brochure {}: {}",
+                        training.getBrochureS3Key(), e.getMessage());
+                // La demande est enregistree malgre tout : le prospect compte davantage que
+                // le fichier, et l'equipe peut le recontacter.
             }
-        } else {
-            // Fallback if no brochure is linked
-            downloadUrl = "https://optimisante.com/brochures/default-brochure.pdf";
         }
 
         return LeadCaptureResponseDto.builder()
