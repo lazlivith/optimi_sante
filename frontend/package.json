@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "verifier:charte": "node scripts/verifier-charte.mjs",
+    "prebuild": "node scripts/verifier-charte.mjs",
+    "postbuild": "node scripts/verifier-charte.mjs --poids"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^3.10.0",

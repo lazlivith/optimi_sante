@@ -1,0 +1,15 @@
+{
+  "_lisez-moi": "Valeurs de reference du garde-fou de la charte (scripts/verifier-charte.mjs). Elles ne doivent qu'ameliorer : on abaisse couleursEnDur quand on en retire, on ne le releve jamais pour faire passer un build.",
+
+  "famillesIdentite": ["emerald", "teal", "green", "indigo", "blue", "cyan", "sky"],
+  "_famillesIdentite": "Familles Tailwind qui entrent en concurrence avec l'identite. amber, rose et red en sont volontairement absents : ils portent un SENS (alerte, erreur) et non une marque.",
+
+  "couleursEnDur": 292,
+  "_couleursEnDur": "Occurrences constatees au lot C. Le garde-fou echoue si ce nombre augmente.",
+
+  "plafondPublicKo": 700,
+  "_plafondPublicKo": "496 Ko servis aujourd'hui. Marge volontaire pour une variante de logo ; les originaux du graphiste pesaient 30,7 Mo.",
+
+  "plafondJsKo": 1500,
+  "_plafondJsKo": "1 333 Ko produits aujourd'hui."
+}
