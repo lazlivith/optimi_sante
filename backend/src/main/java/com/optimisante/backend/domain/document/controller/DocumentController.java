@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.document.controller;
 
 import com.optimisante.backend.common.storage.StorageService;
+import com.optimisante.backend.domain.document.service.DocumentLinkService;
 import com.optimisante.backend.domain.identity.entity.Role;
 import com.optimisante.backend.domain.orders.entity.Order;
 import com.optimisante.backend.domain.orders.repository.OrderRepository;
@@ -40,6 +41,7 @@ public class DocumentController {
                     .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     private final StorageService storageService;
+    private final DocumentLinkService documentLinkService;
     private final OrderRepository orderRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentDocumentRepository enrollmentDocumentRepository;
@@ -126,7 +128,7 @@ public class DocumentController {
             return ResponseEntity.status(404).body(Map.of("error", "Aucun document disponible pour cette ressource"));
         }
 
-        String downloadUrl = storageService.generatePresignedOrSignedUrl(publicId, 60);
+        String downloadUrl = documentLinkService.lienDeTelechargement(publicId);
         return ResponseEntity.ok(Map.of("downloadUrl", downloadUrl));
     }
 

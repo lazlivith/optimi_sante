@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.partnership.service;
 
 import com.optimisante.backend.common.email.EmailService;
+import com.optimisante.backend.domain.document.service.DocumentLinkService;
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.config.tenant.TenantContext;
 import com.optimisante.backend.domain.document.service.PdfGeneratorService;
@@ -39,6 +40,7 @@ public class PartnershipService {
     private final TenantRepository tenantRepository;
     private final PartnerProfileRepository partnerProfileRepository;
     private final StorageService storageService;
+    private final DocumentLinkService documentLinkService;
     private final PdfGeneratorService pdfGeneratorService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
@@ -50,9 +52,11 @@ public class PartnershipService {
      */
     public String getConventionTemplateUrl() {
         byte[] pdfBytes = pdfGeneratorService.generatePartnershipConventionPdf(java.util.Map.of());
-        String publicId = storageService.uploadGeneratedPdf(pdfBytes, "docs/partnership-templates",
+        // Modèle vierge, non nominatif : clé stable, sinon chaque prospect qui le télécharge
+        // laisserait un fichier de plus dans le stockage.
+        String publicId = storageService.uploadPublicTemplate(pdfBytes, "docs/partnership-templates",
                 "modele-convention-partenariat");
-        return storageService.generatePresignedOrSignedUrl(publicId, 60);
+        return documentLinkService.lienDeTelechargement(publicId);
     }
 
     @Transactional

@@ -49,6 +49,11 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // Le jeton signé porté par l'URL EST l'autorisation : un document s'ouvre
+                        // par window.open, qui n'emporte aucun en-tête Authorization. Seul
+                        // /file/** est ouvert — surtout pas /api/v1/documents/**, qui exposerait
+                        // le contrôleur authentifié voisin.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/documents/file/*").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/catalog/**").permitAll()
                         .requestMatchers("/api/v1/payments/webhook").permitAll()

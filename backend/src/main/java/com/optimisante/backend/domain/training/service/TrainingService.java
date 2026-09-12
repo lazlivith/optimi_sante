@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.training.service;
 
 import com.optimisante.backend.common.storage.StorageService;
+import com.optimisante.backend.domain.document.service.DocumentLinkService;
 import com.optimisante.backend.config.tenant.TenantContext;
 import com.optimisante.backend.domain.identity.entity.PartnerProfile;
 import com.optimisante.backend.domain.identity.entity.Tenant;
@@ -50,6 +51,7 @@ public class TrainingService {
     private final PartnerProfileRepository partnerProfileRepository;
     private final TenantRepository tenantRepository;
     private final StorageService storageService;
+    private final DocumentLinkService documentLinkService;
 
     @Transactional
     public LeadCaptureResponseDto captureLead(UUID trainingId, LeadCaptureRequestDto request) {
@@ -82,7 +84,7 @@ public class TrainingService {
         if (training.getBrochureS3Key() != null && !training.getBrochureS3Key().isBlank()) {
             try {
                 // Generate a presigned URL valid for 60 minutes
-                downloadUrl = storageService.generatePresignedOrSignedUrl(training.getBrochureS3Key(), 60);
+                downloadUrl = documentLinkService.lienDeTelechargement(training.getBrochureS3Key());
             } catch (Exception e) {
                 log.error("Failed to generate presigned URL for brochure {}: {}",
                         training.getBrochureS3Key(), e.getMessage());
@@ -299,7 +301,7 @@ public class TrainingService {
     private String safeSignedUrl(String publicId) {
         if (publicId == null || publicId.isBlank()) return null;
         try {
-            return storageService.generatePresignedOrSignedUrl(publicId, 60);
+            return documentLinkService.lienDeTelechargement(publicId);
         } catch (Exception e) {
             log.error("Failed to generate signed URL for {}: {}", publicId, e.getMessage());
             return null;

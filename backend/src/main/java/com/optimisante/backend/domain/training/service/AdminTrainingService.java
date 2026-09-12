@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.training.service;
 
 import com.optimisante.backend.common.storage.StorageService;
+import com.optimisante.backend.domain.document.service.DocumentLinkService;
 import com.optimisante.backend.domain.training.dto.AdminTrainingResponseDto;
 import com.optimisante.backend.domain.training.entity.Training;
 import com.optimisante.backend.domain.training.entity.TrainingApprovalStatus;
@@ -23,6 +24,7 @@ public class AdminTrainingService {
 
     private final TrainingRepository trainingRepository;
     private final StorageService storageService;
+    private final DocumentLinkService documentLinkService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
@@ -130,7 +132,7 @@ public class AdminTrainingService {
     private String safeSignedUrl(String publicId) {
         if (publicId == null || publicId.isBlank()) return null;
         try {
-            return storageService.generatePresignedOrSignedUrl(publicId, 60);
+            return documentLinkService.lienDeTelechargement(publicId);
         } catch (Exception e) {
             log.error("Failed to generate signed URL for {}: {}", publicId, e.getMessage());
             return null;

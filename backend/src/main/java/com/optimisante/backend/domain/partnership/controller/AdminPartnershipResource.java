@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.partnership.controller;
 
 import com.optimisante.backend.common.storage.StorageService;
+import com.optimisante.backend.domain.document.service.DocumentLinkService;
 import com.optimisante.backend.domain.partnership.dto.PartnershipRequestResponseDto;
 import com.optimisante.backend.domain.partnership.repository.PartnershipRequestRepository;
 import com.optimisante.backend.domain.partnership.service.PartnershipService;
@@ -23,6 +24,7 @@ public class AdminPartnershipResource {
     private final PartnershipService partnershipService;
     private final PartnershipRequestRepository partnershipRequestRepository;
     private final StorageService storageService;
+    private final DocumentLinkService documentLinkService;
 
     @GetMapping
     public ResponseEntity<List<PartnershipRequestResponseDto>> listRequests() {
@@ -34,7 +36,7 @@ public class AdminPartnershipResource {
         String fileKey = partnershipRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Partnership request not found"))
                 .getConventionFileKey();
-        return ResponseEntity.ok(Map.of("downloadUrl", storageService.generatePresignedOrSignedUrl(fileKey, 60)));
+        return ResponseEntity.ok(Map.of("downloadUrl", documentLinkService.lienDeTelechargement(fileKey)));
     }
 
     @PatchMapping("/{id}/approve")

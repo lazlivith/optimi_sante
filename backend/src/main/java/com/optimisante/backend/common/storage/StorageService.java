@@ -41,6 +41,27 @@ public interface StorageService {
     String generatePresignedOrSignedUrl(String publicId, int expirationMinutes);
 
     /**
+     * Lit le contenu d'un fichier stocké.
+     *
+     * <p>Nécessaire depuis que les documents ne sont plus servis par une adresse de stockage
+     * publique : c'est le serveur qui va chercher les octets, après avoir vérifié le jeton
+     * d'accès. Voir {@code DocumentFileResource}.</p>
+     *
+     * @throws RuntimeException si le fichier est introuvable ou illisible
+     */
+    byte[] download(String publicId);
+
+    /**
+     * Dépose un document <b>non nominatif</b> destiné à être partagé tel quel — un modèle vierge,
+     * par exemple.
+     *
+     * <p>Se distingue de {@link #uploadGeneratedPdf} par sa clé <b>stable</b> : le fichier est
+     * remplacé à chaque génération au lieu de s'accumuler. À n'employer que lorsque le contenu ne
+     * désigne personne, puisqu'une clé stable est par nature devinable.</p>
+     */
+    String uploadPublicTemplate(byte[] bytes, String folderPath, String fileName);
+
+    /**
      * Upload a media file (image or video) meant to be publicly displayed (e.g. a training's
      * illustration), as opposed to {@link #uploadFile} which always stores as "raw" — appropriate
      * for private documents (PDFs) but not for inline &lt;img&gt;/&lt;video&gt; rendering.
