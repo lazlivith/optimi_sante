@@ -21,6 +21,17 @@ export interface Product {
   category?: Category;
   isOnPromo?: boolean;
   promoEndsAt?: string;
+  /** Vidéo de démonstration, absente sur la plupart des produits. */
+  videoUrl?: string | null;
+  /** Dit au lecteur s'il pose une balise <video> ou une <iframe>. */
+  videoProvider?: 'CLOUDINARY' | 'YOUTUBE' | 'VIMEO' | 'LOOM' | null;
+  /** Joue la vidéo sur la carte produit des sections promotionnelles. */
+  isVideoPromoted?: boolean;
+  /**
+   * Visuels secondaires. **Renseignés uniquement sur la fiche détaillée** — en liste, le
+   * serveur renvoie un tableau vide, pour ne pas déclencher une requête par produit.
+   */
+  gallery?: { id: string; imageUrl: string; caption: string | null; displayOrder: number }[];
   /** Formation qui apprend a utiliser l'equipement, absente si aucune. */
   relatedTraining?: {
     id: string;

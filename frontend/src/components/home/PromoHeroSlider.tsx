@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronLeft, ChevronRight, Clock, Tag } from 'lucide-react';
 import type { Product } from '../../api/catalogService';
-import { ProductImage } from '../common/ProductImage';
+import { PromoProductVisual } from '../catalog/PromoProductVisual';
 
 /**
  * Carrousel d'accueil alimenté par les produits réellement en promotion.
@@ -105,10 +105,9 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
             soit la photo, et que le texte ne repose plus sur un dégradé posé dessus. */}
         <div className="order-1 lg:order-2 relative">
           <div className="relative rounded-2xl bg-white overflow-hidden aspect-[4/3] lg:aspect-[5/4] flex items-center justify-center p-5 lg:p-7">
-            <ProductImage
+            <PromoProductVisual
               key={produit.id}
-              src={produit.imageUrl}
-              alt={produit.name}
+              product={produit}
               objectFit="contain"
               className="w-full h-full"
               iconClassName="w-16 h-16"

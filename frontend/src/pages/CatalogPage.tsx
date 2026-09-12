@@ -5,7 +5,7 @@ import { catalogService } from '../api/catalogService';
 import type { Product } from '../api/catalogService';
 import { Search, Mail, Plus, SlidersHorizontal } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { ProductImage } from '../components/common/ProductImage';
+import { PromoProductVisual } from '../components/catalog/PromoProductVisual';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 export function CatalogPage() {
@@ -152,9 +152,8 @@ export function CatalogPage() {
                       aux cadrages variables, et un recadrage automatique amputait l'article —
                       or c'est sur cette vignette que l'acheteur le reconnaît. */}
                   <Link to={`/product/${product.slug}`} className="block relative aspect-square bg-white overflow-hidden p-4">
-                    <ProductImage
-                      src={product.imageUrl}
-                      alt={product.name}
+                    <PromoProductVisual
+                      product={product}
                       className="w-full h-full group-hover:scale-105 transition-transform duration-500"
                       iconClassName="w-10 h-10"
                       objectFit="contain"
