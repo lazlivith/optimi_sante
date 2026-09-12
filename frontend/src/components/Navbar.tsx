@@ -5,14 +5,8 @@ import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, 
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { NotificationBell } from './common/NotificationBell';
+import { LogoOptimi } from '../components/marque/LogoOptimi';
 
-/**
- * Logo de l'en-tete : declinaison coloree, decoupee de la planche de marque et detouree.
- *
- * `optimi.webp` ne convenait pas — son degrade bleu est incruste dans l'image, ce qui
- * affichait un rectangle bleu dans une barre blanche. Le PNG transparent le remplace.
- */
-const LOGO_SRC = '/marque/optimi-logotype-sombre.webp';
 
 export const Navbar = () => {
   const { totalItems } = useCart();
@@ -43,7 +37,6 @@ export const Navbar = () => {
   const ADMIN_ROLES: string[] = ALL_ADMIN_ROLES;
 
   // Deposer le fichier dans frontend/public/ sous ce nom suffit a l'activer.
-  const [logoDisponible, setLogoDisponible] = useState(true);
 
   const getRoleLabel = (role: string) => {
     switch (role) {
@@ -79,31 +72,10 @@ export const Navbar = () => {
       {/* Main Header Row */}
       <div className="container mx-auto px-4 h-20 flex items-center gap-5">
 
-        {/* Logo.
-            Le vrai logo est servi depuis /public. Tant qu'il n'y est pas, `onError` fait
-            basculer sur le monogramme d'origine : l'en-tete reste correcte au lieu d'afficher
-            une image cassee, et le logo apparait de lui-meme le jour ou le fichier est depose.
-            Quand il s'affiche, le texte « Optimi Santé » disparait — le logo est deja un
-            logotype, le repeter a cote ferait doublon. */}
         <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="Optimi Santé — accueil">
-          {logoDisponible ? (
-            <img
-              src={LOGO_SRC}
-              alt="Optimi Santé"
-              onError={() => setLogoDisponible(false)}
-              className="h-12 w-auto max-w-[190px] object-contain"
-            />
-          ) : (
-            <>
-              <div className="bg-brand text-white font-bold rounded-xl flex items-center justify-center w-11 h-11 text-base">
-                OS
-              </div>
-              <div className="hidden sm:block">
-                <span className="text-xl font-bold text-brand-dark tracking-tight block leading-none">Optimi Santé</span>
-                <span className="text-[11px] text-slate-400 leading-none">soutenir le handicap et le soin</span>
-              </div>
-            </>
-          )}
+          {/* Sans la signature : a 48 pixels de haut elle n'est plus lisible, et une mention
+              illisible ne fait que rapetisser le logotype. */}
+          <LogoOptimi fond="clair" signature={false} className="h-12 w-auto max-w-[190px]" />
         </Link>
 
         {/* Search Bar — Central */}

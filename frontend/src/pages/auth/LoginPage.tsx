@@ -6,6 +6,7 @@ import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, ShieldCheck } from 'lucid
 import { Toast } from '../../components/common/Toast';
 import { usePageMeta } from '../../hooks/usePageMeta';
 import { adminHomeFor } from '../../lib/adminUniverses';
+import { LogoOptimi } from '../../components/marque/LogoOptimi';
 
 /**
  * Ce que la plateforme fait réellement, dit en trois lignes.
@@ -24,7 +25,6 @@ export const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [motDePasseVisible, setMotDePasseVisible] = useState(false);
-  const [logoOk, setLogoOk] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -218,21 +218,10 @@ export const LoginPage = () => {
 
           <div className="relative w-full max-w-md">
             <Link to="/" aria-label="Optimi Santé — accueil" className="inline-block">
-              {logoOk ? (
-                <img
-                  src="/marque/optimi-logo-clair.webp"
-                  alt="Optimi Santé — soutenir le handicap et le soin"
-                  onError={() => setLogoOk(false)}
-                  className="h-16 w-auto max-w-[260px] object-contain lg:h-24 lg:max-w-[340px]"
-                />
-              ) : (
-                <span className="flex items-center gap-3">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15 text-base font-bold text-white">
-                    OS
-                  </span>
-                  <span className="text-xl font-bold text-white">Optimi Santé</span>
-                </span>
-              )}
+              <LogoOptimi
+                fond="sombre"
+                className="h-16 w-auto max-w-[260px] lg:h-24 lg:max-w-[340px]"
+              />
             </Link>
 
             {/* La signature de marque, telle qu'elle figure sur le logo. */}

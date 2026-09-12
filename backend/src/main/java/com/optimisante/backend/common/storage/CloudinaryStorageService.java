@@ -31,8 +31,17 @@ public class CloudinaryStorageService implements StorageService {
     @Override
     public String uploadFile(byte[] bytes, String fileName, String folderPath) {
         try {
-            // Generate a unique public ID to prevent overwriting files with the same name
-            String publicId = UUID.randomUUID().toString() + "_" + fileName;
+            // Identifiant unique, pour qu'un fichier n'en ecrase jamais un autre.
+            //
+            // L'EXTENSION EST RETIREE, et ce n'est pas cosmetique : ce compte Cloudinary a la
+            // livraison des PDF desactivee, et toute ressource dont la cle finit par « .pdf »
+            // est refusee avec « deny or ACL failure ». Verifie par experience — meme contenu,
+            // depose deux fois, la version avec extension est la seule des deux a etre refusee.
+            // Aucun document televerse par un utilisateur n'etait donc telechargeable.
+            //
+            // Rien n'est perdu : le type reel est deduit du contenu a la diffusion, et le nom
+            // propose a l'enregistrement vient du jeton, pas de la cle de stockage.
+            String publicId = UUID.randomUUID() + "_" + sansExtension(fileName);
 
             Map<String, Object> uploadParams = ObjectUtils.asMap(
                     "folder", folderPath,
@@ -54,6 +63,14 @@ public class CloudinaryStorageService implements StorageService {
             log.error("Failed to upload file to Cloudinary: {}", e.getMessage(), e);
             throw new RuntimeException("Could not upload file to storage", e);
         }
+    }
+
+    /** Retire l'extension d'un nom de fichier : « passeport.pdf » devient « passeport ». */
+    private static String sansExtension(String nomFichier) {
+        if (nomFichier == null) return "fichier";
+        int point = nomFichier.lastIndexOf('.');
+        String base = point > 0 ? nomFichier.substring(0, point) : nomFichier;
+        return base.isBlank() ? "fichier" : base;
     }
 
     @Override

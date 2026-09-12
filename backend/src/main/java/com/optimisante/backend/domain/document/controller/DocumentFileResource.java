@@ -39,15 +39,44 @@ public class DocumentFileResource {
     private final DocumentAccessTokenService jetons;
     private final StorageService storageService;
 
-    /** Types servis tels quels ; tout le reste est proposé au téléchargement. */
-    private static final Map<String, MediaType> TYPES = Map.of(
-            "pdf",  MediaType.APPLICATION_PDF,
-            "png",  MediaType.IMAGE_PNG,
-            "jpg",  MediaType.IMAGE_JPEG,
-            "jpeg", MediaType.IMAGE_JPEG,
-            "webp", MediaType.parseMediaType("image/webp"),
-            "xlsx", MediaType.parseMediaType(
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+    /** Extension a proposer pour chaque type servi. */
+    private static final Map<MediaType, String> EXTENSIONS = Map.of(
+            MediaType.APPLICATION_PDF, "pdf",
+            MediaType.IMAGE_PNG, "png",
+            MediaType.IMAGE_JPEG, "jpg",
+            MediaType.parseMediaType("image/webp"), "webp",
+            MediaType.parseMediaType(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"), "xlsx");
+
+    /**
+     * Reconnait le type d'un fichier a ses premiers octets.
+     *
+     * <p>Chaque format commence par une signature convenue : « %PDF » pour un PDF, deux octets
+     * fixes pour un JPEG, huit pour un PNG. C'est plus sur qu'un nom de fichier, qui n'engage
+     * personne — un PDF renomme en .jpg reste un PDF.</p>
+     *
+     * <p>Un classeur .xlsx est une archive ZIP : il partage sa signature avec elle. On ne peut
+     * donc pas le distinguer ici, et il est servi comme un binaire — ce qui convient, puisque le
+     * navigateur le remet alors au tableur.</p>
+     */
+    private static MediaType typeReel(byte[] contenu) {
+        if (contenu.length >= 4) {
+            if (contenu[0] == '%' && contenu[1] == 'P' && contenu[2] == 'D' && contenu[3] == 'F') {
+                return MediaType.APPLICATION_PDF;
+            }
+            if ((contenu[0] & 0xFF) == 0xFF && (contenu[1] & 0xFF) == 0xD8) {
+                return MediaType.IMAGE_JPEG;
+            }
+            if ((contenu[0] & 0xFF) == 0x89 && contenu[1] == 'P' && contenu[2] == 'N' && contenu[3] == 'G') {
+                return MediaType.IMAGE_PNG;
+            }
+        }
+        if (contenu.length >= 12 && contenu[8] == 'W' && contenu[9] == 'E'
+                && contenu[10] == 'B' && contenu[11] == 'P') {
+            return MediaType.parseMediaType("image/webp");
+        }
+        return MediaType.APPLICATION_OCTET_STREAM;
+    }
 
     @GetMapping("/file/{jeton}")
     public ResponseEntity<byte[]> telecharger(@PathVariable String jeton) {
@@ -67,8 +96,11 @@ public class DocumentFileResource {
             return ResponseEntity.status(404).build();
         }
 
-        String extension = extensionDe(publicId);
-        MediaType type = TYPES.getOrDefault(extension, MediaType.APPLICATION_OCTET_STREAM);
+        // Le type vient des PREMIERS OCTETS, pas du nom. Les cles de stockage ne portent plus
+        // d'extension — le compte Cloudinary refuse de livrer une ressource nommee « .pdf » —
+        // et un nom de fichier ment de toute facon : il suffit de renommer un PDF en .jpg.
+        MediaType type = typeReel(contenu);
+        String extension = EXTENSIONS.getOrDefault(type, "pdf");
 
         // Un PDF s'ouvre dans l'onglet : le bouton s'appelle « Ouvrir le PDF », il serait
         // déroutant qu'il déclenche un enregistrement. Le reste est proposé au téléchargement.
@@ -105,11 +137,4 @@ public class DocumentFileResource {
                 : propre + "." + (extension.isBlank() ? "pdf" : extension);
     }
 
-    private static String extensionDe(String publicId) {
-        String dernier = publicId.substring(publicId.lastIndexOf('/') + 1);
-        int point = dernier.lastIndexOf('.');
-        // Les PDF générés sont stockés sans extension : c'est le cas majoritaire, et un PDF
-        // est le repli le plus sûr puisque toute cette chaîne en produit.
-        return point < 0 ? "pdf" : dernier.substring(point + 1).toLowerCase(Locale.ROOT);
-    }
 }

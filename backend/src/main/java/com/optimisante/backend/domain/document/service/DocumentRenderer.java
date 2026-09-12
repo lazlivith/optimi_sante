@@ -2,6 +2,7 @@ package com.optimisante.backend.domain.document.service;
 
 import com.optimisante.backend.domain.document.DocumentKind;
 import com.optimisante.backend.infrastructure.legal.CompanyIdentity;
+import com.optimisante.backend.infrastructure.legal.MarqueAssets;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -31,13 +32,18 @@ public class DocumentRenderer {
     /** Nom sous lequel les gabarits accèdent à l'identité : {@code ${societe.ligneIdentite()}}. */
     public static final String VARIABLE_SOCIETE = "societe";
 
+    /** Nom sous lequel les gabarits accèdent au logo : {@code ${marque.logoDataUri()}}. */
+    public static final String VARIABLE_MARQUE = "marque";
+
     private final TemplateEngine templateEngine;
     private final CompanyIdentity societe;
+    private final MarqueAssets marque;
 
     public DocumentRenderer(@Qualifier("pdfTemplateEngine") TemplateEngine templateEngine,
-                            CompanyIdentity societe) {
+                            CompanyIdentity societe, MarqueAssets marque) {
         this.templateEngine = templateEngine;
         this.societe = societe;
+        this.marque = marque;
     }
 
     /** Rend un document déclaré au registre. */
@@ -59,6 +65,7 @@ public class DocumentRenderer {
         // putIfAbsent et non put : un appelant qui fournirait sa propre société (un cas de test,
         // par exemple) garde la main.
         contexte.putIfAbsent(VARIABLE_SOCIETE, societe);
+        contexte.putIfAbsent(VARIABLE_MARQUE, marque);
 
         Context ctx = new Context();
         ctx.setVariables(contexte);
