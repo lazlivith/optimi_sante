@@ -21,5 +21,7 @@ public enum EmailType {
     /** Confirmation du rendez-vous, une fois le créneau retenu par le médecin. */
     INTERVIEW_CONFIRMED,
     /** Notification transactionnelle poussée par le NotificationDispatcher (paiement, dossier...). */
-    NOTIFICATION
+    NOTIFICATION,
+    /** Confirmation d'un règlement, le reçu joint au message. */
+    PAYMENT_CONFIRMATION
 }

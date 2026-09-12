@@ -31,10 +31,11 @@ public class NotificationDispatcher {
                 + e.totalAmount() + " € est confirmée. Votre reçu est disponible dans votre espace.";
         notifications.notifyUser(e.buyerUserId(), "ORDER_PAID", NotificationSeverity.SUCCESS,
                 "Paiement confirmé", body, "/my-orders", null, "ORDER_PAID:" + e.orderId());
-        if (notifications.emailAllowed(e.buyerUserId(), "ORDER_PAID")) {
-            emailService.sendHtml(e.buyerEmail(), "Optimi Santé — Paiement confirmé (" + e.orderNumber() + ")",
-                    "Votre paiement est confirmé", "<p>" + body + "</p>");
-        }
+        // L'e-mail de confirmation n'est plus envoyé d'ici : PaymentReceiptIssuer en émet un
+        // pour les CINQ encaissements de la plateforme, avec le reçu en pièce jointe. Le garder
+        // ici ferait deux messages pour un même règlement — et celui-ci annonçait « votre reçu
+        // est disponible dans votre espace » alors que l'autre le joint.
+        // La notification dans l'application, elle, reste : elle ne fait doublon avec rien.
     }
 
     @Async

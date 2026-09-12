@@ -50,6 +50,7 @@ public class PaymentReceiptIssuer {
     private static final DateTimeFormatter JOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final PaymentReceiptRepository receipts;
+    private final com.optimisante.backend.common.email.EmailService emailService;
     private final DocumentNumberService numeros;
     private final DocumentRenderer renderer;
     private final StorageService storageService;
@@ -94,6 +95,7 @@ public class PaymentReceiptIssuer {
             receipts.save(recu);
 
             classerAuCoffreFort(encaissement, recu, cle);
+            confirmerParCourriel(encaissement, recu, pdf);
             log.info("Reçu {} émis pour {} ({} EUR).",
                     recu.getNumero(), encaissement.motif(), encaissement.montantPaye());
         } catch (Exception e) {
@@ -136,6 +138,42 @@ public class PaymentReceiptIssuer {
                         .cloudinaryPublicId(cle)
                         .isVerified(true)      // émis par la plateforme : rien à vérifier
                         .build()));
+    }
+
+    /**
+     * Prévient la personne que son règlement est enregistré, le reçu joint.
+     *
+     * <p>Isolé dans son propre {@code try} : un relais de messagerie indisponible ne doit pas
+     * empêcher le reçu d'exister. Le document est déjà produit et classé à ce stade — l'e-mail
+     * est un confort, pas la preuve.</p>
+     *
+     * <p><b>Toujours envoyé, sans consulter les préférences de notification.</b> Un reçu est une
+     * pièce transactionnelle, pas une information de confort : il atteste d'un règlement déjà
+     * encaissé. Les préférences gouvernent ce dont on souhaite être tenu informé, pas la remise
+     * des justificatifs d'un paiement qu'on vient de faire.</p>
+     *
+     * <p>Le PDF déjà rendu est réutilisé tel quel : le re-télécharger depuis le stockage
+     * coûterait un aller-retour et, surtout, pourrait joindre un autre document si la clé
+     * venait à changer.</p>
+     */
+    private void confirmerParCourriel(Encaissement e, PaymentReceipt recu, byte[] pdf) {
+        if (e.payeurUserId() == null) return;
+        try {
+            userRepository.findById(e.payeurUserId()).ifPresent(u -> emailService.sendPaymentConfirmation(
+                    u.getEmail(),
+                    nomLisible(u),
+                    e.motif().libelle(),
+                    montant(e.montantPaye()),
+                    e.payeLe().format(JOUR),
+                    e.moyenPaiement() == null ? "Carte bancaire" : e.moyenPaiement(),
+                    recu.getNumero(),
+                    DocumentKind.RECU_PAIEMENT.nomFichier(recu.getNumero()),
+                    pdf,
+                    u.getId()));
+        } catch (Exception erreur) {
+            log.error("Reçu {} produit, mais confirmation par courriel impossible.",
+                    recu.getNumero(), erreur);
+        }
     }
 
     /** Assemble ce que le gabarit attend — les noms viennent du gabarit, pas de l'intuition. */

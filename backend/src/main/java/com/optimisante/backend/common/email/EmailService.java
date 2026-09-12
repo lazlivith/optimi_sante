@@ -205,6 +205,49 @@ public class EmailService {
     }
 
     /**
+     * Confirme un règlement encaissé, le reçu joint au message.
+     *
+     * <p>C'est la trace qui manquait. Un médecin réglait ses frais de dossier et ne recevait que
+     * ses identifiants ; son acompte et son solde ne déclenchaient rien du tout. Le reçu voyage
+     * <b>en pièce jointe</b> plutôt qu'en lien : une pièce comptable se classe, et un lien
+     * expire.</p>
+     *
+     * <p>Les montants arrivent déjà mis en forme : c'est l'émetteur du reçu qui les formate, et
+     * un second formatage ici ferait diverger le message du document qu'il accompagne.</p>
+     */
+    public void sendPaymentConfirmation(String toEmail, String destinataire, String motif,
+                                        String montant, String date, String moyenPaiement,
+                                        String numeroRecu, String nomFichierRecu, byte[] recuPdf,
+                                        UUID recipientUserId) {
+        String subject = "Optimi Santé — Paiement confirmé : " + motif + " (" + montant + ")";
+        String html = """
+                <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1a2e29;">
+                    <div style="background-color: #154D44; padding: 24px; border-radius: 12px 12px 0 0;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">Optimi Santé</h1>
+                    </div>
+                    <div style="border: 1px solid #E2EBE5; border-top: none; padding: 32px; border-radius: 0 0 12px 12px;">
+                        <p>Bonjour %s,</p>
+                        <p>Nous confirmons la bonne réception de votre règlement. Votre reçu est
+                        joint à ce message.</p>
+                        <table style="width: 100%%; background-color: #F6F7F5; border-radius: 8px; padding: 4px; margin: 24px 0;" cellpadding="8">
+                            <tr><td style="color: #5b6b66;">Objet</td><td><strong>%s</strong></td></tr>
+                            <tr><td style="color: #5b6b66;">Montant réglé</td><td><strong>%s</strong></td></tr>
+                            <tr><td style="color: #5b6b66;">Date</td><td>%s</td></tr>
+                            <tr><td style="color: #5b6b66;">Moyen de paiement</td><td>%s</td></tr>
+                            <tr><td style="color: #5b6b66;">N° de reçu</td><td>%s</td></tr>
+                        </table>
+                        <p style="font-size: 13px; color: #5b6b66;">Ce reçu atteste de votre règlement.
+                        Il ne constitue pas une facture. Vous le retrouverez également dans votre espace.</p>
+                        <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
+                    </div>
+                </div>
+                """.formatted(destinataire, motif, montant, date, moyenPaiement, numeroRecu);
+
+        send(toEmail, subject, html, EmailType.PAYMENT_CONFIRMATION, recipientUserId,
+             recuPdf == null ? null : PieceJointe.pdf(nomFichierRecu, recuPdf));
+    }
+
+    /**
      * Délai avant la seconde tentative, quand le relais a refusé pour cadence excessive.
      *
      * <p>Un peu plus d'une seconde : les relais qui limitent le débit raisonnent à la seconde.</p>
@@ -226,8 +269,13 @@ public class EmailService {
      * la latence à une erreur déjà certaine.</p>
      */
     private void send(String to, String subject, String html, EmailType type, UUID recipientUserId) {
+        send(to, subject, html, type, recipientUserId, null);
+    }
+
+    private void send(String to, String subject, String html, EmailType type,
+                      UUID recipientUserId, PieceJointe piece) {
         try {
-            deliver(to, subject, html);
+            deliver(to, subject, html, piece);
             log.info("Email envoyé à {}", to);
             trace(to, subject, type, EmailStatus.SENT, null, recipientUserId);
             return;
@@ -243,7 +291,7 @@ public class EmailService {
 
         try {
             Thread.sleep(PAUSE_AVANT_SECONDE_TENTATIVE_MS);
-            deliver(to, subject, html);
+            deliver(to, subject, html, piece);
             log.info("Email envoyé à {} à la seconde tentative", to);
             trace(to, subject, type, EmailStatus.SENT, null, recipientUserId);
         } catch (InterruptedException interruption) {
@@ -291,13 +339,38 @@ public class EmailService {
     }
 
     private void deliver(String to, String subject, String html) throws Exception {
+        deliver(to, subject, html, null);
+    }
+
+    /**
+     * Envoie le message, avec une pièce jointe facultative.
+     *
+     * <p><b>Le mode multipart n'est activé que s'il y a quelque chose à joindre.</b> Le
+     * constructeur à deux arguments utilisé jusqu'ici produit un message simple, incapable de
+     * porter un fichier : c'est ce qui rendait toute pièce jointe impossible. Le passer à
+     * {@code true} pour tous les envois aurait transformé en multipart les cinq messages qui
+     * fonctionnent déjà, sans nécessité.</p>
+     */
+    private void deliver(String to, String subject, String html, PieceJointe piece) throws Exception {
         MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
+        MimeMessageHelper helper = new MimeMessageHelper(message, piece != null, "UTF-8");
         helper.setFrom(fromAddress);
         helper.setTo(to);
         helper.setSubject(subject);
         helper.setText(html, true);
+        if (piece != null) {
+            helper.addAttachment(piece.nomFichier(),
+                    new org.springframework.core.io.ByteArrayResource(piece.contenu()),
+                    piece.typeMime());
+        }
         mailSender.send(message);
+    }
+
+    /** Un fichier joint : son nom tel qu'il apparaîtra, son contenu, son type. */
+    public record PieceJointe(String nomFichier, byte[] contenu, String typeMime) {
+        public static PieceJointe pdf(String nomFichier, byte[] contenu) {
+            return new PieceJointe(nomFichier, contenu, "application/pdf");
+        }
     }
 
     /**
