@@ -14,7 +14,7 @@ export function CheckoutCancelPage() {
         <p className="text-slate-600 mb-8">
           Le paiement a été annulé. Votre panier n'a pas été modifié — vous pouvez réessayer quand vous le souhaitez.
         </p>
-        <button onClick={() => navigate('/cart')} className="px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+        <button onClick={() => navigate('/cart')} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
           Retour au panier
         </button>
       </div>

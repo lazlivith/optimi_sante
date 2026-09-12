@@ -154,7 +154,7 @@ export function AdminAuditLogPage() {
         <button
           onClick={applyFilters}
           disabled={isBusy}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-60"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-60"
         >
           <Search className="w-4 h-4" />
           Filtrer
@@ -176,7 +176,7 @@ export function AdminAuditLogPage() {
 
       {isLoading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="w-8 h-8 text-brand-green animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand animate-spin" />
         </div>
       ) : !page || page.content.length === 0 ? (
         <EmptyState icon={ScrollText} title="Aucune entrée" description="Aucune action ne correspond à ces filtres." />

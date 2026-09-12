@@ -134,7 +134,7 @@ export function AdminGovernancePage() {
 
       {isLoading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="w-8 h-8 text-brand-green animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand animate-spin" />
         </div>
       ) : (
         <div className="space-y-8">
@@ -160,7 +160,7 @@ export function AdminGovernancePage() {
               <button
                 onClick={lookup}
                 disabled={lookupBusy || !email.trim()}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-60"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-60"
               >
                 {lookupBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 Rechercher
@@ -314,7 +314,7 @@ export function AdminGovernancePage() {
                                     setSubject(null);
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                   }}
-                                  className="text-xs text-brand-green font-semibold underline"
+                                  className="text-xs text-brand font-semibold underline"
                                 >
                                   Traiter
                                 </button>

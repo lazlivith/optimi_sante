@@ -64,7 +64,7 @@ export function TrainingsPage() {
         {/* Trainings Grid */}
         {isLoading ? (
           <div className="flex justify-center py-16">
-            <Loader2 className="w-8 h-8 text-brand-green animate-spin" />
+            <Loader2 className="w-8 h-8 text-brand animate-spin" />
           </div>
         ) : trainings.length === 0 ? (
           <div className="text-center py-16 text-slate-500">
@@ -105,7 +105,7 @@ export function TrainingsPage() {
                     {training.medicalSpecialty}
                   </span>
                   {training.isLongStay && (
-                    <span className="bg-brand-orange/10 text-brand-orange border border-brand-orange/20 text-[10px] font-bold px-3 py-1.5 rounded uppercase tracking-wider">
+                    <span className="bg-brand-orange/10 text-brand-accent border border-brand-orange/20 text-[10px] font-bold px-3 py-1.5 rounded uppercase tracking-wider">
                       VLS-TS &gt; 3 MOIS
                     </span>
                   )}
@@ -113,7 +113,7 @@ export function TrainingsPage() {
 
                 {/* Title & Details */}
                 <button onClick={() => navigate(`/formations/${training.id}`)} className="mb-6 flex-grow text-left">
-                  <h3 className="text-lg font-bold text-brand-dark mb-2 leading-tight pr-8 hover:text-brand-green transition-colors">
+                  <h3 className="text-lg font-bold text-brand-dark mb-2 leading-tight pr-8 hover:text-brand transition-colors">
                     {training.title}
                   </h3>
                   <p className="text-xs text-slate-500 font-medium">
@@ -140,7 +140,7 @@ export function TrainingsPage() {
                       setSelectedTraining({ id: training.id, title: training.title });
                     }
                   }}
-                  className={`flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors bg-brand-green text-white hover:bg-[#0f3c35]`}
+                  className={`flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors bg-brand text-white hover:bg-[#0f3c35]`}
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Postuler

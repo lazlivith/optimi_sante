@@ -94,8 +94,8 @@ export function DocumentExtractionPanel({ defaultType, onApply }: Props) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
       <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-lg bg-brand-green/10 flex items-center justify-center shrink-0">
-          <FileSearch className="w-4 h-4 text-brand-green" />
+        <div className="w-9 h-9 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+          <FileSearch className="w-4 h-4 text-brand" />
         </div>
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-slate-800">Analyse automatique du document</h3>
@@ -145,7 +145,7 @@ export function DocumentExtractionPanel({ defaultType, onApply }: Props) {
         <button
           onClick={analyse}
           disabled={busy || !file}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-green text-white text-sm font-medium hover:bg-[#0f3c35] disabled:opacity-40 ml-auto"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-[#0f3c35] disabled:opacity-40 ml-auto"
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           {busy ? 'Analyse en cours…' : 'Analyser'}
@@ -225,7 +225,7 @@ export function DocumentExtractionPanel({ defaultType, onApply }: Props) {
             {onApply && (
               <button
                 onClick={apply}
-                className="px-4 py-2 rounded-lg bg-brand-green text-white text-sm font-medium hover:bg-[#0f3c35]"
+                className="px-4 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-[#0f3c35]"
               >
                 Valider et reporter
               </button>

@@ -59,7 +59,7 @@ export function AdminOrdersPage() {
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 text-brand-green animate-spin" /></div>
+          <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 text-brand animate-spin" /></div>
         ) : orders.length === 0 ? (
           <EmptyState icon={ShoppingBag} title="Aucune commande pour le moment." />
         ) : (

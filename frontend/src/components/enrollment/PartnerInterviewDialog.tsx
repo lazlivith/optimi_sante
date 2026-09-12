@@ -109,7 +109,7 @@ export function PartnerInterviewDialog({
         </div>
 
         {isLoading ? (
-          <div className="p-12 flex justify-center"><Loader2 className="w-6 h-6 text-brand-green animate-spin" /></div>
+          <div className="p-12 flex justify-center"><Loader2 className="w-6 h-6 text-brand animate-spin" /></div>
         ) : actif ? (
           // Le serveur refuse un second entretien vivant ; le dire ici évite de faire remplir
           // un formulaire dont on sait déjà qu'il sera rejeté.
@@ -148,7 +148,7 @@ export function PartnerInterviewDialog({
                 id="lien-reunion" type="url" value={lienReunion}
                 onChange={(e) => setLienReunion(e.target.value)}
                 placeholder="https://teams.microsoft.com/… · https://meet.google.com/… · https://zoom.us/j/…"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none"
               />
               <p className="text-xs text-slate-500 mt-1">
                 Teams, Google Meet, Zoom — le lien que le médecin ouvrira le jour de l'entretien.
@@ -164,7 +164,7 @@ export function PartnerInterviewDialog({
                 <button
                   type="button"
                   onClick={() => setCreneaux((p) => [...p, { ...CRENEAU_VIDE }])}
-                  className="inline-flex items-center gap-1 text-sm font-semibold text-brand-green hover:underline"
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-brand hover:underline"
                 >
                   <Plus className="w-4 h-4" /> Ajouter
                 </button>
@@ -175,18 +175,18 @@ export function PartnerInterviewDialog({
                     <input
                       type="date" value={c.jour}
                       onChange={(e) => majCreneau(i, 'jour', e.target.value)}
-                      className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                      className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                     />
                     <input
                       type="time" value={c.debut}
                       onChange={(e) => majCreneau(i, 'debut', e.target.value)}
-                      className="rounded-lg border border-slate-300 px-2 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                      className="rounded-lg border border-slate-300 px-2 py-2 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                     />
                     <span className="text-slate-400">–</span>
                     <input
                       type="time" value={c.fin}
                       onChange={(e) => majCreneau(i, 'fin', e.target.value)}
-                      className="rounded-lg border border-slate-300 px-2 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                      className="rounded-lg border border-slate-300 px-2 py-2 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                     />
                     <button
                       type="button"
@@ -211,7 +211,7 @@ export function PartnerInterviewDialog({
                 id="note-chu" rows={3} value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Documents à préparer, composition du jury, durée prévue…"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none"
               />
             </div>
 
@@ -224,7 +224,7 @@ export function PartnerInterviewDialog({
               </button>
               <button
                 type="button" disabled={envoiEnCours} onClick={envoyer}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-green text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
               >
                 {envoiEnCours
                   ? <Loader2 className="w-4 h-4 animate-spin" />

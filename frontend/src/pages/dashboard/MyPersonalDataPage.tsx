@@ -48,7 +48,7 @@ export function MyPersonalDataPage() {
   if (isLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-green" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand" />
       </div>
     );
   }
@@ -72,7 +72,7 @@ export function MyPersonalDataPage() {
           </p>
           <button
             type="button" onClick={exporter} disabled={isExporting}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-green text-white font-bold hover:bg-[#0f3c35] disabled:opacity-60 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white font-bold hover:bg-[#0f3c35] disabled:opacity-60 transition-colors"
           >
             {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             Obtenir mes données (CSV)
@@ -126,7 +126,7 @@ export function MyPersonalDataPage() {
               {data.orders.length > 5 && (
                 <p className="text-xs text-slate-400 mt-3">
                   {data.orders.length - 5} de plus dans l'export ·{' '}
-                  <Link to="/my-orders" className="text-brand-green font-semibold hover:underline">
+                  <Link to="/my-orders" className="text-brand font-semibold hover:underline">
                     voir l'historique complet
                   </Link>
                 </p>
@@ -163,7 +163,7 @@ export function MyPersonalDataPage() {
           <h2 className="text-xl font-bold text-brand-dark mb-2">Rectification et effacement</h2>
           <p className="text-sm text-slate-600 leading-relaxed">
             Vous pouvez modifier vous-même la plupart de vos informations depuis la page{' '}
-            <Link to="/profile" className="text-brand-green font-semibold hover:underline">
+            <Link to="/profile" className="text-brand font-semibold hover:underline">
               Mon profil
             </Link>
             . Pour toute autre demande de rectification ou d'effacement, écrivez-nous : nous
@@ -207,7 +207,7 @@ function Bloc({
   return (
     <div className={`px-6 md:px-8 py-5 ${dernier ? '' : 'border-b border-slate-100'}`}>
       <h3 className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-3">
-        <Icon className="w-4 h-4 text-brand-green" /> {titre}
+        <Icon className="w-4 h-4 text-brand" /> {titre}
       </h3>
       {children}
     </div>

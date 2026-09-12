@@ -228,12 +228,12 @@ export function AdminEmailsPage() {
             value={testRecipient}
             onChange={(e) => setTestRecipient(e.target.value)}
             placeholder="destinataire@exemple.com"
-            className="flex-1 rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 focus:outline-none"
+            className="flex-1 rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
           />
           <button
             type="submit"
             disabled={isSendingTest}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-brand-green text-white text-sm font-medium hover:bg-[#0f3c35] disabled:opacity-70 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-brand text-white text-sm font-medium hover:bg-[#0f3c35] disabled:opacity-70 transition-colors"
           >
             <Send className="w-4 h-4" />
             {isSendingTest ? 'Envoi...' : 'Envoyer'}
@@ -251,13 +251,13 @@ export function AdminEmailsPage() {
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               placeholder="Rechercher un destinataire..."
-              className="w-full pl-9 rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 focus:outline-none"
+              className="w-full pl-9 rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-            className="rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand-green focus:outline-none"
+            className="rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand focus:outline-none"
           >
             <option value="">Tous les statuts</option>
             <option value="SENT">Envoyés</option>
@@ -266,7 +266,7 @@ export function AdminEmailsPage() {
           <select
             value={typeFilter}
             onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
-            className="rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand-green focus:outline-none"
+            className="rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand focus:outline-none"
           >
             <option value="">Tous les types</option>
             <option value="CREDENTIALS">Identifiants</option>

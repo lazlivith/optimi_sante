@@ -88,7 +88,7 @@ export function ProductVideo({
         href={videoUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 text-sm font-semibold text-brand-green hover:bg-slate-100"
+        className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 text-sm font-semibold text-brand hover:bg-slate-100"
       >
         <VideoIcon className="h-7 w-7" />
         Voir la vidéo de démonstration
@@ -101,7 +101,7 @@ export function ProductVideo({
       <button
         type="button"
         onClick={() => setLecteurCharge(true)}
-        className="group relative flex h-full w-full items-center justify-center rounded-2xl bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:ring-offset-2"
+        className="group relative flex h-full w-full items-center justify-center rounded-2xl bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         aria-label={`Lire la vidéo de démonstration de ${productName}`}
       >
         <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/95 shadow-lg transition-transform group-hover:scale-105">

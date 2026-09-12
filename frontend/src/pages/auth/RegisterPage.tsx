@@ -9,7 +9,7 @@ import { COUNTRIES } from '../../lib/countries';
 /** Styles partagés par tous les champs, pour garder une saisie homogène. */
 const FIELD =
   'w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm shadow-sm transition-colors ' +
-  'focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 focus:outline-none';
+  'focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none';
 const LABEL = 'block text-sm font-medium text-slate-700 mb-1.5';
 
 export const RegisterPage = () => {
@@ -69,12 +69,12 @@ export const RegisterPage = () => {
     return (
       <div className="min-h-[calc(100vh-200px)] flex items-center justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full text-center bg-white p-10 rounded-xl shadow-lg border border-slate-100">
-          <CheckCircle2 className="w-16 h-16 text-brand-green mx-auto mb-4" />
+          <CheckCircle2 className="w-16 h-16 text-brand mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-brand-dark mb-2">Inscription réussie !</h2>
           <p className="text-slate-600 mb-6">
             Votre compte a été créé avec succès. Vous allez être redirigé vers la page de connexion...
           </p>
-          <Link to="/login" className="text-brand-green font-medium hover:underline">
+          <Link to="/login" className="text-brand font-medium hover:underline">
             Aller à la connexion manuellement
           </Link>
         </div>
@@ -85,7 +85,7 @@ export const RegisterPage = () => {
   const tabClass = (tab: 'B2C' | 'B2B') =>
     `flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium rounded-lg transition-all ${
       activeTab === tab
-        ? 'bg-white text-brand-green shadow-sm ring-1 ring-slate-200'
+        ? 'bg-white text-brand shadow-sm ring-1 ring-slate-200'
         : 'text-slate-500 hover:text-slate-700'
     }`;
 
@@ -110,10 +110,10 @@ export const RegisterPage = () => {
         </div>
 
         <div className="mb-8 flex gap-3 p-4 bg-brand-light rounded-lg text-sm text-brand-dark">
-          <Info className="w-4 h-4 shrink-0 mt-0.5 text-brand-green" />
+          <Info className="w-4 h-4 shrink-0 mt-0.5 text-brand" />
           <p>
             Vous êtes médecin et souhaitez postuler à une formation ?{' '}
-            <Link to="/formations" className="font-semibold text-brand-green hover:underline">
+            <Link to="/formations" className="font-semibold text-brand hover:underline">
               Consultez nos formations disponibles
             </Link>{' '}
             — l'inscription se fait directement lors de votre candidature.
@@ -280,7 +280,7 @@ export const RegisterPage = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-3 px-4 rounded-lg shadow-sm text-sm font-medium text-white bg-brand-green hover:bg-[#0f3c35] focus:outline-none focus:ring-2 focus:ring-brand-green/40 disabled:opacity-70 transition-colors"
+              className="w-full flex justify-center py-3 px-4 rounded-lg shadow-sm text-sm font-medium text-white bg-brand hover:bg-[#0f3c35] focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:opacity-70 transition-colors"
             >
               {isLoading ? 'Inscription...' : 'Créer mon compte'}
             </button>
@@ -293,7 +293,7 @@ export const RegisterPage = () => {
 
           <div className="text-center text-sm text-slate-600">
             Déjà un compte ?{' '}
-            <Link to="/login" className="font-medium text-brand-green hover:text-brand-dark transition-colors">
+            <Link to="/login" className="font-medium text-brand hover:text-brand-dark transition-colors">
               Se connecter
             </Link>
           </div>

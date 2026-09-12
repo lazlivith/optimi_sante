@@ -88,7 +88,7 @@ export function MyServiceOptionsPanel({ enrollmentId }: { enrollmentId: string }
   if (isLoading) {
     return (
       <div className="bg-white rounded-3xl border border-slate-200 p-8 flex justify-center">
-        <Loader2 className="w-6 h-6 text-brand-green animate-spin" />
+        <Loader2 className="w-6 h-6 text-brand animate-spin" />
       </div>
     );
   }
@@ -109,7 +109,7 @@ export function MyServiceOptionsPanel({ enrollmentId }: { enrollmentId: string }
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-8 py-6 border-b border-slate-100 bg-brand-green/5">
+      <div className="px-8 py-6 border-b border-slate-100 bg-brand/5">
         <h2 className="text-lg font-bold text-brand-dark">Services de séjour</h2>
         <p className="text-sm text-slate-600 mt-0.5">
           Assurance, hébergement et transport organisés par Optimi Santé. Facultatifs : votre
@@ -180,14 +180,14 @@ export function MyServiceOptionsPanel({ enrollmentId }: { enrollmentId: string }
                   <label
                     key={o.id}
                     className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
-                      retenu ? 'border-brand-green bg-brand-green/5' : 'border-slate-200 hover:border-slate-300'
+                      retenu ? 'border-brand bg-brand/5' : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
                     <input
                       type="checkbox"
                       checked={retenu}
                       onChange={() => basculer(o.id)}
-                      className="mt-1 accent-brand-green"
+                      className="mt-1 accent-brand"
                     />
                     <Icone className="w-5 h-5 shrink-0 text-slate-400 mt-0.5" />
                     <div className="flex-1 min-w-0">
@@ -210,7 +210,7 @@ export function MyServiceOptionsPanel({ enrollmentId }: { enrollmentId: string }
                 type="button"
                 disabled={busy}
                 onClick={souscrire}
-                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-green text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 Retenir ces services — {formatAmount(totalChoisi)}
@@ -238,7 +238,7 @@ export function MyServiceOptionsPanel({ enrollmentId }: { enrollmentId: string }
                 type="button"
                 disabled={busy}
                 onClick={ouvrirPaiement}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-green text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
                 Régler {formatAmount(resume.amountDue)}

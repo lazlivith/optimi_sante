@@ -52,7 +52,7 @@ export function NotificationsPage() {
           </Link>
           <button
             onClick={() => markAllRead.mutate()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand-green text-white text-sm font-medium hover:bg-[#0f3c35]"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-[#0f3c35]"
           >
             <CheckCheck className="w-4 h-4" /> Tout marquer lu
           </button>
@@ -84,7 +84,7 @@ export function NotificationsPage() {
         )}
 
         {items.map((n) => (
-          <div key={n.id} className={`flex gap-3 px-4 py-3.5 ${n.read ? 'bg-white' : 'bg-brand-green/5'}`}>
+          <div key={n.id} className={`flex gap-3 px-4 py-3.5 ${n.read ? 'bg-white' : 'bg-brand/5'}`}>
             <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${DOT[n.severity] ?? DOT.INFO}`} />
             <button onClick={() => open(n)} className="min-w-0 flex-1 text-left">
               <span className="flex items-center gap-1.5">

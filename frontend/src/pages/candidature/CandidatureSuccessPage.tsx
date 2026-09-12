@@ -81,7 +81,7 @@ export function CandidatureSuccessPage() {
                 votre dossier en temps réel et transmettre vos pièces justificatives depuis votre espace personnel.
               </p>
             </div>
-            <Link to="/login" className="px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+            <Link to="/login" className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
               Me connecter
             </Link>
           </>
@@ -97,7 +97,7 @@ export function CandidatureSuccessPage() {
               Votre paiement a été transmis à Stripe. La confirmation finale peut prendre quelques minutes — vous
               recevrez vos identifiants de connexion par email dès qu'elle sera traitée.
             </p>
-            <Link to="/" className="px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+            <Link to="/" className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
               Retour à l'accueil
             </Link>
           </>

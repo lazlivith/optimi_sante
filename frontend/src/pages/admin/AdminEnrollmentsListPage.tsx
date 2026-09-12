@@ -99,7 +99,7 @@ export function AdminEnrollmentsListPage() {
               onChange={(e) => setRecherche(e.target.value)}
               placeholder="Médecin, email, formation…"
               aria-label="Rechercher un dossier par médecin, email ou formation"
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-brand focus:ring-1 focus:ring-brand outline-none"
             />
           </div>
 
@@ -107,7 +107,7 @@ export function AdminEnrollmentsListPage() {
             value={partenaire}
             onChange={(e) => setPartenaire(e.target.value)}
             aria-label="Filtrer par établissement partenaire"
-            className="py-2 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none max-w-[260px]"
+            className="py-2 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand focus:ring-1 focus:ring-brand outline-none max-w-[260px]"
           >
             <option value="">Tous les CHU ({enrollments.length})</option>
             {chus.map((chu) => (
@@ -121,7 +121,7 @@ export function AdminEnrollmentsListPage() {
             value={vue}
             onChange={(e) => setVue(e.target.value as VueId)}
             aria-label="Filtrer par étape du cycle"
-            className="py-2 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+            className="py-2 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand focus:ring-1 focus:ring-brand outline-none"
           >
             {VUES.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
           </select>
@@ -220,7 +220,7 @@ export function AdminEnrollmentsListPage() {
                       <td className="px-6 py-4 text-right">
                         <Link
                           to={`/admin/enrollments/${e.id}`}
-                          className="inline-flex items-center text-xs font-bold text-brand-green hover:underline whitespace-nowrap"
+                          className="inline-flex items-center text-xs font-bold text-brand hover:underline whitespace-nowrap"
                         >
                           Voir le dossier <ChevronRight className="w-3.5 h-3.5 ml-1" />
                         </Link>

@@ -98,14 +98,14 @@ export function AdminServiceCatalogPanel({
       <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-slate-200">
         <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 sticky top-0">
           <h2 className="inline-flex items-center gap-2 text-lg font-bold text-brand-dark">
-            <Wallet className="w-5 h-5 text-brand-green" />
+            <Wallet className="w-5 h-5 text-brand" />
             Services de séjour
           </h2>
           <p className="text-sm text-slate-500 mt-0.5">{trainingTitle}</p>
         </div>
 
         {isLoading ? (
-          <div className="p-12 flex justify-center"><Loader2 className="w-6 h-6 text-brand-green animate-spin" /></div>
+          <div className="p-12 flex justify-center"><Loader2 className="w-6 h-6 text-brand animate-spin" /></div>
         ) : (
           <div className="px-6 py-5 space-y-6">
             <p className="text-sm text-slate-600 bg-sky-50 border border-sky-200 rounded-xl p-3">
@@ -161,7 +161,7 @@ export function AdminServiceCatalogPanel({
                   <select
                     id="type-service" value={type}
                     onChange={(e) => setType(e.target.value as ServiceOptionType)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                   >
                     {SERVICE_OPTION_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>{t.label}</option>
@@ -178,7 +178,7 @@ export function AdminServiceCatalogPanel({
                       id="prix-service" type="number" min="0" step="0.01" value={prix}
                       onChange={(e) => setPrix(e.target.value)}
                       placeholder="0.00"
-                      className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                      className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                     />
                     <span className="text-slate-500 font-semibold">€</span>
                   </div>
@@ -193,7 +193,7 @@ export function AdminServiceCatalogPanel({
                   id="libelle-service" type="text" value={libelle}
                   onChange={(e) => setLibelle(e.target.value)}
                   placeholder="Ex. : studio meublé à 10 min du CHU"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                 />
               </div>
 
@@ -204,7 +204,7 @@ export function AdminServiceCatalogPanel({
                 <textarea
                   id="desc-service" rows={2} value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                 />
               </div>
 
@@ -217,7 +217,7 @@ export function AdminServiceCatalogPanel({
 
               <button
                 type="button" disabled={busy} onClick={deposer}
-                className="mt-3 inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-green text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                className="mt-3 inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 Ajouter au catalogue

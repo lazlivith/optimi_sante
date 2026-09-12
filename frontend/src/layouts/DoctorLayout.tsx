@@ -26,7 +26,7 @@ export function DoctorLayout() {
           dont les entrees peuvent depasser un petit ecran. */}
       <aside className="w-64 shrink-0 bg-emerald-950 text-emerald-200 flex flex-col sticky top-0 h-screen">
         <div className="h-16 flex items-center gap-2 px-6 border-b border-white/10">
-          <div className="bg-brand-green text-white font-bold rounded-lg flex items-center justify-center w-8 h-8 text-xs">
+          <div className="bg-brand text-white font-bold rounded-lg flex items-center justify-center w-8 h-8 text-xs">
             OS
           </div>
           <div>
@@ -44,7 +44,7 @@ export function DoctorLayout() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-brand-green text-white'
+                    ? 'bg-brand text-white'
                     : 'text-emerald-300/70 hover:bg-white/5 hover:text-white'
                 }`
               }

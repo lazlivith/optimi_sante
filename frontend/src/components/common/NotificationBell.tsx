@@ -70,7 +70,7 @@ export function NotificationBell() {
             {unread > 0 && (
               <button
                 onClick={() => markAllRead.mutate()}
-                className="flex items-center gap-1 text-xs font-medium text-brand-green hover:underline"
+                className="flex items-center gap-1 text-xs font-medium text-brand hover:underline"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
                 Tout marquer lu
@@ -124,7 +124,7 @@ export function NotificationBell() {
             <Link
               to="/notifications"
               onClick={() => setOpen(false)}
-              className="text-xs font-medium text-brand-green hover:underline"
+              className="text-xs font-medium text-brand hover:underline"
             >
               Voir toutes les notifications
             </Link>

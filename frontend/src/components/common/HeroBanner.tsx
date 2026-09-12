@@ -14,7 +14,7 @@ interface HeroBannerProps {
  */
 export function HeroBanner({ eyebrow, title, subtitle, icon: Icon, actions }: HeroBannerProps) {
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-dark to-brand-green text-white p-8 mb-8 shadow-lg">
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-dark to-brand text-white p-8 mb-8 shadow-lg">
       <div className="absolute -right-10 -top-16 w-64 h-64 rounded-full bg-white/5 pointer-events-none" />
       <div className="absolute right-16 -bottom-10 w-32 h-32 rounded-full bg-white/5 pointer-events-none" />
 

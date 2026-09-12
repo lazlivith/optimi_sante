@@ -117,7 +117,7 @@ export function AdminAnalyticsPage() {
 
       {isLoading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="w-8 h-8 text-brand-green animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand animate-spin" />
         </div>
       ) : !overview ? (
         <EmptyState icon={BarChart3} title="Aucune donnée analytique" description="Les indicateurs apparaîtront dès les premières ventes et inscriptions." />

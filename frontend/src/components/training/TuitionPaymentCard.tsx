@@ -63,7 +63,7 @@ export function TuitionPaymentCard({
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="px-8 py-5 bg-emerald-50 border-b border-emerald-100 flex items-start gap-3">
-        <CheckCircle2 className="w-5 h-5 text-brand-green shrink-0 mt-0.5" />
+        <CheckCircle2 className="w-5 h-5 text-brand shrink-0 mt-0.5" />
         <div>
           <p className="font-bold text-brand-dark">Candidature validée par l'établissement</p>
           <p className="text-sm text-slate-600 mt-0.5">
@@ -115,7 +115,7 @@ export function TuitionPaymentCard({
             type="button"
             onClick={handleOpenPayment}
             disabled={isPreparing}
-            className="w-full flex justify-center items-center py-3.5 px-4 rounded-xl shadow-sm text-sm font-bold text-white bg-brand-green hover:bg-[#0f3c35] disabled:opacity-70 transition-colors"
+            className="w-full flex justify-center items-center py-3.5 px-4 rounded-xl shadow-sm text-sm font-bold text-white bg-brand hover:bg-[#0f3c35] disabled:opacity-70 transition-colors"
           >
             {isPreparing ? (
               <>
@@ -133,11 +133,11 @@ export function TuitionPaymentCard({
 
         <div className="mt-6 pt-6 border-t border-slate-100 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-500">
           <span className="flex items-center gap-1.5">
-            <Lock className="w-3.5 h-3.5 text-brand-green" />
+            <Lock className="w-3.5 h-3.5 text-brand" />
             Paiement sécurisé par Stripe
           </span>
           <span className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-brand-green" />
+            <ShieldCheck className="w-3.5 h-3.5 text-brand" />
             Fonds sécurisés par Optimi Santé, tiers de confiance
           </span>
         </div>

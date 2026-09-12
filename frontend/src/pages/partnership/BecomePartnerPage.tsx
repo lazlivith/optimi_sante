@@ -24,7 +24,7 @@ const STEPS = [
 const STEP_BADGE_STYLES: Record<(typeof STEPS)[number]['tone'], string> = {
   active: 'bg-amber-100 text-amber-700 border border-amber-200',
   pending: 'bg-slate-100 text-slate-500 border border-slate-200',
-  success: 'bg-emerald-50 text-brand-green border border-emerald-200',
+  success: 'bg-emerald-50 text-brand border border-emerald-200',
 };
 
 export function BecomePartnerPage() {
@@ -65,13 +65,13 @@ export function BecomePartnerPage() {
     return (
       <div className="max-w-2xl mx-auto py-20 px-6 text-center">
         <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-200">
-          <CheckCircle2 className="w-16 h-16 text-brand-green mx-auto mb-4" />
+          <CheckCircle2 className="w-16 h-16 text-brand mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-brand-dark mb-4">Dossier déposé !</h1>
           <p className="text-slate-600 mb-8">
             Votre dossier de partenariat a bien été transmis à notre équipe. Après analyse, vous recevrez un email
             avec vos identifiants de connexion à l'Espace Centre si votre candidature est retenue.
           </p>
-          <Link to="/" className="px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+          <Link to="/" className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
             Retour à l'accueil
           </Link>
         </div>
@@ -84,7 +84,7 @@ export function BecomePartnerPage() {
       <div className="container mx-auto px-6 max-w-5xl">
         {/* En-tête */}
         <div className="mb-10">
-          <p className="text-[11px] font-bold tracking-[0.2em] text-brand-green uppercase mb-3">
+          <p className="text-[11px] font-bold tracking-[0.2em] text-brand uppercase mb-3">
             Cliniques, Hôpitaux, CHU
           </p>
           <h1 className="text-3xl md:text-4xl font-bold text-brand-dark mb-3 tracking-tight">
@@ -102,7 +102,7 @@ export function BecomePartnerPage() {
             <ul className="space-y-4 mb-8">
               {CONDITIONS.map((text, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <ShieldCheck className="w-5 h-5 text-brand-green shrink-0 mt-0.5" />
+                  <ShieldCheck className="w-5 h-5 text-brand shrink-0 mt-0.5" />
                   <span className="text-sm text-slate-600 leading-relaxed">{text}</span>
                 </li>
               ))}
@@ -113,7 +113,7 @@ export function BecomePartnerPage() {
                 libelle="Télécharger la convention type"
                 variante="bouton"
                 obtenirLien={() => partnershipService.getConventionTemplateUrl()}
-                className="px-5 py-3 rounded-xl border border-brand-green !bg-white !text-brand-green hover:!bg-brand-light"
+                className="px-5 py-3 rounded-xl border border-brand !bg-white !text-brand hover:!bg-brand-light"
               />
               <button
                 onClick={scrollToForm}
@@ -146,7 +146,7 @@ export function BecomePartnerPage() {
         {/* Section : dépôt du dossier */}
         <div ref={formRef} className="mb-10 scroll-mt-24">
           <div className="mb-6 flex items-center gap-3">
-            <div className="w-10 h-10 bg-brand-light text-brand-green rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-brand-light text-brand rounded-xl flex items-center justify-center">
               <Building2 className="w-5 h-5" />
             </div>
             <h2 className="text-xl font-bold text-brand-dark">Déposer votre dossier de candidature</h2>
@@ -183,7 +183,7 @@ export function BecomePartnerPage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Convention de partenariat signée</label>
-              <div className={`border-2 border-dashed rounded-2xl p-6 text-center transition-colors ${file ? 'border-brand-green bg-emerald-50/30' : 'border-slate-300 hover:border-brand-green bg-slate-50'}`}>
+              <div className={`border-2 border-dashed rounded-2xl p-6 text-center transition-colors ${file ? 'border-brand bg-emerald-50/30' : 'border-slate-300 hover:border-brand bg-slate-50'}`}>
                 <input
                   type="file"
                   id="convention-file"
@@ -192,7 +192,7 @@ export function BecomePartnerPage() {
                   className="hidden"
                 />
                 <label htmlFor="convention-file" className="cursor-pointer flex flex-col items-center">
-                  <UploadCloud className={`w-10 h-10 mb-3 ${file ? 'text-brand-green' : 'text-slate-400'}`} />
+                  <UploadCloud className={`w-10 h-10 mb-3 ${file ? 'text-brand' : 'text-slate-400'}`} />
                   <span className="font-semibold text-brand-dark">
                     {file ? file.name : 'Cliquez ou glissez-déposez le fichier'}
                   </span>
@@ -201,7 +201,7 @@ export function BecomePartnerPage() {
               </div>
             </div>
 
-            <button type="submit" disabled={isSubmitting} className="w-full flex justify-center py-3 px-4 rounded-xl shadow-sm text-sm font-bold text-white bg-brand-green hover:bg-[#0f3c35] disabled:opacity-70 transition-colors">
+            <button type="submit" disabled={isSubmitting} className="w-full flex justify-center py-3 px-4 rounded-xl shadow-sm text-sm font-bold text-white bg-brand hover:bg-[#0f3c35] disabled:opacity-70 transition-colors">
               {isSubmitting ? 'Envoi en cours...' : 'Envoyer ma demande de partenariat'}
             </button>
           </form>

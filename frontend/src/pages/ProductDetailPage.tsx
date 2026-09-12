@@ -68,7 +68,7 @@ export function ProductDetailPage() {
           
           <div className="flex flex-col">
             <div className="mb-6">
-              <span className="text-sm font-semibold text-brand-green tracking-widest uppercase mb-3 block">
+              <span className="text-sm font-semibold text-brand tracking-widest uppercase mb-3 block">
                 {(product.category?.name || 'BOUTIQUE').replace(/&amp;/g, '&')}
               </span>
               <h1 className="text-3xl lg:text-4xl font-bold text-brand-dark mb-3 leading-tight">{product.name}</h1>
@@ -100,14 +100,14 @@ export function ProductDetailPage() {
             {product.relatedTraining && (
               <Link
                 to={`/formations/${product.relatedTraining.id}`}
-                className="group block mb-8 rounded-2xl border border-brand-green/25 bg-brand-green/5 p-5 hover:bg-brand-green/10 transition-colors"
+                className="group block mb-8 rounded-2xl border border-brand/25 bg-brand/5 p-5 hover:bg-brand/10 transition-colors"
               >
                 <div className="flex items-start gap-4">
-                  <div className="shrink-0 w-11 h-11 rounded-xl bg-brand-green text-white flex items-center justify-center">
+                  <div className="shrink-0 w-11 h-11 rounded-xl bg-brand text-white flex items-center justify-center">
                     <GraduationCap className="w-5 h-5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-brand-green mb-1">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-brand mb-1">
                       Formez-vous à cet équipement
                     </p>
                     <p className="font-bold text-brand-dark leading-snug">
@@ -119,14 +119,14 @@ export function ProductDetailPage() {
                       {product.relatedTraining.price.toFixed(0)} €
                     </p>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-brand-green shrink-0 mt-1 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-5 h-5 text-brand shrink-0 mt-1 group-hover:translate-x-1 transition-transform" />
                 </div>
               </Link>
             )}
 
             <div className="grid grid-cols-2 gap-4 mb-8">
               <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
-                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-brand-green shadow-sm">
+                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-brand shadow-sm">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div className="flex flex-col">
@@ -135,7 +135,7 @@ export function ProductDetailPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
-                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-brand-green shadow-sm">
+                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-brand shadow-sm">
                   <Truck className="w-5 h-5" />
                 </div>
                 <div className="flex flex-col">
@@ -165,7 +165,7 @@ export function ProductDetailPage() {
               <button 
                 onClick={() => product.isQuoteOnly ? setIsQuoteModalOpen(true) : handleAddToCart()}
                 disabled={product.stockQuantity < 1 && !product.isQuoteOnly}
-                className="flex-1 h-14 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                className="flex-1 h-14 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               >
                 {product.isQuoteOnly ? 'Demander un devis' : 'Ajouter au panier'}
               </button>
@@ -192,7 +192,7 @@ export function ProductDetailPage() {
                   required 
                   value={quoteForm.companyName} 
                   onChange={(e) => setQuoteForm({...quoteForm, companyName: e.target.value})}
-                  className="w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green p-2 border" 
+                  className="w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand p-2 border" 
                 />
               </div>
               <div>
@@ -202,7 +202,7 @@ export function ProductDetailPage() {
                   required 
                   value={quoteForm.siretIce} 
                   onChange={(e) => setQuoteForm({...quoteForm, siretIce: e.target.value})}
-                  className="w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green p-2 border" 
+                  className="w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand p-2 border" 
                 />
               </div>
               <div>
@@ -211,14 +211,14 @@ export function ProductDetailPage() {
                   rows={3}
                   value={quoteForm.message} 
                   onChange={(e) => setQuoteForm({...quoteForm, message: e.target.value})}
-                  className="w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green p-2 border" 
+                  className="w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand p-2 border" 
                 ></textarea>
               </div>
               <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
                 <button type="button" onClick={() => setIsQuoteModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">
                   Annuler
                 </button>
-                <button type="submit" disabled={isSubmittingQuote} className="flex items-center px-4 py-2 text-sm font-bold text-white bg-brand-orange rounded-lg hover:bg-orange-600 disabled:opacity-70">
+                <button type="submit" disabled={isSubmittingQuote} className="flex items-center px-4 py-2 text-sm font-bold text-white bg-brand-accent rounded-lg hover:bg-brand-accent-fonce disabled:opacity-70">
                   {isSubmittingQuote && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Envoyer la demande
                 </button>

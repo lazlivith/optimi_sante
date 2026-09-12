@@ -128,7 +128,7 @@ export function AdminPayoutsPage() {
 
   const tabClass = (value: Tab) =>
     `px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-      tab === value ? 'bg-white text-brand-green shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'
+      tab === value ? 'bg-white text-brand shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'
     }`;
 
   return (
@@ -168,7 +168,7 @@ export function AdminPayoutsPage() {
 
       {isLoading ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500 text-sm">
-          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-3 text-brand-green" />
+          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-3 text-brand" />
           Chargement du registre...
         </div>
       ) : tab === 'registre' ? (
@@ -179,17 +179,17 @@ export function AdminPayoutsPage() {
               <input
                 type="text" value={search} onChange={(e) => setSearch(e.target.value)}
                 placeholder="Médecin, formation ou établissement..."
-                className="w-full pl-9 rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 focus:outline-none"
+                className="w-full pl-9 rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
               />
             </div>
             <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
-              className="rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand-green focus:outline-none">
+              className="rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand focus:outline-none">
               <option value="">Tous les types</option>
               <option value="DOSSIER_FEE">Frais de dossier</option>
               <option value="TUITION_FEE">Frais de formation</option>
             </select>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand-green focus:outline-none">
+              className="rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand focus:outline-none">
               <option value="">Tous les statuts</option>
               <option value="PAID">Payé</option>
               <option value="PENDING">En attente</option>
@@ -264,7 +264,7 @@ export function AdminPayoutsPage() {
             </label>
             <select
               value={selectedPartner} onChange={(e) => setSelectedPartner(e.target.value)}
-              className="w-full sm:max-w-md rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand-green focus:outline-none"
+              className="w-full sm:max-w-md rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand focus:outline-none"
             >
               {partners.map((p) => (
                 <option key={p.partnerProfileId} value={p.partnerProfileId}>
@@ -303,17 +303,17 @@ export function AdminPayoutsPage() {
                   <div>
                     <label className="block text-xs font-medium text-slate-600 mb-1.5">Début de période</label>
                     <input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)}
-                      className="rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand-green focus:outline-none" />
+                      className="rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand focus:outline-none" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-600 mb-1.5">Fin (exclue)</label>
                     <input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)}
-                      className="rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand-green focus:outline-none" />
+                      className="rounded-lg border border-slate-300 p-2.5 text-sm focus:border-brand focus:outline-none" />
                   </div>
                   <button
                     type="button" onClick={handleGenerate}
                     disabled={isWorking || partner.pendingAmount <= 0}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-brand-green text-white text-sm font-medium hover:bg-[#0f3c35] disabled:opacity-60 transition-colors"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-brand text-white text-sm font-medium hover:bg-[#0f3c35] disabled:opacity-60 transition-colors"
                   >
                     <Send className="w-4 h-4" />
                     Générer un reversement

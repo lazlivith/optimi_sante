@@ -67,7 +67,7 @@ export function AiDraftButton({ draftType, context, label = 'Rédiger avec l’I
           ?? 'flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50'
         }
       >
-        <Sparkles className="w-4 h-4 text-brand-green" />
+        <Sparkles className="w-4 h-4 text-brand" />
         {label}
       </button>
 
@@ -147,7 +147,7 @@ export function AiDraftButton({ draftType, context, label = 'Rédiger avec l’I
                       setOpen(false);
                     }}
                     disabled={!text}
-                    className="px-4 py-2 rounded-lg bg-brand-green text-white text-sm font-medium hover:bg-[#0f3c35] disabled:opacity-40"
+                    className="px-4 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-[#0f3c35] disabled:opacity-40"
                   >
                     Insérer
                   </button>

@@ -66,7 +66,7 @@ export function PartnerDashboardHomePage() {
       />
 
       {isLoading ? (
-        <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 text-brand-green animate-spin" /></div>
+        <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 text-brand animate-spin" /></div>
       ) : (
         <div className="space-y-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -83,7 +83,7 @@ export function PartnerDashboardHomePage() {
               </div>
               <Link
                 to="/partner/enrollments"
-                className="inline-flex items-center gap-1 text-xs font-bold text-brand-green hover:gap-1.5 transition-all"
+                className="inline-flex items-center gap-1 text-xs font-bold text-brand hover:gap-1.5 transition-all"
               >
                 Voir tout <ArrowRight className="w-3.5 h-3.5" />
               </Link>

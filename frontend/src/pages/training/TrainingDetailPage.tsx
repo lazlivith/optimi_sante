@@ -77,7 +77,7 @@ export function TrainingDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-brand-green animate-spin" />
+        <Loader2 className="w-8 h-8 text-brand animate-spin" />
       </div>
     );
   }
@@ -127,7 +127,7 @@ export function TrainingDetailPage() {
 
             <div className="space-y-4 mb-8">
               <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-200">
-                <div className="w-10 h-10 bg-brand-light text-brand-green rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-brand-light text-brand rounded-full flex items-center justify-center">
                   <GraduationCap className="w-5 h-5" />
                 </div>
                 <div>
@@ -136,7 +136,7 @@ export function TrainingDetailPage() {
                 </div>
               </div>
               <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-200">
-                <div className="w-10 h-10 bg-brand-light text-brand-green rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-brand-light text-brand rounded-full flex items-center justify-center">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
@@ -147,7 +147,7 @@ export function TrainingDetailPage() {
                 </div>
               </div>
               <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-200">
-                <div className="w-10 h-10 bg-brand-light text-brand-green rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-brand-light text-brand rounded-full flex items-center justify-center">
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
@@ -169,7 +169,7 @@ export function TrainingDetailPage() {
                     Réglés au dépôt · non remboursables
                   </p>
                 </div>
-                <p className="text-2xl font-bold text-brand-green whitespace-nowrap">
+                <p className="text-2xl font-bold text-brand whitespace-nowrap">
                   {training.applicationFee.toFixed(0)} €
                 </p>
               </div>
@@ -178,8 +178,8 @@ export function TrainingDetailPage() {
             {/* Rappel synthetique de l'accompagnement, renvoye vers /services. Detailler
                 l'assurance, le logement et le visa ici noierait le programme medical, qui est
                 la raison pour laquelle on ouvre cette page. */}
-            <div className="rounded-2xl border border-brand-green/25 bg-brand-green/5 p-5 mb-6">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-brand-green mb-2">
+            <div className="rounded-2xl border border-brand/25 bg-brand/5 p-5 mb-6">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-brand mb-2">
                 Compris dans notre accompagnement
               </p>
               <ul className="grid sm:grid-cols-2 gap-x-5 gap-y-1.5 mb-4">
@@ -190,7 +190,7 @@ export function TrainingDetailPage() {
                   { icon: Car, texte: "Accueil et transport à l'arrivée" },
                 ].map(({ icon: Icon, texte }) => (
                   <li key={texte} className="flex items-center gap-2 text-sm text-slate-700">
-                    <Icon className="w-4 h-4 text-brand-green shrink-0" />
+                    <Icon className="w-4 h-4 text-brand shrink-0" />
                     {texte}
                   </li>
                 ))}
@@ -200,14 +200,14 @@ export function TrainingDetailPage() {
               </p>
               <Link
                 to="/services"
-                className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-green hover:underline"
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-brand hover:underline"
               >
                 En savoir plus sur notre accompagnement
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
 
-            <Link to={applyPath} className="inline-flex items-center justify-center px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+            <Link to={applyPath} className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
               <CheckCircle className="w-5 h-5 mr-2" />
               Postuler à cette formation
             </Link>
@@ -217,7 +217,7 @@ export function TrainingDetailPage() {
           <div>
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 sticky top-28">
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-brand-orange/10 text-brand-orange rounded-xl">
+                <div className="p-3 bg-brand-orange/10 text-brand-accent rounded-xl">
                   <Download className="w-6 h-6" />
                 </div>
                 <h2 className="text-xl font-bold text-brand-dark">Télécharger la brochure</h2>
@@ -233,7 +233,7 @@ export function TrainingDetailPage() {
                     <input
                       type="text" required
                       value={form.firstName} onChange={(e) => setForm({...form, firstName: e.target.value})}
-                      className="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-brand-green focus:border-brand-green"
+                      className="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-brand focus:border-brand"
                     />
                   </div>
                   <div>
@@ -241,7 +241,7 @@ export function TrainingDetailPage() {
                     <input
                       type="text" required
                       value={form.lastName} onChange={(e) => setForm({...form, lastName: e.target.value})}
-                      className="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-brand-green focus:border-brand-green"
+                      className="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-brand focus:border-brand"
                     />
                   </div>
                 </div>
@@ -251,7 +251,7 @@ export function TrainingDetailPage() {
                   <input
                     type="email" required
                     value={form.email} onChange={(e) => setForm({...form, email: e.target.value})}
-                    className="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-brand-green focus:border-brand-green"
+                    className="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-brand focus:border-brand"
                   />
                 </div>
 
@@ -260,7 +260,7 @@ export function TrainingDetailPage() {
                   <input
                     type="tel" required
                     value={form.phoneWhatsapp} onChange={(e) => setForm({...form, phoneWhatsapp: e.target.value})}
-                    className="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-brand-green focus:border-brand-green"
+                    className="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-brand focus:border-brand"
                   />
                 </div>
 
@@ -270,7 +270,7 @@ export function TrainingDetailPage() {
                     <input
                       type="text" required
                       value={form.country} onChange={(e) => setForm({...form, country: e.target.value})}
-                      className="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-brand-green focus:border-brand-green"
+                      className="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-brand focus:border-brand"
                     />
                   </div>
                   <div>
@@ -278,7 +278,7 @@ export function TrainingDetailPage() {
                     <input
                       type="text" required
                       value={form.specialty} onChange={(e) => setForm({...form, specialty: e.target.value})}
-                      className="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-brand-green focus:border-brand-green"
+                      className="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-brand focus:border-brand"
                     />
                   </div>
                 </div>

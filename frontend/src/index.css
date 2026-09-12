@@ -1,13 +1,36 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", system-ui, sans-serif;
-  
-  --color-brand-green: #154D44;
-  --color-brand-cream: #F6F7F5;
-  --color-brand-orange: #D98A3C;
-  --color-brand-light: #E2EBE5;
-  --color-brand-dark: #1a2e29;
+  /* Police secondaire de la charte. « Inter » etait declaree ici sans jamais etre
+     chargee — ni lien, ni @font-face, ni paquet : le site rendait en police systeme. */
+  --font-sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* ── Couleurs de la charte, telles que le graphiste les a definies ─────────────── */
+  --color-brand-jaune: #EEF133;
+  --color-brand-orange: #EC7226;
+
+  /* Le bleu porte toute l'identite visuelle mais ne figure PAS dans la charte : ces
+     valeurs sont echantillonnees dans les visuels fournis, et restent a confirmer. */
+  --color-brand-bleu: #117098;
+  --color-brand-bleu-clair: #1F99B4;
+
+  /* ── Derivees, pour que la marque reste lisible ────────────────────────────────── */
+
+  /* Couleur d'action principale. 5,53:1 sur blanc, et 5,53:1 pour du blanc dessus :
+     elle tient donc aussi bien en texte qu'en fond de bouton. */
+  --color-brand: #117098;
+
+  /* Orange assombri, 5,13:1 sur blanc. L'orange de la charte plafonne a 3,00:1 :
+     il convient a un aplat ou a un gros titre, jamais a du texte courant. */
+  --color-brand-accent: #B4500D;
+
+  /* Survol de l'accent : 7,28:1 sur blanc. Un survol pris dans la palette generique de
+     Tailwind (orange-600) sortirait de la charte et retomberait sous le seuil. */
+  --color-brand-accent-fonce: #8F3F09;
+
+  --color-brand-dark: #0B2430;
+  --color-brand-light: #E3EEF2;
+  --color-brand-cream: #F7F8F6;
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
@@ -15,7 +38,7 @@
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
 
-  --color-primary: var(--color-brand-green);
+  --color-primary: var(--color-brand);
   --color-primary-foreground: #ffffff;
 
   --color-secondary: hsl(var(--secondary));

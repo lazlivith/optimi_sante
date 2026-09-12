@@ -15,7 +15,7 @@ export function CandidatureCancelPage() {
           Le paiement des frais de dossier a été annulé. Votre candidature n'a pas été validée et aucun compte n'a
           été créé — vous pouvez soumettre une nouvelle candidature quand vous le souhaitez.
         </p>
-        <button onClick={() => navigate('/formations')} className="px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+        <button onClick={() => navigate('/formations')} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
           Voir les formations
         </button>
       </div>

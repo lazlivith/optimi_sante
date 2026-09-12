@@ -84,7 +84,7 @@ export function AdminUsersPage() {
             onClick={() => setRoleFilter(role)}
             className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
               roleFilter === role
-                ? 'bg-brand-green text-white'
+                ? 'bg-brand text-white'
                 : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
             }`}
           >

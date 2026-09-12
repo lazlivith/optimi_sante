@@ -52,7 +52,7 @@ export const Footer = () => {
                 />
               ) : (
                 <span className="flex items-center gap-2.5">
-                  <span className="bg-brand-green text-white font-bold rounded-lg flex items-center justify-center w-10 h-10 text-sm shrink-0">
+                  <span className="bg-brand text-white font-bold rounded-lg flex items-center justify-center w-10 h-10 text-sm shrink-0">
                     OS
                   </span>
                   <span>
@@ -213,12 +213,12 @@ function Newsletter() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Votre adresse e-mail"
           aria-label="Votre adresse e-mail"
-          className="flex-1 min-w-0 px-3 py-2 text-sm rounded-lg bg-white/10 border border-white/15 text-white placeholder:text-slate-500 focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+          className="flex-1 min-w-0 px-3 py-2 text-sm rounded-lg bg-white/10 border border-white/15 text-white placeholder:text-slate-500 focus:border-brand focus:ring-1 focus:ring-brand outline-none"
         />
         <button
           type="submit"
           disabled={!consent || etat === 'envoi'}
-          className="shrink-0 px-4 py-2 rounded-lg bg-brand-green text-white text-xs font-bold uppercase tracking-wide hover:bg-[#0f3c35] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="shrink-0 px-4 py-2 rounded-lg bg-brand text-white text-xs font-bold uppercase tracking-wide hover:bg-[#0f3c35] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {etat === 'envoi' ? <Loader2 className="w-4 h-4 animate-spin" /> : "S'abonner"}
         </button>
@@ -228,7 +228,7 @@ function Newsletter() {
         <input
           type="checkbox" checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
-          className="mt-0.5 shrink-0 accent-brand-green"
+          className="mt-0.5 shrink-0 accent-brand"
         />
         <span>
           Je consens à recevoir par email les offres, actualités et informations d'Optimi

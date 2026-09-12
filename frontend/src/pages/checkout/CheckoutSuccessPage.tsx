@@ -23,7 +23,7 @@ export function CheckoutSuccessPage() {
           Merci pour votre confiance. Votre paiement a été traité par Stripe et votre commande est en cours de préparation.
           Vous recevrez un email de confirmation avec le détail de votre commande.
         </p>
-        <button onClick={() => navigate('/catalog')} className="px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+        <button onClick={() => navigate('/catalog')} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
           Continuer mes achats
         </button>
       </div>

@@ -88,7 +88,7 @@ export function AdminSalesDashboardPage() {
         </div>
         {isLoading ? (
           <div className="p-10 text-center">
-            <Loader2 className="w-5 h-5 animate-spin mx-auto text-brand-green" />
+            <Loader2 className="w-5 h-5 animate-spin mx-auto text-brand" />
           </div>
         ) : actions.length === 0 ? (
           <EmptyState

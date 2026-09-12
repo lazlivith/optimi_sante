@@ -106,7 +106,7 @@ export const ProfilePage = () => {
             <UserIcon className="w-5 h-5" />
             Mon Profil
           </h3>
-          <p className="mt-1 max-w-2xl text-sm text-brand-green/80">
+          <p className="mt-1 max-w-2xl text-sm text-brand/80">
             Mettez à jour vos informations personnelles et professionnelles.
           </p>
         </div>
@@ -147,7 +147,7 @@ export const ProfilePage = () => {
                   name="phoneWhatsapp"
                   value={formData.phoneWhatsapp || ''}
                   onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                 />
               </div>
 
@@ -161,7 +161,7 @@ export const ProfilePage = () => {
                       name="firstName"
                       value={formData.firstName || ''}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                     />
                   </div>
                   <div>
@@ -171,7 +171,7 @@ export const ProfilePage = () => {
                       name="lastName"
                       value={formData.lastName || ''}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                     />
                   </div>
                   <div>
@@ -183,7 +183,7 @@ export const ProfilePage = () => {
                       name="medicalSpecialty"
                       value={formData.medicalSpecialty || ''}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                     />
                   </div>
                   <div>
@@ -195,7 +195,7 @@ export const ProfilePage = () => {
                       name="medicalCouncilNumber"
                       value={formData.medicalCouncilNumber || ''}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                     />
                   </div>
                   <div>
@@ -207,7 +207,7 @@ export const ProfilePage = () => {
                       name="countryOfResidence"
                       value={formData.countryOfResidence || ''}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                     />
                   </div>
                   <div>
@@ -217,7 +217,7 @@ export const ProfilePage = () => {
                       name="currentHospital"
                       value={formData.currentHospital || ''}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                     />
                   </div>
                 </>
@@ -235,7 +235,7 @@ export const ProfilePage = () => {
                       name="companyName"
                       value={formData.companyName || ''}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                     />
                   </div>
                   <div>
@@ -248,7 +248,7 @@ export const ProfilePage = () => {
                       value={formData.taxId || ''}
                       onChange={handleChange}
                       placeholder="Tax ID, N° TVA, ICE, SIRET, Registration No."
-                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                     />
                   </div>
                   <div>
@@ -258,7 +258,7 @@ export const ProfilePage = () => {
                       name="contactName"
                       value={formData.contactName || ''}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                     />
                   </div>
                   <div>
@@ -267,7 +267,7 @@ export const ProfilePage = () => {
                       name="facilityType"
                       value={formData.facilityType || ''}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                     >
                       <option value="">— Non renseigné —</option>
                       {(Object.keys(FACILITY_TYPE_LABELS) as FacilityType[]).map((key) => (
@@ -281,7 +281,7 @@ export const ProfilePage = () => {
                       name="country"
                       value={formData.country || ''}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                     >
                       <option value="">— Non renseigné —</option>
                       {COUNTRIES.map((c) => (
@@ -297,7 +297,7 @@ export const ProfilePage = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-green hover:bg-[#0f3c35] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-green transition-colors disabled:opacity-70 gap-2 items-center"
+                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand hover:bg-[#0f3c35] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand transition-colors disabled:opacity-70 gap-2 items-center"
               >
                 <Save className="w-4 h-4" />
                 {isLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
@@ -328,7 +328,7 @@ export const ProfilePage = () => {
                   name="currentPassword"
                   value={passwordData.currentPassword}
                   onChange={handlePasswordChange}
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                 />
               </div>
               <div>
@@ -338,7 +338,7 @@ export const ProfilePage = () => {
                   name="newPassword"
                   value={passwordData.newPassword}
                   onChange={handlePasswordChange}
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                 />
               </div>
               <div>
@@ -348,7 +348,7 @@ export const ProfilePage = () => {
                   name="confirmPassword"
                   value={passwordData.confirmPassword}
                   onChange={handlePasswordChange}
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-green focus:ring-brand-green sm:text-sm py-2 px-3 border"
+                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand focus:ring-brand sm:text-sm py-2 px-3 border"
                 />
               </div>
             </div>

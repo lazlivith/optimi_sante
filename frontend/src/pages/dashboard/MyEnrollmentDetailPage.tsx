@@ -112,7 +112,7 @@ export function MyEnrollmentDetailPage() {
   };
 
   if (isLoading || !enrollment) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-green" /></div>;
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand" /></div>;
   }
 
   const isFailed = enrollment.status === 'REJECTED' || enrollment.status === 'CANCELLED';
@@ -275,7 +275,7 @@ export function MyEnrollmentDetailPage() {
               <select 
                 value={documentType}
                 onChange={(e) => setDocumentType(e.target.value)}
-                className="w-full p-3 rounded-xl border border-slate-300 focus:border-brand-green focus:ring-brand-green bg-slate-50"
+                className="w-full p-3 rounded-xl border border-slate-300 focus:border-brand focus:ring-brand bg-slate-50"
               >
                 <option value="PASSPORT">Passeport (validité &gt; 6 mois)</option>
                 <option value="DIPLOMA">Diplôme de docteur en médecine / spécialité</option>
@@ -287,7 +287,7 @@ export function MyEnrollmentDetailPage() {
             </div>
 
             <div 
-              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-colors ${uploadFile ? 'border-brand-green bg-emerald-50/30' : 'border-slate-300 hover:border-blue-500 bg-slate-50'}`}
+              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-colors ${uploadFile ? 'border-brand bg-emerald-50/30' : 'border-slate-300 hover:border-blue-500 bg-slate-50'}`}
             >
               <input 
                 type="file" 
@@ -297,7 +297,7 @@ export function MyEnrollmentDetailPage() {
                 id="file-upload"
               />
               <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center">
-                <UploadCloud className={`w-12 h-12 mb-4 ${uploadFile ? 'text-brand-green' : 'text-slate-400'}`} />
+                <UploadCloud className={`w-12 h-12 mb-4 ${uploadFile ? 'text-brand' : 'text-slate-400'}`} />
                 <span className="font-semibold text-brand-dark mb-1">
                   {uploadFile ? uploadFile.name : 'Cliquez ou glissez-déposez un fichier'}
                 </span>
@@ -320,7 +320,7 @@ export function MyEnrollmentDetailPage() {
                 ) : (
                   <button 
                     onClick={handleUpload}
-                    className="w-full flex justify-center items-center py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors"
+                    className="w-full flex justify-center items-center py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors"
                   >
                     Confirmer l'envoi du document
                   </button>

@@ -130,7 +130,7 @@ export function PartnerEnrollmentsPage() {
             <select
               value={trainingFilter}
               onChange={(e) => handleFilterChange(e.target.value)}
-              className="text-sm rounded-lg border-slate-300 border py-2 px-3 bg-white text-slate-700 focus:border-brand-green focus:ring-brand-green"
+              className="text-sm rounded-lg border-slate-300 border py-2 px-3 bg-white text-slate-700 focus:border-brand focus:ring-brand"
             >
               <option value="">Toutes les formations</option>
               {trainings.map(t => (
@@ -189,7 +189,7 @@ export function PartnerEnrollmentsPage() {
                           <>
                             {/* L'entretien accompagne la decision, il ne la remplace pas :
                                 le bouton coexiste avec « Approuver » au lieu de s'y substituer. */}
-                            <button onClick={() => setEntretienPour(e)} className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-brand-green bg-brand-green/10 rounded-lg hover:bg-brand-green/20 transition-colors">
+                            <button onClick={() => setEntretienPour(e)} className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-brand bg-brand/10 rounded-lg hover:bg-brand/20 transition-colors">
                               <CalendarPlus className="w-3.5 h-3.5 mr-1.5" /> Entretien
                             </button>
                             <button onClick={() => handleApprove(e.id)} className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
@@ -226,7 +226,7 @@ export function PartnerEnrollmentsPage() {
             </div>
             <div className="overflow-y-auto flex-1">
               {isLoadingDocs ? (
-                <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 text-brand-green animate-spin" /></div>
+                <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 text-brand animate-spin" /></div>
               ) : docs.length === 0 ? (
                 <EmptyState icon={FolderOpen} title="Aucun document déposé pour le moment." />
               ) : (

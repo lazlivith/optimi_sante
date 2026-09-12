@@ -31,7 +31,7 @@ function PayForm({ payLabel }: { payLabel: string }) {
         type="button"
         onClick={handlePay}
         disabled={isSubmitting || !checkout.canConfirm}
-        className="w-full flex justify-center items-center py-3 px-4 rounded-xl shadow-sm text-sm font-bold text-white bg-brand-green hover:bg-[#0f3c35] disabled:opacity-70 transition-colors"
+        className="w-full flex justify-center items-center py-3 px-4 rounded-xl shadow-sm text-sm font-bold text-white bg-brand hover:bg-[#0f3c35] disabled:opacity-70 transition-colors"
       >
         {isSubmitting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <CreditCard className="w-5 h-5 mr-2" />}
         {isSubmitting ? 'Traitement en cours...' : payLabel}

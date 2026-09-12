@@ -103,7 +103,7 @@ export function ChatWidget() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-24 right-6 z-50 w-14 h-14 bg-brand-green rounded-full flex items-center justify-center shadow-lg hover:bg-[#0f3c35] transition-all hover:scale-110"
+          className="fixed bottom-24 right-6 z-50 w-14 h-14 bg-brand rounded-full flex items-center justify-center shadow-lg hover:bg-[#0f3c35] transition-all hover:scale-110"
           aria-label="Ouvrir l'assistant Optimi Santé"
         >
           <Sparkles className="w-6 h-6 text-white" />
@@ -113,7 +113,7 @@ export function ChatWidget() {
       {open && (
         <div className="fixed bottom-6 right-6 z-50 w-[min(24rem,calc(100vw-3rem))] h-[min(34rem,calc(100vh-6rem))] bg-white rounded-2xl border border-slate-200 shadow-2xl flex flex-col overflow-hidden">
           <header className="flex items-center gap-2 px-4 py-3 bg-brand-dark text-white shrink-0">
-            <div className="w-8 h-8 rounded-full bg-brand-green flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center">
               <Bot className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
@@ -136,7 +136,7 @@ export function ChatWidget() {
                     <button
                       key={s}
                       onClick={() => send(s)}
-                      className="block w-full text-left text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:border-brand-green hover:text-brand-dark transition-colors"
+                      className="block w-full text-left text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:border-brand hover:text-brand-dark transition-colors"
                     >
                       {s}
                     </button>
@@ -183,12 +183,12 @@ export function ChatWidget() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Posez votre question…"
               maxLength={4000}
-              className="flex-1 px-3 py-2 rounded-full bg-slate-100 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:bg-white transition-all"
+              className="flex-1 px-3 py-2 rounded-full bg-slate-100 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:bg-white transition-all"
             />
             <button
               type="submit"
               disabled={pending || !input.trim()}
-              className="w-9 h-9 rounded-full bg-brand-green text-white flex items-center justify-center disabled:opacity-40 hover:bg-[#0f3c35] transition-colors shrink-0"
+              className="w-9 h-9 rounded-full bg-brand text-white flex items-center justify-center disabled:opacity-40 hover:bg-[#0f3c35] transition-colors shrink-0"
               aria-label="Envoyer"
             >
               <Send className="w-4 h-4" />
@@ -208,7 +208,7 @@ function Bubble({ role, content }: ChatMessage) {
       <div
         className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap break-words ${
           isUser
-            ? 'bg-brand-green text-white rounded-br-sm'
+            ? 'bg-brand text-white rounded-br-sm'
             : 'bg-white border border-slate-200 text-slate-700 rounded-bl-sm'
         }`}
       >

@@ -95,7 +95,7 @@ export const Navbar = () => {
             />
           ) : (
             <>
-              <div className="bg-brand-green text-white font-bold rounded-xl flex items-center justify-center w-11 h-11 text-base">
+              <div className="bg-brand text-white font-bold rounded-xl flex items-center justify-center w-11 h-11 text-base">
                 OS
               </div>
               <div className="hidden sm:block">
@@ -115,7 +115,7 @@ export const Navbar = () => {
               placeholder="Quel produit recherchez-vous ?"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-100/80 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:bg-white transition-all"
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-100/80 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:bg-white transition-all"
             />
           </div>
         </form>
@@ -143,7 +143,7 @@ export const Navbar = () => {
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
               >
                 <div className="w-8 h-8 bg-brand-light rounded-full flex items-center justify-center">
-                  <UserIcon className="w-4 h-4 text-brand-green" />
+                  <UserIcon className="w-4 h-4 text-brand" />
                 </div>
                 <div className="hidden sm:block text-left">
                   <p className="text-xs text-gray-500 leading-none">Bonjour</p>
@@ -214,7 +214,7 @@ export const Navbar = () => {
               )}
             </div>
           ) : (
-            <Link to="/login" className="bg-brand-green text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-[#0f3c35] transition-colors">
+            <Link to="/login" className="bg-brand text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-[#0f3c35] transition-colors">
               Se connecter
             </Link>
           )}

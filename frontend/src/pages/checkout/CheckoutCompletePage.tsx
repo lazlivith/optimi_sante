@@ -91,7 +91,7 @@ export function CheckoutCompletePage() {
               Merci pour votre confiance{orderNumber ? ` — commande ${orderNumber}` : ''}. Vous recevrez un email de
               confirmation contenant les détails de votre commande.
             </p>
-            <button onClick={() => navigate('/catalog')} className="px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+            <button onClick={() => navigate('/catalog')} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
               Continuer mes achats
             </button>
           </>
@@ -106,7 +106,7 @@ export function CheckoutCompletePage() {
             <p className="text-slate-600 mb-8">
               Votre paiement est en cours de traitement. Vous recevrez un email de confirmation dès qu'il sera validé.
             </p>
-            <button onClick={() => navigate('/my-orders')} className="px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+            <button onClick={() => navigate('/my-orders')} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
               Voir mes commandes
             </button>
           </>
@@ -119,7 +119,7 @@ export function CheckoutCompletePage() {
             </div>
             <h1 className="text-3xl font-bold text-brand-dark mb-4">Paiement non abouti</h1>
             <p className="text-slate-600 mb-8">Le paiement n'a pas pu être confirmé. Votre panier n'a pas été modifié.</p>
-            <button onClick={() => navigate('/cart')} className="px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+            <button onClick={() => navigate('/cart')} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
               Retour au panier
             </button>
           </>

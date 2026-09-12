@@ -88,7 +88,7 @@ export function AdminAiPage() {
       {/* ------------------------------------------------- extraction documentaire */}
       <section className="space-y-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <FileSearch className="w-4 h-4 text-brand-green" />
+          <FileSearch className="w-4 h-4 text-brand" />
           Analyse d'un document
         </h2>
         <DocumentExtractionPanel onApply={() => undefined} />
@@ -97,7 +97,7 @@ export function AdminAiPage() {
       {/* ------------------------------------------------------ rédaction assistée */}
       <section className="space-y-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <PenLine className="w-4 h-4 text-brand-green" />
+          <PenLine className="w-4 h-4 text-brand" />
           Rédaction assistée
         </h2>
         <div className="bg-white rounded-xl border border-slate-200 p-5">

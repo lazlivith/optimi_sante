@@ -84,7 +84,7 @@ export const LoginPage = () => {
   const champ =
     'block w-full rounded-xl border border-brand-light bg-white py-3 pl-11 pr-4 text-[15px] '
     + 'text-brand-dark placeholder:text-slate-400 transition-colors '
-    + 'focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/20';
+    + 'focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
 
   return (
     <div className="bg-brand-cream">
@@ -136,7 +136,7 @@ export const LoginPage = () => {
                       le cherche, au moment où l'on constate qu'on ne s'en souvient pas. */}
                   <a
                     href="#"
-                    className="rounded text-[13px] font-medium text-brand-green underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/30"
+                    className="rounded text-[13px] font-medium text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
                   >
                     Mot de passe oublié ?
                   </a>
@@ -163,7 +163,7 @@ export const LoginPage = () => {
                     type="button"
                     onClick={() => setMotDePasseVisible((v) => !v)}
                     aria-label={motDePasseVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 transition-colors hover:bg-brand-cream hover:text-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/30"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 transition-colors hover:bg-brand-cream hover:text-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
                   >
                     {motDePasseVisible
                       ? <EyeOff className="h-[18px] w-[18px]" />
@@ -175,7 +175,7 @@ export const LoginPage = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-brand-green py-3.5 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#0f3c35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3.5 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#0f3c35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isLoading ? (
                   <>
@@ -195,7 +195,7 @@ export const LoginPage = () => {
               Pas encore de compte ?{' '}
               <Link
                 to="/register"
-                className="rounded font-semibold text-brand-green underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/30"
+                className="rounded font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
               >
                 S'inscrire
               </Link>
@@ -204,7 +204,7 @@ export const LoginPage = () => {
         </div>
 
         {/* -------------------------------------------------------- panneau de marque -- */}
-        <div className="relative order-1 flex items-center overflow-hidden bg-brand-green px-6 py-10 sm:px-12 lg:order-2 lg:py-16 lg:pl-16 xl:pl-24">
+        <div className="relative order-1 flex items-center overflow-hidden bg-brand px-6 py-10 sm:px-12 lg:order-2 lg:py-16 lg:pl-16 xl:pl-24">
           {/* Halo diagonal : il reprend la montée de la flèche du logo. Discret, et non un
               dégradé décoratif posé au hasard. */}
           <div
@@ -245,7 +245,7 @@ export const LoginPage = () => {
             <ul className="mt-10 hidden space-y-4 lg:block">
               {REPERES.map((repere) => (
                 <li key={repere} className="flex items-start gap-3 text-[15px] text-white/85">
-                  <ShieldCheck aria-hidden="true" className="mt-0.5 h-[18px] w-[18px] shrink-0 text-brand-orange" />
+                  <ShieldCheck aria-hidden="true" className="mt-0.5 h-[18px] w-[18px] shrink-0 text-brand-accent" />
                   <span>{repere}</span>
                 </li>
               ))}

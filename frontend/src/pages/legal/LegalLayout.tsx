@@ -35,7 +35,7 @@ export function LegalLayout({
           {PAGES.map(({ to, label, icon: Icon }) => (
             <Link
               key={to} to={to}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:border-brand-green hover:text-brand-dark transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:border-brand hover:text-brand-dark transition-colors"
             >
               <Icon className="w-3.5 h-3.5" /> {label}
             </Link>

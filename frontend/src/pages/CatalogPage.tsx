@@ -59,7 +59,7 @@ export function CatalogPage() {
               <input
                 type="search"
                 placeholder="Rechercher un dispositif, une référence..."
-                className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green focus:bg-white transition-all"
+                className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-white transition-all"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -70,7 +70,7 @@ export function CatalogPage() {
               <select
                 value={selectedCategory ?? ''}
                 onChange={(e) => setSelectedCategory(e.target.value || undefined)}
-                className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green focus:bg-white transition-all"
+                className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-white transition-all"
               >
                 <option value="">Toutes les catégories</option>
                 {categories?.map((cat) => (
@@ -85,7 +85,7 @@ export function CatalogPage() {
               <span className="text-xs text-slate-500">Filtré par :</span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand-light text-brand-dark text-xs font-semibold rounded-full">
                 {selectedCategoryName}
-                <button onClick={() => setSelectedCategory(undefined)} className="hover:text-brand-green" aria-label="Retirer le filtre">×</button>
+                <button onClick={() => setSelectedCategory(undefined)} className="hover:text-brand" aria-label="Retirer le filtre">×</button>
               </span>
             </div>
           )}
@@ -132,7 +132,7 @@ export function CatalogPage() {
             <div className="text-center py-20">
               <p className="text-slate-700 font-semibold">Aucune promotion en cours.</p>
               <p className="text-slate-500 text-sm mt-1">Revenez bientôt, ou parcourez le catalogue complet.</p>
-              <Link to="/catalog" className="inline-block mt-5 bg-brand-green text-white px-5 py-2.5 rounded-full font-bold text-sm hover:bg-[#0f3c35] transition-colors">
+              <Link to="/catalog" className="inline-block mt-5 bg-brand text-white px-5 py-2.5 rounded-full font-bold text-sm hover:bg-[#0f3c35] transition-colors">
                 Voir le catalogue
               </Link>
             </div>
@@ -167,7 +167,7 @@ export function CatalogPage() {
                     )}
                     <div className="absolute top-3 right-3 flex flex-col gap-2">
                       {product.isQuoteOnly ? (
-                        <span className="px-2.5 py-1 text-[10px] font-bold text-brand-orange border border-brand-orange/30 bg-orange-50 rounded-md tracking-wider shadow-sm">
+                        <span className="px-2.5 py-1 text-[10px] font-bold text-brand-accent border border-brand-orange/30 bg-orange-50 rounded-md tracking-wider shadow-sm">
                           SUR DEVIS
                         </span>
                       ) : product.stockQuantity < 5 ? (
@@ -181,7 +181,7 @@ export function CatalogPage() {
                   <div className="flex-1 flex flex-col p-5">
                     <div className="flex-1 flex flex-col mb-4">
                       <span className="text-[11px] text-slate-400 mb-1.5">{(product.category?.name || 'Général').replace(/&amp;/g, '&')}</span>
-                      <Link to={`/product/${product.slug}`} className="font-semibold text-sm text-brand-dark group-hover:text-brand-green transition-colors leading-snug line-clamp-2">
+                      <Link to={`/product/${product.slug}`} className="font-semibold text-sm text-brand-dark group-hover:text-brand transition-colors leading-snug line-clamp-2">
                         {product.name}
                       </Link>
                     </div>
@@ -210,7 +210,7 @@ export function CatalogPage() {
                         <button
                           onClick={() => addToCart(product, 1)}
                           disabled={product.stockQuantity < 1}
-                          className="flex items-center justify-center w-9 h-9 border border-slate-200 rounded-lg text-slate-600 hover:border-brand-green hover:bg-brand-green hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-600 disabled:hover:border-slate-200"
+                          className="flex items-center justify-center w-9 h-9 border border-slate-200 rounded-lg text-slate-600 hover:border-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-600 disabled:hover:border-slate-200"
                           title="Ajouter au panier"
                         >
                           <Plus className="w-4 h-4" />

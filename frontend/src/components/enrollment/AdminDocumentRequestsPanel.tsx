@@ -129,7 +129,7 @@ export function AdminDocumentRequestsPanel({ enrollmentId }: { enrollmentId: str
         <button
           type="button"
           onClick={() => setFormOuvert((v) => !v)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors text-sm shrink-0"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors text-sm shrink-0"
         >
           {formOuvert ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {formOuvert ? 'Fermer' : 'Réclamer une pièce'}
@@ -149,7 +149,7 @@ export function AdminDocumentRequestsPanel({ enrollmentId }: { enrollmentId: str
                 id="dr-label" required maxLength={255} value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 placeholder="Ex. : Acte de naissance traduit en français"
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-brand focus:ring-1 focus:ring-brand outline-none"
               />
             </div>
             <div>
@@ -159,7 +159,7 @@ export function AdminDocumentRequestsPanel({ enrollmentId }: { enrollmentId: str
               <select
                 id="dr-type" value={documentType}
                 onChange={(e) => setDocumentType(e.target.value as DocumentTypeValue)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand focus:ring-1 focus:ring-brand outline-none"
               >
                 {DOCUMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
@@ -175,7 +175,7 @@ export function AdminDocumentRequestsPanel({ enrollmentId }: { enrollmentId: str
                 id="dr-instr" rows={2} maxLength={4000} value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 placeholder="Traduction assermentée, datée de moins de 3 mois…"
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-brand focus:ring-1 focus:ring-brand outline-none"
               />
             </div>
             <div>
@@ -185,7 +185,7 @@ export function AdminDocumentRequestsPanel({ enrollmentId }: { enrollmentId: str
               <input
                 id="dr-due" type="date" value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-brand focus:ring-1 focus:ring-brand outline-none"
               />
             </div>
           </div>
@@ -204,7 +204,7 @@ export function AdminDocumentRequestsPanel({ enrollmentId }: { enrollmentId: str
 
       <div className="px-8 py-6">
         {isLoading ? (
-          <div className="py-6 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-brand-green" /></div>
+          <div className="py-6 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-brand" /></div>
         ) : (
           <>
             <DossierProgress summary={summary!} />

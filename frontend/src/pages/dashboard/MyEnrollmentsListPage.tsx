@@ -62,7 +62,7 @@ export function MyEnrollmentsListPage() {
             icon={FileStack}
             title="Aucun dossier pour le moment."
             action={
-              <Link to="/formations" className="inline-flex items-center text-brand-green font-semibold hover:underline">
+              <Link to="/formations" className="inline-flex items-center text-brand font-semibold hover:underline">
                 <GraduationCap className="w-4 h-4 mr-1.5" /> Découvrir les formations
               </Link>
             }

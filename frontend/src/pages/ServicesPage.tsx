@@ -142,7 +142,7 @@ export function ServicesPage() {
     <div className="bg-slate-50">
       <section className="bg-brand-dark text-white">
         <div className="container mx-auto px-4 md:px-8 py-14 max-w-4xl">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-brand-green mb-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-brand mb-3">
             Nos services &amp; accompagnement
           </p>
           <h1 className="text-3xl md:text-5xl font-bold leading-tight mb-4">
@@ -156,7 +156,7 @@ export function ServicesPage() {
           <div className="flex flex-wrap gap-3 mt-7">
             <Link
               to="/formations"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-green text-white font-bold hover:bg-[#0f3c35] transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white font-bold hover:bg-[#0f3c35] transition-colors"
             >
               Voir les formations <ArrowRight className="w-4 h-4" />
             </Link>
@@ -228,7 +228,7 @@ export function ServicesPage() {
             <div className="grid sm:grid-cols-3 gap-4 mb-5">
               {OPTIONS.map((o) => (
                 <div key={o.titre} className="bg-white rounded-2xl border border-slate-200 p-5">
-                  <div className="w-10 h-10 rounded-xl bg-brand-green/10 text-brand-green flex items-center justify-center mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center mb-3">
                     <o.icon className="w-5 h-5" />
                   </div>
                   <h3 className="font-bold text-brand-dark mb-2">{o.titre}</h3>
@@ -251,12 +251,12 @@ export function ServicesPage() {
             <ol className="space-y-3 mb-6">
               {PHASES.map((p, i) => (
                 <li key={p.titre} className="flex gap-4 bg-white rounded-2xl border border-slate-200 p-4">
-                  <div className="shrink-0 w-9 h-9 rounded-xl bg-brand-green/10 text-brand-green flex items-center justify-center font-bold text-sm">
+                  <div className="shrink-0 w-9 h-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">
                     {i + 1}
                   </div>
                   <div className="min-w-0">
                     <p className="font-semibold text-brand-dark flex items-center gap-2">
-                      <p.icon className="w-4 h-4 text-brand-green" /> {p.titre}
+                      <p.icon className="w-4 h-4 text-brand" /> {p.titre}
                     </p>
                     <p className="text-sm text-slate-600 leading-relaxed mt-1">{p.texte}</p>
                   </div>
@@ -272,7 +272,7 @@ export function ServicesPage() {
             <div className="grid sm:grid-cols-2 gap-4 mb-5">
               <div className="bg-white rounded-2xl border border-slate-200 p-5">
                 <h3 className="font-bold text-brand-dark mb-2">Frais de dossier</h3>
-                <p className="text-2xl font-bold text-brand-green mb-2">
+                <p className="text-2xl font-bold text-brand mb-2">
                   à partir de {CONDITIONS_MOBILITE.fraisDossier}
                 </p>
                 <p className="text-sm text-slate-600 leading-relaxed">
@@ -284,7 +284,7 @@ export function ServicesPage() {
               </div>
               <div className="bg-white rounded-2xl border border-slate-200 p-5">
                 <h3 className="font-bold text-brand-dark mb-2">Frais de formation</h3>
-                <p className="text-2xl font-bold text-brand-green mb-2">
+                <p className="text-2xl font-bold text-brand mb-2">
                   Après admission
                 </p>
                 <p className="text-sm text-slate-600 leading-relaxed">
@@ -313,7 +313,7 @@ export function ServicesPage() {
             </ul>
             <p className="text-sm text-slate-500">
               Le détail figure dans nos{' '}
-              <Link to="/cgv" className="text-brand-green font-semibold hover:underline">
+              <Link to="/cgv" className="text-brand font-semibold hover:underline">
                 conditions générales
               </Link>{' '}
               — notamment les articles sur la mobilité et les conditions d'annulation.
@@ -389,7 +389,7 @@ export function ServicesPage() {
 function Titre({ icon: Icon, titre }: { icon: typeof ShoppingBag; titre: string }) {
   return (
     <h2 className="flex items-center gap-3 text-2xl font-bold text-brand-dark mb-4">
-      <span className="w-10 h-10 rounded-xl bg-brand-green text-white flex items-center justify-center shrink-0">
+      <span className="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center shrink-0">
         <Icon className="w-5 h-5" />
       </span>
       {titre}
@@ -400,7 +400,7 @@ function Titre({ icon: Icon, titre }: { icon: typeof ShoppingBag; titre: string 
 function Point({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2 text-slate-600">
-      <CheckCircle2 className="w-4 h-4 text-brand-green mt-1 shrink-0" />
+      <CheckCircle2 className="w-4 h-4 text-brand mt-1 shrink-0" />
       <span>{children}</span>
     </li>
   );
@@ -410,7 +410,7 @@ function Bouton({ to, children }: { to: string; children: React.ReactNode }) {
   return (
     <Link
       to={to}
-      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-green text-white font-bold hover:bg-[#0f3c35] transition-colors"
+      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white font-bold hover:bg-[#0f3c35] transition-colors"
     >
       {children} <ArrowRight className="w-4 h-4" />
     </Link>

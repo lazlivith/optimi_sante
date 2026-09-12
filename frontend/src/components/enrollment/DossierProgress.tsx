@@ -34,7 +34,7 @@ export function DossierProgress({ summary }: { summary: DossierSummary }) {
 
       <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-500 ${complete ? 'bg-emerald-500' : 'bg-brand-green'}`}
+          className={`h-full rounded-full transition-all duration-500 ${complete ? 'bg-emerald-500' : 'bg-brand'}`}
           style={{ width: `${progression}%` }}
         />
       </div>

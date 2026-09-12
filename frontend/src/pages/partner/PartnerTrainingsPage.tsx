@@ -129,7 +129,7 @@ export function PartnerTrainingsPage() {
         actions={
           <button
             onClick={openCreateModal}
-            className="inline-flex items-center px-4 py-2.5 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors text-sm"
+            className="inline-flex items-center px-4 py-2.5 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors text-sm"
           >
             <Plus className="w-4 h-4 mr-2" /> Nouvelle formation
           </button>
@@ -138,7 +138,7 @@ export function PartnerTrainingsPage() {
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 text-brand-green animate-spin" /></div>
+          <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 text-brand animate-spin" /></div>
         ) : trainings.length === 0 ? (
           <EmptyState
             icon={GraduationCap}
@@ -241,7 +241,7 @@ export function PartnerTrainingsPage() {
                 <div className="flex items-center gap-2 pb-2">
                   <input type="checkbox" id="isLongStay" checked={form.isLongStay}
                     onChange={e => setForm({ ...form, isLongStay: e.target.checked })}
-                    className="rounded border-slate-300 text-brand-green focus:ring-brand-green" />
+                    className="rounded border-slate-300 text-brand focus:ring-brand" />
                   <label htmlFor="isLongStay" className="text-sm text-slate-700">Séjour longue durée</label>
                 </div>
               </div>
@@ -250,7 +250,7 @@ export function PartnerTrainingsPage() {
                 <div className="pt-4 border-t border-slate-100 space-y-4">
                   <div>
                     <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
-                      <ImageIcon className="w-4 h-4 text-brand-green" /> Image d'illustration
+                      <ImageIcon className="w-4 h-4 text-brand" /> Image d'illustration
                     </label>
                     {editing.imageUrl && (
                       <img src={editing.imageUrl} alt="" className="w-full h-32 object-cover rounded-lg mb-2 border border-slate-200" />
@@ -265,7 +265,7 @@ export function PartnerTrainingsPage() {
                   </div>
                   <div>
                     <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
-                      <Video className="w-4 h-4 text-brand-green" /> Courte vidéo d'illustration
+                      <Video className="w-4 h-4 text-brand" /> Courte vidéo d'illustration
                     </label>
                     {editing.videoUrl && (
                       <video src={editing.videoUrl} controls className="w-full h-32 rounded-lg mb-2 border border-slate-200 bg-black" />
@@ -289,7 +289,7 @@ export function PartnerTrainingsPage() {
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">
                   Fermer
                 </button>
-                <button type="submit" disabled={isSaving} className="flex items-center px-4 py-2 text-sm font-bold text-white bg-brand-green rounded-lg hover:bg-[#0f3c35] disabled:opacity-70">
+                <button type="submit" disabled={isSaving} className="flex items-center px-4 py-2 text-sm font-bold text-white bg-brand rounded-lg hover:bg-[#0f3c35] disabled:opacity-70">
                   {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {editing ? 'Enregistrer les modifications' : 'Créer la formation'}
                 </button>

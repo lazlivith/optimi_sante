@@ -29,4 +29,7 @@ workers/__pycache__/
 # Les versionner alourdirait le depot de facon permanente, et chaque clone les
 # retelechargerait. Voir frontend/brand/README.md — la decision se revient en
 # retirant cette ligne, tant que l'historique ne s'est pas construit dessus.
-frontend/brand/originaux/
+frontend/brand/originaux/*
+# ... sauf les vectoriels : un SVG pese quelques kilo-octets et constitue la source
+# de verite du logo. L'exclure reviendrait a perdre le livrable du graphiste.
+!frontend/brand/originaux/*.svg

@@ -123,7 +123,7 @@ export function AdminReportsPage() {
 
       {isLoading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="w-8 h-8 text-brand-green animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand animate-spin" />
         </div>
       ) : reports.length === 0 ? (
         <EmptyState
@@ -155,7 +155,7 @@ export function AdminReportsPage() {
                     <button
                       onClick={() => runReport(r.key)}
                       disabled={busyKey === r.key}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-brand-green hover:opacity-90 disabled:opacity-60"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-brand hover:opacity-90 disabled:opacity-60"
                     >
                       {busyKey === r.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
                       Lancer

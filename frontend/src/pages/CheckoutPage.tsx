@@ -142,7 +142,7 @@ export const CheckoutPage = () => {
           <p className="text-slate-600 mb-8">
             Merci pour votre confiance. Vous recevrez un email de confirmation contenant les détails de votre commande.
           </p>
-          <button onClick={() => navigate('/catalog')} className="px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+          <button onClick={() => navigate('/catalog')} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
             Continuer mes achats
           </button>
         </div>
@@ -167,28 +167,28 @@ export const CheckoutPage = () => {
               
               <div className="space-y-4 mb-8">
                 {forceQuote ? (
-                  <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors border-brand-green bg-brand-light`}>
-                    <input type="radio" name="paymentMethod" value="QUOTE_REQUEST" checked readOnly className="mr-4 h-4 w-4 text-brand-green focus:ring-brand-green" />
+                  <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors border-brand bg-brand-light`}>
+                    <input type="radio" name="paymentMethod" value="QUOTE_REQUEST" checked readOnly className="mr-4 h-4 w-4 text-brand focus:ring-brand" />
                     <Building className="w-5 h-5 text-slate-500 mr-3" />
                     <span className="font-medium text-slate-800">Demande de devis obligatoire</span>
                   </label>
                 ) : (
                   <>
-                    <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${paymentMethod === 'STRIPE_CARD' ? 'border-brand-green bg-brand-light' : 'border-slate-200 hover:bg-slate-50'}`}>
-                      <input type="radio" name="paymentMethod" value="STRIPE_CARD" checked={paymentMethod === 'STRIPE_CARD'} onChange={() => setPaymentMethod('STRIPE_CARD')} className="mr-4 h-4 w-4 text-brand-green focus:ring-brand-green" />
+                    <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${paymentMethod === 'STRIPE_CARD' ? 'border-brand bg-brand-light' : 'border-slate-200 hover:bg-slate-50'}`}>
+                      <input type="radio" name="paymentMethod" value="STRIPE_CARD" checked={paymentMethod === 'STRIPE_CARD'} onChange={() => setPaymentMethod('STRIPE_CARD')} className="mr-4 h-4 w-4 text-brand focus:ring-brand" />
                       <CreditCard className="w-5 h-5 text-slate-500 mr-3" />
                       <span className="font-medium text-slate-800">Carte Bancaire (Stripe)</span>
                     </label>
                     
-                    <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${paymentMethod === 'BANK_TRANSFER' ? 'border-brand-green bg-brand-light' : 'border-slate-200 hover:bg-slate-50'}`}>
-                      <input type="radio" name="paymentMethod" value="BANK_TRANSFER" checked={paymentMethod === 'BANK_TRANSFER'} onChange={() => setPaymentMethod('BANK_TRANSFER')} className="mr-4 h-4 w-4 text-brand-green focus:ring-brand-green" />
+                    <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${paymentMethod === 'BANK_TRANSFER' ? 'border-brand bg-brand-light' : 'border-slate-200 hover:bg-slate-50'}`}>
+                      <input type="radio" name="paymentMethod" value="BANK_TRANSFER" checked={paymentMethod === 'BANK_TRANSFER'} onChange={() => setPaymentMethod('BANK_TRANSFER')} className="mr-4 h-4 w-4 text-brand focus:ring-brand" />
                       <Building className="w-5 h-5 text-slate-500 mr-3" />
                       <span className="font-medium text-slate-800">Virement Bancaire</span>
                     </label>
 
                     {isB2B && (
-                      <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${paymentMethod === 'QUOTE_REQUEST' ? 'border-brand-green bg-brand-light' : 'border-slate-200 hover:bg-slate-50'}`}>
-                        <input type="radio" name="paymentMethod" value="QUOTE_REQUEST" checked={paymentMethod === 'QUOTE_REQUEST'} onChange={() => setPaymentMethod('QUOTE_REQUEST')} className="mr-4 h-4 w-4 text-brand-green focus:ring-brand-green" />
+                      <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${paymentMethod === 'QUOTE_REQUEST' ? 'border-brand bg-brand-light' : 'border-slate-200 hover:bg-slate-50'}`}>
+                        <input type="radio" name="paymentMethod" value="QUOTE_REQUEST" checked={paymentMethod === 'QUOTE_REQUEST'} onChange={() => setPaymentMethod('QUOTE_REQUEST')} className="mr-4 h-4 w-4 text-brand focus:ring-brand" />
                         <Building className="w-5 h-5 text-slate-500 mr-3" />
                         <span className="font-medium text-slate-800">Demande de devis</span>
                       </label>
@@ -210,7 +210,7 @@ export const CheckoutPage = () => {
                     <button onClick={() => navigate('/cart')} className="px-6 py-3 border border-slate-300 text-slate-600 font-medium rounded-xl hover:bg-slate-50 transition-colors">
                       Annuler
                     </button>
-                    <button onClick={handleDirectCheckout} disabled={isProcessing} className="flex-1 flex justify-center items-center px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors disabled:opacity-50">
+                    <button onClick={handleDirectCheckout} disabled={isProcessing} className="flex-1 flex justify-center items-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors disabled:opacity-50">
                       {isProcessing ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : null}
                       {paymentMethod === 'QUOTE_REQUEST' ? 'Demander un devis' : paymentMethod === 'STRIPE_CARD' ? 'Payer par carte' : 'Confirmer la commande'}
                     </button>
@@ -255,12 +255,12 @@ export const CheckoutPage = () => {
                         placeholder="Code promo"
                         value={promoCodeInput}
                         onChange={(e) => setPromoCodeInput(e.target.value)}
-                        className="flex-1 min-w-0 px-3 py-2 text-sm border border-slate-200 rounded-lg uppercase focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
+                        className="flex-1 min-w-0 px-3 py-2 text-sm border border-slate-200 rounded-lg uppercase focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                       />
                       <button
                         onClick={handleApplyPromoCode}
                         disabled={isValidatingPromo || !promoCodeInput.trim()}
-                        className="px-4 py-2 text-sm font-semibold text-brand-green border border-brand-green rounded-lg hover:bg-brand-light transition-colors disabled:opacity-50 shrink-0"
+                        className="px-4 py-2 text-sm font-semibold text-brand border border-brand rounded-lg hover:bg-brand-light transition-colors disabled:opacity-50 shrink-0"
                       >
                         {isValidatingPromo ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Appliquer'}
                       </button>

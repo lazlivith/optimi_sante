@@ -175,7 +175,7 @@ export function AdminEnrollmentDetailPage() {
   };
 
   if (isLoading || !enrollment) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-green" /></div>;
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand" /></div>;
   }
 
   const currentIndex = STEPS.findIndex(s => s === enrollment.status);
@@ -231,7 +231,7 @@ export function AdminEnrollmentDetailPage() {
                     <button
                       onClick={handleSubmitToPartner}
                       disabled={isProcessing}
-                      className="flex items-center px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors disabled:opacity-50"
+                      className="flex items-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors disabled:opacity-50"
                     >
                       {isProcessing ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Send className="w-5 h-5 mr-2" />}
                       Valider et transmettre au CHU
@@ -274,7 +274,7 @@ export function AdminEnrollmentDetailPage() {
                     <button
                       onClick={handleGenerateConvention}
                       disabled={isProcessing}
-                      className="flex items-center px-6 py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors disabled:opacity-50"
+                      className="flex items-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors disabled:opacity-50"
                     >
                       {isProcessing ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <FileSignature className="w-5 h-5 mr-2" />}
                       Générer Convention Tripartite
@@ -320,7 +320,7 @@ export function AdminEnrollmentDetailPage() {
             {/* Vault Viewer */}
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="p-6 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
-                <Lock className="w-5 h-5 text-brand-green" />
+                <Lock className="w-5 h-5 text-brand" />
                 <h2 className="text-xl font-bold text-brand-dark">Coffre-fort Documentaire</h2>
               </div>
 
@@ -331,7 +331,7 @@ export function AdminEnrollmentDetailPage() {
                 <select
                   value={optionalDocType}
                   onChange={e => setOptionalDocType(e.target.value)}
-                  className="w-full sm:w-72 rounded-lg border-slate-300 border p-2 text-sm bg-white focus:ring-brand-green focus:border-brand-green"
+                  className="w-full sm:w-72 rounded-lg border-slate-300 border p-2 text-sm bg-white focus:ring-brand focus:border-brand"
                 >
                   {OPTIONAL_DOCUMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>

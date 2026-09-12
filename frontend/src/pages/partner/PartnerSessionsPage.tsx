@@ -121,7 +121,7 @@ export function PartnerSessionsPage() {
         {/* Create session form */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
-            <div className="w-10 h-10 bg-brand-light text-brand-green rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-brand-light text-brand rounded-xl flex items-center justify-center">
               <Plus className="w-5 h-5" />
             </div>
             <div>
@@ -133,7 +133,7 @@ export function PartnerSessionsPage() {
           {approvedTrainings.length === 0 && !isLoading ? (
             <div className="text-sm text-slate-500 space-y-3">
               <p>Aucune formation approuvée n'est disponible pour le moment. Une session ne peut être ouverte que pour une formation déjà validée par l'administration.</p>
-              <Link to="/partner/trainings" className="inline-flex items-center gap-1 font-semibold text-brand-green hover:underline">
+              <Link to="/partner/trainings" className="inline-flex items-center gap-1 font-semibold text-brand hover:underline">
                 Gérer mes formations <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -147,7 +147,7 @@ export function PartnerSessionsPage() {
                   value={trainingInput}
                   onChange={e => setTrainingInput(e.target.value)}
                   placeholder="Tapez le nom d'une formation approuvée…"
-                  className="w-full rounded-lg border-slate-300 border p-2.5 bg-white focus:ring-brand-green focus:border-brand-green"
+                  className="w-full rounded-lg border-slate-300 border p-2.5 bg-white focus:ring-brand focus:border-brand"
                 />
                 <datalist id="approved-trainings-options">
                   {approvedTrainings.map(t => <option key={t.id} value={t.title} />)}

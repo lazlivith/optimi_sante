@@ -120,7 +120,7 @@ export function AdminTrainingsPage() {
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 text-brand-green animate-spin" /></div>
+          <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 text-brand animate-spin" /></div>
         ) : trainings.length === 0 ? (
           <EmptyState icon={GraduationCap} title="Aucune formation soumise pour le moment." />
         ) : (
@@ -164,7 +164,7 @@ export function AdminTrainingsPage() {
                         type="button"
                         onClick={() => handleSetFee(t)}
                         disabled={processingId === t.id}
-                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-dark hover:text-brand-green transition-colors disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-dark hover:text-brand transition-colors disabled:opacity-50"
                         title="Modifier les frais de dossier"
                       >
                         <Wallet className="w-3.5 h-3.5 text-slate-400" />
@@ -179,7 +179,7 @@ export function AdminTrainingsPage() {
                       <button
                         type="button"
                         onClick={() => setCatalogueDe(t)}
-                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-brand-green transition-colors"
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-brand transition-colors"
                       >
                         <Package className="w-3.5 h-3.5 text-slate-400" />
                         Catalogue
@@ -252,7 +252,7 @@ export function AdminTrainingsPage() {
                     value={fraisSaisis}
                     onChange={(e) => setFraisSaisis(e.target.value)}
                     placeholder="Tarif par défaut de la plateforme"
-                    className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                    className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                   />
                   <span className="text-slate-500 font-semibold">€</span>
                 </div>
@@ -285,7 +285,7 @@ export function AdminTrainingsPage() {
                   }
                   handleApprove(enRevue, valeur);
                 }}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-green text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
               >
                 {processingId === enRevue.id
                   ? <Loader2 className="w-4 h-4 animate-spin" />

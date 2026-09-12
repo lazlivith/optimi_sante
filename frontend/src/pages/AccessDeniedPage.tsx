@@ -36,7 +36,7 @@ export function AccessDeniedPage() {
 
         <Link
           to={home}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-green text-white text-sm font-medium hover:bg-[#0f3c35] transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-medium hover:bg-[#0f3c35] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Retour à mon espace

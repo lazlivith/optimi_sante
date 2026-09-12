@@ -57,7 +57,7 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
   if (isLoading) {
     return (
       <div className="bg-white rounded-3xl border border-slate-200 p-8 flex justify-center">
-        <Loader2 className="w-6 h-6 text-brand-green animate-spin" />
+        <Loader2 className="w-6 h-6 text-brand animate-spin" />
       </div>
     );
   }
@@ -71,11 +71,11 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className={`px-8 py-6 border-b ${confirme ? 'bg-emerald-50 border-emerald-100' : 'bg-brand-green/5 border-slate-100'}`}>
+      <div className={`px-8 py-6 border-b ${confirme ? 'bg-emerald-50 border-emerald-100' : 'bg-brand/5 border-slate-100'}`}>
         <div className="flex items-start gap-4">
           {confirme
             ? <CalendarCheck className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
-            : <CalendarClock className="w-6 h-6 text-brand-green shrink-0 mt-0.5" />}
+            : <CalendarClock className="w-6 h-6 text-brand shrink-0 mt-0.5" />}
           <div>
             <h2 className="text-lg font-bold text-brand-dark">
               {confirme
@@ -118,7 +118,7 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
                 href={entretien.meetingLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-brand-green underline break-all mt-1 inline-block"
+                className="text-sm text-brand underline break-all mt-1 inline-block"
               >
                 {entretien.meetingLink}
               </a>
@@ -129,7 +129,7 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
                 href={entretien.meetingLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-green text-white text-sm font-bold hover:bg-[#0f3c35] transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-[#0f3c35] transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
                 Rejoindre la visioconférence
@@ -168,7 +168,7 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
                     key={slot.id}
                     className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
                       choix === slot.id
-                        ? 'border-brand-green bg-brand-green/5'
+                        ? 'border-brand bg-brand/5'
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
@@ -178,7 +178,7 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
                       value={slot.id}
                       checked={choix === slot.id}
                       onChange={() => setChoix(slot.id)}
-                      className="accent-brand-green"
+                      className="accent-brand"
                     />
                     <span className="text-sm font-medium text-slate-800">{formatCreneau(slot)}</span>
                   </label>
@@ -191,7 +191,7 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
                 type="button"
                 disabled={!choix || envoiEnCours}
                 onClick={confirmer}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-green text-white font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
               >
                 {envoiEnCours
                   ? <Loader2 className="w-4 h-4 animate-spin" />

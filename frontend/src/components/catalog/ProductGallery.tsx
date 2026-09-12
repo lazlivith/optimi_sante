@@ -149,7 +149,7 @@ export function ProductGallery({ product }: { product: Product }) {
                 aria-current={i === index}
                 className={`h-16 w-16 overflow-hidden rounded-xl border bg-white p-1 transition ${
                   i === index
-                    ? 'border-brand-green ring-2 ring-brand-green/30'
+                    ? 'border-brand ring-2 ring-brand/30'
                     : 'border-slate-200 hover:border-slate-300'
                 }`}
                 aria-label={v.genre === 'video'

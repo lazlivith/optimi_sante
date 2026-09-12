@@ -77,7 +77,7 @@ const DoctorLayout = lazy(() => import('./layouts/DoctorLayout').then(m => ({ de
 
 const PageFallback = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
-    <div className="h-8 w-8 rounded-full border-2 border-brand-green border-t-transparent animate-spin" />
+    <div className="h-8 w-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
   </div>
 );
 

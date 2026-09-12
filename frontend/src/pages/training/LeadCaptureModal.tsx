@@ -63,7 +63,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
 
         {success ? (
           <div className="p-10 text-center space-y-6">
-            <div className="w-16 h-16 bg-brand-green/10 text-brand-green rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8" />
             </div>
             <h3 className="text-2xl font-bold text-brand-dark">Candidature envoyée</h3>
@@ -81,7 +81,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
             </p>
             <button 
               onClick={onClose}
-              className="mt-4 inline-flex items-center justify-center px-6 py-3 bg-brand-green text-white font-medium rounded-xl hover:bg-[#0f3c35] transition-colors"
+              className="mt-4 inline-flex items-center justify-center px-6 py-3 bg-brand text-white font-medium rounded-xl hover:bg-[#0f3c35] transition-colors"
             >
               Fermer
             </button>
@@ -91,7 +91,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
             <div className="p-8 border-b border-slate-100">
               <h2 className="text-xl font-bold text-brand-dark mb-2">Candidature à la formation</h2>
               <p className="text-sm text-slate-500">
-                Formation : <span className="font-semibold text-brand-green">{trainingTitle}</span>
+                Formation : <span className="font-semibold text-brand">{trainingTitle}</span>
               </p>
             </div>
 
@@ -111,7 +111,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
-                    className="w-full p-3 bg-brand-light border border-slate-200 rounded-xl focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                    className="w-full p-3 bg-brand-light border border-slate-200 rounded-xl focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                   />
                 </div>
                 <div className="space-y-2">
@@ -122,7 +122,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
-                    className="w-full p-3 bg-brand-light border border-slate-200 rounded-xl focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                    className="w-full p-3 bg-brand-light border border-slate-200 rounded-xl focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                   />
                 </div>
               </div>
@@ -135,7 +135,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full p-3 bg-brand-light border border-slate-200 rounded-xl focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                  className="w-full p-3 bg-brand-light border border-slate-200 rounded-xl focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                 />
               </div>
 
@@ -148,7 +148,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
                   value={formData.phoneWhatsapp}
                   onChange={handleChange}
                   placeholder="+33 6..."
-                  className="w-full p-3 bg-brand-light border border-slate-200 rounded-xl focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                  className="w-full p-3 bg-brand-light border border-slate-200 rounded-xl focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                 />
               </div>
 
@@ -161,7 +161,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
                     name="country"
                     value={formData.country}
                     onChange={handleChange}
-                    className="w-full p-3 bg-brand-light border border-slate-200 rounded-xl focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                    className="w-full p-3 bg-brand-light border border-slate-200 rounded-xl focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                   />
                 </div>
                 <div className="space-y-2">
@@ -172,7 +172,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
                     name="specialty"
                     value={formData.specialty}
                     onChange={handleChange}
-                    className="w-full p-3 bg-brand-light border border-slate-200 rounded-xl focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+                    className="w-full p-3 bg-brand-light border border-slate-200 rounded-xl focus:border-brand focus:ring-1 focus:ring-brand outline-none"
                   />
                 </div>
               </div>
@@ -180,7 +180,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full flex items-center justify-center px-6 py-4 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                className="w-full flex items-center justify-center px-6 py-4 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
               >
                 {isSubmitting ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : <CheckCircle className="w-5 h-5 mr-2" />}
                 Postuler

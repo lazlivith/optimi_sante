@@ -47,7 +47,7 @@ export function PartnerFinancePage() {
       <div className="p-8">
         <PageHeader title="Mes revenus" subtitle="Chargement..." />
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-          <Loader2 className="w-6 h-6 animate-spin mx-auto text-brand-green" />
+          <Loader2 className="w-6 h-6 animate-spin mx-auto text-brand" />
         </div>
       </div>
     );

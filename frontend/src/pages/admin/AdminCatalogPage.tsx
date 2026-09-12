@@ -188,7 +188,7 @@ export function AdminCatalogPage() {
         actions={
           <button
             onClick={openCreateModal}
-            className="inline-flex items-center px-4 py-2.5 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors text-sm"
+            className="inline-flex items-center px-4 py-2.5 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors text-sm"
           >
             <Plus className="w-4 h-4 mr-2" /> Nouveau produit
           </button>
@@ -208,7 +208,7 @@ export function AdminCatalogPage() {
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Rechercher par nom ou référence…"
               aria-label="Rechercher un produit par nom ou référence"
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-brand focus:ring-1 focus:ring-brand outline-none"
             />
           </div>
 
@@ -216,7 +216,7 @@ export function AdminCatalogPage() {
             value={filters.categoryId ?? ''}
             onChange={(e) => updateFilter({ categoryId: e.target.value || undefined })}
             aria-label="Filtrer par catégorie"
-            className="py-2 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none max-w-[260px]"
+            className="py-2 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand focus:ring-1 focus:ring-brand outline-none max-w-[260px]"
           >
             <option value="">Toutes les catégories</option>
             {categories.map((cat) => (
@@ -231,7 +231,7 @@ export function AdminCatalogPage() {
             value={filters.activeState ?? ''}
             onChange={(e) => updateFilter({ activeState: (e.target.value || undefined) as CatalogFilters['activeState'] })}
             aria-label="Filtrer par statut"
-            className="py-2 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+            className="py-2 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand focus:ring-1 focus:ring-brand outline-none"
           >
             <option value="">Tous les statuts</option>
             <option value="ACTIVE">Actifs</option>
@@ -242,7 +242,7 @@ export function AdminCatalogPage() {
             value={filters.sort ?? ''}
             onChange={(e) => updateFilter({ sort: (e.target.value || undefined) as CatalogFilters['sort'] })}
             aria-label="Trier les résultats"
-            className="py-2 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none"
+            className="py-2 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:border-brand focus:ring-1 focus:ring-brand outline-none"
           >
             <option value="">Tri par défaut</option>
             <option value="name_asc">Nom (A → Z)</option>
@@ -506,7 +506,7 @@ export function AdminCatalogPage() {
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="isQuoteOnly" checked={!!form.isQuoteOnly}
                   onChange={e => setForm({ ...form, isQuoteOnly: e.target.checked })}
-                  className="rounded border-slate-300 text-brand-green focus:ring-brand-green" />
+                  className="rounded border-slate-300 text-brand focus:ring-brand" />
                 <label htmlFor="isQuoteOnly" className="text-sm text-slate-700">Produit uniquement sur devis (B2B)</label>
               </div>
 
@@ -544,7 +544,7 @@ export function AdminCatalogPage() {
                   formation qu'on sait exister. */}
               <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
                 <div className="flex items-center gap-2 mb-3">
-                  <GraduationCap className="w-4 h-4 text-brand-green" />
+                  <GraduationCap className="w-4 h-4 text-brand" />
                   <h3 className="text-sm font-bold text-slate-700">Offre liée (facultatif)</h3>
                 </div>
                 <label htmlFor="form-training" className="block text-xs font-medium text-slate-600 mb-1">
@@ -579,7 +579,7 @@ export function AdminCatalogPage() {
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">
                   Annuler
                 </button>
-                <button type="submit" disabled={isSaving} className="flex items-center px-4 py-2 text-sm font-bold text-white bg-brand-green rounded-lg hover:bg-[#0f3c35] disabled:opacity-70">
+                <button type="submit" disabled={isSaving} className="flex items-center px-4 py-2 text-sm font-bold text-white bg-brand rounded-lg hover:bg-[#0f3c35] disabled:opacity-70">
                   {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {editingId ? 'Enregistrer' : 'Créer'}
                 </button>

@@ -38,7 +38,7 @@ export function StatCard({ label, value, icon: Icon, tone = 'slate', to, sub }: 
       <div className="text-sm text-slate-500 mt-1 font-medium">{label}</div>
       {sub && <div className="text-xs text-slate-400 mt-0.5">{sub}</div>}
       {to && (
-        <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-brand-green opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-brand opacity-0 group-hover:opacity-100 transition-opacity">
           Voir le détail <ArrowRight className="w-3 h-3" />
         </div>
       )}

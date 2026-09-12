@@ -38,7 +38,7 @@ export function DossierExcelPanel() {
   return (
     <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
       <h2 className="font-bold text-brand-dark mb-2 flex items-center gap-2">
-        <FileSpreadsheet className="w-5 h-5 text-brand-green" aria-hidden="true" />
+        <FileSpreadsheet className="w-5 h-5 text-brand" aria-hidden="true" />
         Dossier de capacités d'accueil
       </h2>
       <p className="text-sm text-slate-600 mb-6 max-w-2xl">
@@ -52,7 +52,7 @@ export function DossierExcelPanel() {
             sait la gérer seul — y compris l'ouvrir dans le tableur installé. */}
         <a
           href={partnershipService.modeleDossierUrl()}
-          className="inline-flex items-center justify-center px-5 py-3 border border-brand-green text-brand-green font-bold rounded-xl hover:bg-brand-light transition-colors"
+          className="inline-flex items-center justify-center px-5 py-3 border border-brand text-brand font-bold rounded-xl hover:bg-brand-light transition-colors"
         >
           <FileSpreadsheet className="w-4 h-4 mr-2" aria-hidden="true" />
           Télécharger le modèle (XLSX)

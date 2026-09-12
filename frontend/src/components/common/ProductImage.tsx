@@ -28,7 +28,7 @@ export function ProductImage({ src, alt, className = '', iconClassName = 'w-10 h
 
   if (!isUsable || failed) {
     return (
-      <div className={`flex items-center justify-center bg-slate-50 text-brand-green/30 ${className}`}>
+      <div className={`flex items-center justify-center bg-slate-50 text-brand/30 ${className}`}>
         <ImageIcon className={iconClassName} />
       </div>
     );

@@ -56,7 +56,7 @@ export function MyVisaDossierPanel({ enrollmentId }: { enrollmentId: string }) {
   if (isLoading) {
     return (
       <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 flex justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-brand-green" />
+        <Loader2 className="w-6 h-6 animate-spin text-brand" />
       </div>
     );
   }
@@ -79,7 +79,7 @@ export function MyVisaDossierPanel({ enrollmentId }: { enrollmentId: string }) {
     <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="px-8 py-6 border-b border-slate-100">
         <h2 className="text-xl font-bold text-brand-dark flex items-center gap-2">
-          <FolderCheck className="w-5 h-5 text-brand-green" /> Mon dossier visa
+          <FolderCheck className="w-5 h-5 text-brand" /> Mon dossier visa
         </h2>
         <p className="text-sm text-slate-500 mt-0.5">
           Les pièces réunies ici constitueront votre dossier de demande de visa.
@@ -154,7 +154,7 @@ export function MyVisaDossierPanel({ enrollmentId }: { enrollmentId: string }) {
                       <button
                         type="button" disabled={enCours}
                         onClick={() => inputsRef.current[d.id]?.click()}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-green text-white text-xs font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
                       >
                         {enCours ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
                         {d.status === 'REJECTED' ? 'Déposer un nouveau fichier' : 'Déposer le fichier'}

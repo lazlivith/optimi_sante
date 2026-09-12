@@ -133,7 +133,7 @@ export function ProductMediaDialog({
         </div>
 
         {isLoading || !media ? (
-          <div className="flex justify-center p-16"><Loader2 className="h-6 w-6 animate-spin text-brand-green" /></div>
+          <div className="flex justify-center p-16"><Loader2 className="h-6 w-6 animate-spin text-brand" /></div>
         ) : (
           <div className="space-y-8 px-6 py-6">
 
@@ -163,7 +163,7 @@ export function ProductMediaDialog({
                 <div className="flex-1 min-w-[15rem]">
                   <button type="button" disabled={busy !== null}
                     onClick={() => champVignette.current?.click()}
-                    className="inline-flex items-center gap-2 rounded-xl bg-brand-green px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#0f3c35] disabled:opacity-50">
+                    className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#0f3c35] disabled:opacity-50">
                     {busy === 'vignette'
                       ? <Loader2 className="h-4 w-4 animate-spin" />
                       : <Upload className="h-4 w-4" />}
@@ -241,7 +241,7 @@ export function ProductMediaDialog({
                         {media.videoProvider}
                       </p>
                       <a href={media.videoUrl} target="_blank" rel="noopener noreferrer"
-                        className="mt-1 block break-all text-sm text-brand-green underline-offset-2 hover:underline">
+                        className="mt-1 block break-all text-sm text-brand underline-offset-2 hover:underline">
                         {media.videoUrl}
                       </a>
                     </div>
@@ -261,7 +261,7 @@ export function ProductMediaDialog({
                       media.videoPromoted ? 'Retirée des cartes de promotion.' : 'Jouée sur les cartes de promotion.')}
                     className={`mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 ${
                       media.videoPromoted
-                        ? 'bg-brand-orange/15 text-brand-orange'
+                        ? 'bg-brand-orange/15 text-brand-accent'
                         : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
                     }`}>
                     {media.videoPromoted ? <Star className="h-4 w-4 fill-current" /> : <StarOff className="h-4 w-4" />}
@@ -280,7 +280,7 @@ export function ProductMediaDialog({
                     <p className="mb-2 text-sm font-semibold text-slate-700">Téléverser un fichier</p>
                     <button type="button" disabled={busy !== null}
                       onClick={() => champVideo.current?.click()}
-                      className="inline-flex items-center gap-2 rounded-xl bg-brand-green px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#0f3c35] disabled:opacity-50">
+                      className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#0f3c35] disabled:opacity-50">
                       {busy === 'video'
                         ? <Loader2 className="h-4 w-4 animate-spin" />
                         : <Upload className="h-4 w-4" />}
@@ -300,14 +300,14 @@ export function ProductMediaDialog({
                     </p>
                     <select value={hebergeur}
                       onChange={(e) => setHebergeur(e.target.value as VideoProvider)}
-                      className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green">
+                      className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand">
                       {HEBERGEURS_VIDEO.map((h) => (
                         <option key={h.value} value={h.value}>{h.label}</option>
                       ))}
                     </select>
                     <input type="url" value={lienVideo} onChange={(e) => setLienVideo(e.target.value)}
                       placeholder={exemple}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green" />
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" />
                     <button type="button" disabled={busy !== null} onClick={poserLien}
                       className="mt-2 inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50">
                       {busy === 'lien' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}

@@ -70,7 +70,7 @@ export function AdminPromoCodesPage() {
         actions={
           <button
             onClick={() => { setForm(EMPTY_FORM); setIsModalOpen(true); }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors"
           >
             <Plus className="w-4 h-4" /> Nouveau code
           </button>
@@ -79,7 +79,7 @@ export function AdminPromoCodesPage() {
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 text-brand-green animate-spin" /></div>
+          <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 text-brand animate-spin" /></div>
         ) : codes.length === 0 ? (
           <EmptyState icon={Tag} title="Aucun code promo pour le moment." />
         ) : (
@@ -186,7 +186,7 @@ export function AdminPromoCodesPage() {
                     className="w-full rounded-md border-slate-300 border p-2.5" />
                 </div>
               </div>
-              <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-70 transition-colors">
+              <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-70 transition-colors">
                 {isSubmitting ? 'Création...' : 'Créer le code promo'}
               </button>
             </form>

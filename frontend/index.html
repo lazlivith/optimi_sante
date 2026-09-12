@@ -12,6 +12,18 @@
     <meta name="theme-color" content="#117098" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- Source Sans 3 : la police secondaire de la charte, en version variable. C'est le
+         premier chargement de police du projet — « Inter » etait declaree dans index.css
+         sans jamais etre chargee, et le site rendait donc en police systeme.
+         preconnect avant le lien : sans lui, la resolution DNS et la negociation TLS
+         s'ajoutent au delai d'affichage du texte. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300..700;1,400&display=swap"
+    />
+
     <title>Optimi Santé — Négoce médical & Mobilité clinique</title>
     <meta
       name="description"

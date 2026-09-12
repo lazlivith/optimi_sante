@@ -56,7 +56,7 @@ export function CartPage() {
       <div className="max-w-2xl mx-auto py-20 text-center space-y-6 bg-white rounded-2xl shadow-sm border p-8">
         <h2 className="text-3xl font-bold text-brand-dark">Devis envoyé avec succès !</h2>
         <p className="text-slate-600 text-lg">Nos équipes reviendront vers vous dans les 24h ouvrées.</p>
-        <Link to="/catalog" className="inline-block mt-4 text-brand-green font-medium hover:underline">
+        <Link to="/catalog" className="inline-block mt-4 text-brand font-medium hover:underline">
           Retour au catalogue
         </Link>
       </div>
@@ -72,7 +72,7 @@ export function CartPage() {
         </Link>
         <div className="text-center py-20 bg-white rounded-2xl border border-slate-200">
           <h2 className="text-2xl font-bold text-brand-dark mb-4">Votre panier est vide.</h2>
-          <Link to="/catalog" className="text-brand-green font-medium hover:underline">Parcourir le catalogue</Link>
+          <Link to="/catalog" className="text-brand font-medium hover:underline">Parcourir le catalogue</Link>
         </div>
       </div>
     );
@@ -103,14 +103,14 @@ export function CartPage() {
         <div className="lg:col-span-2 space-y-4">
           {items.map((item) => (
             <div key={item.id} className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-6 shadow-sm">
-              <div className="w-12 h-12 rounded-xl bg-brand-light flex-shrink-0 flex items-center justify-center text-brand-green hidden sm:flex">
+              <div className="w-12 h-12 rounded-xl bg-brand-light flex-shrink-0 flex items-center justify-center text-brand hidden sm:flex">
                 <Box className="w-6 h-6" />
               </div>
               
               <div className="flex-1 text-center sm:text-left w-full sm:w-auto">
                 <h3 className="font-bold text-lg text-brand-dark leading-tight">{item.name}</h3>
                 <span className="text-xs font-mono text-slate-400">{item.sku}</span>
-                {item.isQuoteOnly && <div className="text-xs font-bold text-brand-orange mt-1">SUR DEVIS</div>}
+                {item.isQuoteOnly && <div className="text-xs font-bold text-brand-accent mt-1">SUR DEVIS</div>}
               </div>
               
               <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
@@ -146,7 +146,7 @@ export function CartPage() {
                <button 
                   onClick={handleQuoteRequest}
                   disabled={isProcessing}
-                  className="w-full flex items-center justify-center px-6 py-4 bg-brand-orange text-white font-bold rounded-xl hover:bg-orange-600 disabled:opacity-50 transition-colors shadow-sm"
+                  className="w-full flex items-center justify-center px-6 py-4 bg-brand-accent text-white font-bold rounded-xl hover:bg-brand-accent-fonce disabled:opacity-50 transition-colors shadow-sm"
                 >
                   {isProcessing ? <Loader2 className="animate-spin mr-2 w-5 h-5" /> : null}
                   Demander un devis
@@ -155,7 +155,7 @@ export function CartPage() {
                   <button 
                     onClick={handleCheckoutRedirect}
                     disabled={isProcessing}
-                    className="w-full flex items-center justify-center px-6 py-4 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-50 transition-colors shadow-sm"
+                    className="w-full flex items-center justify-center px-6 py-4 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-50 transition-colors shadow-sm"
                   >
                     {isProcessing ? <Loader2 className="animate-spin mr-2 w-5 h-5" /> : null}
                     Payer la commande
@@ -166,7 +166,7 @@ export function CartPage() {
              <button 
                 onClick={handleCheckoutRedirect}
                 disabled={isProcessing}
-                className="w-full flex items-center justify-center px-6 py-4 bg-brand-green text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-50 transition-colors shadow-sm"
+                className="w-full flex items-center justify-center px-6 py-4 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-50 transition-colors shadow-sm"
               >
                 {isProcessing ? (
                   <Loader2 className="animate-spin mr-2 w-5 h-5" />
