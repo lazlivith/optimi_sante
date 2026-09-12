@@ -45,7 +45,7 @@ export const Footer = () => {
             <Link to="/" aria-label="Optimi Santé — accueil" className="inline-block mb-4">
               {logoOk ? (
                 <img
-                  src="/logo-optimi-clair.png"
+                  src="/marque/optimi-logo-clair.webp"
                   alt="Optimi Santé — soutenir le handicap et le soin"
                   onError={() => setLogoOk(false)}
                   className="h-14 w-auto max-w-[220px] object-contain"

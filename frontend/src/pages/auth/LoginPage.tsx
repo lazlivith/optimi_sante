@@ -220,7 +220,7 @@ export const LoginPage = () => {
             <Link to="/" aria-label="Optimi Santé — accueil" className="inline-block">
               {logoOk ? (
                 <img
-                  src="/logo-optimi-clair.png"
+                  src="/marque/optimi-logo-clair.webp"
                   alt="Optimi Santé — soutenir le handicap et le soin"
                   onError={() => setLogoOk(false)}
                   className="h-16 w-auto max-w-[260px] object-contain lg:h-24 lg:max-w-[340px]"

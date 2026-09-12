@@ -12,7 +12,7 @@ import { NotificationBell } from './common/NotificationBell';
  * `optimi.webp` ne convenait pas — son degrade bleu est incruste dans l'image, ce qui
  * affichait un rectangle bleu dans une barre blanche. Le PNG transparent le remplace.
  */
-const LOGO_SRC = '/logo-optimi-sombre.png';
+const LOGO_SRC = '/marque/optimi-logotype-sombre.webp';
 
 export const Navbar = () => {
   const { totalItems } = useCart();
