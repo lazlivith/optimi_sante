@@ -3299,3 +3299,27 @@ consultant sa fiche.
 | Image de 11 Mo | **400**, limite et taille nommées |
 | Admin mobilité sur le catalogue | **403** |
 | Galerie : fiche · liste | **2 visuels** · **0** |
+
+### Le compteur comme instrument de pilotage
+
+Le filtre des fiches incomplètes a reçu un bouton dédié plutôt qu'une entrée de menu, avec son
+compte affiché en permanence : **« Visuel à faire · 111 »**. La différence n'est pas cosmétique.
+Rangé dans un menu déroulant, le chantier disparaît de la vue et personne ne sait où il en est ;
+affiché en badge, il se décompte à mesure et devient un indicateur que l'équipe surveille. Le
+badge passe au vert à zéro.
+
+Le compteur se recharge **indépendamment de la liste** : il doit rester juste même quand on
+parcourt une page filtrée autrement. Et son échec est silencieux — un compteur indisponible fait
+disparaître le badge sans empêcher de travailler.
+
+Le bouton d'édition des médias est, lui, accessible **même sur un produit désactivé** : on
+désactive souvent une fiche *parce que* son visuel manque, et la corriger est justement ce qui
+permettra de la réactiver. C'est la contrepartie visible des écritures natives côté serveur.
+
+### Deux défauts de mise en page, vus à l'écran
+
+La première capture a montré ce qu'aucun test ne pouvait dire : le troisième bouton d'action
+retombait à la ligne (`space-x-2` sur un conteneur en flux ne tient pas quand la colonne se
+resserre — remplacé par un flex), et « Stock bas » se retrouvait seul sur une deuxième ligne
+(les deux filtres à bascule sont désormais groupés dans un conteneur commun, ils passent à la
+ligne ensemble).

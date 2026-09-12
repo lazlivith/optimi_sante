@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Pencil, Trash2, Package, X, RotateCcw, Tag, Search, SlidersHorizontal, ChevronLeft, ChevronRight, AlertTriangle, GraduationCap } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, Package, X, RotateCcw, Tag, Search, SlidersHorizontal, ChevronLeft, ChevronRight, AlertTriangle, GraduationCap, ImageOff, Images } from 'lucide-react';
 import { adminCatalogService, type AdminProductDto, type AdminProductRequestDto, type AdminCategoryDto, type CatalogFilters, type TrainingLookupDto } from '../../api/adminCatalogService';
 import { Toast, type ToastType } from '../../components/common/Toast';
+import { ProductMediaDialog } from '../../components/catalog/ProductMediaDialog';
+import { visuelAFaire } from '../../api/productMediaService';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -33,6 +35,14 @@ export function AdminCatalogPage() {
   // produits d'un catalogue qui en compte plus de 1 500 : 93 % du catalogue etait
   // inatteignable depuis cet ecran, sans que rien ne l'indique.
   const [filters, setFilters] = useState<CatalogFilters>(NO_FILTER);
+
+  // Nombre de fiches dont le visuel reste à faire. Rechargé après chaque mise à jour d'image :
+  // voir le compteur descendre est ce qui rend le chantier tenable.
+  const [visuelsAFaire, setVisuelsAFaire] = useState<number | null>(null);
+
+  // Produit dont on édite les médias. Ouvert depuis la liste : c'est en parcourant les fiches
+  // incomplètes qu'on les traite, sans passer par le formulaire complet.
+  const [mediasDe, setMediasDe] = useState<AdminProductDto | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -44,7 +54,8 @@ export function AdminCatalogPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const hasActiveFilter = Boolean(
-    filters.search || filters.categoryId || filters.activeState || filters.lowStock);
+    filters.search || filters.categoryId || filters.activeState || filters.lowStock
+    || filters.needsVisual);
 
   // La saisie est temporisee : sans cela, taper « compresse » declencherait neuf requetes
   // et la reponse de la plus lente pourrait ecraser celle de la plus recente.
@@ -72,6 +83,20 @@ export function AdminCatalogPage() {
   }, [page, filters]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  // Le compteur se recharge separement de la liste : il doit rester juste meme quand on
+  // parcourt une page filtree autrement, et il ne depend d'aucun filtre.
+  const rafraichirCompteur = useCallback(async () => {
+    try {
+      setVisuelsAFaire(await adminCatalogService.countNeedingVisual());
+    } catch {
+      // Un compteur indisponible ne doit pas empecher de travailler : le badge disparait,
+      // le filtre reste utilisable.
+      setVisuelsAFaire(null);
+    }
+  }, []);
+
+  useEffect(() => { rafraichirCompteur(); }, [rafraichirCompteur]);
 
   // Formations proposées au rattachement. Chargées une fois : elles ne dépendent d'aucun
   // filtre, et la liste est courte.
@@ -225,6 +250,40 @@ export function AdminCatalogPage() {
             <option value="price_desc">Prix décroissant</option>
           </select>
 
+          {/* Les deux filtres à bascule restent groupés : séparés, l'un retombe seul à la
+              ligne dès que la barre se resserre. */}
+          <div className="flex items-center gap-2">
+          {/* Compteur visible en permanence : le chantier des fiches incomplètes reste
+              sous les yeux de l'équipe et se décompte à mesure, au lieu de disparaître dans
+              un menu déroulant. */}
+          <button
+            type="button"
+            onClick={() => updateFilter({ needsVisual: !filters.needsVisual })}
+            aria-pressed={Boolean(filters.needsVisual)}
+            title="Fiches sans visuel propre : image absente, générique ou temporaire"
+            className={`inline-flex items-center gap-1.5 py-2 px-3 text-sm font-medium rounded-lg border transition-colors ${
+              filters.needsVisual
+                ? 'bg-amber-50 border-amber-300 text-amber-800'
+                : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <ImageOff className="w-4 h-4" />
+            Visuel à faire
+            {visuelsAFaire !== null && (
+              <span
+                className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${
+                  visuelsAFaire === 0
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : filters.needsVisual
+                      ? 'bg-amber-200 text-amber-900'
+                      : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {visuelsAFaire}
+              </span>
+            )}
+          </button>
+
           <button
             type="button"
             onClick={() => updateFilter({ lowStock: !filters.lowStock })}
@@ -238,6 +297,7 @@ export function AdminCatalogPage() {
             <AlertTriangle className="w-4 h-4" />
             Stock bas
           </button>
+          </div>
 
           {hasActiveFilter && (
             <button
@@ -317,7 +377,24 @@ export function AdminCatalogPage() {
                     <td className="px-6 py-4">
                       <StatusBadge status={p.isActive ? 'ACTIVE' : 'INACTIVE'} label={p.isActive ? 'Actif' : 'Désactivé'} />
                     </td>
-                    <td className="px-6 py-4 text-right space-x-2">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                      {/* Accessible même sur un produit désactivé : on désactive souvent une
+                          fiche PARCE QUE son visuel manque, et la corriger est justement ce
+                          qui permettra de la réactiver. */}
+                      <button
+                        onClick={() => setMediasDe(p)}
+                        className={`inline-flex items-center justify-center p-2 rounded-lg transition ${
+                          visuelAFaire(p.imageUrl)
+                            ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                        title={visuelAFaire(p.imageUrl)
+                          ? 'Visuel à faire — déposer la vraie photo'
+                          : 'Médias : visuel, galerie, vidéo'}
+                      >
+                        <Images className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => openEditModal(p)}
                         disabled={!p.isActive}
@@ -335,6 +412,7 @@ export function AdminCatalogPage() {
                       >
                         {p.isActive ? <Trash2 className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
                       </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -509,6 +587,15 @@ export function AdminCatalogPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {mediasDe && (
+        <ProductMediaDialog
+          productId={mediasDe.id}
+          productName={mediasDe.name}
+          onClose={() => setMediasDe(null)}
+          onChanged={() => { fetchProducts(); rafraichirCompteur(); }}
+        />
       )}
 
       {toast && (

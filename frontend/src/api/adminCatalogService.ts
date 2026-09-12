@@ -63,6 +63,9 @@ export interface CatalogFilters {
   categoryId?: string;
   activeState?: 'ACTIVE' | 'INACTIVE';
   lowStock?: boolean;
+  /** Ne remonte que les fiches dont le visuel reste à faire : image absente, illustration
+   *  générique, ou photo d'illustration temporaire. */
+  needsVisual?: boolean;
   sort?: 'name_asc' | 'price_asc' | 'price_desc';
 }
 
@@ -75,11 +78,26 @@ export const adminCatalogService = {
     if (filters.categoryId) params.set('categoryId', filters.categoryId);
     if (filters.activeState) params.set('activeState', filters.activeState);
     if (filters.lowStock) params.set('lowStock', 'true');
+    if (filters.needsVisual) params.set('needsVisual', 'true');
     // `sortBy` et non `sort` : Spring reserve `sort` au Pageable et ajouterait un second
     // ORDER BY a la requete, qui deviendrait invalide.
     if (filters.sort) params.set('sortBy', filters.sort);
     const { data } = await axiosClient.get<Page<AdminProductDto>>(`/admin/catalog/products?${params}`);
     return data;
+  },
+
+  /**
+   * Combien de fiches attendent encore leur visuel.
+   *
+   * Demande une seule ligne et ne lit que le total : le compteur n'a pas besoin des produits
+   * eux-mêmes, et en rapatrier vingt pour afficher un nombre serait du gaspillage à chaque
+   * rafraîchissement.
+   */
+  countNeedingVisual: async (): Promise<number> => {
+    const { data } = await axiosClient.get<Page<AdminProductDto>>(
+      '/admin/catalog/products?page=0&size=1&needsVisual=true',
+    );
+    return data.totalElements ?? 0;
   },
 
   createProduct: async (request: AdminProductRequestDto): Promise<AdminProductDto> => {
