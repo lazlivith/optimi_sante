@@ -3,13 +3,20 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle, Loader2, Mail } from 'lucide-react';
 import { doctorApplicationService } from '../../api/doctorApplicationService';
 
-const MAX_POLL_ATTEMPTS = 10;
-const POLL_INTERVAL_MS = 2000;
+// Une minute d'attente au total. Chaque interrogation demande désormais au serveur de vérifier
+// le paiement chez Stripe : la confirmation arrive en général dès la première. La marge couvre
+// le délai de Stripe lui-même à marquer le paiement réglé.
+const MAX_POLL_ATTEMPTS = 20;
+const POLL_INTERVAL_MS = 3000;
 
 /**
- * Le paiement Stripe est confirmé côté serveur de façon asynchrone via webhook (checkout.session.
- * completed), qui peut arriver quelques instants après que le navigateur atterrisse ici. On
- * interroge donc le statut à intervalles courts plutôt que de supposer qu'il est déjà PAID.
+ * Le paiement Stripe est confirmé côté serveur — par le webhook, ou par la vérification que
+ * déclenche chaque interrogation de cette page. On interroge donc le statut à intervalles
+ * courts plutôt que de supposer qu'il est déjà PAID.
+ *
+ * <p>La version précédente abandonnait au bout de 20 secondes, alors qu'une confirmation a déjà
+ * pris 106 secondes sur la base de travail : le candidat lisait « en cours de confirmation »
+ * pour un paiement qui aboutissait une minute plus tard.</p>
  */
 export function CandidatureSuccessPage() {
   const [searchParams] = useSearchParams();
@@ -87,18 +94,42 @@ export function CandidatureSuccessPage() {
           </>
         )}
 
-        {(status === 'pending' || status === 'error') && (
+        {status === 'pending' && (
           <>
             <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6">
               <Mail className="w-10 h-10" />
             </div>
             <h1 className="text-3xl font-bold text-brand-dark mb-4">Paiement en cours de confirmation</h1>
-            <p className="text-slate-600 mb-8">
-              Votre paiement a été transmis à Stripe. La confirmation finale peut prendre quelques minutes — vous
+            <p className="text-slate-600 mb-4">
+              Votre paiement a été transmis à Stripe, mais sa confirmation n'est pas encore revenue. Vous
               recevrez vos identifiants de connexion par email dès qu'elle sera traitée.
+            </p>
+            {/* Un délai dit sans issue laisse le candidat attendre indéfiniment un email qui
+                n'arrivera peut-être pas. La référence lui permet de se faire retrouver. */}
+            <p className="text-sm text-slate-500 mb-8">
+              Sans email d'ici une heure, contactez-nous en indiquant cette référence de paiement :{' '}
+              <span className="font-mono break-all text-slate-700">{stripeSessionId}</span>
             </p>
             <Link to="/" className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors">
               Retour à l'accueil
+            </Link>
+          </>
+        )}
+
+        {status === 'error' && (
+          <>
+            <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Mail className="w-10 h-10" />
+            </div>
+            {/* Distinct de l'attente : sans référence de paiement dans l'adresse, il n'y a rien à
+                vérifier, et promettre un email serait faux. */}
+            <h1 className="text-3xl font-bold text-brand-dark mb-4">Paiement introuvable</h1>
+            <p className="text-slate-600 mb-8">
+              Cette page ne contient pas de référence de paiement. Si vous avez payé, vérifiez vos emails ;
+              sinon, reprenez votre candidature depuis la fiche de la formation.
+            </p>
+            <Link to="/formations" className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors">
+              Voir les formations
             </Link>
           </>
         )}

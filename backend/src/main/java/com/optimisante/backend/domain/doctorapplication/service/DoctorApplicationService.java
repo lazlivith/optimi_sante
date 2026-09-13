@@ -29,6 +29,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -61,6 +65,10 @@ public class DoctorApplicationService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    /** Pour relire la candidature une fois verrouillée — voir {@link #confirmPayment}. */
+    @PersistenceContext
+    private EntityManager entityManager;
 
     /** Repli, appliqué quand la formation ne fixe pas ses propres frais. */
     @Value("${app.doctor-application.fee-amount}")
@@ -146,13 +154,24 @@ public class DoctorApplicationService {
     }
 
     /**
-     * Déclenché par le webhook Stripe (checkout.session.completed). Idempotent : un événement
-     * dupliqué sur une candidature déjà PAID ne recrée rien.
+     * Déclenché par le webhook Stripe (checkout.session.completed), et par la page de retour du
+     * candidat via {@link DoctorApplicationPaymentReconciler} quand le webhook tarde. Idempotent :
+     * un second appel sur une candidature déjà PAID ne recrée rien. La lecture verrouille la ligne,
+     * pour que deux appels simultanés ne créent pas deux comptes.
      */
     @Transactional
     public void confirmPayment(UUID applicationId, String stripeCustomerId) {
-        DoctorApplication application = doctorApplicationRepository.findById(applicationId)
+        DoctorApplication application = doctorApplicationRepository.findByIdForUpdate(applicationId)
                 .orElseThrow(() -> new RuntimeException("Doctor application not found: " + applicationId));
+
+        // RELIRE, une fois le verrou obtenu. Le projet garde `spring.jpa.open-in-view` actif :
+        // un même cache d'entités sert toute la requête HTTP. La page de retour a déjà lu la
+        // candidature avant d'arriver ici ; après avoir attendu le verrou, Hibernate renvoyait
+        // cette copie en cache — « PENDING_PAYMENT » — au lieu de l'état que la requête verrouillée
+        // venait de lire en base. Mesuré : cinq confirmations simultanées ont toutes créé le
+        // compte ; la contrainte d'unicité de l'e-mail en a rejeté quatre, après que chacune eut
+        // tenté d'envoyer des identifiants.
+        entityManager.refresh(application);
 
         if (application.getStatus() == DoctorApplicationStatus.PAID) {
             log.info("Candidature {} déjà marquée payée, événement webhook ignoré (idempotence)", applicationId);
@@ -222,8 +241,20 @@ public class DoctorApplicationService {
 
         // `user` est transmis pour tracer le destinataire dans email_logs : c'est ce qui
         // permet à l'admin de renvoyer les identifiants depuis l'espace « Emails ».
-        emailService.sendCredentialsEmail(application.getEmail(),
-                application.getFirstName() + " " + application.getLastName(), temporaryPassword, "Médecin", user);
+        //
+        // Envoi APRÈS l'enregistrement, et seulement s'il réussit. Envoyé avant, un mot de passe
+        // partait même quand la transaction était ensuite annulée : le candidat recevait des
+        // identifiants qui n'avaient jamais été enregistrés, et ne pouvait pas se connecter.
+        final String destinataire = application.getEmail();
+        final String nomComplet = application.getFirstName() + " " + application.getLastName();
+        final String motDePasse = temporaryPassword;
+        final User compte = user;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                emailService.sendCredentialsEmail(destinataire, nomComplet, motDePasse, "Médecin", compte);
+            }
+        });
 
         eventPublisher.publishEvent(
                 new com.optimisante.backend.domain.notification.event.NotificationEvents.DoctorAccountValidated(

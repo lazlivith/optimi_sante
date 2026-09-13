@@ -2,6 +2,7 @@ package com.optimisante.backend.domain.doctorapplication.controller;
 
 import com.optimisante.backend.domain.doctorapplication.dto.DoctorApplicationRequestDto;
 import com.optimisante.backend.domain.doctorapplication.dto.DoctorApplicationResponseDto;
+import com.optimisante.backend.domain.doctorapplication.service.DoctorApplicationPaymentReconciler;
 import com.optimisante.backend.domain.doctorapplication.service.DoctorApplicationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,8 +13,9 @@ import java.util.UUID;
 
 /**
  * Endpoints publics (candidat non authentifié) pour la candidature médecin payante. Le compte
- * MEDECIN n'est créé qu'après confirmation du paiement via le webhook Stripe (voir
- * DoctorApplicationService.confirmPayment), jamais depuis ce contrôleur directement.
+ * MEDECIN n'est créé qu'après un paiement que STRIPE confirme — par le webhook, ou par la
+ * vérification faite au retour du candidat (voir DoctorApplicationPaymentReconciler). Jamais sur
+ * la seule parole du navigateur.
  */
 @RestController
 @RequestMapping("/api/v1/doctor-applications")
@@ -21,6 +23,7 @@ import java.util.UUID;
 public class DoctorApplicationResource {
 
     private final DoctorApplicationService doctorApplicationService;
+    private final DoctorApplicationPaymentReconciler paymentReconciler;
 
     @PostMapping
     public ResponseEntity<DoctorApplicationResponseDto> submitApplication(@Valid @RequestBody DoctorApplicationRequestDto request) {
@@ -34,6 +37,6 @@ public class DoctorApplicationResource {
 
     @GetMapping("/status-by-stripe-session")
     public ResponseEntity<DoctorApplicationResponseDto> getStatusByStripeSession(@RequestParam String sessionId) {
-        return ResponseEntity.ok(doctorApplicationService.getStatusByStripeCheckoutSessionId(sessionId));
+        return ResponseEntity.ok(paymentReconciler.statutApresRetourStripe(sessionId));
     }
 }
