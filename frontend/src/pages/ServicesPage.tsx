@@ -172,7 +172,9 @@ export function ServicesPage() {
       </section>
 
       <div className="container mx-auto px-4 md:px-8 py-12 max-w-6xl grid lg:grid-cols-[230px_minmax(0,1fr)] gap-8 lg:gap-12">
-        <aside className="lg:pt-2">
+        {/* min-w-0 : voir LegalLayout — sans cela la barre de sommaire en `w-max` impose
+            sa largeur a la page entiere sur tablette. */}
+        <aside className="min-w-0 lg:pt-2">
           <SectionNav sections={SECTIONS} />
         </aside>
 

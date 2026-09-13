@@ -268,7 +268,10 @@ export function CatalogPage() {
 
                   <div className="flex-1 flex flex-col p-5">
                     <div className="flex-1 flex flex-col mb-4">
-                      <span className="text-[11px] text-slate-400 mb-1.5">{(product.category?.name || 'Général').replace(/&amp;/g, '&')}</span>
+                      {/* text-slate-400 sur blanc plafonne a 2,56:1, tres en dessous des
+                          4,5:1 exiges (WCAG 1.4.3), et 11 px sur telephone n'aidaient pas.
+                          slate-500 atteint 4,76:1. */}
+                      <span className="text-xs text-slate-500 mb-1.5">{(product.category?.name || 'Général').replace(/&amp;/g, '&')}</span>
                       <Link to={cheminProduit(product.slug)} className="font-semibold text-sm text-brand-dark group-hover:text-brand transition-colors leading-snug line-clamp-2">
                         {product.name}
                       </Link>

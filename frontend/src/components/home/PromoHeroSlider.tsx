@@ -188,15 +188,24 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
 
           <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
             {products.map((p, i) => (
+              // La pastille visible reste fine, mais la zone cliquable fait 24 px de haut :
+              // un point de 8 px sur 8 est hors d'atteinte au doigt (WCAG 2.2, critere 2.5.8
+              // — cible d'au moins 24x24). Le repere visuel et la cible ne sont pas le meme
+              // objet, et c'est ce qui permet de grossir l'un sans alourdir l'autre.
               <button
                 key={p.id} type="button"
                 onClick={() => setCurrent(i)}
                 aria-label={`Promotion ${i + 1} sur ${total}`}
                 aria-current={i === current}
-                className={`h-2 rounded-full transition-all ${
-                  i === current ? 'w-7 bg-brand' : 'w-2 bg-slate-300 hover:bg-slate-400'
-                }`}
-              />
+                className="group flex h-6 items-center justify-center px-2"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`block h-2 rounded-full transition-all ${
+                    i === current ? 'w-7 bg-brand' : 'w-2 bg-slate-300 group-hover:bg-slate-400'
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </>

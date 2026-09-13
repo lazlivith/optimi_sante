@@ -47,7 +47,10 @@ export function DossierExcelPanel() {
         demande : vous saurez tout de suite ce qui manque.
       </p>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      {/* flex-wrap : en rangee, les deux libelles additionnes depassaient la largeur d'une
+          tablette de 68 px. Un element flex ne retrecit pas sous son contenu ; faute de
+          pouvoir se replier, le second bouton poussait la page hors de l'ecran. */}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-6">
         {/* Un lien et non un bouton : c'est une navigation vers un fichier, et le navigateur
             sait la gérer seul — y compris l'ouvrir dans le tableur installé. */}
         <a

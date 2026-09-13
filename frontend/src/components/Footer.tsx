@@ -135,7 +135,10 @@ export const Footer = () => {
           </p>
           <a
             href={`mailto:${LEGAL.emailContact}`}
-            className="text-slate-400 hover:text-white transition-colors"
+            // inline-block + py-1 : le lien ne faisait que 16 px de haut, sous les 24 px
+            // qu'une cible doit offrir au doigt (WCAG 2.2, critere 2.5.8). Le texte ne
+            // change pas de taille ; c'est la zone atteignable qui grandit.
+            className="inline-block py-1 text-slate-400 hover:text-white transition-colors"
           >
             Écrivez-nous : {LEGAL.emailContact}
           </a>
@@ -209,7 +212,10 @@ function Newsletter() {
         <input
           type="checkbox" checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
-          className="mt-0.5 shrink-0 accent-brand"
+          // h-5 w-5 : une case a cocher laissee a sa taille par defaut fait 13 px de cote.
+          // Elle est ici dans un <label>, donc tout le texte la bascule aussi — mais la case
+          // reste la cible que l'on vise en premier.
+          className="mt-0.5 h-5 w-5 shrink-0 accent-brand"
         />
         <span>
           Je consens à recevoir par email les offres, actualités et informations d'Optimi

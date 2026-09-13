@@ -358,7 +358,7 @@ function EssentialEquipmentSection({ products }: { products: Product[] }) {
             
             {/* Content */}
             <div className="flex flex-col flex-1">
-              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">
+              <span className="text-[11px] text-gray-600 font-bold uppercase tracking-wider mb-1">
                 {(item.category?.name || 'Équipement').replace(/&amp;/g, '&')}
               </span>
               <h3 className="text-sm font-medium text-gray-800 line-clamp-2 h-10 mb-2">

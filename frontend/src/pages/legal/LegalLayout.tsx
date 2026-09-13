@@ -45,8 +45,12 @@ export function LegalLayout({
         {/* Sommaire collant a gauche des qu'il y a des sections : ces documents se
             consultent pour un article precis, pas de bout en bout. */}
         <div className={sections ? 'grid lg:grid-cols-[240px_minmax(0,1fr)] gap-8 lg:gap-12' : ''}>
+          {/* min-w-0 sur l'aside : un element de grille ne descend PAS sous sa largeur
+              maximale de contenu sans cela. La barre de sommaire des ecrans etroits est en
+              `w-max` ; elle imposait donc sa largeur a toute la page. La colonne de contenu
+              avait deja sa protection (`minmax(0,1fr)`), pas celle-ci. */}
           {sections && (
-            <aside>
+            <aside className="min-w-0">
               <SectionNav sections={sections} />
             </aside>
           )}
