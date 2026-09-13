@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Mail, Plus } from 'lucide-react';
+import { cheminProduit } from '../../api/catalogService';
 import type { Product } from '../../api/catalogService';
 import { PromoProductVisual } from './PromoProductVisual';
 import { useCart } from '../../context/CartContext';
@@ -36,7 +37,7 @@ export function ProductCard(
                  bg-white shadow-sm transition-shadow hover:shadow-md"
     >
       <Link
-        to={`/product/${product.slug}`}
+        to={cheminProduit(product.slug)}
         className="relative flex h-36 items-center justify-center p-4 sm:h-40 lg:h-44"
       >
         <PromoProductVisual
@@ -66,7 +67,7 @@ export function ProductCard(
         {/* Hauteur minimale sur deux lignes : sans elle, un nom court et un nom long
             décalent les prix l'un par rapport à l'autre et la rangée perd son alignement. */}
         <Link
-          to={`/product/${product.slug}`}
+          to={cheminProduit(product.slug)}
           className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug
                      text-brand-dark transition-colors hover:text-brand"
         >

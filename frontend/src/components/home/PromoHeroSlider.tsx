@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { cheminProduit } from '../../api/catalogService';
 import type { Product } from '../../api/catalogService';
 import { PromoProductVisual } from '../catalog/PromoProductVisual';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
@@ -117,7 +118,7 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
             {/* Une seule action mise en avant. Deux boutons côte à côte se concurrencent, et
                 le visiteur hésite là où il n'y a rien à arbitrer. */}
             <Link
-              to={`/product/${produit.slug}`}
+              to={cheminProduit(produit.slug)}
               className="group inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3
                          text-base font-bold text-white transition-colors hover:bg-brand-fonce"
             >

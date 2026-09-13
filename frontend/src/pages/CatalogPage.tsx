@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { catalogService } from '../api/catalogService';
+import { catalogService, cheminProduit } from '../api/catalogService';
 import type { Product } from '../api/catalogService';
 import { Search, Mail, Plus, SlidersHorizontal } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -239,7 +239,7 @@ export function CatalogPage() {
                   {/* `contain` et non `cover` : les visuels du catalogue sont des packshots
                       aux cadrages variables, et un recadrage automatique amputait l'article —
                       or c'est sur cette vignette que l'acheteur le reconnaît. */}
-                  <Link to={`/product/${product.slug}`} className="block relative aspect-square bg-white overflow-hidden p-4">
+                  <Link to={cheminProduit(product.slug)} className="block relative aspect-square bg-white overflow-hidden p-4">
                     <PromoProductVisual
                       product={product}
                       className="w-full h-full group-hover:scale-105 transition-transform duration-500"
@@ -269,7 +269,7 @@ export function CatalogPage() {
                   <div className="flex-1 flex flex-col p-5">
                     <div className="flex-1 flex flex-col mb-4">
                       <span className="text-[11px] text-slate-400 mb-1.5">{(product.category?.name || 'Général').replace(/&amp;/g, '&')}</span>
-                      <Link to={`/product/${product.slug}`} className="font-semibold text-sm text-brand-dark group-hover:text-brand transition-colors leading-snug line-clamp-2">
+                      <Link to={cheminProduit(product.slug)} className="font-semibold text-sm text-brand-dark group-hover:text-brand transition-colors leading-snug line-clamp-2">
                         {product.name}
                       </Link>
                     </div>

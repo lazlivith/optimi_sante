@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Heart, ShoppingCart, ArrowRight, MessageCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { catalogService } from '../api/catalogService';
+import { catalogService, cheminProduit } from '../api/catalogService';
 import type { Product } from '../api/catalogService';
 import { useCart } from '../context/CartContext';
 import { ProductImage } from '../components/common/ProductImage';
@@ -345,7 +345,7 @@ function EssentialEquipmentSection({ products }: { products: Product[] }) {
       <h2 className="text-2xl font-bold text-gray-800 mb-5">Équipements médicaux essentiels</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {essentials.map(item => (
-          <Link to={`/product/${item.slug}`} key={item.id} className="bg-white rounded-xl border border-gray-100 p-4 flex flex-col hover:shadow-lg transition-all group relative">
+          <Link to={cheminProduit(item.slug)} key={item.id} className="bg-white rounded-xl border border-gray-100 p-4 flex flex-col hover:shadow-lg transition-all group relative">
             {/* Image */}
             <div className="flex items-center justify-center h-48 mb-4 bg-gray-50 rounded-lg p-2">
               <ProductImage
@@ -384,7 +384,7 @@ function ProductCardHome({ product }: { product: Product }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-4 flex flex-col hover:shadow-lg transition-all group relative">
-      <Link to={`/product/${product.slug}`} className="absolute inset-0 z-0" aria-label={`Voir ${product.name}`}></Link>
+      <Link to={cheminProduit(product.slug)} className="absolute inset-0 z-0" aria-label={`Voir ${product.name}`}></Link>
       
       {/* Badge */}
       <div className="relative z-10 pointer-events-none">

@@ -61,6 +61,20 @@ export interface PaginatedResponse<T> {
   number: number;
 }
 
+/**
+ * Adresse de la fiche d'un produit.
+ *
+ * <p><b>Le slug doit être encodé.</b> 146 produits sur 1 487 portent un slug contenant déjà
+ * des caractères pour-cent — « tensiometre-precisa%c2%acae-n-shock-proof », où « ® » a été
+ * encodé au lieu d'être retiré à l'import. Écrit tel quel dans une adresse, ce « %c2%ac » est
+ * lu comme une séquence d'échappement : le routeur le décode en « ¬ », le slug demandé au
+ * serveur ne correspond plus à celui stocké, et la fiche répond « produit introuvable ».
+ * Ces 146 fiches étaient inatteignables.</p>
+ *
+ * <p>Sur un slug ordinaire — lettres, chiffres, tirets — cette fonction ne change rien.</p>
+ */
+export const cheminProduit = (slug: string) => `/product/${encodeURIComponent(slug)}`;
+
 export const catalogService = {
   /** `promo: true` ne remonte que les produits dont la promotion est active maintenant. */
   getProducts: async (params: { page?: number; size?: number; search?: string; categoryId?: string; promo?: boolean }) => {
@@ -69,7 +83,9 @@ export const catalogService = {
   },
 
   getProductBySlug: async (slug: string) => {
-    const { data } = await axiosClient.get<Product>(`/catalog/products/${slug}`);
+    // Même raison que `cheminProduit` : un slug portant un « % » doit arriver au serveur
+    // tel qu'il est stocké, et non décodé en cours de route.
+    const { data } = await axiosClient.get<Product>(`/catalog/products/${encodeURIComponent(slug)}`);
     return data;
   },
   
