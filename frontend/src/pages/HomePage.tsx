@@ -9,6 +9,7 @@ import { ProductImage } from '../components/common/ProductImage';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { PromoHeroSlider } from '../components/home/PromoHeroSlider';
 import { CabinetSection } from '../components/home/CabinetSection';
+import { RayonsCarousel } from '../components/home/RayonsCarousel';
 
 const HOMEPAGE_CATALOG_PREVIEW_COUNT = 8;
 
@@ -477,44 +478,6 @@ function PromosSection({ products }: { products: Product[] }) {
 }
 
 // ──────────────────────────────────────────────────
-// Best Sellers (with category tabs)
-// ──────────────────────────────────────────────────
-function BestSellersSection({ products }: { products: Product[] }) {
-  const [activeCategory, setActiveCategory] = useState(0);
-  
-  // Extraire les noms de catégories des produits
-  const tabs = Array.from(new Set(products.filter(p => p.category?.name).map(p => p.category!.name))).slice(0, 4);
-
-  if (products.length === 0 || tabs.length === 0) return null;
-  
-  const activeProducts = products.filter(p => p.category?.name === tabs[activeCategory]).slice(0, 6);
-
-  return (
-    <section className="container mx-auto px-4 md:px-8 py-8">
-      <h2 className="text-2xl font-bold text-gray-800 mb-5">Nos best-sellers par catégorie</h2>
-      <div className="flex gap-2 flex-wrap mb-5">
-        {tabs.map((tab, i) => (
-          <button
-            key={tab}
-            onClick={() => setActiveCategory(i)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${activeCategory === i ? 'bg-blue-700 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'}`}
-          >
-            {tab.replace(/&amp;/g, '&')}
-          </button>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        {activeProducts.length > 0 ? activeProducts.map(p => (
-          <ProductCardHome key={p.id} product={p} />
-        )) : (
-          <p className="text-gray-500 text-sm col-span-full">Aucun produit pour le moment.</p>
-        )}
-      </div>
-    </section>
-  );
-}
-
-// ──────────────────────────────────────────────────
 // Partners Slider
 // ──────────────────────────────────────────────────
 const partners = [
@@ -579,7 +542,9 @@ export function HomePage() {
       {/* Auparavant : products.slice(0, 10), c'est-a-dire les dix premiers produits du
           catalogue — la section « Nos promos du mois » n'affichait aucune promotion. */}
       <PromosSection products={promos} />
-      <BestSellersSection products={products.slice(5, 11)} />
+      {/* Remplace « Nos best-sellers par catégorie », qui refiltrait six produits pris au
+          rang 5 du catalogue et n'en montrait qu'un ou deux par onglet. */}
+      <RayonsCarousel categories={categories} />
 
       {/* Events Banner */}
       <section className="container mx-auto px-4 md:px-8 py-8">
