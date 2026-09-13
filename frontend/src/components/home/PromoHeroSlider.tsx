@@ -147,6 +147,8 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
               key={produit.id}
               product={produit}
               objectFit="contain"
+              // Premiere image de la page : la differer retarderait le premier affichage.
+              chargement="eager"
               className="h-full w-full drop-shadow-[0_18px_28px_rgba(11,36,48,0.14)]"
               iconClassName="w-16 h-16"
             />

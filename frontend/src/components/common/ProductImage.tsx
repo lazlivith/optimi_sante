@@ -14,6 +14,17 @@ interface ProductImageProps {
   className?: string;
   iconClassName?: string;
   objectFit?: 'cover' | 'contain';
+  /**
+   * `lazy` par défaut : le navigateur ne télécharge la photo qu'à l'approche de l'écran.
+   *
+   * <p>Sans cela, une page de catalogue à défilement infini lance une requête par produit
+   * chargé — plus de mille si le visiteur descend jusqu'au bout —, toutes en même temps et
+   * pour des images qu'il ne verra peut-être jamais.</p>
+   *
+   * <p>Passez `eager` pour une image visible dès l'ouverture, typiquement celle du bandeau :
+   * la différer retarderait le premier affichage utile de la page.</p>
+   */
+  chargement?: 'lazy' | 'eager';
 }
 
 /**
@@ -22,7 +33,7 @@ interface ProductImageProps {
  * navigateur ou une requête réseau vouée à échouer. Aucune dépendance à une image de secours
  * externe qui pourrait elle-même ne pas exister.
  */
-export function ProductImage({ src, alt, className = '', iconClassName = 'w-10 h-10', objectFit = 'contain' }: ProductImageProps) {
+export function ProductImage({ src, alt, className = '', iconClassName = 'w-10 h-10', objectFit = 'contain', chargement = 'lazy' }: ProductImageProps) {
   const [failed, setFailed] = useState(false);
   const isUsable = !!src && !KNOWN_BROKEN_URLS.includes(src);
 
@@ -38,6 +49,10 @@ export function ProductImage({ src, alt, className = '', iconClassName = 'w-10 h
     <img
       src={src}
       alt={alt}
+      loading={chargement}
+      // Décode hors du fil principal : sur une grille de vingt-quatre photos, un décodage
+      // synchrone fige le défilement le temps que chacune s'affiche.
+      decoding="async"
       className={`${className} ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`}
       onError={() => setFailed(true)}
     />

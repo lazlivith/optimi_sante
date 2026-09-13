@@ -23,12 +23,14 @@ import type { Product } from '../../api/catalogService';
  * </ul>
  */
 export function PromoProductVisual({
-  product, className = '', iconClassName, objectFit = 'contain',
+  product, className = '', iconClassName, objectFit = 'contain', chargement,
 }: {
   product: Product;
   className?: string;
   iconClassName?: string;
   objectFit?: 'contain' | 'cover';
+  /** Voir {@link ProductImage} : `eager` pour une vignette visible dès l'ouverture. */
+  chargement?: 'lazy' | 'eager';
 }) {
   const mouvementReduit = useReducedMotion();
   const [survole, setSurvole] = useState(false);
@@ -43,6 +45,7 @@ export function PromoProductVisual({
       className={className}
       iconClassName={iconClassName}
       objectFit={objectFit}
+      chargement={chargement}
     />
   );
 

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { catalogService } from '../api/catalogService';
 import type { Product } from '../api/catalogService';
@@ -7,6 +7,9 @@ import { Search, Mail, Plus, SlidersHorizontal } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { PromoProductVisual } from '../components/catalog/PromoProductVisual';
 import { usePageMeta } from '../hooks/usePageMeta';
+
+/** Produits par requete. Vingt-quatre remplit six rangees de quatre sans laisser de trou. */
+const TAILLE_PAGE = 24;
 
 export function CatalogPage() {
   usePageMeta('Catalogue médical', "Découvrez notre catalogue de dispositifs médicaux certifiés CE : équipements, consommables et matériel professionnel pour cabinets et structures de soin.");
@@ -44,16 +47,43 @@ export function CatalogPage() {
     }
   });
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['products', { search, selectedCategory, promoOnly }],
-    queryFn: () => catalogService.getProducts({
-      search, categoryId: selectedCategory, promo: promoOnly || undefined, size: 20,
-    })
+  // Le catalogue se parcourt en descendant, page apres page. La version precedente
+  // demandait `size: 20` SANS aucune pagination : elle annoncait « 1487 produits » et n'en
+  // montrait que vingt, sans le moindre moyen d'atteindre les suivants.
+  const {
+    data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['catalog-products', { search, selectedCategory, promoOnly }],
+    queryFn: ({ pageParam }) => catalogService.getProducts({
+      search, categoryId: selectedCategory, promo: promoOnly || undefined,
+      page: pageParam, size: TAILLE_PAGE,
+    }),
+    initialPageParam: 0,
+    // `undefined` signifie « plus rien apres » : c'est ce qui eteint le chargement.
+    getNextPageParam: (derniere) =>
+      derniere.number + 1 < derniere.totalPages ? derniere.number + 1 : undefined,
   });
 
+  const produits = data?.pages.flatMap((page) => page.content) ?? [];
   const selectedCategoryName = categories?.find(c => c.id === selectedCategory)?.name;
+  const nombreResultats = data?.pages[0]?.totalElements;
 
-  const nombreResultats = data?.totalElements ?? data?.content?.length;
+  // Le bouton du bas sert de sentinelle : quand il approche de l'ecran, la page suivante
+  // part d'elle-meme. Il reste un vrai bouton, cliquable — un defilement infini sans
+  // commande manuelle est inatteignable au clavier et bloque quiconque ne fait pas defiler.
+  const sentinelle = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const cible = sentinelle.current;
+    if (!cible || !hasNextPage) return;
+    const guetteur = new IntersectionObserver(
+      ([entree]) => { if (entree.isIntersecting) fetchNextPage(); },
+      // On declenche 600 px avant que le bouton n'entre dans l'ecran : la page suivante est
+      // la au moment ou le visiteur y arrive, au lieu de lui montrer un vide puis un saut.
+      { rootMargin: '600px' },
+    );
+    guetteur.observe(cible);
+    return () => guetteur.disconnect();
+  }, [hasNextPage, fetchNextPage, produits.length]);
 
   return (
     <div className="bg-slate-50 min-h-screen">
@@ -169,7 +199,7 @@ export function CatalogPage() {
           </div>
         ) : error ? (
           <div className="text-center py-20 text-red-500 bg-red-50 rounded-2xl border border-red-100">Erreur lors du chargement du catalogue.</div>
-        ) : data?.content?.length === 0 ? (
+        ) : produits.length === 0 ? (
           promoOnly ? (
             // Une liste vide en mode promotions n'est pas une recherche infructueuse : c'est
             // qu'aucune remise n'est active. Le dire evite de chercher un filtre fautif.
@@ -185,9 +215,19 @@ export function CatalogPage() {
           )
         ) : (
           <>
-            <p className="text-sm text-slate-500 mb-5">{data?.totalElements ?? 0} produit{(data?.totalElements ?? 0) > 1 ? 's' : ''}</p>
+            {/* Ce que le visiteur voit, et sur combien : un compteur seul laisse croire que
+                tout est affiche. aria-live l'annonce a chaque page chargee, sans quoi le
+                defilement infini est muet pour un lecteur d'ecran. */}
+            {/* Une seule expression, pas un mot coupe par un retour a la ligne : la version
+                precedente ecrivait « affiche » sur une ligne et « s » sur la suivante, et
+                affichait donc « 24 produits affiches » — sans accent. */}
+            <p aria-live="polite" className="text-sm text-slate-500 mb-5">
+              {produits.length > 1
+                ? `${produits.length} produits affichés sur ${nombreResultats ?? produits.length}`
+                : `${produits.length} produit sur ${nombreResultats ?? produits.length}`}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {data?.content?.map((product: Product) => (
+              {produits.map((product: Product) => (
                 <div
                   key={product.id}
                   className="group flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all relative overflow-hidden"
@@ -265,6 +305,32 @@ export function CatalogPage() {
                 </div>
               ))}
             </div>
+
+            {hasNextPage && (
+              <div className="mt-10 flex justify-center">
+                <button
+                  ref={sentinelle}
+                  type="button"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm
+                             font-semibold text-brand-dark transition-colors hover:border-brand
+                             hover:text-brand disabled:opacity-60"
+                >
+                  {isFetchingNextPage ? 'Chargement…' : 'Afficher plus de produits'}
+                </button>
+              </div>
+            )}
+
+            {/* Annonce la fin seulement si le visiteur a effectivement charge quelque chose :
+                sur une recherche qui tient en une page, « vous avez atteint la fin » n'apprend
+                rien. On compte les pages CHARGEES, et non les produits — la derniere page du
+                catalogue n'en compte que 23, ce qui ne suffisait pas a declencher le message. */}
+            {!hasNextPage && (data?.pages.length ?? 0) > 1 && (
+              <p className="mt-10 text-center text-sm text-slate-500">
+                Vous avez atteint la fin du catalogue.
+              </p>
+            )}
           </>
         )}
       </div>
