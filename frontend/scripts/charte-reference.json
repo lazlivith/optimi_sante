@@ -7,6 +7,26 @@
   "couleursEnDur": 292,
   "_couleursEnDur": "Occurrences constatees au lot C. Le garde-fou echoue si ce nombre augmente.",
 
+  "_valeursBrutesAutorisees": "Couleurs ecrites en hexadecimal ou rgb() dejà presentes. Toute NOUVELLE valeur brute fait echouer le build : elle echappe au changement de palette, comme l'ont montre les 64 boutons restes au vert #0f3c35 apres le passage au bleu. Les groupes ci-dessous disent pourquoi chacune est toleree.",
+  "valeursBrutesAutorisees": [
+    "#0072b2", "#d55e00", "#009e73", "#cc79a7", "#e69f00", "#56b4e9",
+
+    "#e2e8f0", "#f1f5f9", "#94a3b8", "#475569", "#334155", "#1e293b", "#666666",
+
+    "#c8e6f5", "#e8f4fd", "#d4edd6", "#e8f5e9", "#f5e6d4", "#fdf3e8",
+
+    "#154d44", "#0f2e29", "#14524a", "#d98a3c", "#0f766e", "#14532d",
+
+    "rgba(15,23,42", "rgba(11,36,48", "rgba(236,114,38"
+  ],
+  "_groupes": [
+    "Ligne 1 — palette Okabe-Ito des graphiques : concue pour rester distinguable en cas de daltonisme. Elle ne doit PAS etre remplacee par les couleurs de marque, qui ne se distinguent pas entre elles.",
+    "Ligne 2 — gris neutres, equivalents Tailwind slate ecrits en valeur. A migrer vers les classes quand on y touche.",
+    "Ligne 3 — teintes pastel de categories.",
+    "Ligne 4 — RESTES DE L'ANCIENNE PALETTE VERTE, a nettoyer. Ils sont tolerés pour ne pas bloquer les builds, mais chacun est un endroit ou l'ecran affiche encore l'identite d'avant.",
+    "Ligne 5 — ombres et lueurs : une transparence, pas une couleur d'identite."
+  ],
+
   "plafondPublicKo": 700,
   "_plafondPublicKo": "496 Ko servis aujourd'hui. Marge volontaire pour une variante de logo ; les originaux du graphiste pesaient 30,7 Mo.",
 

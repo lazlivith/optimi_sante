@@ -186,7 +186,7 @@ export const Navbar = () => {
               )}
             </div>
           ) : (
-            <Link to="/login" className="bg-brand text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-[#0f3c35] transition-colors">
+            <Link to="/login" className="bg-brand text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-brand-fonce transition-colors">
               Se connecter
             </Link>
           )}

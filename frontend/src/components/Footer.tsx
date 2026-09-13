@@ -199,7 +199,7 @@ function Newsletter() {
         <button
           type="submit"
           disabled={!consent || etat === 'envoi'}
-          className="shrink-0 px-4 py-2 rounded-lg bg-brand text-white text-xs font-bold uppercase tracking-wide hover:bg-[#0f3c35] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="shrink-0 px-4 py-2 rounded-lg bg-brand text-white text-xs font-bold uppercase tracking-wide hover:bg-brand-fonce disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {etat === 'envoi' ? <Loader2 className="w-4 h-4 animate-spin" /> : "S'abonner"}
         </button>

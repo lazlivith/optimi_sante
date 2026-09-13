@@ -217,7 +217,7 @@ export function AdminServiceCatalogPanel({
 
               <button
                 type="button" disabled={busy} onClick={deposer}
-                className="mt-3 inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                className="mt-3 inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-brand-fonce disabled:opacity-50 transition-colors"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 Ajouter au catalogue

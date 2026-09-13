@@ -147,7 +147,7 @@ export function AiDraftButton({ draftType, context, label = 'Rédiger avec l’I
                       setOpen(false);
                     }}
                     disabled={!text}
-                    className="px-4 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-[#0f3c35] disabled:opacity-40"
+                    className="px-4 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-brand-fonce disabled:opacity-40"
                   >
                     Insérer
                   </button>

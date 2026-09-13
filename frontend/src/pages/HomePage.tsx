@@ -578,7 +578,7 @@ export function HomePage() {
             <p className="text-gray-400 text-xs font-bold uppercase mb-2">Agenda</p>
             <h3 className="text-2xl font-bold text-gray-800 mb-3">Calendrier des Événements Médicaux</h3>
             <p className="text-sm text-gray-500 mb-4">Formations continues, webinaires et conférences pour les professionnels de santé.</p>
-            <Link to="/formations" className="inline-flex items-center gap-2 bg-brand text-white font-bold px-4 py-2 rounded-full text-sm hover:bg-[#0f3c35] transition-colors">
+            <Link to="/formations" className="inline-flex items-center gap-2 bg-brand text-white font-bold px-4 py-2 rounded-full text-sm hover:bg-brand-fonce transition-colors">
               Voir les formations <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -592,7 +592,7 @@ export function HomePage() {
             <h2 className="text-3xl font-bold text-gray-800">Tout notre catalogue</h2>
             <p className="text-gray-500 mt-2">Explorez l'ensemble de nos équipements médicaux importés</p>
           </div>
-          <Link to="/catalog" className="hidden md:flex items-center gap-2 bg-brand text-white px-5 py-2.5 rounded-full font-bold hover:bg-[#0f3c35] transition-colors shadow-md">
+          <Link to="/catalog" className="hidden md:flex items-center gap-2 bg-brand text-white px-5 py-2.5 rounded-full font-bold hover:bg-brand-fonce transition-colors shadow-md">
             Voir le catalogue complet <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -604,7 +604,7 @@ export function HomePage() {
         </div>
         
         <div className="mt-8 flex justify-center md:hidden">
-          <Link to="/catalog" className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-bold hover:bg-[#0f3c35] transition-colors shadow-md w-full justify-center">
+          <Link to="/catalog" className="inline-flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-bold hover:bg-brand-fonce transition-colors shadow-md w-full justify-center">
             Voir le catalogue complet <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

@@ -165,7 +165,7 @@ export function ProductDetailPage() {
               <button 
                 onClick={() => product.isQuoteOnly ? setIsQuoteModalOpen(true) : handleAddToCart()}
                 disabled={product.stockQuantity < 1 && !product.isQuoteOnly}
-                className="flex-1 h-14 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                className="flex-1 h-14 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               >
                 {product.isQuoteOnly ? 'Demander un devis' : 'Ajouter au panier'}
               </button>

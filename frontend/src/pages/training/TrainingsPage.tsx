@@ -140,7 +140,7 @@ export function TrainingsPage() {
                       setSelectedTraining({ id: training.id, title: training.title });
                     }
                   }}
-                  className={`flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors bg-brand text-white hover:bg-[#0f3c35]`}
+                  className={`flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors bg-brand text-white hover:bg-brand-fonce`}
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Postuler

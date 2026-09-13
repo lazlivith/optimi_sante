@@ -72,7 +72,7 @@ export function MyPersonalDataPage() {
           </p>
           <button
             type="button" onClick={exporter} disabled={isExporting}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white font-bold hover:bg-[#0f3c35] disabled:opacity-60 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white font-bold hover:bg-brand-fonce disabled:opacity-60 transition-colors"
           >
             {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             Obtenir mes données (CSV)

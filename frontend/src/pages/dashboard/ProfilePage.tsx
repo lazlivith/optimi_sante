@@ -297,7 +297,7 @@ export const ProfilePage = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand hover:bg-[#0f3c35] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand transition-colors disabled:opacity-70 gap-2 items-center"
+                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand hover:bg-brand-fonce focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand transition-colors disabled:opacity-70 gap-2 items-center"
               >
                 <Save className="w-4 h-4" />
                 {isLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}

@@ -188,7 +188,7 @@ export function AdminInterviewPanel({ enrollmentId }: { enrollmentId: string }) 
                         type="button"
                         disabled={enCours}
                         onClick={() => transmettre(e)}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-brand-fonce disabled:opacity-50 transition-colors"
                       >
                         {enCours ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         Transmettre au médecin

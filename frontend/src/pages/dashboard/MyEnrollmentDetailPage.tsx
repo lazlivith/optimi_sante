@@ -320,7 +320,7 @@ export function MyEnrollmentDetailPage() {
                 ) : (
                   <button 
                     onClick={handleUpload}
-                    className="w-full flex justify-center items-center py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors"
+                    className="w-full flex justify-center items-center py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors"
                   >
                     Confirmer l'envoi du document
                   </button>

@@ -132,7 +132,7 @@ export function CatalogPage() {
             <div className="text-center py-20">
               <p className="text-slate-700 font-semibold">Aucune promotion en cours.</p>
               <p className="text-slate-500 text-sm mt-1">Revenez bientôt, ou parcourez le catalogue complet.</p>
-              <Link to="/catalog" className="inline-block mt-5 bg-brand text-white px-5 py-2.5 rounded-full font-bold text-sm hover:bg-[#0f3c35] transition-colors">
+              <Link to="/catalog" className="inline-block mt-5 bg-brand text-white px-5 py-2.5 rounded-full font-bold text-sm hover:bg-brand-fonce transition-colors">
                 Voir le catalogue
               </Link>
             </div>

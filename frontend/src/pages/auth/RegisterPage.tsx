@@ -280,7 +280,7 @@ export const RegisterPage = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-3 px-4 rounded-lg shadow-sm text-sm font-medium text-white bg-brand hover:bg-[#0f3c35] focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:opacity-70 transition-colors"
+              className="w-full flex justify-center py-3 px-4 rounded-lg shadow-sm text-sm font-medium text-white bg-brand hover:bg-brand-fonce focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:opacity-70 transition-colors"
             >
               {isLoading ? 'Inscription...' : 'Créer mon compte'}
             </button>

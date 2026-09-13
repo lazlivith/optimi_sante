@@ -81,7 +81,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
             </p>
             <button 
               onClick={onClose}
-              className="mt-4 inline-flex items-center justify-center px-6 py-3 bg-brand text-white font-medium rounded-xl hover:bg-[#0f3c35] transition-colors"
+              className="mt-4 inline-flex items-center justify-center px-6 py-3 bg-brand text-white font-medium rounded-xl hover:bg-brand-fonce transition-colors"
             >
               Fermer
             </button>
@@ -180,7 +180,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full flex items-center justify-center px-6 py-4 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                className="w-full flex items-center justify-center px-6 py-4 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce disabled:opacity-50 transition-colors"
               >
                 {isSubmitting ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : <CheckCircle className="w-5 h-5 mr-2" />}
                 Postuler

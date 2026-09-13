@@ -115,7 +115,7 @@ export function TuitionPaymentCard({
             type="button"
             onClick={handleOpenPayment}
             disabled={isPreparing}
-            className="w-full flex justify-center items-center py-3.5 px-4 rounded-xl shadow-sm text-sm font-bold text-white bg-brand hover:bg-[#0f3c35] disabled:opacity-70 transition-colors"
+            className="w-full flex justify-center items-center py-3.5 px-4 rounded-xl shadow-sm text-sm font-bold text-white bg-brand hover:bg-brand-fonce disabled:opacity-70 transition-colors"
           >
             {isPreparing ? (
               <>

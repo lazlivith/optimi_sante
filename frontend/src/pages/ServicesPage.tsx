@@ -156,7 +156,7 @@ export function ServicesPage() {
           <div className="flex flex-wrap gap-3 mt-7">
             <Link
               to="/formations"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white font-bold hover:bg-[#0f3c35] transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white font-bold hover:bg-brand-fonce transition-colors"
             >
               Voir les formations <ArrowRight className="w-4 h-4" />
             </Link>
@@ -410,7 +410,7 @@ function Bouton({ to, children }: { to: string; children: React.ReactNode }) {
   return (
     <Link
       to={to}
-      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white font-bold hover:bg-[#0f3c35] transition-colors"
+      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white font-bold hover:bg-brand-fonce transition-colors"
     >
       {children} <ArrowRight className="w-4 h-4" />
     </Link>

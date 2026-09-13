@@ -233,7 +233,7 @@ export function AdminEmailsPage() {
           <button
             type="submit"
             disabled={isSendingTest}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-brand text-white text-sm font-medium hover:bg-[#0f3c35] disabled:opacity-70 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-brand text-white text-sm font-medium hover:bg-brand-fonce disabled:opacity-70 transition-colors"
           >
             <Send className="w-4 h-4" />
             {isSendingTest ? 'Envoi...' : 'Envoyer'}

@@ -103,7 +103,7 @@ export function ChatWidget() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-24 right-6 z-50 w-14 h-14 bg-brand rounded-full flex items-center justify-center shadow-lg hover:bg-[#0f3c35] transition-all hover:scale-110"
+          className="fixed bottom-24 right-6 z-50 w-14 h-14 bg-brand rounded-full flex items-center justify-center shadow-lg hover:bg-brand-fonce transition-all hover:scale-110"
           aria-label="Ouvrir l'assistant Optimi Santé"
         >
           <Sparkles className="w-6 h-6 text-white" />
@@ -188,7 +188,7 @@ export function ChatWidget() {
             <button
               type="submit"
               disabled={pending || !input.trim()}
-              className="w-9 h-9 rounded-full bg-brand text-white flex items-center justify-center disabled:opacity-40 hover:bg-[#0f3c35] transition-colors shrink-0"
+              className="w-9 h-9 rounded-full bg-brand text-white flex items-center justify-center disabled:opacity-40 hover:bg-brand-fonce transition-colors shrink-0"
               aria-label="Envoyer"
             >
               <Send className="w-4 h-4" />

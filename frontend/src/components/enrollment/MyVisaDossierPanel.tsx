@@ -154,7 +154,7 @@ export function MyVisaDossierPanel({ enrollmentId }: { enrollmentId: string }) {
                       <button
                         type="button" disabled={enCours}
                         onClick={() => inputsRef.current[d.id]?.click()}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:bg-brand-fonce disabled:opacity-50 transition-colors"
                       >
                         {enCours ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
                         {d.status === 'REJECTED' ? 'Déposer un nouveau fichier' : 'Déposer le fichier'}

@@ -210,7 +210,7 @@ export function MyServiceOptionsPanel({ enrollmentId }: { enrollmentId: string }
                 type="button"
                 disabled={busy}
                 onClick={souscrire}
-                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-bold hover:bg-brand-fonce disabled:opacity-50 transition-colors"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 Retenir ces services — {formatAmount(totalChoisi)}
@@ -238,7 +238,7 @@ export function MyServiceOptionsPanel({ enrollmentId }: { enrollmentId: string }
                 type="button"
                 disabled={busy}
                 onClick={ouvrirPaiement}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-bold hover:bg-brand-fonce disabled:opacity-50 transition-colors"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
                 Régler {formatAmount(resume.amountDue)}

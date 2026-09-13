@@ -71,7 +71,7 @@ export function BecomePartnerPage() {
             Votre dossier de partenariat a bien été transmis à notre équipe. Après analyse, vous recevrez un email
             avec vos identifiants de connexion à l'Espace Centre si votre candidature est retenue.
           </p>
-          <Link to="/" className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+          <Link to="/" className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors">
             Retour à l'accueil
           </Link>
         </div>
@@ -201,7 +201,7 @@ export function BecomePartnerPage() {
               </div>
             </div>
 
-            <button type="submit" disabled={isSubmitting} className="w-full flex justify-center py-3 px-4 rounded-xl shadow-sm text-sm font-bold text-white bg-brand hover:bg-[#0f3c35] disabled:opacity-70 transition-colors">
+            <button type="submit" disabled={isSubmitting} className="w-full flex justify-center py-3 px-4 rounded-xl shadow-sm text-sm font-bold text-white bg-brand hover:bg-brand-fonce disabled:opacity-70 transition-colors">
               {isSubmitting ? 'Envoi en cours...' : 'Envoyer ma demande de partenariat'}
             </button>
           </form>

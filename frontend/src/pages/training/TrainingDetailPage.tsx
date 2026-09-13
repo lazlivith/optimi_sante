@@ -207,7 +207,7 @@ export function TrainingDetailPage() {
               </Link>
             </div>
 
-            <Link to={applyPath} className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+            <Link to={applyPath} className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors">
               <CheckCircle className="w-5 h-5 mr-2" />
               Postuler à cette formation
             </Link>

@@ -163,7 +163,7 @@ export function ProductMediaDialog({
                 <div className="flex-1 min-w-[15rem]">
                   <button type="button" disabled={busy !== null}
                     onClick={() => champVignette.current?.click()}
-                    className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#0f3c35] disabled:opacity-50">
+                    className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-fonce disabled:opacity-50">
                     {busy === 'vignette'
                       ? <Loader2 className="h-4 w-4 animate-spin" />
                       : <Upload className="h-4 w-4" />}
@@ -280,7 +280,7 @@ export function ProductMediaDialog({
                     <p className="mb-2 text-sm font-semibold text-slate-700">Téléverser un fichier</p>
                     <button type="button" disabled={busy !== null}
                       onClick={() => champVideo.current?.click()}
-                      className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#0f3c35] disabled:opacity-50">
+                      className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-fonce disabled:opacity-50">
                       {busy === 'video'
                         ? <Loader2 className="h-4 w-4 animate-spin" />
                         : <Upload className="h-4 w-4" />}

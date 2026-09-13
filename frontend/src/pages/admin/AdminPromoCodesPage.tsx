@@ -70,7 +70,7 @@ export function AdminPromoCodesPage() {
         actions={
           <button
             onClick={() => { setForm(EMPTY_FORM); setIsModalOpen(true); }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors"
           >
             <Plus className="w-4 h-4" /> Nouveau code
           </button>
@@ -186,7 +186,7 @@ export function AdminPromoCodesPage() {
                     className="w-full rounded-md border-slate-300 border p-2.5" />
                 </div>
               </div>
-              <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-70 transition-colors">
+              <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce disabled:opacity-70 transition-colors">
                 {isSubmitting ? 'Création...' : 'Créer le code promo'}
               </button>
             </form>

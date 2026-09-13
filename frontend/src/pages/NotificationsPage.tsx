@@ -52,7 +52,7 @@ export function NotificationsPage() {
           </Link>
           <button
             onClick={() => markAllRead.mutate()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-[#0f3c35]"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-brand-fonce"
           >
             <CheckCheck className="w-4 h-4" /> Tout marquer lu
           </button>

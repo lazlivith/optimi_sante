@@ -1,41 +1,49 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronLeft, ChevronRight, Clock, Tag } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Product } from '../../api/catalogService';
 import { PromoProductVisual } from '../catalog/PromoProductVisual';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+
+const DUREE_DIAPOSITIVE_MS = 6000;
 
 /**
- * Carrousel d'accueil alimenté par les produits réellement en promotion.
+ * Bandeau des promotions en cours.
  *
- * <p><b>L'image est présentée, pas utilisée comme papier peint.</b> La première version
- * l'étalait en fond plein cadre (`object-cover`) : un gros plan de catalogue s'y retrouvait
- * zoomé et recadré, et le texte blanc devenait illisible dès que la photo était claire. Les
- * visuels du catalogue sont hétérogènes — packshots sur fond blanc, photos d'ambiance,
- * cadrages serrés — et aucun n'est maîtrisé. Elle occupe donc un panneau dédié, en
- * `object-contain` sur fond clair : le produit est visible en entier quel que soit le
- * cadrage, et la lisibilité du texte ne dépend plus de la photo.</p>
+ * <p><b>Une bannière, pas un écran.</b> La version précédente occupait près de 800 pixels de
+ * haut en bloc sombre : le visiteur arrivait sur un panneau publicitaire et devait faire
+ * défiler pour atteindre la boutique. Celle-ci tient en un tiers de cette hauteur, sur fond
+ * clair — le produit y gagne, et la page commence enfin par la page.</p>
+ *
+ * <p><b>Le fond clair change la place de l'image.</b> Elle nécessitait auparavant un cadre blanc
+ * dédié, parce qu'un packshot sur fond blanc posé sur du bleu nuit laisse un rectangle. Sur un
+ * fond clair, elle se pose directement : un cadre de moins, et le produit paraît plus grand
+ * sans que rien ne grandisse.</p>
  *
  * <p>Un carrousel vide serait pire que des diapositives figées : quand aucune promotion n'est
  * active, la page d'accueil retombe sur ses bannières statiques (voir `HomePage`).</p>
  */
 export function PromoHeroSlider({ products }: { products: Product[] }) {
   const [current, setCurrent] = useState(0);
+  const [enPause, setEnPause] = useState(false);
   const total = products.length;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mouvementReduit = useReducedMotion();
 
-  const relancer = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    // Une seule promotion ne défile pas : faire clignoter un carrousel à une diapositive
-    // donne l'impression d'un bug.
-    if (total > 1) {
-      intervalRef.current = setInterval(() => setCurrent((c) => (c + 1) % total), 6000);
-    }
-  };
+  // Le défilement s'arrête dans trois cas : une seule promotion — faire clignoter un carrousel
+  // à une diapositive donne l'impression d'un bug ; le survol ou le focus clavier — on ne
+  // dérobe pas sous les yeux ce que quelqu'un est en train de lire (WCAG 2.2.2) ; et le
+  // réglage système de réduction des animations, qui vaut ici comme ailleurs.
+  const doitDefiler = total > 1 && !enPause && !mouvementReduit;
 
   useEffect(() => {
-    relancer();
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (doitDefiler) {
+      intervalRef.current = setInterval(
+        () => setCurrent((c) => (c + 1) % total), DUREE_DIAPOSITIVE_MS);
+    }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [total]);
+  }, [doitDefiler, total]);
 
   // Si le nombre de promotions diminue pendant que la page est ouverte, l'index courant peut
   // pointer au-delà du tableau : on le ramène dans les bornes plutôt que de rendre du vide.
@@ -48,72 +56,105 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
     ? Math.round((1 - produit.finalPrice / produit.basePrice) * 100)
     : 0;
 
-  const allerA = (i: number) => { setCurrent(i); relancer(); };
-
   return (
-    <section className="relative overflow-hidden rounded-3xl mx-4 md:mx-8 mt-4 bg-brand-dark">
-      <div className="grid lg:grid-cols-2 items-center gap-6 lg:gap-10 px-6 sm:px-10 lg:px-14 py-8 lg:py-10">
+    <section
+      aria-roledescription="carrousel"
+      aria-label="Promotions en cours"
+      onMouseEnter={() => setEnPause(true)}
+      onMouseLeave={() => setEnPause(false)}
+      onFocusCapture={() => setEnPause(true)}
+      onBlurCapture={() => setEnPause(false)}
+      className="relative mx-4 md:mx-8 mt-4 overflow-hidden rounded-3xl bg-brand-cream
+                 ring-1 ring-slate-200/70"
+    >
+      {/* Teinte de marque posee DERRIERE LE PRODUIT seulement. Le degre precedent traversait
+          toute la largeur : sur son extremite teintee, l'ancien prix tombait a 2,17:1 et la
+          categorie a 4,03:1. Une decoration ne doit pas se payer en lisibilite — elle se
+          deplace donc la ou il n'y a pas de texte. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 right-0 w-full lg:w-3/5
+                   bg-[radial-gradient(60%_70%_at_75%_50%,theme(colors.brand-light)_0%,transparent_70%)]"
+      />
+      <div
+        aria-roledescription="diapositive"
+        aria-label={`Promotion ${current + 1} sur ${total}`}
+        className="relative grid items-center gap-6 lg:grid-cols-[1.05fr_1fr] lg:gap-4
+                   px-6 py-8 sm:px-10 lg:py-10 lg:pl-16 lg:pr-0
+                   min-h-[19rem] sm:min-h-[21rem] lg:min-h-[22rem]"
+      >
+        {/* ── Texte ─────────────────────────────────────────────────────────────────── */}
+        <div className="order-2 max-w-xl lg:order-1">
+          {remise > 0 && (
+            // Le surtitre porte la remise : c'est l'information qui décide, elle passe avant
+            // le nom du produit plutôt qu'après.
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-brand-accent">
+              Promotion — {remise} % de remise
+            </p>
+          )}
 
-        {/* Texte */}
-        <div className="order-2 lg:order-1 max-w-xl">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-bold mb-4">
-            <Tag className="w-3.5 h-3.5" />
-            {remise > 0 ? `−${remise} % de remise` : 'Promotion'}
-          </span>
-
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight mb-2 line-clamp-3">
+          <h1 className="mb-1.5 line-clamp-2 text-2xl font-extrabold uppercase leading-[1.08]
+                         tracking-tight text-brand-dark sm:text-3xl lg:text-[2.5rem]">
             {produit.name}
           </h1>
 
           {produit.category?.name && (
-            <p className="text-slate-400 text-sm mb-5">{produit.category.name}</p>
+            <p className="mb-5 text-sm text-slate-600">{produit.category.name}</p>
           )}
 
-          <div className="flex items-baseline flex-wrap gap-x-3 gap-y-1 mb-6">
-            <span className="text-3xl lg:text-4xl font-bold text-orange-400">
+          <div className="mb-6 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            {/* L'orange de la charte plafonne à 3,00:1 sur fond clair : c'est sa variante
+                assombrie qui porte le prix, à 5,13:1. */}
+            <span className="text-3xl font-extrabold text-brand-accent lg:text-4xl">
               {produit.finalPrice.toFixed(0)} €
             </span>
-            <span className="text-lg text-slate-500 line-through">
+            <span className="text-lg text-slate-600/80 line-through">
               {produit.basePrice.toFixed(0)} €
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+            {/* Une seule action mise en avant. Deux boutons côte à côte se concurrencent, et
+                le visiteur hésite là où il n'y a rien à arbitrer. */}
             <Link
               to={`/product/${produit.slug}`}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-base font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors shadow-lg shadow-orange-900/30"
+              className="group inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3
+                         text-base font-bold text-white transition-colors hover:bg-brand-fonce"
             >
-              Achetez maintenant <ArrowRight className="w-4 h-4" />
+              Achetez maintenant
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
             <Link
               to="/catalog?promo=true"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white bg-white/10 hover:bg-white/20 transition-colors"
+              className="text-sm font-semibold text-brand underline-offset-4 hover:underline"
             >
               Toutes les promotions
             </Link>
           </div>
 
           {produit.promoEndsAt && (
-            <p className="flex items-center gap-1.5 mt-5 text-xs text-slate-400">
-              <Clock className="w-3.5 h-3.5" />
-              Offre valable jusqu'au {new Date(produit.promoEndsAt).toLocaleDateString('fr-FR')}
+            <p className="mt-5 text-xs italic text-slate-600">
+              Offre valable jusqu'au{' '}
+              {new Date(produit.promoEndsAt).toLocaleDateString('fr-FR')}
             </p>
           )}
         </div>
 
-        {/* Panneau image : fond clair et `contain`, pour que le produit soit entier quelle que
-            soit la photo, et que le texte ne repose plus sur un dégradé posé dessus. */}
-        <div className="order-1 lg:order-2 relative">
-          <div className="relative rounded-2xl bg-white overflow-hidden aspect-[4/3] lg:aspect-[5/4] flex items-center justify-center p-5 lg:p-7">
+        {/* ── Visuel ────────────────────────────────────────────────────────────────── */}
+        <div className="relative order-1 flex justify-center lg:order-2 lg:justify-end">
+          <div className="relative h-44 w-full max-w-sm sm:h-52 lg:h-72 lg:max-w-none">
             <PromoProductVisual
               key={produit.id}
               product={produit}
               objectFit="contain"
-              className="w-full h-full"
+              className="h-full w-full drop-shadow-[0_18px_28px_rgba(11,36,48,0.14)]"
               iconClassName="w-16 h-16"
             />
             {remise > 0 && (
-              <span className="absolute top-4 left-4 px-2.5 py-1 rounded-lg bg-orange-500 text-white text-xs font-bold shadow">
+              // Encre sur l'orange de la charte : 5,35:1. Du blanc n'y tiendrait pas (3,00:1),
+              // et c'est justement ce que faisait la version précédente.
+              <span className="absolute left-0 top-0 rounded-full bg-brand-orange px-3 py-1
+                               text-xs font-bold text-brand-dark shadow-sm lg:left-2">
                 −{remise} %
               </span>
             )}
@@ -125,27 +166,33 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
         <>
           <button
             type="button" aria-label="Promotion précédente"
-            onClick={() => allerA((current - 1 + total) % total)}
-            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center text-slate-800 transition-colors z-10"
+            onClick={() => setCurrent((c) => (c - 1 + total) % total)}
+            className="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center
+                       justify-center rounded-full bg-brand text-white shadow-md
+                       transition-colors hover:bg-brand-fonce md:left-5"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="h-5 w-5" aria-hidden="true" />
           </button>
           <button
             type="button" aria-label="Promotion suivante"
-            onClick={() => allerA((current + 1) % total)}
-            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center text-slate-800 transition-colors z-10"
+            onClick={() => setCurrent((c) => (c + 1) % total)}
+            className="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center
+                       justify-center rounded-full bg-brand text-white shadow-md
+                       transition-colors hover:bg-brand-fonce md:right-5"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="h-5 w-5" aria-hidden="true" />
           </button>
 
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
             {products.map((p, i) => (
               <button
                 key={p.id} type="button"
-                onClick={() => allerA(i)}
+                onClick={() => setCurrent(i)}
                 aria-label={`Promotion ${i + 1} sur ${total}`}
                 aria-current={i === current}
-                className={`h-2 rounded-full transition-all ${i === current ? 'bg-orange-500 w-6' : 'bg-white/30 w-2 hover:bg-white/50'}`}
+                className={`h-2 rounded-full transition-all ${
+                  i === current ? 'w-7 bg-brand' : 'w-2 bg-slate-300 hover:bg-slate-400'
+                }`}
               />
             ))}
           </div>

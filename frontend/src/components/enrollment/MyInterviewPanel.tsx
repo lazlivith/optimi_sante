@@ -129,7 +129,7 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
                 href={entretien.meetingLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-[#0f3c35] transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-brand-fonce transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
                 Rejoindre la visioconférence
@@ -191,7 +191,7 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
                 type="button"
                 disabled={!choix || envoiEnCours}
                 onClick={confirmer}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white font-bold hover:bg-[#0f3c35] disabled:opacity-50 transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white font-bold hover:bg-brand-fonce disabled:opacity-50 transition-colors"
               >
                 {envoiEnCours
                   ? <Loader2 className="w-4 h-4 animate-spin" />

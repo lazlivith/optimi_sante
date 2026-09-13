@@ -129,7 +129,7 @@ export function AdminDocumentRequestsPanel({ enrollmentId }: { enrollmentId: str
         <button
           type="button"
           onClick={() => setFormOuvert((v) => !v)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors text-sm shrink-0"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors text-sm shrink-0"
         >
           {formOuvert ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {formOuvert ? 'Fermer' : 'Réclamer une pièce'}

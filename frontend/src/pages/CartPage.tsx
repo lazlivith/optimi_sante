@@ -155,7 +155,7 @@ export function CartPage() {
                   <button 
                     onClick={handleCheckoutRedirect}
                     disabled={isProcessing}
-                    className="w-full flex items-center justify-center px-6 py-4 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-50 transition-colors shadow-sm"
+                    className="w-full flex items-center justify-center px-6 py-4 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce disabled:opacity-50 transition-colors shadow-sm"
                   >
                     {isProcessing ? <Loader2 className="animate-spin mr-2 w-5 h-5" /> : null}
                     Payer la commande
@@ -166,7 +166,7 @@ export function CartPage() {
              <button 
                 onClick={handleCheckoutRedirect}
                 disabled={isProcessing}
-                className="w-full flex items-center justify-center px-6 py-4 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] disabled:opacity-50 transition-colors shadow-sm"
+                className="w-full flex items-center justify-center px-6 py-4 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce disabled:opacity-50 transition-colors shadow-sm"
               >
                 {isProcessing ? (
                   <Loader2 className="animate-spin mr-2 w-5 h-5" />

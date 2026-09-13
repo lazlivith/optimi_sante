@@ -129,7 +129,7 @@ export function PartnerTrainingsPage() {
         actions={
           <button
             onClick={openCreateModal}
-            className="inline-flex items-center px-4 py-2.5 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors text-sm"
+            className="inline-flex items-center px-4 py-2.5 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors text-sm"
           >
             <Plus className="w-4 h-4 mr-2" /> Nouvelle formation
           </button>
@@ -289,7 +289,7 @@ export function PartnerTrainingsPage() {
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">
                   Fermer
                 </button>
-                <button type="submit" disabled={isSaving} className="flex items-center px-4 py-2 text-sm font-bold text-white bg-brand rounded-lg hover:bg-[#0f3c35] disabled:opacity-70">
+                <button type="submit" disabled={isSaving} className="flex items-center px-4 py-2 text-sm font-bold text-white bg-brand rounded-lg hover:bg-brand-fonce disabled:opacity-70">
                   {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {editing ? 'Enregistrer les modifications' : 'Créer la formation'}
                 </button>

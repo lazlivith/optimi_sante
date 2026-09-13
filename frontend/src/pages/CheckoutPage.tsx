@@ -142,7 +142,7 @@ export const CheckoutPage = () => {
           <p className="text-slate-600 mb-8">
             Merci pour votre confiance. Vous recevrez un email de confirmation contenant les détails de votre commande.
           </p>
-          <button onClick={() => navigate('/catalog')} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors">
+          <button onClick={() => navigate('/catalog')} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors">
             Continuer mes achats
           </button>
         </div>
@@ -210,7 +210,7 @@ export const CheckoutPage = () => {
                     <button onClick={() => navigate('/cart')} className="px-6 py-3 border border-slate-300 text-slate-600 font-medium rounded-xl hover:bg-slate-50 transition-colors">
                       Annuler
                     </button>
-                    <button onClick={handleDirectCheckout} disabled={isProcessing} className="flex-1 flex justify-center items-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors disabled:opacity-50">
+                    <button onClick={handleDirectCheckout} disabled={isProcessing} className="flex-1 flex justify-center items-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors disabled:opacity-50">
                       {isProcessing ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : null}
                       {paymentMethod === 'QUOTE_REQUEST' ? 'Demander un devis' : paymentMethod === 'STRIPE_CARD' ? 'Payer par carte' : 'Confirmer la commande'}
                     </button>

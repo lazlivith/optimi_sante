@@ -231,7 +231,7 @@ export function AdminEnrollmentDetailPage() {
                     <button
                       onClick={handleSubmitToPartner}
                       disabled={isProcessing}
-                      className="flex items-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors disabled:opacity-50"
+                      className="flex items-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors disabled:opacity-50"
                     >
                       {isProcessing ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Send className="w-5 h-5 mr-2" />}
                       Valider et transmettre au CHU
@@ -274,7 +274,7 @@ export function AdminEnrollmentDetailPage() {
                     <button
                       onClick={handleGenerateConvention}
                       disabled={isProcessing}
-                      className="flex items-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-[#0f3c35] transition-colors disabled:opacity-50"
+                      className="flex items-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors disabled:opacity-50"
                     >
                       {isProcessing ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <FileSignature className="w-5 h-5 mr-2" />}
                       Générer Convention Tripartite
