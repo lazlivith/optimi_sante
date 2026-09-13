@@ -194,22 +194,33 @@ function FeaturedSection({ products }: { products: Product[] }) {
               {/* Le titre occupe le haut de la carte, sur la teinte : c'est ce qui donne a la
                   rangee son allure d'affiche. L'image vient dessous, au lieu d'etre posee a
                   cote d'un texte en petit corps. */}
-              <div className="px-5 pt-5 pb-2">
-                <h3 className="line-clamp-3 text-base font-bold leading-snug text-brand-dark
-                               sm:text-lg lg:text-xl">
+              <div className="px-5 pt-5 pb-1">
+                <h3 className="line-clamp-2 min-h-[2.75rem] text-sm font-bold leading-snug
+                               text-brand-dark sm:min-h-[3.25rem] sm:text-base lg:text-lg">
                   {item.name}
                 </h3>
-                {remise > 0 && (
-                  <span className="mt-2.5 inline-block rounded-full bg-brand-accent px-3 py-1
-                                   text-xs font-bold text-white">
-                    Jusqu’à −{remise} %
-                  </span>
-                )}
+                {/* Remise et prix sur la meme ligne, sous le titre. Le prix etait auparavant
+                    place en absolu au bas de la carte : depuis que celle-ci est courte, il s'y
+                    serait superpose a l'image. */}
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  {remise > 0 && (
+                    <span className="rounded-full bg-brand-accent px-3 py-1 text-xs font-bold text-white">
+                      Jusqu’à −{remise} %
+                    </span>
+                  )}
+                  {!item.isQuoteOnly && (
+                    <span className="text-sm font-bold text-brand-dark/70">
+                      {item.finalPrice.toFixed(0)} €
+                    </span>
+                  )}
+                </div>
               </div>
 
-              {/* Ratio fixe : sans lui, quatre photos de proportions differentes donnent
-                  quatre cartes de hauteurs differentes, et la rangee se deforme. */}
-              <div className="mt-auto flex aspect-[4/3] items-end justify-center p-4 sm:aspect-[3/4]">
+              {/* Hauteur FIXE, et non un ratio. Un ratio se calcule sur la largeur de la
+                  colonne : sur un ecran large, chaque colonne fait plus de 400 pixels, et
+                  « aspect-[3/4] » en reclamait donc 600 rien que pour l'image — la carte
+                  depassait l'ecran. Une hauteur en rem ne depend pas de la largeur. */}
+              <div className="flex h-36 items-center justify-center px-4 pb-5 sm:h-44 lg:h-52">
                 <ProductImage
                   src={item.imageUrl}
                   alt={item.name}
@@ -220,13 +231,6 @@ function FeaturedSection({ products }: { products: Product[] }) {
                 />
               </div>
 
-              {/* Le prix reste en bas a droite, discret : la carte vend un univers, pas une
-                  reference — mais taire le prix obligerait a cliquer pour le connaitre. */}
-              {!item.isQuoteOnly && (
-                <span className="absolute bottom-3 right-4 text-sm font-bold text-brand-dark/70">
-                  {item.finalPrice.toFixed(0)} €
-                </span>
-              )}
             </Link>
           );
         })}
