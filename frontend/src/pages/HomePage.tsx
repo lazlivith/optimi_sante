@@ -8,6 +8,7 @@ import { useCart } from '../context/CartContext';
 import { ProductImage } from '../components/common/ProductImage';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { PromoHeroSlider } from '../components/home/PromoHeroSlider';
+import { CabinetSection } from '../components/home/CabinetSection';
 
 const HOMEPAGE_CATALOG_PREVIEW_COUNT = 8;
 
@@ -445,58 +446,6 @@ function ProductCardHome({ product }: { product: Product }) {
 }
 
 // ──────────────────────────────────────────────────
-// Product Slider Section
-// ──────────────────────────────────────────────────
-function ProductSliderSection({ title, products, bannerContent }: {
-  title: string;
-  products: Product[];
-  bannerContent: React.ReactNode;
-}) {
-  const [startIdx, setStartIdx] = useState(0);
-  const visible = 3;
-  const canPrev = startIdx > 0;
-  const canNext = startIdx + visible < products.length;
-
-  return (
-    <section className="container mx-auto px-4 md:px-8 py-8">
-      <div className="grid md:grid-cols-[1fr_340px] gap-6">
-        {/* Left: Products */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-            <Link to="/catalog" className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-brand">
-              Voir tout <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-          <div className="relative">
-            <div className="grid grid-cols-3 gap-3">
-              {products.slice(startIdx, startIdx + visible).map(p => (
-                <ProductCardHome key={p.id} product={p} />
-              ))}
-            </div>
-            {(canPrev || canNext) && (
-              <div className="flex items-center gap-2 mt-4">
-                <button onClick={() => setStartIdx(i => Math.max(0, i - visible))} disabled={!canPrev} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30">
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button onClick={() => setStartIdx(i => Math.min(products.length - visible, i + visible))} disabled={!canNext} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30">
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right: Banner */}
-        <div className="bg-gradient-to-br from-teal-700 to-teal-900 rounded-2xl p-6 flex flex-col justify-center text-white">
-          {bannerContent}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ──────────────────────────────────────────────────
 // Promos Section (Horizontal Scroll)
 // ──────────────────────────────────────────────────
 function PromosSection({ products }: { products: Product[] }) {
@@ -623,23 +572,9 @@ export function HomePage() {
       <CategoriesSection categories={categories} />
       <EssentialEquipmentSection products={products} />
 
-      {products.length >= 3 && (
-        <ProductSliderSection
-          title="Dispositifs de pointe"
-          products={products}
-          bannerContent={
-            <>
-              <p className="text-teal-200 text-xs font-bold uppercase mb-2">Robustesse & Confort</p>
-              <h3 className="text-2xl font-bold leading-tight mb-3">
-                Robustesse et <span className="text-teal-300">confort</span> réunis pour vos consultations.
-              </h3>
-              <Link to="/catalog" className="inline-flex items-center gap-2 bg-white text-teal-800 font-bold px-4 py-2 rounded-full text-sm hover:bg-gray-100 transition-colors mt-2">
-                Explorer <ArrowRight className="w-4 h-4" />
-              </Link>
-            </>
-          }
-        />
-      )}
+      {/* Remplace « Dispositifs de pointe », qui affichait les trois premiers produits du
+          catalogue sous un titre annonçant une sélection. */}
+      <CabinetSection categories={categories} />
 
       {/* Auparavant : products.slice(0, 10), c'est-a-dire les dix premiers produits du
           catalogue — la section « Nos promos du mois » n'affichait aucune promotion. */}

@@ -16,8 +16,15 @@ import { useCart } from '../../context/CartContext';
  * aucune liste d'envies côté serveur : le poser afficherait un bouton qui ne mémorise rien,
  * et un client qui y range un produit le retrouverait perdu au rechargement. Le bouton présent
  * ici — panier, ou demande de devis selon la fiche — agit réellement.</p>
+ *
+ * @param actionEtendue affiche l'action en toutes lettres sous le prix, au lieu du bouton
+ *                      carré. Utile là où la carte est seule à porter l'appel à l'achat — une
+ *                      rangée courte sur l'accueil —, tandis qu'une grille de vingt-quatre
+ *                      cartes se lit mieux avec le bouton compact.
  */
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard(
+  { product, actionEtendue = false }: { product: Product; actionEtendue?: boolean },
+) {
   const { addToCart } = useCart();
   const remise = product.isOnPromo && product.basePrice > 0
     ? Math.round((1 - product.finalPrice / product.basePrice) * 100)
@@ -66,7 +73,9 @@ export function ProductCard({ product }: { product: Product }) {
           {product.name}
         </Link>
 
-        <div className="mt-auto flex items-end justify-between gap-3 pt-3">
+        <div className={`mt-auto pt-3 ${
+          actionEtendue ? 'flex flex-col gap-3' : 'flex items-end justify-between gap-3'
+        }`}>
           <div className="flex flex-col">
             {(product.isOnPromo || product.b2bDiscountRate > 0) && !product.isQuoteOnly && (
               <span className="text-xs text-slate-500 line-through">
@@ -84,18 +93,27 @@ export function ProductCard({ product }: { product: Product }) {
             type="button"
             onClick={() => addToCart(product, 1)}
             disabled={!product.isQuoteOnly && product.stockQuantity < 1}
+            // Le bouton carré ne porte qu'une icône : sans ce libellé, un lecteur d'écran
+            // annoncerait « bouton » vingt-quatre fois de suite sans dire de quel produit.
             aria-label={product.isQuoteOnly
               ? `Demander un devis pour ${product.name}`
               : `Ajouter ${product.name} au panier`}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border
-                       border-slate-200 text-slate-600 transition-colors hover:border-brand
-                       hover:bg-brand hover:text-white disabled:opacity-40
-                       disabled:hover:border-slate-200 disabled:hover:bg-transparent
-                       disabled:hover:text-slate-600"
+            className={actionEtendue
+              ? `flex w-full items-center justify-center gap-2 rounded-full border
+                 border-slate-200 py-2 text-sm font-semibold text-brand-dark
+                 transition-colors hover:border-brand hover:bg-brand hover:text-white
+                 disabled:opacity-40 disabled:hover:border-slate-200
+                 disabled:hover:bg-transparent disabled:hover:text-brand-dark`
+              : `flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border
+                 border-slate-200 text-slate-600 transition-colors hover:border-brand
+                 hover:bg-brand hover:text-white disabled:opacity-40
+                 disabled:hover:border-slate-200 disabled:hover:bg-transparent
+                 disabled:hover:text-slate-600`}
           >
             {product.isQuoteOnly
               ? <Mail className="h-4 w-4" aria-hidden="true" />
               : <Plus className="h-4 w-4" aria-hidden="true" />}
+            {actionEtendue && (product.isQuoteOnly ? 'Demander un devis' : 'Acheter')}
           </button>
         </div>
       </div>
