@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { catalogService } from '../api/catalogService';
@@ -16,7 +16,16 @@ export function CatalogPage() {
   const promoOnly = searchParams.get('promo') === 'true';
 
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
+  // La categorie arrive par l'URL quand on vient d'une vignette « Incontournables » : elle
+  // amorce l'etat, sans le figer — le visiteur reste libre d'en changer dans la liste.
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(
+    () => searchParams.get('category') ?? undefined);
+
+  // Si l'URL change pendant que la page est ouverte — deux vignettes cliquees a la suite —
+  // React ne remonte pas le composant : sans cet effet, la seconde ne changerait rien.
+  useEffect(() => {
+    setSelectedCategory(searchParams.get('category') ?? undefined);
+  }, [searchParams]);
   const { addToCart } = useCart();
 
   const { data: categories } = useQuery({
@@ -44,8 +53,43 @@ export function CatalogPage() {
 
   const selectedCategoryName = categories?.find(c => c.id === selectedCategory)?.name;
 
+  const nombreResultats = data?.totalElements ?? data?.content?.length;
+
   return (
     <div className="bg-slate-50 min-h-screen">
+      {/* En-tete de rayon. Presente seulement quand une categorie est choisie : sur le
+          catalogue entier, un fil d'Ariane a une seule marche n'apprend rien. */}
+      {selectedCategoryName && (
+        <div className="border-b border-slate-200 bg-white">
+          <div className="container mx-auto max-w-6xl px-6 py-8">
+            <nav aria-label="Fil d'Ariane" className="mb-4 text-sm text-slate-600">
+              <ol className="flex flex-wrap items-center gap-2">
+                <li><Link to="/" className="underline-offset-2 hover:underline">Accueil</Link></li>
+                <li aria-hidden="true" className="text-slate-400">›</li>
+                <li><Link to="/catalog" className="underline-offset-2 hover:underline">Catalogue</Link></li>
+                <li aria-hidden="true" className="text-slate-400">›</li>
+                {/* aria-current : le lecteur d'ecran annonce la marche courante au lieu de
+                    laisser croire qu'elle est cliquable. */}
+                <li aria-current="page" className="font-semibold text-brand-dark">
+                  {selectedCategoryName}
+                </li>
+              </ol>
+            </nav>
+
+            <h1 className="text-3xl font-extrabold tracking-tight text-brand-dark lg:text-4xl">
+              {selectedCategoryName}
+            </h1>
+            {nombreResultats !== undefined && (
+              <p className="mt-2 text-sm text-slate-600">
+                {nombreResultats === 0
+                  ? 'Aucun produit dans ce rayon pour le moment.'
+                  : `${nombreResultats} produit${nombreResultats > 1 ? 's' : ''} dans ce rayon`}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Barre de filtres — sticky sous la navbar, comme une vraie boutique en ligne */}
       {/* `top-32` = hauteur totale de l'en-tete collante : 80px de rangee principale +
           48px de navigation secondaire, toutes deux dans le meme <header sticky>.

@@ -133,42 +133,100 @@ function HeroSlider() {
 // ──────────────────────────────────────────────────
 // Featured Cards ("Incontournables")
 // ──────────────────────────────────────────────────
-const featuredGradients = [
-  { bg: 'from-purple-200 to-purple-100', textColor: 'text-purple-900' },
-  { bg: 'from-rose-200 to-orange-100', textColor: 'text-rose-900' },
-  { bg: 'from-sky-200 to-sky-100', textColor: 'text-sky-900' },
-  { bg: 'from-teal-200 to-cyan-100', textColor: 'text-teal-900' },
+/**
+ * Teintes de fond des cartes « Incontournables ».
+ *
+ * <p>Une par carte, pour que la rangee se lise comme quatre univers et non comme une grille
+ * uniforme. Chaque teinte est assez pale pour porter un titre en encre : c'est ce qui permet
+ * d'ecrire par-dessus sans cartouche ni voile.</p>
+ */
+const TEINTES_INCONTOURNABLES = [
+  'from-violet-100 to-violet-50',
+  'from-rose-100 to-amber-50',
+  'from-slate-100 to-slate-50',
+  'from-lime-100 to-emerald-50',
 ];
 
+/**
+ * Les quatre produits mis en avant.
+ *
+ * <p>Les quatre PREMIERS du catalogue etaient pris tels quels : un produit de test sans
+ * categorie et un produit sans visuel se retrouvaient ainsi en page d'accueil — l'un menait
+ * au catalogue entier, l'autre affichait un pictogramme de repli. On ne met en avant que ce
+ * qui est presentable : une categorie pour savoir ou mener, et une vraie photo.</p>
+ *
+ * <p>Le repli garde l'ordre d'origine : si moins de quatre produits satisfont ces conditions,
+ * mieux vaut une rangee imparfaite qu'une rangee incomplete.</p>
+ */
+function selectionnerVedettes(products: Product[]): Product[] {
+  const presentables = products.filter(
+    (p) => p.category?.id && !visuelAFaire(p.imageUrl));
+  return presentables.length >= 4 ? presentables.slice(0, 4) : products.slice(0, 4);
+}
+
 function FeaturedSection({ products }: { products: Product[] }) {
-  if (products.length === 0) return null;
+  const vedettes = selectionnerVedettes(products);
+  if (vedettes.length === 0) return null;
 
   return (
-    <section className="container mx-auto px-4 md:px-8 py-8">
-      <h2 className="text-2xl font-bold text-gray-800 mb-5">Incontournables</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {products.slice(0, 4).map((item, index) => {
-          const style = featuredGradients[index % featuredGradients.length];
+    <section className="container mx-auto px-4 md:px-8 py-10">
+      <h2 className="mb-6 text-3xl font-extrabold tracking-tight text-brand-dark">
+        Incontournables
+      </h2>
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
+        {vedettes.map((item, index) => {
+          const remise = item.isOnPromo && item.basePrice > item.finalPrice
+            ? Math.round((1 - item.finalPrice / item.basePrice) * 100)
+            : 0;
+
           return (
             <Link
-              to={`/catalog`}
+              // Vers les produits SIMILAIRES, et non vers le catalogue entier : depuis une
+              // vignette « Fauteuils releveurs », on veut les fauteuils releveurs. A defaut
+              // de categorie, on retombe sur le catalogue plutot que sur une page vide.
+              to={item.category?.id ? `/catalog?category=${item.category.id}` : '/catalog'}
               key={item.id}
-              className={`group bg-gradient-to-b ${style.bg} rounded-2xl p-5 flex flex-col relative overflow-hidden hover:shadow-lg transition-all min-h-[200px]`}
+              className={`group relative flex flex-col overflow-hidden rounded-2xl
+                          bg-gradient-to-b ${TEINTES_INCONTOURNABLES[index % 4]}
+                          transition-shadow hover:shadow-xl`}
             >
-              <span className={`text-sm font-bold leading-tight ${style.textColor} line-clamp-3`}>
-                {item.name.split(' ').map((word, i) => i === 0
-                  ? <strong key={i}>{word} </strong>
-                  : <span key={i}>{word} </span>
+              {/* Le titre occupe le haut de la carte, sur la teinte : c'est ce qui donne a la
+                  rangee son allure d'affiche. L'image vient dessous, au lieu d'etre posee a
+                  cote d'un texte en petit corps. */}
+              <div className="px-5 pt-5 pb-2">
+                <h3 className="line-clamp-3 text-base font-bold leading-snug text-brand-dark
+                               sm:text-lg lg:text-xl">
+                  {item.name}
+                </h3>
+                {remise > 0 && (
+                  <span className="mt-2.5 inline-block rounded-full bg-brand-accent px-3 py-1
+                                   text-xs font-bold text-white">
+                    Jusqu’à −{remise} %
+                  </span>
                 )}
-              </span>
-              <div className="flex-1 flex items-end justify-center pt-4">
+              </div>
+
+              {/* Ratio fixe : sans lui, quatre photos de proportions differentes donnent
+                  quatre cartes de hauteurs differentes, et la rangee se deforme. */}
+              <div className="mt-auto flex aspect-[4/3] items-end justify-center p-4 sm:aspect-[3/4]">
                 <ProductImage
                   src={item.imageUrl}
                   alt={item.name}
-                  className="h-28 w-full drop-shadow-md group-hover:scale-105 transition-transform duration-300"
+                  objectFit="contain"
+                  className="h-full w-full drop-shadow-[0_12px_20px_rgba(11,36,48,0.15)]
+                             transition-transform duration-300 group-hover:scale-105"
                   iconClassName="w-10 h-10 opacity-40"
                 />
               </div>
+
+              {/* Le prix reste en bas a droite, discret : la carte vend un univers, pas une
+                  reference — mais taire le prix obligerait a cliquer pour le connaitre. */}
+              {!item.isQuoteOnly && (
+                <span className="absolute bottom-3 right-4 text-sm font-bold text-brand-dark/70">
+                  {item.finalPrice.toFixed(0)} €
+                </span>
+              )}
             </Link>
           );
         })}
@@ -181,6 +239,7 @@ function FeaturedSection({ products }: { products: Product[] }) {
 // Category Grid
 // ──────────────────────────────────────────────────
 import type { Category } from '../api/catalogService';
+import { visuelAFaire } from '../api/productMediaService';
 
 function CategoriesSection({ categories }: { categories: Category[] }) {
   if (!categories || categories.length === 0) return null;
