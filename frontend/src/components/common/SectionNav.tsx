@@ -54,7 +54,12 @@ export function SectionNav({ sections }: { sections: readonly SectionLink[] }) {
   const allerA = (id: string) => {
     const cible = document.getElementById(id);
     if (!cible) return;
-    const y = cible.getBoundingClientRect().top + window.scrollY - 148;
+    // Le decalage vient de la meme source que le calage visuel : une valeur recopiee
+    // ici finirait par diverger de l'en-tete, et le titre vise se retrouverait cache
+    // dessous.
+    const entete = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue('--hauteur-entete'), 10) || 146;
+    const y = cible.getBoundingClientRect().top + window.scrollY - entete - 18;
     window.scrollTo({ top: Math.max(y, 0), behavior: 'smooth' });
     setActive(id);
     // On met à jour l'adresse sans recharger : le lien reste partageable.
@@ -62,9 +67,12 @@ export function SectionNav({ sections }: { sections: readonly SectionLink[] }) {
   };
 
   return (
-    <nav aria-label="Sommaire de la page">
+    // h-full sur grand ecran : un element colle ne depasse jamais son conteneur, et ce
+    // <nav> ne faisait que la hauteur de la liste. Le sommaire se decollait donc au bout de
+    // 396 pixels de defilement, alors que la colonne voisine en fait plus de quatre mille.
+    <nav aria-label="Sommaire de la page" className="lg:h-full">
       {/* Écran large : sommaire vertical collant, à côté du contenu. */}
-      <ul className="hidden lg:block sticky top-40 space-y-1">
+      <ul className="hidden lg:block sticky top-[calc(var(--hauteur-entete)+2rem)] space-y-1">
         {sections.map((s) => (
           <li key={s.id}>
             <button
@@ -85,7 +93,7 @@ export function SectionNav({ sections }: { sections: readonly SectionLink[] }) {
 
       {/* Écran étroit : le sommaire devient une barre horizontale défilante, collée sous
           l'en-tête. Un sommaire vertical y occuperait un écran entier avant le contenu. */}
-      <div className="lg:hidden sticky top-[130px] z-20 -mx-4 px-4 py-2 bg-slate-50/95 backdrop-blur border-b border-slate-200 overflow-x-auto">
+      <div className="lg:hidden sticky top-[var(--hauteur-entete)] z-20 -mx-4 px-4 py-2 bg-slate-50/95 backdrop-blur border-b border-slate-200 overflow-x-auto">
         <ul className="flex gap-2 w-max">
           {sections.map((s) => (
             <li key={s.id}>

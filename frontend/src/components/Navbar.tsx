@@ -70,20 +70,20 @@ export const Navbar = () => {
   return (
     <header className="bg-white sticky top-0 z-50 border-b border-gray-100 shadow-sm">
       {/* Main Header Row */}
-      <div className="container mx-auto px-4 h-20 flex items-center gap-5">
+      <div className="container mx-auto px-4 h-24 flex items-center gap-5">
 
         <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="Optimi Santé — accueil">
           {/* Sans la signature : meme a 64 pixels de haut elle reste illisible, et une mention
               illisible ne fait que rapetisser le logotype.
 
-              La hauteur monte de 48 a 64 pixels — le logotype passe de 90 a 120 pixels de
-              large. Elle s'arrete la : la rangee en fait 80, et la barre de filtres du
-              catalogue se cale dessus (`top-[130px]` = 80 + 48 + 2px de bordures). Agrandir imposerait de
-              grandir la rangee, et de reprendre ce calage.
+              La hauteur passe de 64 a 80 pixels, et la rangee de 80 a 96 pour l'accueillir —
+              le logotype fait desormais 150 pixels de large, contre 90 a l'origine. Tout ce
+              qui se colle sous l'en-tete lit `--hauteur-entete` (index.css), qu'il faut
+              ajuster en meme temps que cette rangee.
 
               Le plafond de largeur passe a 240 pixels. Il ne mord pas aujourd'hui, mais un
               logotype plus allonge livre plus tard serait rapetisse en silence par l'ancien. */}
-          <LogoOptimi fond="clair" signature={false} className="h-14 md:h-16 w-auto max-w-[240px]" />
+          <LogoOptimi fond="clair" signature={false} className="h-16 md:h-20 w-auto max-w-[280px]" />
         </Link>
 
         {/* Search Bar — Central */}

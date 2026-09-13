@@ -67,9 +67,9 @@ export function LegalLayout({
           font-size: 1.15rem; font-weight: 700; color: #0f2e29;
           margin: 2.25rem 0 .75rem; padding-bottom: .4rem;
           border-bottom: 1px solid #e2e8f0;
-          scroll-margin-top: 10rem;
+          scroll-margin-top: calc(var(--hauteur-entete) + 2rem);
         }
-        .legal-prose h3 { scroll-margin-top: 10rem; }
+        .legal-prose h3 { scroll-margin-top: calc(var(--hauteur-entete) + 2rem); }
         .legal-prose h2:first-child { margin-top: 0; }
         .legal-prose h3 {
           font-size: .95rem; font-weight: 700; color: #1e293b; margin: 1.5rem 0 .5rem;

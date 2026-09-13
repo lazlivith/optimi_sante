@@ -129,7 +129,7 @@ export function CatalogPage() {
           reverifient — la valeur precedente (top-16, 64px) etait fausse de 66 pixels et
           personne ne l'avait remarquee non plus. Toute modification de la hauteur de
           l'en-tete doit repasser ici. */}
-      <div className="sticky top-[130px] z-30 bg-white border-b border-slate-200 shadow-sm">
+      <div className="sticky top-[var(--hauteur-entete)] z-30 bg-white border-b border-slate-200 shadow-sm">
         <div className="container mx-auto px-6 py-4 max-w-6xl">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">

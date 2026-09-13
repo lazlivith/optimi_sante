@@ -85,6 +85,15 @@
 
 @layer base {
   :root {
+    /* Hauteur de l'en-tete collante : 96px de rangee principale + 48px de navigation
+       secondaire + les 2px de leurs bordures basses.
+
+       Tout ce qui se colle sous l'en-tete s'y refere, et rien ne recopie le nombre. Les deux
+       fois ou ce calcul a ete ecrit a la main il etait faux : `top-16` oubliait la navigation
+       secondaire (66px d'ecart), puis `top-32` oubliait les bordures (2px). Changer la hauteur
+       de la rangee se fait desormais ici, et ailleurs nulle part. */
+    --hauteur-entete: 146px;
+
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
