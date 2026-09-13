@@ -114,7 +114,8 @@ export function CategoryPage() {
   const dernierePage = Math.max(0, (produits?.totalPages ?? 1) - 1);
 
   const autresRayons = (categories ?? [])
-    .filter((c) => c.id !== rayon.id && (c.productCount ?? 0) > 0 && !visuelAFaire(c.imageUrl))
+    // Connu vide, et non « compteur absent » : voir CategoriesSection.
+    .filter((c) => c.id !== rayon.id && c.productCount !== 0 && !visuelAFaire(c.imageUrl))
     .sort((a, b) => (b.productCount ?? 0) - (a.productCount ?? 0))
     .slice(0, RAYONS_SUGGERES);
 

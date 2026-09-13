@@ -269,7 +269,11 @@ const RAYONS_AFFICHES = 14;
  */
 function CategoriesSection({ categories }: { categories: Category[] }) {
   const rayons = categories
-    .filter((c) => (c.productCount ?? 0) > 0 && !visuelAFaire(c.imageUrl))
+    // Un rayon s'écarte s'il est CONNU vide, pas si son compteur est absent. La nuance a
+    // coûté une section entière : tant que le serveur n'était pas redéployé, aucune
+    // catégorie ne portait de compteur, `(undefined ?? 0) > 0` était faux partout, et la
+    // section disparaissait de l'accueil sans rien signaler.
+    .filter((c) => c.productCount !== 0 && !visuelAFaire(c.imageUrl))
     .sort((a, b) => (b.productCount ?? 0) - (a.productCount ?? 0))
     .slice(0, RAYONS_AFFICHES);
 
