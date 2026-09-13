@@ -85,7 +85,7 @@ export function SectionNav({ sections }: { sections: readonly SectionLink[] }) {
 
       {/* Écran étroit : le sommaire devient une barre horizontale défilante, collée sous
           l'en-tête. Un sommaire vertical y occuperait un écran entier avant le contenu. */}
-      <div className="lg:hidden sticky top-32 z-20 -mx-4 px-4 py-2 bg-slate-50/95 backdrop-blur border-b border-slate-200 overflow-x-auto">
+      <div className="lg:hidden sticky top-[130px] z-20 -mx-4 px-4 py-2 bg-slate-50/95 backdrop-blur border-b border-slate-200 overflow-x-auto">
         <ul className="flex gap-2 w-max">
           {sections.map((s) => (
             <li key={s.id}>

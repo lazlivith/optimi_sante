@@ -73,9 +73,17 @@ export const Navbar = () => {
       <div className="container mx-auto px-4 h-20 flex items-center gap-5">
 
         <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="Optimi Santé — accueil">
-          {/* Sans la signature : a 48 pixels de haut elle n'est plus lisible, et une mention
-              illisible ne fait que rapetisser le logotype. */}
-          <LogoOptimi fond="clair" signature={false} className="h-12 w-auto max-w-[190px]" />
+          {/* Sans la signature : meme a 64 pixels de haut elle reste illisible, et une mention
+              illisible ne fait que rapetisser le logotype.
+
+              La hauteur monte de 48 a 64 pixels — le logotype passe de 90 a 120 pixels de
+              large. Elle s'arrete la : la rangee en fait 80, et la barre de filtres du
+              catalogue se cale dessus (`top-[130px]` = 80 + 48 + 2px de bordures). Agrandir imposerait de
+              grandir la rangee, et de reprendre ce calage.
+
+              Le plafond de largeur passe a 240 pixels. Il ne mord pas aujourd'hui, mais un
+              logotype plus allonge livre plus tard serait rapetisse en silence par l'ancien. */}
+          <LogoOptimi fond="clair" signature={false} className="h-14 md:h-16 w-auto max-w-[240px]" />
         </Link>
 
         {/* Search Bar — Central */}

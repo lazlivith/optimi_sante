@@ -121,11 +121,15 @@ export function CatalogPage() {
       )}
 
       {/* Barre de filtres — sticky sous la navbar, comme une vraie boutique en ligne */}
-      {/* `top-32` = hauteur totale de l'en-tete collante : 80px de rangee principale +
-          48px de navigation secondaire, toutes deux dans le meme <header sticky>.
-          La valeur precedente (top-16, 64px) etait deja fausse — la barre de filtres
-          se glissait sous la navigation secondaire au defilement. */}
-      <div className="sticky top-32 z-30 bg-white border-b border-slate-200 shadow-sm">
+      {/* Hauteur reelle de l'en-tete collante, mesuree dans le navigateur : 80px de rangee
+          principale + 48px de navigation secondaire + les 2px de leurs bordures basses.
+
+          `top-32` valait 128px et oubliait les bordures : l'en-tete recouvrait les deux
+          premiers pixels de cette barre. Deux pixels ne se voient guere, mais ils se
+          reverifient — la valeur precedente (top-16, 64px) etait fausse de 66 pixels et
+          personne ne l'avait remarquee non plus. Toute modification de la hauteur de
+          l'en-tete doit repasser ici. */}
+      <div className="sticky top-[130px] z-30 bg-white border-b border-slate-200 shadow-sm">
         <div className="container mx-auto px-6 py-4 max-w-6xl">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
