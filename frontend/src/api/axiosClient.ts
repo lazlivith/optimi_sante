@@ -37,7 +37,11 @@ axiosClient.interceptors.response.use(
       return Promise.reject(error);
     }
     
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    // 401 seulement. Mesuré sur le serveur : jeton invalide, expiré ou absent répondent 401 ;
+    // 403 signifie « connecté, mais pas autorisé à cette action ». Le traiter comme une session
+    // expirée déconnectait l'utilisateur pour une simple action interdite — un client qui ouvrait
+    // par erreur une page réservée aux médecins perdait sa session en plus du message d'erreur.
+    if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

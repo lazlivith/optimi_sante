@@ -5,10 +5,20 @@ import { enrollmentService } from '../../api/enrollmentService';
 import type { TrainingSessionDto, EnrollmentResponseDto } from '../../api/enrollmentService';
 import { storageService } from '../../api/storageService';
 import { FileUploadDropzone } from '../../components/common/FileUploadDropzone';
+import { useAuth } from '../../context/AuthContext';
 
 export function TrainingEnrollmentPage() {
   const { id: trainingId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user, isLoading: chargementCompte } = useAuth();
+
+  // Cette page crée un dossier au nom d'un médecin. Un client qui y arrive — lien partagé,
+  // adresse tapée — est conduit vers la candidature, au lieu d'essuyer un refus du serveur.
+  useEffect(() => {
+    if (!chargementCompte && user && user.role !== 'MEDECIN' && trainingId) {
+      navigate(`/formations/${trainingId}/postuler`, { replace: true });
+    }
+  }, [chargementCompte, user, trainingId, navigate]);
   
   const [currentStep, setCurrentStep] = useState(1);
   const [sessions, setSessions] = useState<TrainingSessionDto[]>([]);
@@ -53,7 +63,10 @@ export function TrainingEnrollmentPage() {
       setCurrentStep(2);
     } catch (error) {
       console.error("Failed to create enrollment", error);
-      alert("Erreur lors de la création du dossier. Vous êtes peut-être déjà inscrit à cette session.");
+      // Le message du serveur, quand il en donne un. L'ancien texte supposait une double
+      // inscription pour TOUTE erreur — y compris un refus de droits, qui n'avait rien à voir.
+      const serveur = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      alert(serveur || "La création du dossier a échoué. Réessayez dans un instant.");
     } finally {
       setIsSubmitting(false);
     }

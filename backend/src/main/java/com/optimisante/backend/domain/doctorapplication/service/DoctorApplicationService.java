@@ -94,10 +94,7 @@ public class DoctorApplicationService {
     @Transactional
     public DoctorApplicationResponseDto submitApplication(DoctorApplicationRequestDto dto) {
         String email = dto.getEmail().trim().toLowerCase();
-        if (userRepository.existsByEmail(email)) {
-            throw new IllegalStateException(
-                    "Un compte existe déjà avec cet email. Connectez-vous pour candidater à une formation supplémentaire.");
-        }
+        userRepository.findByEmail(email).ifPresent(this::verifierCandidatureDepuisCompteExistant);
 
         Tenant tenant = tenantRepository.findByCode(dto.getTenantCode())
                 .orElseThrow(() -> new RuntimeException("Tenant not found"));
@@ -154,6 +151,53 @@ public class DoctorApplicationService {
     }
 
     /**
+     * Une candidature porte sur une adresse qui a déjà un compte. Qui peut continuer ?
+     *
+     * <p><b>Règle métier.</b> Un client particulier (B2C) devient médecin en candidatant à une
+     * formation : son compte reçoit l'espace médecin, il garde ses identifiants. Un client
+     * professionnel (B2B) garde son compte entreprise intact — sa remise est liée à son rôle, et
+     * un compte n'a qu'un rôle — et candidate avec une autre adresse, qui deviendra un compte
+     * médecin distinct.</p>
+     *
+     * <p><b>Le client doit être connecté à CE compte.</b> Sans cette condition, n'importe qui
+     * pourrait déposer une candidature au nom d'une adresse client, la payer, et changer le rôle
+     * d'un compte qui n'est pas le sien.</p>
+     *
+     * <p>Avant cette règle, toute adresse connue était refusée : un client B2C n'avait aucun moyen
+     * de devenir médecin — la candidature le rejetait, et l'inscription directe lui répondait 403.</p>
+     */
+    private void verifierCandidatureDepuisCompteExistant(User compte) {
+        switch (compte.getRole()) {
+            case CLIENT_B2C -> {
+                if (!compte.getId().equals(utilisateurConnecte())) {
+                    throw new IllegalStateException("Un compte client existe déjà avec cet email. "
+                            + "Connectez-vous à ce compte pour candidater : l'espace médecin s'y ajoutera.");
+                }
+            }
+            case CLIENT_B2B -> throw new IllegalStateException("Cette adresse appartient à un compte "
+                    + "professionnel (B2B), qui reste inchangé. Pour devenir médecin, candidatez avec une "
+                    + "autre adresse email : elle deviendra votre compte médecin.");
+            case MEDECIN -> throw new IllegalStateException("Vous avez déjà un compte médecin. "
+                    + "Connectez-vous et inscrivez-vous directement depuis la page de la formation.");
+            default -> throw new IllegalStateException(
+                    "Un compte existe déjà avec cet email. Candidatez avec une autre adresse.");
+        }
+    }
+
+    /** Identifiant du compte connecté, ou {@code null} pour un visiteur. */
+    private static UUID utilisateurConnecte() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            return null;
+        }
+        try {
+            return UUID.fromString(auth.getPrincipal().toString());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
      * Déclenché par le webhook Stripe (checkout.session.completed), et par la page de retour du
      * candidat via {@link DoctorApplicationPaymentReconciler} quand le webhook tarde. Idempotent :
      * un second appel sur une candidature déjà PAID ne recrée rien. La lecture verrouille la ligne,
@@ -178,33 +222,63 @@ public class DoctorApplicationService {
             return;
         }
 
-        String temporaryPassword = TemporaryPasswordGenerator.generate();
+        // Un compte existe déjà pour cette adresse : c'est un client particulier qui devient
+        // médecin (voir verifierCandidatureDepuisCompteExistant, qui n'a laissé passer que lui).
+        User existant = userRepository.findByEmail(application.getEmail()).orElse(null);
+        if (existant != null && existant.getRole() != Role.CLIENT_B2C) {
+            // Le compte a changé de nature entre la candidature et le paiement. Le paiement est
+            // encaissé : on ne l'annule pas, mais on ne touche à aucun compte sans règle claire.
+            log.error("Candidature {} payée, mais l'adresse {} désigne désormais un compte {} : aucun "
+                    + "compte modifié ni créé — suivi manuel admin requis.",
+                    applicationId, application.getEmail(), existant.getRole());
+            application.setStatus(DoctorApplicationStatus.PAID);
+            application.setPaidAt(OffsetDateTime.now());
+            doctorApplicationRepository.save(application);
+            return;
+        }
+        final boolean promotion = existant != null;
 
-        // Le Customer Stripe a été créé automatiquement par Stripe pendant le paiement
-        // (customer_creation=always, cf. submitApplication) — on le rattache au compte tout
-        // juste créé pour que le médecin retrouve sa carte enregistrée à son prochain paiement.
-        User user = User.builder()
-                .tenant(application.getTenant())
-                .email(application.getEmail())
-                .passwordHash(passwordEncoder.encode(temporaryPassword))
-                .role(Role.MEDECIN)
-                .isActive(true)
-                .stripeCustomerId(stripeCustomerId)
-                .build();
-        user = userRepository.save(user);
+        String temporaryPassword = null;
+        User user;
+        if (promotion) {
+            // Le client garde son compte, ses commandes et son mot de passe : seul le rôle change.
+            // Aucun identifiant n'est donc généré ni envoyé.
+            existant.setRole(Role.MEDECIN);
+            if (existant.getStripeCustomerId() == null) {
+                existant.setStripeCustomerId(stripeCustomerId);
+            }
+            user = userRepository.save(existant);
+        } else {
+            temporaryPassword = TemporaryPasswordGenerator.generate();
 
-        DoctorProfile profile = DoctorProfile.builder()
-                .user(user)
-                .firstName(application.getFirstName())
-                .lastName(application.getLastName())
-                .phoneWhatsapp(application.getPhoneWhatsapp())
-                .countryOfResidence(application.getCountryOfResidence())
-                .medicalSpecialty(application.getMedicalSpecialty())
-                .medicalCouncilNumber(application.getMedicalCouncilNumber())
-                .currentHospital(application.getCurrentHospital())
-                .passportNumber(application.getPassportNumber())
-                .build();
-        doctorProfileRepository.save(profile);
+            // Le Customer Stripe a été créé automatiquement par Stripe pendant le paiement
+            // (customer_creation=always, cf. submitApplication) — on le rattache au compte tout
+            // juste créé pour que le médecin retrouve sa carte enregistrée à son prochain paiement.
+            user = User.builder()
+                    .tenant(application.getTenant())
+                    .email(application.getEmail())
+                    .passwordHash(passwordEncoder.encode(temporaryPassword))
+                    .role(Role.MEDECIN)
+                    .isActive(true)
+                    .stripeCustomerId(stripeCustomerId)
+                    .build();
+            user = userRepository.save(user);
+        }
+
+        if (doctorProfileRepository.findByUserId(user.getId()).isEmpty()) {
+            DoctorProfile profile = DoctorProfile.builder()
+                    .user(user)
+                    .firstName(application.getFirstName())
+                    .lastName(application.getLastName())
+                    .phoneWhatsapp(application.getPhoneWhatsapp())
+                    .countryOfResidence(application.getCountryOfResidence())
+                    .medicalSpecialty(application.getMedicalSpecialty())
+                    .medicalCouncilNumber(application.getMedicalCouncilNumber())
+                    .currentHospital(application.getCurrentHospital())
+                    .passportNumber(application.getPassportNumber())
+                    .build();
+            doctorProfileRepository.save(profile);
+        }
 
         try {
             EnrollmentResponseDto enrollmentDto = enrollmentService.createEnrollment(
@@ -249,10 +323,25 @@ public class DoctorApplicationService {
         final String nomComplet = application.getFirstName() + " " + application.getLastName();
         final String motDePasse = temporaryPassword;
         final User compte = user;
+        final String formation = application.getSession().getTraining().getTitle();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                emailService.sendCredentialsEmail(destinataire, nomComplet, motDePasse, "Médecin", compte);
+                if (promotion) {
+                    // Pas de mot de passe à transmettre : on dit ce qui a changé, et le seul geste
+                    // à faire — se reconnecter, pour que la session porte le nouveau rôle.
+                    emailService.sendHtml(destinataire,
+                            "Optimi Santé — Votre espace médecin est ouvert",
+                            "Votre espace médecin est ouvert",
+                            "<p>Bonjour " + org.springframework.web.util.HtmlUtils.htmlEscape(nomComplet) + ",</p>"
+                            + "<p>Votre paiement des frais de dossier pour la formation <strong>"
+                            + org.springframework.web.util.HtmlUtils.htmlEscape(formation)
+                            + "</strong> est confirmé. Votre compte client devient votre compte médecin.</p>"
+                            + "<p>Reconnectez-vous avec <strong>vos identifiants habituels</strong> : "
+                            + "votre espace médecin s'ouvrira, et vous y suivrez votre dossier.</p>");
+                } else {
+                    emailService.sendCredentialsEmail(destinataire, nomComplet, motDePasse, "Médecin", compte);
+                }
             }
         });
 
@@ -261,8 +350,9 @@ public class DoctorApplicationService {
                         user.getId(), user.getEmail(),
                         application.getFirstName() + " " + application.getLastName()));
 
-        log.info("Candidature {} payée, compte {} créé et inscrit à la session {}",
-                applicationId, user.getEmail(), application.getSession().getId());
+        log.info("Candidature {} payée, compte {} {} et inscrit à la session {}",
+                applicationId, user.getEmail(), promotion ? "promu médecin" : "créé",
+                application.getSession().getId());
     }
 
     @Transactional(readOnly = true)
@@ -292,6 +382,14 @@ public class DoctorApplicationService {
                 .createdAt(application.getCreatedAt())
                 .paidAt(application.getPaidAt())
                 .clientSecret(clientSecret)
+                // Un compte plus ancien que la candidature ne peut pas avoir été créé par elle :
+                // c'est un compte client promu. Déduit, plutôt que stocké, pour ne pas ajouter de
+                // colonne à une table de paiement pour un simple choix de message.
+                .existingAccountPromoted(application.getCreatedUser() != null
+                        && application.getCreatedUser().getCreatedAt() != null
+                        && application.getCreatedAt() != null
+                        && application.getCreatedUser().getCreatedAt().toInstant()
+                                .isBefore(application.getCreatedAt().toInstant()))
                 .build();
     }
 }

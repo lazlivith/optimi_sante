@@ -6,9 +6,12 @@ import type { TrainingSessionDto } from '../../api/enrollmentService';
 import { doctorApplicationService } from '../../api/doctorApplicationService';
 import { StripeEmbeddedCheckout } from '../../components/payment/StripeEmbeddedCheckout';
 import { Toast, type ToastType } from '../../components/common/Toast';
+import { useAuth } from '../../context/AuthContext';
 
 /**
- * Candidature médecin (public, sans compte préalable). Remplace l'ancienne auto-inscription :
+ * Candidature médecin — ouverte aux visiteurs, et aux clients connectés. Un client particulier
+ * (B2C) y devient médecin sur son propre compte ; un client professionnel (B2B) garde son compte
+ * entreprise et candidate avec une autre adresse. Remplace l'ancienne auto-inscription :
  * le candidat choisit une session, renseigne son identité, puis paie des frais de dossier fixes
  * via un formulaire Stripe intégré (Payment Element, ui_mode "elements" — pas de redirection).
  * Le compte MEDECIN + l'inscription à la session ne sont créés qu'après confirmation du paiement
@@ -25,6 +28,13 @@ export function DoctorApplicationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  // L'adresse d'un client particulier est celle de son compte, et elle ne se modifie pas ici :
+  // c'est ce compte qui deviendra son compte médecin. Déduite du compte à l'affichage plutôt que
+  // recopiée dans l'état — le profil peut arriver après le premier rendu.
+  const { user } = useAuth();
+  const estClientParticulier = user?.role === 'CLIENT_B2C';
+  const estClientPro = user?.role === 'CLIENT_B2B';
 
   const [form, setForm] = useState({
     email: '', firstName: '', lastName: '', phoneWhatsapp: '', countryOfResidence: '',
@@ -55,7 +65,8 @@ export function DoctorApplicationPage() {
       const response = await doctorApplicationService.submitApplication({
         tenantCode: 'FR_MAIN',
         sessionId: selectedSession.id,
-        ...form
+        ...form,
+        email: estClientParticulier && user ? user.email : form.email,
       });
       if (response.clientSecret) {
         setClientSecret(response.clientSecret);
@@ -170,8 +181,20 @@ export function DoctorApplicationPage() {
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                  <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="w-full rounded-lg border-slate-300 border p-2.5" />
-                  <p className="text-xs text-slate-400 mt-1">Vos identifiants de connexion seront envoyés à cette adresse une fois le paiement confirmé.</p>
+                  <input
+                    type="email" required
+                    value={estClientParticulier && user ? user.email : form.email}
+                    readOnly={estClientParticulier}
+                    onChange={e => setForm({ ...form, email: e.target.value })}
+                    className={`w-full rounded-lg border-slate-300 border p-2.5 ${estClientParticulier ? 'bg-slate-50 text-slate-600' : ''}`}
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    {estClientParticulier
+                      ? "Votre compte client deviendra votre compte médecin : vous garderez vos identifiants habituels."
+                      : estClientPro
+                        ? "Votre compte professionnel reste inchangé. Indiquez l'adresse de votre futur compte médecin : vos identifiants y seront envoyés."
+                        : 'Vos identifiants de connexion seront envoyés à cette adresse une fois le paiement confirmé.'}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Téléphone (WhatsApp)</label>

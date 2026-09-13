@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle, Loader2, Mail } from 'lucide-react';
 import { doctorApplicationService } from '../../api/doctorApplicationService';
+import { useAuth } from '../../context/AuthContext';
 
 // Une minute d'attente au total. Chaque interrogation demande désormais au serveur de vérifier
 // le paiement chez Stripe : la confirmation arrive en général dès la première. La marge couvre
@@ -24,6 +25,8 @@ export function CandidatureSuccessPage() {
 
   const [status, setStatus] = useState<'checking' | 'paid' | 'pending' | 'error'>('checking');
   const [trainingTitle, setTrainingTitle] = useState<string | null>(null);
+  const [comptePromu, setComptePromu] = useState(false);
+  const { logout } = useAuth();
   const attemptsRef = useRef(0);
 
   useEffect(() => {
@@ -40,6 +43,7 @@ export function CandidatureSuccessPage() {
         if (cancelled) return;
         setTrainingTitle(data.trainingTitle);
         if (data.status === 'PAID') {
+          setComptePromu(Boolean(data.existingAccountPromoted));
           setStatus('paid');
           return;
         }
@@ -72,7 +76,33 @@ export function CandidatureSuccessPage() {
           </>
         )}
 
-        {status === 'paid' && (
+        {status === 'paid' && comptePromu && (
+          <>
+            <div className="w-20 h-20 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="w-10 h-10" />
+            </div>
+            <h1 className="text-3xl font-bold text-brand-dark mb-4">Votre espace médecin est ouvert</h1>
+            <p className="text-slate-600 mb-4">
+              Votre paiement des frais de dossier a bien été reçu{trainingTitle ? ` pour la formation « ${trainingTitle} »` : ''}.
+              Votre compte client est désormais votre compte médecin.
+            </p>
+            {/* Le rôle voyage dans le jeton de session : celui en cours dit encore « client ». Sans
+                nouvelle connexion, l'espace médecin refuserait l'accès. Aucun identifiant n'est
+                envoyé — ce sont ceux que la personne utilise déjà. */}
+            <div className="bg-brand-light text-brand-dark p-4 rounded-xl text-sm flex items-start space-x-3 mb-8 text-left">
+              <Mail className="w-5 h-5 shrink-0 mt-0.5 text-brand" />
+              <p>
+                Reconnectez-vous avec vos identifiants habituels pour accéder à votre espace médecin, suivre
+                votre dossier et transmettre vos pièces justificatives.
+              </p>
+            </div>
+            <button type="button" onClick={logout} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors">
+              Me reconnecter
+            </button>
+          </>
+        )}
+
+        {status === 'paid' && !comptePromu && (
           <>
             <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="w-10 h-10" />

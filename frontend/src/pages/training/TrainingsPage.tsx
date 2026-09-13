@@ -134,8 +134,14 @@ export function TrainingsPage() {
                 />
                 <button
                   onClick={() => {
-                    if (isAuthenticated) {
+                    // Même règle que la fiche de la formation : l'inscription directe est réservée
+                    // aux médecins. Un client connecté passe par la candidature, qui fera de son
+                    // compte un compte médecin. Il était envoyé sur l'inscription directe, où le
+                    // serveur lui répondait 403.
+                    if (isAuthenticated && user?.role === 'MEDECIN') {
                       navigate(`/formations/${training.id}/enroll`);
+                    } else if (isAuthenticated) {
+                      navigate(`/formations/${training.id}/postuler`);
                     } else {
                       setSelectedTraining({ id: training.id, title: training.title });
                     }

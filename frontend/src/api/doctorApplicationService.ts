@@ -23,6 +23,8 @@ export interface DoctorApplicationResponseDto {
   paidAt?: string;
   /** Renseigné uniquement à la création : initialise le Payment Element intégré (ui_mode "elements"). */
   clientSecret?: string;
+  /** Le paiement a fait d'un compte client existant un compte médecin : pas d'identifiants à attendre. */
+  existingAccountPromoted?: boolean;
 }
 
 export const doctorApplicationService = {
