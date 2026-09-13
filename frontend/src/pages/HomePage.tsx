@@ -183,9 +183,10 @@ function FeaturedSection({ products }: { products: Product[] }) {
           return (
             <Link
               // Vers les produits SIMILAIRES, et non vers le catalogue entier : depuis une
-              // vignette « Fauteuils releveurs », on veut les fauteuils releveurs. A defaut
-              // de categorie, on retombe sur le catalogue plutot que sur une page vide.
-              to={item.category?.id ? `/catalog?category=${item.category.id}` : '/catalog'}
+              // vignette « Fauteuils releveurs », on veut les fauteuils releveurs. La page de
+              // rayon les presente ; le filtre du catalogue ne faisait que les lister. A
+              // defaut de categorie, on retombe sur le catalogue plutot que sur une impasse.
+              to={item.category?.slug ? `/category/${item.category.slug}` : '/catalog'}
               key={item.id}
               className={`group relative flex flex-col overflow-hidden rounded-2xl
                           bg-gradient-to-b ${TEINTES_INCONTOURNABLES[index % 4]}
@@ -245,64 +246,79 @@ function FeaturedSection({ products }: { products: Product[] }) {
 import type { Category } from '../api/catalogService';
 import { visuelAFaire } from '../api/productMediaService';
 
+/** Le catalogue importé contient encore des entités HTML dans les noms : « Diagnostic &amp; Secours ». */
+const nomLisible = (nom: string) => nom.replace(/&amp;/g, '&');
+
+/** Rayons mis en avant sur l'accueil : deux rangées de sept, comme la maquette. */
+const RAYONS_AFFICHES = 14;
+
+/**
+ * Les rayons du catalogue.
+ *
+ * <p><b>Les images sont désormais celles du catalogue.</b> Cette section illustrait chaque
+ * catégorie avec une photo Unsplash choisie par mot-clé dans son nom — « cardio », « mobilier »,
+ * « instru » — et, quand aucun mot ne tombait, avec la photo suivante d'un tableau de huit.
+ * Le rayon « Sparadrap » héritait donc d'une photo de bloc opératoire, et deux catégories sans
+ * rapport partageaient la même. Le serveur remonte maintenant, pour chaque rayon, la photo d'un
+ * produit qu'il contient réellement.</p>
+ *
+ * <p><b>On n'affiche que des rayons qui mènent quelque part.</b> 85 des 211 catégories ne
+ * contiennent aucun produit, et 16 autres n'ont encore aucune photo : une vignette vers l'une
+ * d'elles serait une impasse. Les rayons sont classés par nombre de produits — c'est le seul
+ * classement que les données permettent, et il place devant ce que la boutique vend le plus.</p>
+ */
 function CategoriesSection({ categories }: { categories: Category[] }) {
-  if (!categories || categories.length === 0) return null;
+  const rayons = categories
+    .filter((c) => (c.productCount ?? 0) > 0 && !visuelAFaire(c.imageUrl))
+    .sort((a, b) => (b.productCount ?? 0) - (a.productCount ?? 0))
+    .slice(0, RAYONS_AFFICHES);
 
-  // Cleanup names & remove html entities
-  const fallbacks = [
-    'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=400',
-    'https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=400',
-    'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?w=400',
-    'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=400',
-    'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=400',
-    'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=400',
-    'https://images.unsplash.com/photo-1628348070889-cb656235b4eb?w=400',
-    'https://images.unsplash.com/photo-1551601651-2a8555f1a136?w=400'
-  ];
-
-  const cleanCategories = categories
-    .map((c, i) => ({
-      ...c,
-      cleanName: c.name.replace(/&amp;/g, '&'),
-      // Fallback images based on name
-      img: c.name.toLowerCase().includes('diagnostic') ? 'https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=400' :
-           c.name.toLowerCase().includes('cardio') ? 'https://images.unsplash.com/photo-1628348070889-cb656235b4eb?w=400' :
-           c.name.toLowerCase().includes('urgence') ? 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400' :
-           c.name.toLowerCase().includes('instru') ? 'https://images.unsplash.com/photo-1551601651-2a8555f1a136?w=400' :
-           c.name.toLowerCase().includes('mobilier') ? 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=400' :
-           c.name.toLowerCase().includes('kiné') ? 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400' :
-           fallbacks[i % fallbacks.length]
-    }))
-    .filter((c, index, self) => {
-      const normalize = (name: string) => name.toLowerCase().replace(/s\b/g, '').replace('électropcardiographe', 'électrocardiographe').trim();
-      const current = normalize(c.cleanName);
-      return self.findIndex(t => normalize(t.cleanName) === current) === index;
-    })
-    .slice(0, 8); // Display first 8
+  if (rayons.length === 0) return null;
 
   return (
-    <section className="container mx-auto px-4 md:px-8 py-8">
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-2xl font-bold text-gray-800">Catégories</h2>
-        <Link to="/catalog" className="text-sm font-semibold text-brand hover:underline flex items-center gap-1">
-          Voir tout le catalogue <ArrowRight className="w-4 h-4" />
+    <section className="container mx-auto px-4 md:px-8 py-10">
+      <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-bold text-brand-dark lg:text-3xl">Catégories</h2>
+        <Link
+          to="/catalog"
+          className="flex items-center gap-1.5 text-sm font-semibold text-brand hover:underline"
+        >
+          Voir tout le catalogue <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Link>
       </div>
-      <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
-        {cleanCategories.map((cat) => (
-          <Link key={cat.id} to={`/catalog?cat=${cat.id}`} className="flex flex-col items-center gap-2 group">
-            <div className="w-full aspect-square bg-white rounded-2xl border border-gray-100 flex items-center justify-center p-3 hover:shadow-md transition-all group-hover:border-brand/30">
-              <img
-                src={cat.img}
-                alt={cat.cleanName}
-                className="w-full h-full object-cover rounded-xl"
-                onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
-              />
-            </div>
-            <span className="text-xs text-center text-gray-600 font-medium leading-tight">{cat.cleanName}</span>
-          </Link>
+
+      <ul className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 lg:grid-cols-7">
+        {rayons.map((cat) => (
+          <li key={cat.id}>
+            <Link
+              to={`/category/${cat.slug}`}
+              className="group flex h-full flex-col items-center gap-2 rounded-2xl p-2
+                         transition-all hover:bg-white hover:shadow-md
+                         hover:ring-1 hover:ring-brand/20
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              {/* Hauteur fixe, jamais un ratio : un ratio se calcule sur la largeur de la
+                  colonne, et la vignette enflerait avec l'écran. */}
+              <div className="flex h-24 w-full items-center justify-center sm:h-28">
+                <img
+                  src={cat.imageUrl ?? undefined}
+                  alt=""
+                  loading="lazy"
+                  className="max-h-full max-w-full object-contain
+                             transition-transform duration-300 group-hover:scale-105"
+                />
+              </div>
+              {/* L'image porte alt="" : elle illustre le rayon, elle ne le nomme pas. Le nom
+                  juste dessous est le vrai libellé du lien, et le répéter ferait entendre
+                  deux fois la même chose à un lecteur d'écran. */}
+              <span className="text-center text-sm font-medium leading-tight text-brand-dark
+                               group-hover:text-brand">
+                {nomLisible(cat.name)}
+              </span>
+            </Link>
+          </li>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }

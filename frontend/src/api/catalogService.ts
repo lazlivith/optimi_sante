@@ -4,6 +4,17 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
+  /**
+   * Produits achetables dans le rayon. Absent des charges utiles imbriquées
+   * (`Product.category`), où le serveur n'envoie qu'un résumé.
+   */
+  productCount?: number;
+  /**
+   * Photo d'un vrai produit du rayon, servant de vignette à la catégorie. `null` quand aucun
+   * produit du rayon n'a encore de photo — il n'y a alors rien d'honnête à afficher.
+   */
+  imageUrl?: string | null;
+  subcategories?: Category[];
 }
 
 export interface Product {

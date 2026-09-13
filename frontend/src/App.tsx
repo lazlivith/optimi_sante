@@ -18,6 +18,7 @@ import {
 // Purement une question de performance de chargement — aucune logique métier n'est modifiée.
 const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
 const CatalogPage = lazy(() => import('./pages/CatalogPage').then(m => ({ default: m.CatalogPage })));
+const CategoryPage = lazy(() => import('./pages/CategoryPage').then(m => ({ default: m.CategoryPage })));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then(m => ({ default: m.ProductDetailPage })));
 const CartPage = lazy(() => import('./pages/CartPage').then(m => ({ default: m.CartPage })));
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
@@ -176,6 +177,8 @@ export function App() {
                 <Routes>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/catalog" element={<CatalogPage />} />
+                  {/* Page de rayon : se parcourt, quand /catalog se cherche. */}
+                  <Route path="/category/:slug" element={<CategoryPage />} />
                   <Route path="/formations" element={<TrainingsPage />} />
                   <Route path="/product/:slug" element={<ProductDetailPage />} />
                   <Route path="/cart" element={<CartPage />} />

@@ -10,6 +10,7 @@ import com.optimisante.backend.domain.catalog.entity.Category;
 import com.optimisante.backend.domain.catalog.entity.Product;
 import com.optimisante.backend.domain.catalog.repository.CategoryRepository;
 import com.optimisante.backend.domain.catalog.repository.ProductRepository;
+import com.optimisante.backend.domain.catalog.repository.ShopCategoryRow;
 import com.optimisante.backend.domain.catalog.repository.ProductSpecification;
 import com.optimisante.backend.domain.identity.entity.Role;
 import com.optimisante.backend.domain.identity.repository.CompanyProfileRepository;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -44,21 +46,34 @@ public class CatalogService {
             throw new IllegalStateException("Tenant context is required");
         }
         
+        // Une requête pour l'arborescence, une pour ce qu'elle contient. Compter les produits
+        // et chercher une photo catégorie par catégorie en coûterait deux cent onze.
+        Map<UUID, ShopCategoryRow> presentation = categoryRepository.findShopPresentation(tenantId)
+                .stream()
+                .collect(Collectors.toMap(ShopCategoryRow::getId, r -> r));
+
         List<Category> rootCategories = categoryRepository.findByTenantIdAndParentIsNull(tenantId);
         return rootCategories.stream()
-                .map(this::mapToCategoryDto)
+                .map(c -> mapToCategoryDto(c, presentation))
                 .collect(Collectors.toList());
     }
 
-    private CategoryResponseDto mapToCategoryDto(Category category) {
+    private CategoryResponseDto mapToCategoryDto(Category category,
+                                                 Map<UUID, ShopCategoryRow> presentation) {
         List<CategoryResponseDto> subcategories = category.getSubcategories().stream()
-                .map(this::mapToCategoryDto)
+                .map(c -> mapToCategoryDto(c, presentation))
                 .collect(Collectors.toList());
-                
+
+        // Une catégorie créée entre les deux requêtes n'a pas de ligne de présentation. Elle
+        // vaut alors zéro produit et aucune image — c'est exactement ce qu'elle est.
+        ShopCategoryRow ligne = presentation.get(category.getId());
+
         return new CategoryResponseDto(
                 category.getId(),
                 category.getName(),
                 category.getSlug(),
+                ligne == null ? 0L : ligne.getProductCount(),
+                ligne == null ? null : ligne.getImageUrl(),
                 subcategories
         );
     }
