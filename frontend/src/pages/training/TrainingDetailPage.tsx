@@ -4,6 +4,7 @@ import { ArrowLeft, Download, Loader2, CheckCircle, GraduationCap, Clock, MapPin
 import { trainingService, type LeadCaptureRequestDto, type TrainingSummaryDto } from '../../api/trainingService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
+import { useApercuDocument } from '../../context/ApercuDocumentContext';
 import { ProductImage } from '../../components/common/ProductImage';
 import { usePageMeta } from '../../hooks/usePageMeta';
 
@@ -55,6 +56,7 @@ export function TrainingDetailPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const { ouvrir: ouvrirApercu } = useApercuDocument();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,8 +66,15 @@ export function TrainingDetailPage() {
     try {
       const response = await trainingService.captureLead(id, form);
       if (response.brochureDownloadUrl) {
-        setToast({ message: 'Brochure téléchargée avec succès !', type: 'success' });
-        window.open(response.brochureDownloadUrl, '_blank');
+        // Aperçu intégré plutôt qu'un onglet : on reste sur la fiche de la formation. Le
+        // message ne se prononce qu'APRÈS l'issue réelle — il annonçait « téléchargée avec
+        // succès » avant même que l'onglet ne s'ouvre, y compris quand il était bloqué.
+        const lien = response.brochureDownloadUrl;
+        const issue = await ouvrirApercu(
+          `Brochure — ${training?.title ?? 'formation'}`, async () => lien);
+        setToast(issue === 'echec'
+          ? { message: "La brochure n'a pas pu être ouverte. Notre équipe vous la transmettra.", type: 'error' }
+          : { message: 'Demande enregistrée : la brochure est affichée.', type: 'success' });
       }
     } catch (err: any) {
       setToast({ message: err.response?.data?.message || 'Erreur lors du téléchargement de la brochure.', type: 'error' });

@@ -23,8 +23,13 @@ import java.util.Map;
  * <p>Cette route est ouverte sans authentification de session, et c'est délibéré : le jeton
  * <em>est</em> l'autorisation. Il a été délivré par un service métier qui avait déjà vérifié le
  * droit d'accès, il ne désigne qu'un seul fichier, et il périme. Voir
- * {@link DocumentAccessTokenService} pour la raison — les documents s'ouvrent par
- * {@code window.open}, qui n'emporte aucun en-tête d'authentification.</p>
+ * {@link DocumentAccessTokenService} pour la raison — la requête qui récupère le document
+ * n'emporte aucun en-tête d'authentification.</p>
+ *
+ * <p><b>L'en-tête {@code X-Frame-Options: DENY} n'est pas levé ici, et ne doit pas l'être.</b> Le
+ * front n'affiche pas cette réponse dans un cadre : il la télécharge, puis l'affiche depuis un
+ * objet {@code blob:} qui appartient à la page. Autoriser l'encadrement de cette route pour
+ * l'aperçu ouvrirait l'API au détournement de clics sans rien apporter.</p>
  *
  * <p>Le fichier transite par le serveur au lieu d'être servi par le stockage. C'est un aller-retour
  * de plus, assumé : c'est ce qui permet de ne plus jamais exposer d'adresse de stockage publique,

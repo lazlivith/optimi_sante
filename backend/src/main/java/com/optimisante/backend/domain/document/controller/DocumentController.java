@@ -69,6 +69,10 @@ public class DocumentController {
         boolean isMobilityAdmin = hasLegacyAdmin || hasRole(auth, Role.ADMIN_MOBILITE);
 
         String publicId;
+        // Nom lisible du document, que le jeton transporte jusqu'au fichier servi. Sans lui, le
+        // nom proposé était celui de la clé de stockage, suffixe aléatoire compris :
+        // « QUOTE-OPT-20260827-FFBD-92068e18fa3f.pdf ». C'est aussi le titre de l'aperçu intégré.
+        String libelle;
 
         if (ORDER_TYPES.contains(type.toUpperCase())) {
             Order order = orderRepository.findById(id)
@@ -77,6 +81,8 @@ public class DocumentController {
                 return ResponseEntity.status(403).build();
             }
             publicId = order.getDocumentS3Key();
+            libelle = (Boolean.TRUE.equals(order.getIsQuote()) ? "Devis " : "Reçu ")
+                    + (order.getOrderNumber() != null ? order.getOrderNumber() : "");
         } else if ("CONVENTION".equalsIgnoreCase(type)) {
             Enrollment enrollment = enrollmentRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Enrollment not found"));
@@ -86,6 +92,7 @@ public class DocumentController {
                 return ResponseEntity.status(403).build();
             }
             publicId = enrollment.getConventionS3Key();
+            libelle = "Convention de formation";
         } else if ("ATTESTATION".equalsIgnoreCase(type)) {
             Enrollment enrollment = enrollmentRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Enrollment not found"));
@@ -95,6 +102,7 @@ public class DocumentController {
                 return ResponseEntity.status(403).build();
             }
             publicId = enrollment.getAttestationS3Key();
+            libelle = "Attestation de formation";
         } else if ("PAYOUT_STATEMENT".equalsIgnoreCase(type)) {
             PartnerPayout payout = partnerPayoutRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Reversement introuvable"));
@@ -104,6 +112,7 @@ public class DocumentController {
                 return ResponseEntity.status(403).build();
             }
             publicId = payout.getStatementS3Key();
+            libelle = "Relevé de reversement";
         } else if (ENROLLMENT_DOCUMENT_TYPES.contains(type.toUpperCase())) {
             EnrollmentDocument document = enrollmentDocumentRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Document not found"));
@@ -120,6 +129,9 @@ public class DocumentController {
                 return ResponseEntity.status(403).build();
             }
             publicId = document.getCloudinaryPublicId();
+            libelle = document.getDocumentType() != null
+                    ? document.getDocumentType().libelle()
+                    : "Pièce justificative";
         } else {
             return ResponseEntity.badRequest().body(Map.of("error", "Type de document inconnu: " + type));
         }
@@ -128,7 +140,8 @@ public class DocumentController {
             return ResponseEntity.status(404).body(Map.of("error", "Aucun document disponible pour cette ressource"));
         }
 
-        String downloadUrl = documentLinkService.lienDeTelechargement(publicId);
+        String downloadUrl = documentLinkService.lienDeTelechargement(
+                publicId, DocumentLinkService.MINUTES_PAR_DEFAUT, libelle.trim());
         return ResponseEntity.ok(Map.of("downloadUrl", downloadUrl));
     }
 

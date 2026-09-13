@@ -15,11 +15,11 @@ import java.util.Optional;
 /**
  * Fabrique et vérifie les jetons qui donnent accès à un document.
  *
- * <p><b>Pourquoi un jeton dans l'URL plutôt qu'un contrôle d'accès classique ?</b> Tous les écrans
- * ouvrent les documents par {@code window.open(url)}. Un onglet ouvert ainsi n'emporte
- * <em>aucun</em> en-tête {@code Authorization} : le jeton de session vit dans le
- * {@code localStorage}, que le navigateur ne joint pas à une navigation. Une route simplement
- * « authentifiée » renverrait donc 401 à tous les coups. Le droit d'accès doit voyager dans
+ * <p><b>Pourquoi un jeton dans l'URL plutôt qu'un contrôle d'accès classique ?</b> Le document est
+ * récupéré par une requête qui n'emporte <em>aucun</em> en-tête {@code Authorization} — l'aperçu
+ * intégré du front, un lien d'enregistrement, et à l'origine un {@code window.open(url)}. Le jeton
+ * de session vit dans le {@code localStorage}, que le navigateur ne joint à rien de tout cela. Une
+ * route simplement « authentifiée » renverrait donc 401 à tous les coups. Le droit d'accès doit voyager dans
  * l'adresse elle-même.</p>
  *
  * <p>Ce que le jeton remplace : jusqu'ici le serveur livrait l'URL Cloudinary du fichier, déposé

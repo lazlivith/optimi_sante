@@ -5,6 +5,7 @@ import { App } from './App';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
+import { ApercuDocumentProvider } from './context/ApercuDocumentContext';
 import './index.css';
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
@@ -38,7 +39,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <AuthProvider>
           <CartProvider>
             <ToastProvider>
-              <App />
+              <ApercuDocumentProvider>
+                <App />
+              </ApercuDocumentProvider>
             </ToastProvider>
           </CartProvider>
         </AuthProvider>

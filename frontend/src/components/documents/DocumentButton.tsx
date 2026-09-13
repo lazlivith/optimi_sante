@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { FileText, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
+import { FileText, Loader2, AlertCircle, Eye, Download } from 'lucide-react';
+import { useApercuDocument } from '../../context/ApercuDocumentContext';
 
 type Etat = 'repos' | 'preparation' | 'ouvert' | 'indisponible' | 'echec';
 
@@ -42,9 +43,9 @@ export interface DocumentButtonProps {
  * <p><b>Trois choses qu'aucune de ces copies ne faisait :</b></p>
  *
  * <ul>
- *   <li><b>Annoncer ce qui va se passer.</b> Le format et l'ouverture dans un nouvel onglet
- *       figurent dans le nom accessible du bouton : une personne au lecteur d'écran ne
- *       découvre plus un onglet surgi de nulle part (WCAG 3.2.5).</li>
+ *   <li><b>Annoncer ce qui va se passer.</b> Le format, et le fait qu'il s'affiche en aperçu ou
+ *       s'enregistre, figurent dans le nom accessible du bouton : une personne au lecteur
+ *       d'écran ne découvre pas une fenêtre surgie de nulle part (WCAG 3.2.5).</li>
  *   <li><b>Annoncer que c'est fini.</b> Sans zone {@code aria-live}, la fin de préparation est
  *       invisible à qui ne voit pas le tourniquet — et le document s'ouvre sans prévenir.</li>
  *   <li><b>Dire ce qui a échoué.</b> « Non disponible » ne distingue pas un document pas encore
@@ -66,44 +67,30 @@ export function DocumentButton({
 
   useEffect(() => () => { monte.current = false; }, []);
 
+  const { ouvrir: ouvrirApercu } = useApercuDocument();
+
   const ouvrir = async () => {
     if (etat === 'preparation') return;
     setEtat('preparation');
     setAnnonce(`Préparation de ${libelle}…`);
 
-    // L'onglet est ouvert MAINTENANT, tant que le clic est encore la cause directe de
-    // l'action. Ouvert après l'attente réseau, il est bloqué comme une fenêtre surgissante —
-    // systématiquement sur Safari, au gré d'heuristiques ailleurs. C'est le défaut que les
-    // huit copies précédentes portaient toutes.
-    const onglet = window.open('', '_blank', 'noopener,noreferrer');
+    // Le document s'affiche PAR-DESSUS la page, dans l'aperçu intégré. Il s'ouvrait avant
+    // dans un nouvel onglet — ou à la place de la plateforme quand le navigateur refusait
+    // l'onglet —, et il fallait revenir en arrière pour retrouver son espace.
+    const issue = await ouvrirApercu(libelle, obtenirLien);
+    if (!monte.current) return;
 
-    try {
-      const lien = await obtenirLien();
-
-      if (!lien) {
-        onglet?.close();
-        if (!monte.current) return;
-        setEtat('indisponible');
-        setAnnonce(messageIndisponible);
-        return;
-      }
-
-      if (onglet) {
-        onglet.location.href = lien;
-      } else {
-        // Onglet refusé par le navigateur : on navigue dans la page courante plutôt que de
-        // laisser le visiteur devant un bouton qui ne fait rien.
-        window.location.href = lien;
-      }
-      if (!monte.current) return;
-      setEtat('ouvert');
-      setAnnonce(`${libelle} ouvert dans un nouvel onglet.`);
-    } catch (erreur) {
-      onglet?.close();
-      console.error(`Échec de l'ouverture du document « ${libelle} »`, erreur);
-      if (!monte.current) return;
+    if (issue === 'indisponible') {
+      setEtat('indisponible');
+      setAnnonce(messageIndisponible);
+    } else if (issue === 'echec') {
       setEtat('echec');
       setAnnonce(`${libelle} n'a pas pu être ouvert. Réessayez, ou signalez-le si cela persiste.`);
+    } else {
+      setEtat('ouvert');
+      setAnnonce(issue === 'affiche'
+        ? `${libelle} affiché. Échap pour fermer l'aperçu.`
+        : `${libelle} enregistré dans vos téléchargements.`);
     }
   };
 
@@ -137,15 +124,20 @@ export function DocumentButton({
             ? <AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />
             : variante === 'bouton'
               ? <FileText className="w-4 h-4" aria-hidden="true" />
-              : <ExternalLink className="w-3 h-3" aria-hidden="true" />}
+              : format === 'PDF'
+                ? <Eye className="w-3 h-3" aria-hidden="true" />
+                : <Download className="w-3 h-3" aria-hidden="true" />}
 
         {enCours ? 'Préparation…' : libelle}
 
-        {/* Le format et l'ouverture dans un nouvel onglet font partie du nom accessible :
-            visibles pour tous, mais sans alourdir la ligne d'un tableau. */}
+        {/* Le format et ce qui va se passer font partie du nom accessible : visibles pour
+            tous sur un bouton, sans alourdir la ligne d'un tableau. Un PDF s'affiche en
+            aperçu ; un classeur, que le navigateur ne sait pas montrer, s'enregistre. */}
         {!enCours && (
           <span className={variante === 'bouton' ? '' : 'sr-only'}>
-            {variante === 'bouton' ? ` (${format})` : ` (${format}, nouvel onglet)`}
+            {variante === 'bouton'
+              ? ` (${format})`
+              : ` (${format}, ${format === 'PDF' ? 'aperçu' : 'téléchargement'})`}
           </span>
         )}
       </button>

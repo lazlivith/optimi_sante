@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle, Loader2, X } from 'lucide-react';
 import { trainingService, type LeadCaptureRequestDto } from '../../api/trainingService';
+import { useApercuDocument } from '../../context/ApercuDocumentContext';
 
 interface LeadCaptureModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface LeadCaptureModalProps {
 }
 
 export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }: LeadCaptureModalProps) {
+  const { ouvrir: ouvrirApercu } = useApercuDocument();
   const [formData, setFormData] = useState<LeadCaptureRequestDto>({
     email: '',
     firstName: '',
@@ -41,8 +43,12 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
       const response = await trainingService.captureLead(trainingId, formData);
       setSuccess(true);
       if (response.brochureDownloadUrl) {
-        window.open(response.brochureDownloadUrl, '_blank', 'noopener');
-        setBrochureOuverte(true);
+        // La brochure s'affiche dans l'aperçu intégré, par-dessus la page. Un window.open
+        // lancé APRÈS l'attente réseau était de toute façon bloqué comme fenêtre surgissante
+        // par la plupart des navigateurs — et quand il passait, il sortait de la plateforme.
+        const lien = response.brochureDownloadUrl;
+        const issue = await ouvrirApercu(`Brochure — ${trainingTitle}`, async () => lien);
+        setBrochureOuverte(issue === 'affiche' || issue === 'enregistre');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors de la candidature.');
@@ -76,7 +82,7 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
                 coordonnées et recevait une page d'erreur. */}
             <p className="text-sm text-slate-500">
               {brochureOuverte
-                ? "La documentation s'est ouverte dans un nouvel onglet."
+                ? "La documentation s'est ouverte en aperçu. Vous pouvez la télécharger depuis celui-ci."
                 : 'La documentation détaillée vous sera transmise par notre équipe.'}
             </p>
             <button 
