@@ -63,7 +63,7 @@ export function AdminPromoCodesPage() {
   };
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl">
       <PageHeader
         title="Codes promo"
         subtitle="Codes de réduction utilisables au checkout de la boutique."

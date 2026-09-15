@@ -115,7 +115,7 @@ export function AdminEmailsPage() {
     });
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Emails"
         subtitle="Journal des envois, renvoi d'identifiants et statistiques de délivrabilité"

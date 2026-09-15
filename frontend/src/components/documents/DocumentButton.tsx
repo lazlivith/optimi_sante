@@ -97,9 +97,12 @@ export function DocumentButton({
   const enCours = etat === 'preparation';
   const enDefaut = etat === 'echec' || etat === 'indisponible';
 
+  // `relative` : le texte réservé aux lecteurs d'écran (sr-only) est positionné en absolu. Sans
+  // ancêtre positionné, il s'échappait du tableau défilant qui contient le bouton et élargissait
+  // toute la page — 456 px de large sur un téléphone de 390 px.
   const styleBase = variante === 'bouton'
-    ? 'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors'
-    : 'inline-flex items-center gap-1.5 text-xs font-medium transition-colors';
+    ? 'relative inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors'
+    : 'relative inline-flex items-center gap-1.5 text-xs font-medium transition-colors';
 
   const styleEtat = enDefaut
     ? (variante === 'bouton'
@@ -144,7 +147,10 @@ export function DocumentButton({
 
       {/* Sans cette zone, la fin de préparation — et l'échec — passent inaperçus de qui ne
           voit pas l'écran. « polite » : l'annonce attend une pause, elle n'interrompt pas. */}
-      <span role="status" aria-live="polite" className="sr-only">{annonce}</span>
+      {/* Enveloppe vide et positionnée : même raison que le `relative` du bouton. */}
+      <span className="relative">
+        <span role="status" aria-live="polite" className="sr-only">{annonce}</span>
+      </span>
 
       {enDefaut && (
         <span className="block text-xs text-amber-700 mt-1">

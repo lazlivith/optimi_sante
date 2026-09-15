@@ -83,7 +83,7 @@ export function AdminEnrollmentsListPage() {
   const aTraiter = enrollments.filter((e) => A_TRAITER.has(e.status)).length;
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl">
       <PageHeader
         title="Dossiers CHU / Mobilité"
         subtitle="Suivi des candidatures de médecins aux formations CHU."

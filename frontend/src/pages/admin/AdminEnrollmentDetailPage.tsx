@@ -192,17 +192,20 @@ export function AdminEnrollmentDetailPage() {
   const isDeletable = ['UNDER_OPTIMI_REVIEW', 'ACTION_REQUIRED'].includes(enrollment.status);
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10">
-      <div className="container mx-auto px-6 max-w-6xl">
+    <div className="min-h-screen bg-slate-50 py-4 sm:py-6 lg:py-10">
+      <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
         <Link to="/admin/enrollments" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-brand-dark mb-8 transition-colors">
           <ArrowLeft className="w-4 h-4 mr-2" /> Retour à la liste
         </Link>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        {/* `grid-cols-1` (= minmax(0, 1fr)) et `min-w-0` : sans eux, la colonne implicite prenait la
+            largeur de son contenu le plus large (tableau des pièces) et la page débordait à 456 px sur
+            un téléphone de 390 px. */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Pilotage Column */}
-          <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
-              <div className="flex justify-between items-start mb-2">
+          <div className="lg:col-span-2 space-y-8 min-w-0">
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 sm:p-6 lg:p-8">
+              <div className="flex flex-wrap justify-between items-start gap-3 mb-2">
                 <div>
                   <h1 className="text-2xl font-bold text-brand-dark mb-1">Dossier Mobilité</h1>
                   <p className="text-slate-500 font-medium">{enrollment.doctorName}</p>
@@ -406,8 +409,8 @@ export function AdminEnrollmentDetailPage() {
           </div>
 
           {/* Summary Sidebar */}
-          <div className="lg:col-span-1">
-             <div className="bg-slate-800 text-white rounded-3xl p-8 sticky top-28 shadow-lg">
+          <div className="lg:col-span-1 min-w-0">
+             <div className="bg-slate-800 text-white rounded-3xl p-4 sm:p-6 lg:p-8 sticky top-28 shadow-lg">
                 <h3 className="text-lg font-bold mb-6 flex items-center">
                   <FileText className="w-5 h-5 mr-3 text-slate-400" /> Informations
                 </h3>

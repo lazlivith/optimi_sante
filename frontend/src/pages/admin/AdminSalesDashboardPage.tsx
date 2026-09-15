@@ -53,7 +53,7 @@ export function AdminSalesDashboardPage() {
   ].filter((a) => a.count > 0);
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <HeroBanner
         title="Négoce"
         subtitle="Chiffre d'affaires, commandes et catalogue de la boutique"

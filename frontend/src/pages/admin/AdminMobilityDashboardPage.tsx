@@ -60,7 +60,7 @@ export function AdminMobilityDashboardPage() {
   ].filter((a) => a.count > 0);
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <HeroBanner
         title="Mobilité"
         subtitle="Candidatures des médecins, formations partenaires et reversements aux CHU"

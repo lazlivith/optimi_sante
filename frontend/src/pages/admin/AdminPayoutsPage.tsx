@@ -65,7 +65,7 @@ export function AdminPayoutsPage() {
     }`;
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Finance & reversements"
         subtitle="Registre des encaissements, commission d'agence et virements aux établissements partenaires"

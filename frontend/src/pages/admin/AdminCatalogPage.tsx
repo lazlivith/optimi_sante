@@ -181,7 +181,7 @@ export function AdminCatalogPage() {
   };
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl">
       <PageHeader
         title="Catalogue Produits"
         subtitle="Créez et gérez les produits de la boutique."

@@ -76,7 +76,7 @@ export function AdminAlertsPage() {
   const totalPages = data?.totalPages ?? 0;
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Alertes"
         subtitle="Événements et seuils de veille nécessitant l'attention de l'équipe."

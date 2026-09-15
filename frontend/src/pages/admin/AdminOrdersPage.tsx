@@ -51,7 +51,7 @@ export function AdminOrdersPage() {
   };
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl">
       <PageHeader
         title="Commandes"
         subtitle="Toutes les commandes de la boutique (carte, virement, devis). Un virement bancaire doit être confirmé manuellement une fois les fonds reçus — sans quoi il ne compte jamais comme une vente."
