@@ -3,10 +3,12 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { axiosClient } from '../../api/axiosClient';
 import { enrollmentService } from '../../api/enrollmentService';
 import { Toast, type ToastType } from '../../components/common/Toast';
-import { ArrowLeft, UploadCloud, FileText, Loader2, XCircle, AlertTriangle, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, UploadCloud, FileText, Loader2, XCircle, AlertTriangle, Send, Trash2, ShieldCheck } from 'lucide-react';
 import { TuitionPaymentCard } from '../../components/training/TuitionPaymentCard';
 import { TuitionBalanceCard } from '../../components/training/TuitionBalanceCard';
-import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
+import { ParcoursDossier } from '../../components/enrollment/ParcoursDossier';
+import { CoffreFortDossier } from '../../components/enrollment/CoffreFortDossier';
+import { officialDocumentService, type VaultDossier } from '../../api/officialDocumentService';
 import { MyVisaDossierPanel } from '../../components/enrollment/MyVisaDossierPanel';
 import { MyInterviewPanel } from '../../components/enrollment/MyInterviewPanel';
 import { MyServiceOptionsPanel } from '../../components/enrollment/MyServiceOptionsPanel';
@@ -19,6 +21,9 @@ export function MyEnrollmentDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Coffre-fort du dossier : chargé à part, pour qu'un incident sur les documents n'empêche pas
+  // d'afficher le dossier lui-même.
+  const [coffre, setCoffre] = useState<VaultDossier | null>(null);
 
   // Upload state
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -36,6 +41,9 @@ export function MyEnrollmentDetailPage() {
     try {
       const { data } = await axiosClient.get(`/enrollments/${id}`);
       setEnrollment(data);
+      officialDocumentService.getMyVault()
+        .then((dossiers) => setCoffre(dossiers.find((d) => d.enrollmentId === id) ?? null))
+        .catch(() => setCoffre(null));
     } catch (err) {
       console.error('Erreur lors du chargement du dossier', err);
       setToast({ message: "Impossible de charger ce dossier.", type: 'error' });
@@ -144,7 +152,7 @@ export function MyEnrollmentDetailPage() {
             )}
           </div>
 
-          <Stepper steps={ENROLLMENT_STEPS} currentStepId={enrollment.status} isFailed={isFailed} size="full" />
+          {!isFailed && <ParcoursDossier statut={enrollment.status} />}
         </div>
 
         {/* Pièce réclamée : la note vient de l'admin ou du CHU, elle doit être lue par
@@ -211,9 +219,18 @@ export function MyEnrollmentDetailPage() {
           </div>
         )}
 
-        {/* Acompte : exigible une fois la candidature acceptée. */}
+        {/* Étape 3 : l'acompte et les options se présentent ensemble, mais restent deux
+            règlements distincts — l'acompte se partage avec le CHU, les options reviennent
+            entièrement à Optimi Santé. Les fusionner changerait les reçus et les reversements. */}
         {enrollment.status === 'PENDING_TUITION_FEE' && (
-          <div className="mb-8">
+          <section className="mb-8 space-y-4" aria-labelledby="etape-acompte">
+            <div>
+              <h2 id="etape-acompte" className="text-lg font-bold text-brand-dark">Étape 3 · Acompte et options</h2>
+              <p className="text-sm text-slate-500 mt-1">
+                Deux règlements séparés : l'acompte de {enrollment.tuitionDepositRate ?? 60} % de la formation, puis,
+                si vous le souhaitez, les options de séjour organisées par Optimi Santé.
+              </p>
+            </div>
             <TuitionPaymentCard
               enrollmentId={enrollment.id}
               trainingTitle={enrollment.trainingTitle}
@@ -224,7 +241,8 @@ export function MyEnrollmentDetailPage() {
               depositRate={enrollment.tuitionDepositRate}
               onError={(message) => setToast({ message, type: 'error' })}
             />
-          </div>
+            <MyServiceOptionsPanel enrollmentId={enrollment.id} />
+          </section>
         )}
 
         {/* Solde : appelé à la délivrance du visa, et seulement s'il reste effectivement dû.
@@ -240,6 +258,9 @@ export function MyEnrollmentDetailPage() {
               totalAmount={enrollment.tuitionAmount}
               onError={(message) => setToast({ message, type: 'error' })}
             />
+            <p className="text-sm text-slate-500 mt-3">
+              Le règlement du solde débloque votre kit de départ dans le coffre-fort : billets, hébergement et contacts.
+            </p>
           </div>
         )}
 
@@ -254,9 +275,11 @@ export function MyEnrollmentDetailPage() {
             souscrivent une fois la candidature acceptee, mais ils sont facultatifs — ils
             passent donc apres ce qui appelle une action, et le panneau disparait quand rien
             n'est propose. */}
-        <div className="mb-8">
-          <MyServiceOptionsPanel enrollmentId={enrollment.id} />
-        </div>
+        {enrollment.status !== 'PENDING_TUITION_FEE' && (
+          <div className="mb-8">
+            <MyServiceOptionsPanel enrollmentId={enrollment.id} />
+          </div>
+        )}
 
         {/* Dossier visa : ce qu'OptimiSanté reclame, suivi piece par piece. Place avant
             l'envoi libre ci-dessous, qui reste utile pour transmettre un document qu'on ne
@@ -264,6 +287,20 @@ export function MyEnrollmentDetailPage() {
         <div className="mb-8">
           <MyVisaDossierPanel enrollmentId={enrollment.id} />
         </div>
+
+        {/* Coffre-fort du dossier : ce qui est disponible, ce qui se débloquera et à quelle étape. */}
+        {coffre && (
+          <section className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mb-8" aria-labelledby="coffre-dossier">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3">
+              <ShieldCheck className="w-5 h-5 text-brand" aria-hidden="true" />
+              <div>
+                <h2 id="coffre-dossier" className="text-xl font-bold text-brand-dark">Coffre-fort du dossier</h2>
+                <p className="text-sm text-slate-500">Documents remis par l'établissement et par Optimi Santé.</p>
+              </div>
+            </div>
+            <CoffreFortDossier dossier={coffre} />
+          </section>
+        )}
 
         {/* Upload Zone */}
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">

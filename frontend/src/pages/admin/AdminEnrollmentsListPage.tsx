@@ -6,7 +6,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Avatar } from '../../components/common/Avatar';
-import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
+import { ParcoursDossier } from '../../components/enrollment/ParcoursDossier';
 
 const FAILED_STATUSES = new Set(['REJECTED', 'CANCELLED']);
 
@@ -212,7 +212,7 @@ export function AdminEnrollmentsListPage() {
                       <td className="px-6 py-4">
                         {isFailed
                           ? <span className="text-xs text-slate-400">Parcours interrompu</span>
-                          : <Stepper steps={ENROLLMENT_STEPS} currentStepId={e.status} size="inline" />}
+                          : <ParcoursDossier statut={e.status} perspective="admin" variante="ligne" />}
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={e.status} />

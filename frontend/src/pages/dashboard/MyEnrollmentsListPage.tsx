@@ -7,7 +7,7 @@ import { HeroBanner } from '../../components/common/HeroBanner';
 import { StatCard } from '../../components/common/StatCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
-import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
+import { ParcoursDossier } from '../../components/enrollment/ParcoursDossier';
 
 const FAILED_STATUSES = new Set(['REJECTED', 'CANCELLED']);
 
@@ -85,7 +85,7 @@ export function MyEnrollmentsListPage() {
                   </div>
                   <div className="flex items-center gap-5 shrink-0">
                     {!isFailed && (
-                      <Stepper steps={ENROLLMENT_STEPS} currentStepId={e.status} size="compact" />
+                      <div className="hidden sm:block"><ParcoursDossier statut={e.status} variante="ligne" /></div>
                     )}
                     <StatusBadge status={e.status} />
                     <ChevronRight className="w-4 h-4 text-slate-400" />

@@ -46,6 +46,7 @@ public class DocumentController {
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentDocumentRepository enrollmentDocumentRepository;
     private final com.optimisante.backend.domain.training.finance.PartnerPayoutRepository partnerPayoutRepository;
+    private final com.optimisante.backend.domain.training.service.OfficialDocumentService officialDocumentService;
 
     @GetMapping("/{type}/{id}/download")
     public ResponseEntity<?> getDocumentDownloadUrl(
@@ -113,6 +114,12 @@ public class DocumentController {
             }
             publicId = payout.getStatementS3Key();
             libelle = "Relevé de reversement";
+        } else if ("OFFICIAL_DOCUMENT".equalsIgnoreCase(type)) {
+            // Les droits — et le verrou du médecin tant que l'acompte ou le solde n'est pas réglé —
+            // sont ceux du coffre-fort : une seule règle, dans le service, pour l'affichage et le lien.
+            var document = officialDocumentService.pourTelechargement(id, currentUserId, isMobilityAdmin);
+            publicId = document.storageKey();
+            libelle = document.libelle();
         } else if (ENROLLMENT_DOCUMENT_TYPES.contains(type.toUpperCase())) {
             EnrollmentDocument document = enrollmentDocumentRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Document not found"));

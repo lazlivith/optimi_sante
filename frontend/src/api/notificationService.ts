@@ -86,4 +86,5 @@ export const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
   REPORT_FAILURE: 'Rapports du worker en échec (admin)',
   ORDER_UNPAID_STALE: 'Commandes impayées anciennes (admin)',
   ENROLLMENT_STALE: 'Dossiers CHU en attente (admin)',
+  OFFICIAL_DOCUMENT: 'Documents officiels des dossiers à vérifier',
 };

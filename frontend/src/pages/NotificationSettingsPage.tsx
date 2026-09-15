@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 /** Types proposés selon le rôle (les types « admin » ne concernent que ADMIN / SUPER_ADMIN). */
-const ADMIN_TYPES = ['PARTNERSHIP_REQUEST', 'DOCTOR_APPLICATION', 'REPORT_FAILURE', 'ORDER_UNPAID_STALE', 'ENROLLMENT_STALE'];
+const ADMIN_TYPES = ['PARTNERSHIP_REQUEST', 'DOCTOR_APPLICATION', 'REPORT_FAILURE', 'ORDER_UNPAID_STALE', 'ENROLLMENT_STALE', 'OFFICIAL_DOCUMENT'];
 const COMMON_TYPES = ['ORDER_PAID', 'ORDER_STATUS', 'ENROLLMENT_STATUS', 'ACCOUNT_VALIDATED'];
 
 export function NotificationSettingsPage() {

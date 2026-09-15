@@ -215,4 +215,14 @@ public class CloudinaryStorageService implements StorageService {
             throw new RuntimeException("Could not delete file from storage", e);
         }
     }
+
+    @Override
+    public void deleteDocument(String publicId) {
+        try {
+            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "raw"));
+        } catch (IOException e) {
+            log.error("Failed to delete document from Cloudinary (publicId: {}): {}", publicId, e.getMessage(), e);
+            throw new RuntimeException("Could not delete document from storage", e);
+        }
+    }
 }

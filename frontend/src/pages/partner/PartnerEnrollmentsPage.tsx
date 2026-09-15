@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { partnerService, type EnrollmentDto, type PartnerTrainingDto } from '../../api/partnerService';
 import { PartnerInterviewDialog } from '../../components/enrollment/PartnerInterviewDialog';
+import { OfficialDocumentsPanel } from '../../components/enrollment/OfficialDocumentsPanel';
 import type { DocumentItemDto } from '../../api/vaultService';
 import { vaultService, getDocumentLabel } from '../../api/vaultService';
 import { Toast, type ToastType } from '../../components/common/Toast';
@@ -8,7 +9,11 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Avatar } from '../../components/common/Avatar';
-import { Loader2, CheckCircle, FileText, Filter, FolderOpen, X, CalendarPlus } from 'lucide-react';
+import { Loader2, CheckCircle, FileText, Filter, FolderOpen, X, CalendarPlus, BookOpenCheck } from 'lucide-react';
+
+/** Candidature retenue : le CHU peut déposer le programme et sa convention de formation. */
+const DEPOT_FORMATION_OUVERT = ['ACCEPTED_BY_PARTNER', 'PENDING_TUITION_FEE', 'CONFIRMED', 'CONVENTION_ISSUED',
+  'VISA_SUBMITTED', 'VISA_GRANTED', 'READY_TO_START'];
 import { DocumentButton } from '../../components/documents/DocumentButton';
 
 export function PartnerEnrollmentsPage() {
@@ -24,6 +29,8 @@ export function PartnerEnrollmentsPage() {
   // depuis un ecran a part : c'est en examinant un dossier qu'on decide de rencontrer son
   // auteur.
   const [entretienPour, setEntretienPour] = useState<EnrollmentDto | null>(null);
+  // Dossier dont on dépose les documents de formation (programme, convention).
+  const [documentsFormationPour, setDocumentsFormationPour] = useState<EnrollmentDto | null>(null);
   const [docs, setDocs] = useState<DocumentItemDto[]>([]);
   const [isLoadingDocs, setIsLoadingDocs] = useState(false);
 
@@ -185,6 +192,14 @@ export function PartnerEnrollmentsPage() {
                         >
                           <FolderOpen className="w-3.5 h-3.5 mr-1.5" /> Documents
                         </button>
+                        {DEPOT_FORMATION_OUVERT.includes(e.status) && (
+                          <button
+                            onClick={() => setDocumentsFormationPour(e)}
+                            className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-brand bg-brand/10 rounded-lg hover:bg-brand/20 transition-colors"
+                          >
+                            <BookOpenCheck className="w-3.5 h-3.5 mr-1.5" /> Programme & convention
+                          </button>
+                        )}
                         {e.status === 'SUBMITTED_TO_PARTNER' && (
                           <>
                             {/* L'entretien accompagne la decision, il ne la remplace pas :
@@ -257,6 +272,26 @@ export function PartnerEnrollmentsPage() {
       )}
 
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
+
+      {documentsFormationPour && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+          onMouseDown={(ev) => { if (ev.target === ev.currentTarget) setDocumentsFormationPour(null); }}
+        >
+          <div role="dialog" aria-modal="true" aria-label={`Documents de formation de ${documentsFormationPour.doctorName}`}
+            className="w-full max-w-2xl max-h-[88vh] overflow-y-auto rounded-3xl">
+            <div className="flex justify-between items-center px-6 py-3 bg-white border-b border-slate-100 rounded-t-3xl">
+              <p className="text-sm text-slate-600">
+                Dossier de <span className="font-semibold text-brand-dark">{documentsFormationPour.doctorName}</span>
+              </p>
+              <button onClick={() => setDocumentsFormationPour(null)} aria-label="Fermer" className="text-slate-400 hover:text-brand-dark">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <OfficialDocumentsPanel enrollmentId={documentsFormationPour.id} mode="partenaire" />
+          </div>
+        </div>
+      )}
 
       {entretienPour && (
         <PartnerInterviewDialog

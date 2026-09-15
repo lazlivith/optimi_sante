@@ -4,7 +4,9 @@ import com.optimisante.backend.domain.document.dto.DocumentItemDto;
 import com.optimisante.backend.domain.orders.entity.Order;
 import com.optimisante.backend.domain.orders.repository.OrderRepository;
 import com.optimisante.backend.domain.training.entity.Enrollment;
+import com.optimisante.backend.domain.training.dto.OfficialDocumentDtos.VaultDossier;
 import com.optimisante.backend.domain.training.repository.EnrollmentRepository;
+import com.optimisante.backend.domain.training.service.DossierVaultService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +27,7 @@ public class DoctorVaultResource {
 
     private final OrderRepository orderRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final DossierVaultService dossierVaultService;
 
     @GetMapping
     @PreAuthorize("hasRole('MEDECIN')")
@@ -76,5 +79,16 @@ public class DoctorVaultResource {
         documents.sort(Comparator.comparing(DocumentItemDto::getDate).reversed());
 
         return ResponseEntity.ok(documents);
+    }
+
+    /**
+     * Coffre-fort par dossier : documents disponibles, verrouillés jusqu'à une étape du parcours,
+     * ou à venir. La liste plate ci-dessus reste servie telle quelle (factures et devis).
+     */
+    @GetMapping("/dossiers")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public ResponseEntity<List<VaultDossier>> getVaultByDossier(Authentication auth) {
+        UUID doctorId = UUID.fromString(auth.getPrincipal().toString());
+        return ResponseEntity.ok(dossierVaultService.pourMedecin(doctorId));
     }
 }

@@ -88,4 +88,13 @@ public interface StorageService {
      * @param publicId The public ID or path of the resource to delete
      */
     void deleteFile(String publicId);
+
+    /**
+     * Supprime un document déposé par {@link #uploadFile}, qui le stocke en ressource « raw ».
+     *
+     * <p>{@link #deleteFile} demande le type « auto », que la suppression Cloudinary refuse
+     * (« Invalid resource type 'auto' ») : un document retiré de la plateforme restait alors en
+     * stockage. Méthode distincte pour ne pas changer la suppression des médias produit.</p>
+     */
+    void deleteDocument(String publicId);
 }

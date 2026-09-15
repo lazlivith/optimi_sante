@@ -6,7 +6,9 @@ import { adminService } from '../../api/adminService';
 import { vaultService, getDocumentLabel, type DocumentItemDto } from '../../api/vaultService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { StatusBadge, getStatusLabel } from '../../components/common/StatusBadge';
-import { Stepper, ENROLLMENT_STEPS } from '../../components/common/Stepper';
+import { ENROLLMENT_STEPS } from '../../components/common/Stepper';
+import { ParcoursDossier } from '../../components/enrollment/ParcoursDossier';
+import { OfficialDocumentsPanel } from '../../components/enrollment/OfficialDocumentsPanel';
 import { EmptyState } from '../../components/common/EmptyState';
 import { FileUploadDropzone } from '../../components/common/FileUploadDropzone';
 import { AdminDocumentRequestsPanel } from '../../components/enrollment/AdminDocumentRequestsPanel';
@@ -35,7 +37,9 @@ export function AdminEnrollmentDetailPage() {
   const [isUploadingOptionalDoc, setIsUploadingOptionalDoc] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN')) {
+    // ADMIN_MOBILITE instruit les dossiers : sans lui dans cette condition, la page restait
+    // sur son indicateur de chargement pour le rôle même qui doit la consulter.
+    if (isAuthenticated && ['ADMIN', 'SUPER_ADMIN', 'ADMIN_MOBILITE'].includes(user?.role ?? '')) {
       fetchEnrollmentData();
     }
   }, [id, isAuthenticated, user]);
@@ -213,7 +217,9 @@ export function AdminEnrollmentDetailPage() {
               </div>
 
               {!['REJECTED', 'CANCELLED'].includes(enrollment.status) && (
-                <Stepper steps={ENROLLMENT_STEPS} currentStepId={enrollment.status} size="full" />
+                <div className="my-6">
+                  <ParcoursDossier statut={enrollment.status} perspective="admin" />
+                </div>
               )}
 
               {enrollment.actionRequiredNote && (
@@ -316,6 +322,12 @@ export function AdminEnrollmentDetailPage() {
             {/* Pieces reclamees au candidat. Place AVANT le coffre-fort : ce qui manque se
                 traite avant ce qui est deja la, et c'est de ce panneau que part l'action. */}
             <AdminDocumentRequestsPanel enrollmentId={enrollment.id} />
+
+            {/* Étapes 4-5 et 8 : programme et convention déposés par le CHU, à vérifier avant
+                publication ; kit de départ déposé ici, débloqué au médecin après le solde. */}
+            {!['REJECTED', 'CANCELLED'].includes(enrollment.status) && (
+              <OfficialDocumentsPanel enrollmentId={enrollment.id} mode="admin" />
+            )}
 
             {/* Vault Viewer */}
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
