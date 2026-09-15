@@ -57,6 +57,22 @@ public class PartnerProfile {
     @Column(name = "is_verified")
     private Boolean isVerified;
 
+    /**
+     * Compte crédité par les reversements. Forme normalisée — sans espaces, en majuscules —
+     * et clé de contrôle vérifiée avant enregistrement (voir CoordonneesBancaires). Nul tant que
+     * le partenaire n'a pas transmis son RIB.
+     */
+    @Column(length = 34)
+    private String iban;
+
+    /** Facultatif en zone SEPA depuis 2016 ; conservé quand le partenaire le fournit. */
+    @Column(length = 11)
+    private String bic;
+
+    /** Titulaire du compte tel qu'il figure sur le RIB — pas toujours le nom de l'établissement. */
+    @Column(name = "bank_account_holder", length = 140)
+    private String bankAccountHolder;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;

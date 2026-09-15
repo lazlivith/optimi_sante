@@ -1,10 +1,13 @@
 package com.optimisante.backend.domain.training.finance;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,4 +56,32 @@ public interface EnrollmentPaymentRepository extends JpaRepository<EnrollmentPay
             PaymentInstallment installment, PaymentStatus status);
 
     List<EnrollmentPayment> findByPartnerPayoutId(UUID partnerPayoutId);
+
+    /**
+     * Lignes précises à reverser, verrouillées jusqu'à la fin de la transaction.
+     *
+     * <p>Le reversement se déclenche désormais d'un clic, ligne par ligne : deux clics rapprochés
+     * — ou deux administrateurs sur le même dossier — liraient sinon tous deux la ligne comme
+     * « non reversée », et le CHU recevrait deux virements pour le même acompte. Le second attend
+     * le verrou, puis constate que la ligne est déjà rattachée.</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM EnrollmentPayment p WHERE p.id IN :ids")
+    List<EnrollmentPayment> findAllByIdForUpdate(@Param("ids") Collection<UUID> ids);
+
+    /**
+     * Tous les encaissements des dossiers d'un partenaire — formation, options, frais de dossier,
+     * réglés ou non — chargés d'un seul coup avec ce que la vue « dossiers » affiche.
+     */
+    @Query("""
+            SELECT p FROM EnrollmentPayment p
+            JOIN FETCH p.enrollment e
+            JOIN FETCH e.doctor
+            JOIN FETCH e.session s
+            JOIN FETCH s.training t
+            LEFT JOIN FETCH p.partnerPayout
+            WHERE t.partnerProfile.id = :partnerProfileId
+            ORDER BY p.paidAt
+            """)
+    List<EnrollmentPayment> findAllForPartner(@Param("partnerProfileId") UUID partnerProfileId);
 }

@@ -8,4 +8,6 @@ import java.util.UUID;
 public interface PartnerPayoutRepository extends JpaRepository<PartnerPayout, UUID> {
 
     List<PartnerPayout> findByPartnerProfileIdOrderByCreatedAtDesc(UUID partnerProfileId);
+
+    boolean existsByReference(String reference);
 }

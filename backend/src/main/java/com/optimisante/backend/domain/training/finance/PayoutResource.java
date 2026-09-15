@@ -31,6 +31,8 @@ public class PayoutResource {
     private final PartnerPayoutService payoutService;
     private final PartnerProfileRepository partnerProfileRepository;
     private final FinanceQueryService financeQueryService;
+    private final PayoutDossierService dossierService;
+    private final SepaVirementService sepaService;
 
     // ------------------------------------------------------------------ ADMIN ----
 
@@ -79,6 +81,71 @@ public class PayoutResource {
     @MobilityAdmin
     public ResponseEntity<List<FinanceQueryService.PartnerDueRow>> partnersDue() {
         return ResponseEntity.ok(financeQueryService.getPartnersDue());
+    }
+
+    // ----------------------------------------------------- REVERSEMENT PAR DOSSIER ----
+
+    /** Les dossiers d'un CHU, tranche par tranche : ce qui est à reverser, en attente, déjà viré. */
+    @GetMapping("/admin/partners/{partnerProfileId}/payout-dossiers")
+    @MobilityAdmin
+    public ResponseEntity<List<PayoutDossierService.DossierReversement>> payoutDossiers(
+            @PathVariable UUID partnerProfileId) {
+        return ResponseEntity.ok(dossierService.dossiers(partnerProfileId));
+    }
+
+    @GetMapping("/admin/partners/{partnerProfileId}/bank-details")
+    @MobilityAdmin
+    public ResponseEntity<PayoutDossierService.CoordonneesPartenaire> bankDetails(
+            @PathVariable UUID partnerProfileId) {
+        return ResponseEntity.ok(dossierService.coordonnees(partnerProfileId));
+    }
+
+    @PutMapping("/admin/partners/{partnerProfileId}/bank-details")
+    @MobilityAdmin
+    public ResponseEntity<PayoutDossierService.CoordonneesPartenaire> saveBankDetails(
+            @PathVariable UUID partnerProfileId, @RequestBody BankDetailsRequest request) {
+        return ResponseEntity.ok(dossierService.enregistrerCoordonnees(
+                partnerProfileId, request.iban(), request.bic(), request.accountHolder()));
+    }
+
+    /**
+     * Initie le virement d'une tranche, ou d'une sélection de tranches d'un même CHU.
+     *
+     * <p>Le bordereau est produit dans la foulée, mais dans sa propre transaction : s'il échoue
+     * — stockage injoignable —, le reversement reste bien créé et le bordereau se régénère depuis
+     * l'écran, plutôt que d'annuler un ordre de virement pour un PDF.</p>
+     */
+    @PostMapping("/admin/partners/{partnerProfileId}/payouts/by-payments")
+    @MobilityAdmin
+    public ResponseEntity<PayoutDto> payoutForPayments(
+            @PathVariable UUID partnerProfileId, @RequestBody PayoutForPaymentsRequest request) {
+        PartnerPayout reversement = payoutService.generatePayoutForPayments(partnerProfileId, request.paymentIds());
+        try {
+            reversement = payoutService.generateStatement(reversement.getId());
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(PayoutResource.class).error(
+                    "Reversement {} créé, mais bordereau non produit : à régénérer", reversement.getReference(), e);
+        }
+        return ResponseEntity.ok(toDto(reversement));
+    }
+
+    /** Ordre de virement SEPA à importer dans la banque. */
+    @GetMapping("/admin/payouts/{payoutId}/sepa")
+    @MobilityAdmin
+    public ResponseEntity<byte[]> sepaTransfer(@PathVariable UUID payoutId) {
+        SepaVirementService.FichierSepa fichier = sepaService.ordreDeVirement(payoutId);
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_XML)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        org.springframework.http.ContentDisposition.attachment()
+                                .filename(fichier.nomFichier()).build().toString())
+                .body(fichier.contenu());
+    }
+
+    public record BankDetailsRequest(String iban, String bic, String accountHolder) {
+    }
+
+    public record PayoutForPaymentsRequest(List<UUID> paymentIds) {
     }
 
     /** Génère (ou régénère) le relevé PDF d'un reversement. */
