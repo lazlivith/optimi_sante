@@ -92,7 +92,68 @@ export interface PartnerFinancialSummary {
   payoutsCount: number;
 }
 
+/** État d'une tranche du point de vue du reversement au CHU. */
+export type EtatTranche = 'A_REVERSER' | 'EN_ATTENTE_MEDECIN' | 'VIREMENT_INITIE' | 'VIRE' | 'ANNULE';
+
+export interface TrancheReversement {
+  /** Nul tant que le médecin n'a pas réglé la tranche : rien à virer. */
+  paymentId: string | null;
+  tranche: 'DEPOSIT' | 'BALANCE' | 'FULL';
+  trancheLabel: string;
+  etat: EtatTranche;
+  grossAmount: number;
+  commissionRate: number;
+  commissionAmount: number;
+  netAmount: number;
+  paidAt: string | null;
+  payoutId: string | null;
+  payoutReference: string | null;
+  statementAvailable: boolean;
+  /** Référence qu'aura le virement de cette seule tranche. */
+  bankReference: string | null;
+}
+
+export interface DossierReversement {
+  enrollmentId: string;
+  dossierCode: string;
+  doctorName: string;
+  trainingTitle: string;
+  sessionStart: string | null;
+  /** Options réglées par le médecin : conservées par Optimi Santé, jamais reversées. */
+  optionsAmount: number;
+  tranches: TrancheReversement[];
+}
+
+export interface CoordonneesPartenaire {
+  partnerProfileId: string;
+  institutionName: string;
+  commissionRate: number;
+  iban: string | null;
+  ibanMasque: string | null;
+  bic: string | null;
+  titulaire: string | null;
+  /** IBAN et titulaire renseignés : condition pour émettre un virement. */
+  complet: boolean;
+}
+
 export const financeService = {
+  // ---- Reversement par dossier ----
+  getPayoutDossiers: async (partnerProfileId: string) =>
+    (await axiosClient.get<DossierReversement[]>(`/admin/partners/${partnerProfileId}/payout-dossiers`)).data,
+
+  getBankDetails: async (partnerProfileId: string) =>
+    (await axiosClient.get<CoordonneesPartenaire>(`/admin/partners/${partnerProfileId}/bank-details`)).data,
+
+  saveBankDetails: async (partnerProfileId: string, body: { iban: string; bic: string; accountHolder: string }) =>
+    (await axiosClient.put<CoordonneesPartenaire>(`/admin/partners/${partnerProfileId}/bank-details`, body)).data,
+
+  /** Crée le virement d'une ou plusieurs tranches ; le bordereau est produit dans la foulée. */
+  payoutForPayments: async (partnerProfileId: string, paymentIds: string[]) =>
+    (await axiosClient.post<PayoutDto>(`/admin/partners/${partnerProfileId}/payouts/by-payments`, { paymentIds })).data,
+
+  sepaUrl: (payoutId: string) => `/admin/payouts/${payoutId}/sepa`,
+
+
   // ---- Administration ----
   getKpis: async () => (await axiosClient.get<AdminFinanceKpis>('/admin/finance/kpis')).data,
   getAllPayments: async () => (await axiosClient.get<AdminPaymentRow[]>('/admin/payments')).data,

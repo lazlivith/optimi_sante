@@ -4,8 +4,8 @@
   "famillesIdentite": ["emerald", "teal", "green", "indigo", "blue", "cyan", "sky"],
   "_famillesIdentite": "Familles Tailwind qui entrent en concurrence avec l'identite. amber, rose et red en sont volontairement absents : ils portent un SENS (alerte, erreur) et non une marque.",
 
-  "couleursEnDur": 281,
-  "_couleursEnDur": "Abaisse de 292 a 287 (vignettes de categorie), puis a 282 (banniere teal de « Dispositifs de pointe »), puis a 281 (onglets bleus des best-sellers). Le garde-fou echoue si ce nombre augmente.",
+  "couleursEnDur": 273,
+  "_couleursEnDur": "Abaisse de 292 a 287 (vignettes de categorie), puis a 282 (banniere teal de « Dispositifs de pointe »), puis a 281 (onglets bleus des best-sellers), puis a 273 (cartes bleues et vertes de « Reversements CHU »). Le garde-fou echoue si ce nombre augmente.",
 
   "_valeursBrutesAutorisees": "Couleurs ecrites en hexadecimal ou rgb() dejà presentes. Toute NOUVELLE valeur brute fait echouer le build : elle echappe au changement de palette, comme l'ont montre les 64 boutons restes au vert #0f3c35 apres le passage au bleu. Les groupes ci-dessous disent pourquoi chacune est toleree.",
   "valeursBrutesAutorisees": [
