@@ -22,6 +22,9 @@ public class CloudinaryStorageService implements StorageService {
 
     private final Cloudinary cloudinary;
 
+    /** Coupures réseau passagères : 3 tentatives, 500 ms puis 1 s d'attente (voir {@link ReessaiReseau}). */
+    private final ReessaiReseau reessai = new ReessaiReseau();
+
     /** Partagé : un client HTTP est conçu pour être réutilisé, en créer un par appel fuit. */
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -56,12 +59,15 @@ public class CloudinaryStorageService implements StorageService {
                                       // sur tout compte standard, sans configuration supplémentaire.
             );
 
-            Map<?, ?> uploadResult = cloudinary.uploader().upload(bytes, uploadParams);
+            Map<?, ?> uploadResult = reessai.executer("Téléversement " + publicId,
+                    () -> cloudinary.uploader().upload(bytes, uploadParams));
             return uploadResult.get("public_id").toString();
 
         } catch (IOException e) {
             log.error("Failed to upload file to Cloudinary: {}", e.getMessage(), e);
             throw new RuntimeException("Could not upload file to storage", e);
+        } catch (InterruptedException e) {
+            throw interrompu(e);
         }
     }
 
@@ -101,12 +107,15 @@ public class CloudinaryStorageService implements StorageService {
                                       // sur tout compte standard, sans configuration supplémentaire.
             );
 
-            Map<?, ?> uploadResult = cloudinary.uploader().upload(pdfBytes, uploadParams);
+            Map<?, ?> uploadResult = reessai.executer("Téléversement " + publicId,
+                    () -> cloudinary.uploader().upload(pdfBytes, uploadParams));
             return uploadResult.get("public_id").toString();
 
         } catch (IOException e) {
             log.error("Failed to upload generated PDF to Cloudinary: {}", e.getMessage(), e);
             throw new RuntimeException("Could not upload PDF to storage", e);
+        } catch (InterruptedException e) {
+            throw interrompu(e);
         }
     }
 
@@ -124,12 +133,15 @@ public class CloudinaryStorageService implements StorageService {
                     "overwrite", true,
                     "invalidate", true);
 
-            Map<?, ?> resultat = cloudinary.uploader().upload(bytes, uploadParams);
+            Map<?, ?> resultat = reessai.executer("Téléversement " + fileName,
+                    () -> cloudinary.uploader().upload(bytes, uploadParams));
             return resultat.get("public_id").toString();
 
         } catch (IOException e) {
             log.error("Failed to upload public template to Cloudinary: {}", e.getMessage(), e);
             throw new RuntimeException("Could not upload public template", e);
+        } catch (InterruptedException e) {
+            throw interrompu(e);
         }
     }
 
@@ -144,7 +156,8 @@ public class CloudinaryStorageService implements StorageService {
                     .timeout(Duration.ofSeconds(30))
                     .GET()
                     .build();
-            HttpResponse<byte[]> reponse = HTTP.send(requete, HttpResponse.BodyHandlers.ofByteArray());
+            HttpResponse<byte[]> reponse = reessai.executer("Lecture " + publicId,
+                    () -> HTTP.send(requete, HttpResponse.BodyHandlers.ofByteArray()));
             if (reponse.statusCode() != 200) {
                 throw new IllegalStateException(
                         "Le stockage a répondu " + reponse.statusCode() + " pour " + publicId);
@@ -189,11 +202,15 @@ public class CloudinaryStorageService implements StorageService {
                                                     // contrairement à "raw" utilisé pour les documents.
                     "type", "upload"
             );
-            Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(), uploadParams);
+            byte[] contenu = file.getBytes();
+            Map<?, ?> uploadResult = reessai.executer("Téléversement média " + publicId,
+                    () -> cloudinary.uploader().upload(contenu, uploadParams));
             return uploadResult.get("public_id").toString();
         } catch (IOException e) {
             log.error("Failed to upload media to Cloudinary: {}", e.getMessage(), e);
             throw new RuntimeException("Could not upload media to storage", e);
+        } catch (InterruptedException e) {
+            throw interrompu(e);
         }
     }
 
@@ -209,20 +226,31 @@ public class CloudinaryStorageService implements StorageService {
     public void deleteFile(String publicId) {
         try {
             Map<String, Object> deleteParams = ObjectUtils.asMap("resource_type", "auto");
-            cloudinary.uploader().destroy(publicId, deleteParams);
+            reessai.executer("Suppression " + publicId, () -> cloudinary.uploader().destroy(publicId, deleteParams));
         } catch (IOException e) {
             log.error("Failed to delete file from Cloudinary (publicId: {}): {}", publicId, e.getMessage(), e);
             throw new RuntimeException("Could not delete file from storage", e);
+        } catch (InterruptedException e) {
+            throw interrompu(e);
         }
     }
 
     @Override
     public void deleteDocument(String publicId) {
         try {
-            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "raw"));
+            reessai.executer("Suppression " + publicId,
+                    () -> cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "raw")));
         } catch (IOException e) {
             log.error("Failed to delete document from Cloudinary (publicId: {}): {}", publicId, e.getMessage(), e);
             throw new RuntimeException("Could not delete document from storage", e);
+        } catch (InterruptedException e) {
+            throw interrompu(e);
         }
+    }
+
+    /** Attente interrompue (arrêt de l'application) : on rétablit le signal au lieu de l'avaler. */
+    private static RuntimeException interrompu(InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return new RuntimeException("Opération de stockage interrompue", e);
     }
 }

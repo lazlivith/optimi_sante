@@ -5,6 +5,8 @@ import {
   FileStack, ShieldCheck, UserCog, Store, LogOut, Stethoscope
 } from 'lucide-react';
 import { NotificationBell } from '../components/common/NotificationBell';
+import { useTiroirNavigation } from '../hooks/useTiroirNavigation';
+import { BoutonMenu, FermerTiroir, VoileTiroir, classesTiroir } from '../components/common/TiroirNavigation';
 
 const NAV_ITEMS = [
   { to: '/doctor', label: 'Mes dossiers', icon: FileStack, end: true },
@@ -14,9 +16,12 @@ const NAV_ITEMS = [
 
 export function DoctorLayout() {
   const { user, logout } = useAuth();
+  // Sous 1024 px, le menu devient un tiroir : 256 px fixes ne laissaient que 134 px au contenu d'un téléphone.
+  const tiroir = useTiroirNavigation();
 
   return (
-    <div className="min-h-screen flex bg-slate-100">
+    <div className="min-h-screen lg:flex bg-slate-100">
+      <VoileTiroir ouvert={tiroir.ouvert} onFermer={tiroir.fermer} />
       {/* `sticky top-0 h-screen` : sans hauteur imposee, l'aside s'etire a la hauteur
           TOTALE de la page (le conteneur est en `min-h-screen flex`). Le `flex-1` du menu
           repoussait alors « Se deconnecter » tout en bas de la page — a des milliers de
@@ -24,7 +29,13 @@ export function DoctorLayout() {
           Bornee a la hauteur de la fenetre, elle reste immobile et son pied revient a sa
           place. `overflow-y-auto` sur le menu couvre le cas du super admin, seul role
           dont les entrees peuvent depasser un petit ecran. */}
-      <aside className="w-64 shrink-0 bg-emerald-950 text-emerald-200 flex flex-col sticky top-0 h-screen">
+      <aside
+        id="menu-espace"
+        ref={tiroir.panneau}
+        onClick={tiroir.fermerSurLien}
+        aria-label="Menu de l'espace"
+        className={`${classesTiroir(tiroir.ouvert)} bg-emerald-950 text-emerald-200`}
+      >
         <div className="h-16 flex items-center gap-2 px-6 border-b border-white/10">
           <div className="bg-brand text-white font-bold rounded-lg flex items-center justify-center w-8 h-8 text-xs">
             OS
@@ -33,6 +44,7 @@ export function DoctorLayout() {
             <div className="text-sm font-bold text-white leading-none">Optimi Santé</div>
             <div className="text-[10px] text-emerald-400 leading-none mt-1">Espace Médecin</div>
           </div>
+          <FermerTiroir onFermer={tiroir.fermer} />
         </div>
 
         <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto min-h-0">
@@ -84,7 +96,8 @@ export function DoctorLayout() {
       </aside>
 
       <main className="flex-1 min-w-0 overflow-y-auto">
-        <div className="h-14 border-b border-slate-200 bg-white flex items-center justify-end px-6 sticky top-0 z-30">
+        <div className="h-14 border-b border-slate-200 bg-white flex items-center justify-between lg:justify-end px-4 sm:px-6 sticky top-0 z-30">
+          <BoutonMenu ouvert={tiroir.ouvert} onOuvrir={tiroir.ouvrir} bouton={tiroir.bouton} idTiroir="menu-espace" />
           <NotificationBell />
         </div>
         <PageTransition>

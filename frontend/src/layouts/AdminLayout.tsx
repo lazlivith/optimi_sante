@@ -4,6 +4,8 @@ import { PageTransition } from '../components/common/PageTransition';
 import { Store, LogOut, ShieldCheck } from 'lucide-react';
 import { universesFor } from '../lib/adminUniverses';
 import { NotificationBell } from '../components/common/NotificationBell';
+import { useTiroirNavigation } from '../hooks/useTiroirNavigation';
+import { BoutonMenu, FermerTiroir, VoileTiroir, classesTiroir } from '../components/common/TiroirNavigation';
 
 /** Libellé du rattachement, affiché sous l'email en pied de sidebar. */
 const ROLE_LABELS: Record<string, string> = {
@@ -15,6 +17,8 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function AdminLayout() {
   const { user, logout } = useAuth();
+  // Sous 1024 px, le menu devient un tiroir : 256 px fixes ne laissaient que 134 px au contenu d'un téléphone.
+  const tiroir = useTiroirNavigation();
 
   // La navigation découle du rôle, elle n'est pas figée : un admin métier ne voit que son
   // univers, le super admin voit les trois, groupés et intitulés.
@@ -22,7 +26,8 @@ export function AdminLayout() {
   const isMultiUniverse = universes.length > 1;
 
   return (
-    <div className="min-h-screen flex bg-slate-100">
+    <div className="min-h-screen lg:flex bg-slate-100">
+      <VoileTiroir ouvert={tiroir.ouvert} onFermer={tiroir.fermer} />
       {/* Sidebar */}
       {/* `sticky top-0 h-screen` : sans hauteur imposee, l'aside s'etire a la hauteur
           TOTALE de la page (le conteneur est en `min-h-screen flex`). Le `flex-1` du menu
@@ -31,7 +36,13 @@ export function AdminLayout() {
           Bornee a la hauteur de la fenetre, elle reste immobile et son pied revient a sa
           place. `overflow-y-auto` sur le menu couvre le cas du super admin, seul role
           dont les entrees peuvent depasser un petit ecran. */}
-      <aside className="w-64 shrink-0 bg-brand-dark text-slate-300 flex flex-col sticky top-0 h-screen">
+      <aside
+        id="menu-espace"
+        ref={tiroir.panneau}
+        onClick={tiroir.fermerSurLien}
+        aria-label="Menu de l'espace"
+        className={`${classesTiroir(tiroir.ouvert)} bg-brand-dark text-slate-300`}
+      >
         <div className="h-16 flex items-center gap-2 px-6 border-b border-white/10">
           <div className="bg-brand text-white font-bold rounded-lg flex items-center justify-center w-8 h-8 text-xs">
             OS
@@ -42,6 +53,7 @@ export function AdminLayout() {
               {universes.length === 1 ? `Espace ${universes[0].label}` : 'Espace Administration'}
             </div>
           </div>
+          <FermerTiroir onFermer={tiroir.fermer} />
         </div>
 
         <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto min-h-0">
@@ -109,7 +121,8 @@ export function AdminLayout() {
 
       {/* Main content */}
       <main className="flex-1 min-w-0 overflow-y-auto">
-        <div className="h-14 border-b border-slate-200 bg-white flex items-center justify-end px-6 sticky top-0 z-30">
+        <div className="h-14 border-b border-slate-200 bg-white flex items-center justify-between lg:justify-end px-4 sm:px-6 sticky top-0 z-30">
+          <BoutonMenu ouvert={tiroir.ouvert} onOuvrir={tiroir.ouvrir} bouton={tiroir.bouton} idTiroir="menu-espace" />
           <NotificationBell />
         </div>
         <PageTransition>
