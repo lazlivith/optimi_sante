@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.training.controller;
 
+import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.domain.training.dto.CreateTrainingRequestDto;
 import com.optimisante.backend.domain.training.dto.PartnerTrainingResponseDto;
@@ -95,7 +96,7 @@ public class PartnerTrainingResource {
             }
         }
 
-        String publicId = storageService.uploadFile(file, "docs/brochures");
+        String publicId = storageService.uploadFile(file, DossierStockage.FORMATIONS_BROCHURES);
         training.setBrochureS3Key(publicId);
         trainingRepository.save(training);
 

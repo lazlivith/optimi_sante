@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.training.service;
 
+import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.domain.training.dto.DocumentRequestDtos.CreateRequest;
 import com.optimisante.backend.domain.training.dto.DocumentRequestDtos.DossierSummary;
@@ -158,7 +159,7 @@ public class EnrollmentDocumentRequestService {
             throw new IllegalArgumentException("Aucun fichier reçu.");
         }
 
-        String publicId = storageService.uploadFile(file, "docs/enrollments");
+        String publicId = storageService.uploadFile(file, DossierStockage.DOSSIERS_PIECES);
         EnrollmentDocument piece = documentRepository.save(EnrollmentDocument.builder()
                 .enrollment(demande.getEnrollment())
                 .documentType(demande.getDocumentType())

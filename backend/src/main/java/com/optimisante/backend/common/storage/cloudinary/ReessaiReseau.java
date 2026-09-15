@@ -1,4 +1,4 @@
-package com.optimisante.backend.common.storage;
+package com.optimisante.backend.common.storage.cloudinary;
 
 import lombok.extern.slf4j.Slf4j;
 

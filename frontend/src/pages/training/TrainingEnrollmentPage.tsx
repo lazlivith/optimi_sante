@@ -79,7 +79,7 @@ export function TrainingEnrollmentPage() {
   ) => {
     try {
       setLoading(true);
-      const res = await storageService.uploadFile(file, 'docs/enrollments');
+      const res = await storageService.uploadFile(file, 'DOSSIERS_PIECES');
       setUrl(res.publicId);
     } catch (error) {
       console.error("Upload failed", error);

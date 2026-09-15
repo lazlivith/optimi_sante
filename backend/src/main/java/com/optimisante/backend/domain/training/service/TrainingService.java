@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.training.service;
 
+import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.domain.document.service.DocumentLinkService;
 import com.optimisante.backend.config.tenant.TenantContext;
@@ -256,7 +257,7 @@ public class TrainingService {
     @Transactional
     public PartnerTrainingResponseDto uploadTrainingImage(UUID trainingId, MultipartFile file, UUID partnerUserId) {
         Training training = requireOwnedTraining(trainingId, partnerUserId);
-        String publicId = storageService.uploadMedia(file, "trainings/images", "image");
+        String publicId = storageService.uploadMedia(file, DossierStockage.FORMATIONS_IMAGES);
         training.setImageS3Key(publicId);
         return toPartnerResponseDto(trainingRepository.save(training));
     }
@@ -264,7 +265,7 @@ public class TrainingService {
     @Transactional
     public PartnerTrainingResponseDto uploadTrainingVideo(UUID trainingId, MultipartFile file, UUID partnerUserId) {
         Training training = requireOwnedTraining(trainingId, partnerUserId);
-        String publicId = storageService.uploadMedia(file, "trainings/videos", "video");
+        String publicId = storageService.uploadMedia(file, DossierStockage.FORMATIONS_VIDEOS);
         training.setVideoS3Key(publicId);
         return toPartnerResponseDto(trainingRepository.save(training));
     }

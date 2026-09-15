@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.orders.controller;
 
+import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.domain.document.service.PdfGeneratorService;
 import com.optimisante.backend.domain.orders.dto.OrderResponseDto;
@@ -84,7 +85,7 @@ public class AdminOrderResource {
 
                 // 2. Upload vers Cloudinary
                 String fileName = updatedOrder.orderNumber() + "-DEVIS";
-                String publicId = storageService.uploadGeneratedPdf(pdfBytes, "docs/devis", fileName);
+                String publicId = storageService.uploadGeneratedPdf(pdfBytes, DossierStockage.DOCUMENTS_DEVIS, fileName);
 
                 // 3. Mise à jour de la commande avec la clé S3/Cloudinary
                 orderService.updateOrderDocumentKey(id, publicId);

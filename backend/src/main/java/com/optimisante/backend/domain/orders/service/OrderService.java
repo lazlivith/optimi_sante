@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.orders.service;
 
+import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.config.tenant.TenantContext;
 import com.optimisante.backend.domain.catalog.entity.Product;
 import com.optimisante.backend.domain.catalog.repository.ProductRepository;
@@ -224,7 +225,7 @@ public class OrderService {
                 }).collect(Collectors.toList());
                 quoteData.put("items", itemsList);
 
-                String pdfUrl = pdfGeneratorService.generateAndUploadPdf("devis-b2b", quoteData, "docs/quotes", "QUOTE-" + savedOrder.getOrderNumber());
+                String pdfUrl = pdfGeneratorService.generateAndUploadPdf("devis-b2b", quoteData, DossierStockage.DOCUMENTS_DEVIS, "QUOTE-" + savedOrder.getOrderNumber());
                 savedOrder.setDocumentS3Key(pdfUrl);
                 savedOrder = orderRepository.save(savedOrder);
                 log.info("Devis PDF généré avec succès pour la commande: {}", savedOrder.getOrderNumber());

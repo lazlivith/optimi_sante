@@ -1,5 +1,7 @@
 package com.optimisante.backend.domain.training.service;
 
+import com.optimisante.backend.common.storage.DossierStockage;
+import com.optimisante.backend.common.storage.ControleFichier;
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.domain.identity.repository.DoctorProfileRepository;
 import com.optimisante.backend.domain.notification.entity.NotificationSeverity;
@@ -41,9 +43,6 @@ import static com.optimisante.backend.domain.training.entity.EnrollmentStatus.*;
 @Service
 @RequiredArgsConstructor
 public class OfficialDocumentService {
-
-    static final long TAILLE_MAX_OCTETS = 10L * 1024 * 1024;
-    private static final Set<String> FORMATS_ACCEPTES = Set.of("application/pdf", "image/jpeg", "image/png");
 
     /** Le CHU dépose une fois la candidature retenue : avant, il n'y a pas de formation à documenter. */
     private static final Set<EnrollmentStatus> DEPOT_PARTENAIRE_OUVERT = EnumSet.of(
@@ -286,16 +285,8 @@ public class OfficialDocumentService {
     }
 
     private String stocker(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("Aucun fichier reçu.");
-        }
-        if (file.getSize() > TAILLE_MAX_OCTETS) {
-            throw new IllegalArgumentException("Le fichier dépasse 10 Mo.");
-        }
-        if (file.getContentType() == null || !FORMATS_ACCEPTES.contains(file.getContentType())) {
-            throw new IllegalArgumentException("Format non accepté : déposez un PDF, un JPG ou un PNG.");
-        }
-        return storageService.uploadFile(file, "docs/enrollments/official");
+        ControleFichier.verifierDocument(file);
+        return storageService.uploadFile(file, DossierStockage.DOSSIERS_OFFICIELS);
     }
 
     private static String titre(String saisi, OfficialDocumentCategory category) {

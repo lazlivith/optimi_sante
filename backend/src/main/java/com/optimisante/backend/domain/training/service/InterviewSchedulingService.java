@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.training.service;
 
+import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.common.email.EmailService;
 import com.optimisante.backend.domain.document.service.PdfGeneratorService;
 import com.optimisante.backend.domain.identity.repository.DoctorProfileRepository;
@@ -350,7 +351,7 @@ public class InterviewSchedulingService {
             donnees.put("issuedAt", formatter(OffsetDateTime.now()));
 
             String publicId = pdfGeneratorService.generateAndUploadPdf(
-                    "convocation-entretien", donnees, "docs/enrollments",
+                    "convocation-entretien", donnees, DossierStockage.DOSSIERS_CONVOCATIONS,
                     "convocation-" + entretien.getId());
 
             EnrollmentDocument piece = documentRepository.save(EnrollmentDocument.builder()

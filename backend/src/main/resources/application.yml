@@ -142,6 +142,12 @@ app:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:default}
     api-key: ${CLOUDINARY_API_KEY:default}
     api-secret: ${CLOUDINARY_API_SECRET:default}
+    # Tout fichier d'Optimi Santé est rangé sous <root-folder>/<environment>/ : le compte Cloudinary
+    # est partagé avec d'autres projets, et les fichiers de test ne se mêlent jamais à la production.
+    # L'arborescence métier est définie par l'énumération DossierStockage.
+    root-folder: ${CLOUDINARY_ROOT_FOLDER:optimisante}
+    # Par défaut, le profil Spring actif (dev en local). En production : CLOUDINARY_ENVIRONMENT=prod.
+    environment: ${CLOUDINARY_ENVIRONMENT:${spring.profiles.active:dev}}
 
 stripe:
   api-key: ${STRIPE_SECRET_KEY:sk_test_PLACEHOLDER}

@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.training.finance;
 
+import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.domain.identity.entity.PartnerProfile;
 import com.optimisante.backend.domain.identity.repository.PartnerProfileRepository;
 import lombok.RequiredArgsConstructor;
@@ -265,7 +266,7 @@ public class PartnerPayoutService {
 
         byte[] pdf = pdfGeneratorService.generatePayoutStatementPdf(data);
         String publicId = storageService.uploadGeneratedPdf(
-                pdf, "docs/releves-reversement", "REV-" + payout.getId());
+                pdf, DossierStockage.DOCUMENTS_RELEVES_REVERSEMENT, "REV-" + payout.getId());
 
         payout.setStatementS3Key(publicId);
         log.info("Relevé de reversement {} généré ({} ligne(s))", payout.getReference(), lines.size());

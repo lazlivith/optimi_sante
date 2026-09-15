@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.training.finance;
 
+import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.domain.document.service.PdfGeneratorService;
 import com.optimisante.backend.domain.document.recu.MotifPaiement;
 import com.optimisante.backend.domain.identity.repository.DoctorProfileRepository;
@@ -225,7 +226,7 @@ public class ServiceOptionsPaymentService {
                     .anyMatch(s -> s.getOptionType() == ServiceOptionType.INSURANCE));
 
             String publicId = pdfGeneratorService.generateAndUploadPdf(
-                    "attestation-souscription", donnees, "docs/enrollments",
+                    "attestation-souscription", donnees, DossierStockage.DOSSIERS_SOUSCRIPTIONS,
                     "souscription-" + payment.getId());
 
             documentRepository.save(EnrollmentDocument.builder()

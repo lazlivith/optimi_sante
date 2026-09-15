@@ -1,4 +1,4 @@
-package com.optimisante.backend.common.storage;
+package com.optimisante.backend.common.storage.cloudinary;
 
 import org.junit.jupiter.api.Test;
 

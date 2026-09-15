@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.catalog.service;
 
+import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.domain.catalog.dto.ProductMediaDtos.*;
 import com.optimisante.backend.domain.catalog.entity.ProductGalleryImage;
@@ -76,7 +77,7 @@ public class ProductMediaService {
         AdminProductRow produit = requireProduct(productId);
         verifierImage(fichier);
 
-        String publicId = storageService.uploadMedia(fichier, "catalog/products", "image");
+        String publicId = storageService.uploadMedia(fichier, DossierStockage.CATALOGUE_PRODUITS);
         productRepository.setMainImageForAdmin(
                 productId, storageService.generateMediaUrl(publicId, "image"));
 
@@ -112,7 +113,7 @@ public class ProductMediaService {
 
         if (aFichier) {
             verifierVideo(fichier);
-            String publicId = storageService.uploadMedia(fichier, "catalog/videos", "video");
+            String publicId = storageService.uploadMedia(fichier, DossierStockage.CATALOGUE_VIDEOS);
             url = storageService.generateMediaUrl(publicId, "video");
             hebergeur = "CLOUDINARY";
         } else {
@@ -199,7 +200,7 @@ public class ProductMediaService {
                 continue;
             }
             verifierImage(fichier);
-            String publicId = storageService.uploadMedia(fichier, "catalog/gallery", "image");
+            String publicId = storageService.uploadMedia(fichier, DossierStockage.CATALOGUE_GALERIE);
             ProductGalleryImage visuel = galleryRepository.save(ProductGalleryImage.builder()
                     .productId(productId)
                     .imageUrl(storageService.generateMediaUrl(publicId, "image"))

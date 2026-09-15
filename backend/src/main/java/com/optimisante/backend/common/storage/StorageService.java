@@ -1,100 +1,53 @@
 package com.optimisante.backend.common.storage;
 
+import org.springframework.web.multipart.MultipartFile;
+
+/**
+ * Stockage des fichiers de la plateforme, indépendant du fournisseur.
+ *
+ * <p>Les appelants désignent un {@link DossierStockage}, jamais un chemin : la racine,
+ * l'environnement et la façon de conserver le fichier (document signé, image, vidéo) relèvent de
+ * l'implémentation ({@code cloudinary.CloudinaryStorageService}).</p>
+ *
+ * <p>Toutes les méthodes renvoient la <b>clé de stockage</b> (public_id), à conserver en base :
+ * c'est elle, et non une URL, qui permet ensuite de produire un lien.</p>
+ */
 public interface StorageService {
-    
-    /**
-     * Upload a file to the storage provider.
-     * 
-     * @param bytes The file content as a byte array
-     * @param fileName The original file name
-     * @param folderPath The target folder path in the storage provider
-     * @return The secure URL to access the uploaded file
-     */
-    String uploadFile(byte[] bytes, String fileName, String folderPath);
+
+    /** Dépose un document ; son nom d'origine ne sert qu'à rendre la clé lisible. */
+    String uploadFile(byte[] bytes, String fileName, DossierStockage dossier);
+
+    String uploadFile(MultipartFile file, DossierStockage dossier);
+
+    /** Dépose un PDF produit par la plateforme (convention, reçu, devis…). */
+    String uploadGeneratedPdf(byte[] pdfBytes, DossierStockage dossier, String fileName);
 
     /**
-     * Upload a MultipartFile to the storage provider.
-     * 
-     * @param file The file to upload
-     * @param folderPath The target folder path in the storage provider
-     * @return The secure URL to access the uploaded file
+     * Dépose un modèle vierge sous une clé STABLE, écrasée à chaque régénération : un modèle
+     * ne désigne personne, et une clé aléatoire laisserait un fichier de plus à chaque demande.
      */
-    String uploadFile(org.springframework.web.multipart.MultipartFile file, String folderPath);
+    String uploadPublicTemplate(byte[] bytes, DossierStockage dossier, String fileName);
 
-    /**
-     * Upload a generated PDF (from bytes) directly to the storage provider.
-     * 
-     * @param pdfBytes The generated PDF byte array
-     * @param folderPath The target folder path (e.g. "docs/devis")
-     * @param fileName The specific file name (e.g. "DEV-2026-0001")
-     * @return The public_id or secure URL to access the uploaded file
-     */
-    String uploadGeneratedPdf(byte[] pdfBytes, String folderPath, String fileName);
+    /** Dépose une image ou une vidéo affichée dans une page ; le type vient du dossier. */
+    String uploadMedia(MultipartFile file, DossierStockage dossier);
 
-    /**
-     * Generate a presigned or signed URL for temporary access to a private resource.
-     *
-     * @param publicId The public ID or path of the resource
-     * @param expirationMinutes The duration in minutes before the URL expires
-     * @return The temporary secure URL
-     */
+    /** Lien signé d'un document. */
     String generatePresignedOrSignedUrl(String publicId, int expirationMinutes);
 
-    /**
-     * Lit le contenu d'un fichier stocké.
-     *
-     * <p>Nécessaire depuis que les documents ne sont plus servis par une adresse de stockage
-     * publique : c'est le serveur qui va chercher les octets, après avoir vérifié le jeton
-     * d'accès. Voir {@code DocumentFileResource}.</p>
-     *
-     * @throws RuntimeException si le fichier est introuvable ou illisible
-     */
+    /** Contenu d'un document, lu côté serveur (le lien ne quitte pas la JVM). */
     byte[] download(String publicId);
 
-    /**
-     * Dépose un document <b>non nominatif</b> destiné à être partagé tel quel — un modèle vierge,
-     * par exemple.
-     *
-     * <p>Se distingue de {@link #uploadGeneratedPdf} par sa clé <b>stable</b> : le fichier est
-     * remplacé à chaque génération au lieu de s'accumuler. À n'employer que lorsque le contenu ne
-     * désigne personne, puisqu'une clé stable est par nature devinable.</p>
-     */
-    String uploadPublicTemplate(byte[] bytes, String folderPath, String fileName);
-
-    /**
-     * Upload a media file (image or video) meant to be publicly displayed (e.g. a training's
-     * illustration), as opposed to {@link #uploadFile} which always stores as "raw" — appropriate
-     * for private documents (PDFs) but not for inline &lt;img&gt;/&lt;video&gt; rendering.
-     *
-     * @param file The media file to upload
-     * @param folderPath The target folder path in the storage provider
-     * @param resourceType Either "image" or "video"
-     * @return The public_id of the uploaded media
-     */
-    String uploadMedia(org.springframework.web.multipart.MultipartFile file, String folderPath, String resourceType);
-
-    /**
-     * Build a plain (non-signed) delivery URL for a media resource uploaded via {@link #uploadMedia}.
-     *
-     * @param publicId The public ID of the resource
-     * @param resourceType Either "image" or "video" (must match what was passed to uploadMedia)
-     * @return The public delivery URL
-     */
+    /** Adresse publique d'une image ou d'une vidéo ({@code "image"} ou {@code "video"}). */
     String generateMediaUrl(String publicId, String resourceType);
 
-    /**
-     * Delete a file from the storage provider.
-     *
-     * @param publicId The public ID or path of the resource to delete
-     */
+    /** Supprime une image ou une vidéo. */
     void deleteFile(String publicId);
 
     /**
-     * Supprime un document déposé par {@link #uploadFile}, qui le stocke en ressource « raw ».
+     * Supprime un document déposé par {@link #uploadFile} ou {@link #uploadGeneratedPdf}.
      *
-     * <p>{@link #deleteFile} demande le type « auto », que la suppression Cloudinary refuse
-     * (« Invalid resource type 'auto' ») : un document retiré de la plateforme restait alors en
-     * stockage. Méthode distincte pour ne pas changer la suppression des médias produit.</p>
+     * <p>Distinct de {@link #deleteFile} : la suppression d'un document doit nommer son type de
+     * ressource, que le fournisseur refuse de deviner.</p>
      */
     void deleteDocument(String publicId);
 }

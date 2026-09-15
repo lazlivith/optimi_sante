@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.partnership.service;
 
+import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.common.email.EmailService;
 import com.optimisante.backend.domain.document.service.DocumentLinkService;
 import com.optimisante.backend.common.storage.StorageService;
@@ -54,7 +55,7 @@ public class PartnershipService {
         byte[] pdfBytes = pdfGeneratorService.generatePartnershipConventionPdf(java.util.Map.of());
         // Modèle vierge, non nominatif : clé stable, sinon chaque prospect qui le télécharge
         // laisserait un fichier de plus dans le stockage.
-        String publicId = storageService.uploadPublicTemplate(pdfBytes, "docs/partnership-templates",
+        String publicId = storageService.uploadPublicTemplate(pdfBytes, DossierStockage.PARTENARIATS_MODELES,
                 "modele-convention-partenariat");
         return documentLinkService.lienDeTelechargement(publicId);
     }
@@ -75,7 +76,7 @@ public class PartnershipService {
         // les logs, cote exploitant, ou elle est reellement actionnable.
         String fileKey;
         try {
-            fileKey = storageService.uploadFile(conventionFile, "docs/partnership-requests");
+            fileKey = storageService.uploadFile(conventionFile, DossierStockage.PARTENARIATS_DEMANDES);
         } catch (Exception e) {
             log.error("Depot de convention impossible pour {} : {}", institutionName, e.getMessage(), e);
             throw new IllegalStateException(

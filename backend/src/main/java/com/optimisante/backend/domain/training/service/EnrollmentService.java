@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.training.service;
 
+import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.domain.identity.entity.DoctorProfile;
 import com.optimisante.backend.domain.document.recu.MotifPaiement;
 import com.optimisante.backend.domain.identity.entity.User;
@@ -214,7 +215,7 @@ public class EnrollmentService {
         String fileName = "CONV-2026-" + enrollment.getId();
 
         try {
-            String publicId = storageService.uploadGeneratedPdf(pdfBytes, "docs/conventions", fileName);
+            String publicId = storageService.uploadGeneratedPdf(pdfBytes, DossierStockage.DOCUMENTS_CONVENTIONS, fileName);
             enrollment.setConventionS3Key(publicId);
             log.info("Convention generated and uploaded for enrollment {} with key {}", enrollmentId, publicId);
             eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentDocumentIssued(
@@ -265,7 +266,7 @@ public class EnrollmentService {
         String fileName = "ATTESTATION-" + enrollment.getId();
 
         try {
-            String publicId = storageService.uploadGeneratedPdf(pdfBytes, "docs/attestations", fileName);
+            String publicId = storageService.uploadGeneratedPdf(pdfBytes, DossierStockage.DOCUMENTS_ATTESTATIONS, fileName);
             enrollment.setAttestationS3Key(publicId);
             log.info("Attestation d'accueil générée et uploadée pour l'inscription {} avec la clé {}", enrollmentId, publicId);
             eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentDocumentIssued(
@@ -888,7 +889,7 @@ public class EnrollmentService {
                     "Votre dossier a ete transmis a l'etablissement : il n'est plus modifiable.");
         }
 
-        String publicId = storageService.uploadFile(file, "docs/enrollments");
+        String publicId = storageService.uploadFile(file, DossierStockage.DOSSIERS_PIECES);
 
         EnrollmentDocument document = EnrollmentDocument.builder()
                 .enrollment(enrollment)

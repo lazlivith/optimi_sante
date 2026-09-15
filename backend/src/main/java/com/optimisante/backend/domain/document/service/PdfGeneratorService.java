@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.document.service;
 
+import com.optimisante.backend.common.storage.DossierStockage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,9 +39,10 @@ public class PdfGeneratorService {
     /**
      * Génère un PDF et l'upload directement sur le cloud (Cloudinary/S3).
      */
-    public String generateAndUploadPdf(String templateName, Map<String, Object> variables, String folder, String fileName) {
+    public String generateAndUploadPdf(String templateName, Map<String, Object> variables, DossierStockage dossier,
+                                       String fileName) {
         byte[] pdfBytes = generatePdfFromTemplate(templateName, variables);
-        return storageService.uploadGeneratedPdf(pdfBytes, folder, fileName);
+        return storageService.uploadGeneratedPdf(pdfBytes, dossier, fileName);
     }
 
     public byte[] generateQuotePdf(Map<String, Object> quoteData) {

@@ -1,7 +1,9 @@
-package com.optimisante.backend.common.storage;
+package com.optimisante.backend.common.storage.cloudinary;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.optimisante.backend.common.storage.DossierStockage;
+import com.optimisante.backend.common.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,12 +17,20 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Stockage Cloudinary.
+ *
+ * <p>Tout fichier est rangé sous {@code racine/environnement/} ({@link ArborescenceCloudinary}) :
+ * le compte est partagé avec d'autres projets, et dev ne se mêle jamais à prod. Les documents sont
+ * conservés en ressource « raw » et servis par lien signé ; images et vidéos sont publiques.</p>
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class CloudinaryStorageService implements StorageService {
 
     private final Cloudinary cloudinary;
+    private final ArborescenceCloudinary arborescence;
 
     /** Coupures réseau passagères : 3 tentatives, 500 ms puis 1 s d'attente (voir {@link ReessaiReseau}). */
     private final ReessaiReseau reessai = new ReessaiReseau();
@@ -32,7 +42,7 @@ public class CloudinaryStorageService implements StorageService {
             .build();
 
     @Override
-    public String uploadFile(byte[] bytes, String fileName, String folderPath) {
+    public String uploadFile(byte[] bytes, String fileName, DossierStockage dossier) {
         try {
             // Identifiant unique, pour qu'un fichier n'en ecrase jamais un autre.
             //
@@ -47,7 +57,7 @@ public class CloudinaryStorageService implements StorageService {
             String publicId = UUID.randomUUID() + "_" + sansExtension(fileName);
 
             Map<String, Object> uploadParams = ObjectUtils.asMap(
-                    "folder", folderPath,
+                    "folder", arborescence.dossier(dossier),
                     "public_id", publicId,
                     // "raw" (et non "auto") : generatePresignedOrSignedUrl() doit connaître le
                     // resource_type exact au moment de reconstruire l'URL de téléchargement, et
@@ -80,9 +90,9 @@ public class CloudinaryStorageService implements StorageService {
     }
 
     @Override
-    public String uploadFile(org.springframework.web.multipart.MultipartFile file, String folderPath) {
+    public String uploadFile(org.springframework.web.multipart.MultipartFile file, DossierStockage dossier) {
         try {
-            return uploadFile(file.getBytes(), file.getOriginalFilename(), folderPath);
+            return uploadFile(file.getBytes(), file.getOriginalFilename(), dossier);
         } catch (IOException e) {
             log.error("Failed to read MultipartFile: {}", e.getMessage(), e);
             throw new RuntimeException("Could not read file for upload", e);
@@ -90,7 +100,7 @@ public class CloudinaryStorageService implements StorageService {
     }
 
     @Override
-    public String uploadGeneratedPdf(byte[] pdfBytes, String folderPath, String fileName) {
+    public String uploadGeneratedPdf(byte[] pdfBytes, DossierStockage dossier, String fileName) {
         try {
             // Suffixe aléatoire : sans lui, la clé se reconstitue à partir du numéro de commande
             // (RECEIPT-OPT-20260829-9CEF), soit 65 536 possibilités par jour — assez peu pour
@@ -98,7 +108,7 @@ public class CloudinaryStorageService implements StorageService {
             String publicId = fileName + "-" + UUID.randomUUID().toString().substring(0, 12);
 
             Map<String, Object> uploadParams = ObjectUtils.asMap(
-                    "folder", folderPath,
+                    "folder", arborescence.dossier(dossier),
                     "public_id", publicId,
                     "resource_type", "raw", // PDFs can be uploaded as raw or image, but raw is safer for documents
                     "type", "upload" // "authenticated" nécessite une fonctionnalité de contrôle d'accès
@@ -120,13 +130,13 @@ public class CloudinaryStorageService implements StorageService {
     }
 
     @Override
-    public String uploadPublicTemplate(byte[] bytes, String folderPath, String fileName) {
+    public String uploadPublicTemplate(byte[] bytes, DossierStockage dossier, String fileName) {
         try {
             // Clé volontairement STABLE : ce modèle vierge est régénéré à chaque demande d'un
             // prospect. Avec une clé aléatoire, chaque téléchargement laisserait un fichier de
             // plus dans le stockage, sans fin. Le document ne désigne personne.
             Map<String, Object> uploadParams = ObjectUtils.asMap(
-                    "folder", folderPath,
+                    "folder", arborescence.dossier(dossier),
                     "public_id", fileName,
                     "resource_type", "raw",
                     "type", "upload",
@@ -191,11 +201,16 @@ public class CloudinaryStorageService implements StorageService {
     }
 
     @Override
-    public String uploadMedia(org.springframework.web.multipart.MultipartFile file, String folderPath, String resourceType) {
+    public String uploadMedia(org.springframework.web.multipart.MultipartFile file, DossierStockage dossier) {
+        if (dossier.type() == DossierStockage.TypeRessource.DOCUMENT) {
+            // Un document déposé en média serait public : il doit passer par uploadFile.
+            throw new IllegalArgumentException("Le dossier " + dossier + " n'accepte pas de média.");
+        }
+        String resourceType = dossier.type() == DossierStockage.TypeRessource.VIDEO ? "video" : "image";
         try {
             String publicId = UUID.randomUUID().toString();
             Map<String, Object> uploadParams = ObjectUtils.asMap(
-                    "folder", folderPath,
+                    "folder", arborescence.dossier(dossier),
                     "public_id", publicId,
                     "resource_type", resourceType, // "image" ou "video" : nécessaire pour un rendu
                                                     // inline (<img>/<video>) et les transformations,

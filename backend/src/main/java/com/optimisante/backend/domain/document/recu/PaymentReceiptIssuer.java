@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.document.recu;
 
+import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.domain.document.DocumentKind;
 import com.optimisante.backend.domain.document.service.DocumentNumberService;
@@ -90,7 +91,7 @@ public class PaymentReceiptIssuer {
         try {
             byte[] pdf = renderer.rendre(DocumentKind.RECU_PAIEMENT, variables(encaissement, recu));
             String cle = storageService.uploadGeneratedPdf(
-                    pdf, "docs/receipts", DocumentKind.RECU_PAIEMENT.gabarit() + "-" + recu.getNumero());
+                    pdf, DossierStockage.DOCUMENTS_RECUS, DocumentKind.RECU_PAIEMENT.gabarit() + "-" + recu.getNumero());
             recu.setDocumentKey(cle);
             receipts.save(recu);
 
