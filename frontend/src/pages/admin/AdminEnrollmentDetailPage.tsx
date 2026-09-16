@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { axiosClient } from '../../api/axiosClient';
 import { adminService } from '../../api/adminService';
+import { formatMoney } from '../../api/financeService';
 import { vaultService, getDocumentLabel, type DocumentItemDto } from '../../api/vaultService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { StatusBadge, getStatusLabel } from '../../components/common/StatusBadge';
@@ -60,8 +61,25 @@ export function AdminEnrollmentDetailPage() {
     }
   };
 
+  /**
+   * Confirmer une inscription dont l'acompte n'est pas encaissé laisse le dossier dans une
+   * impasse : le médecin ne peut plus régler son acompte (le paiement n'est ouvert qu'au statut
+   * « Paiement attendu »), et le dossier ne pourra jamais passer à « prêt à démarrer ».
+   * L'admin garde la main — un virement reçu hors plateforme reste un cas légitime — mais il
+   * sait ce qu'il fait.
+   */
+  const acompteNonRegle = (enrollment?.tuitionOutstanding ?? 0) > (enrollment?.tuitionBalanceAmount ?? 0);
+
   const handleUpdateStatus = async (newStatus: string) => {
     if (!id) return;
+    if (newStatus === 'CONFIRMED' && acompteNonRegle && !window.confirm(
+      "Confirmer l'inscription alors que l'acompte n'est pas encaissé ?\n\n"
+      + `Reste dû sur ce dossier : ${formatMoney(enrollment.tuitionOutstanding)}`
+      + ` (dont ${formatMoney(enrollment.tuitionDepositAmount)} d'acompte).\n\n`
+      + "Une fois le dossier confirmé, le médecin ne peut plus régler son acompte depuis son "
+      + "espace, et le dossier ne pourra pas passer à « prêt à démarrer ».\n"
+      + "À ne faire que si le règlement a été reçu hors plateforme.",
+    )) return;
     setIsProcessing(true);
     try {
       await adminService.updateEnrollmentStatus(id, newStatus);
