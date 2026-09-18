@@ -1,4 +1,5 @@
 import {
+  Truck,
   LayoutDashboard, TrendingUp, ShoppingBag, Package, Tag, FileText,
   GraduationCap, BookOpen, Building2, Mail, Banknote, Users,
   BarChart3, FileSpreadsheet, ScrollText, ShieldCheck, BellRing, Bot,
@@ -44,6 +45,7 @@ export const ECOMMERCE_UNIVERSE: AdminUniverse = {
     { to: '/admin/finance', label: 'Chiffre d\'affaires', icon: TrendingUp },
     { to: '/admin/orders', label: 'Commandes', icon: ShoppingBag },
     { to: '/admin/catalog', label: 'Catalogue', icon: Package },
+    { to: '/admin/suppliers', label: 'Fournisseurs', icon: Truck },
     { to: '/admin/promo-codes', label: 'Codes promo', icon: Tag },
     { to: '/admin/quotes', label: 'Devis B2B', icon: FileText },
   ],

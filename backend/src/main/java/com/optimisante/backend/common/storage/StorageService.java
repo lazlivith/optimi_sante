@@ -31,6 +31,12 @@ public interface StorageService {
     /** Dépose une image ou une vidéo affichée dans une page ; le type vient du dossier. */
     String uploadMedia(MultipartFile file, DossierStockage dossier);
 
+    /**
+     * Même chose depuis des octets déjà en mémoire : une image d'un catalogue fournisseur est
+     * téléchargée depuis l'adresse du fichier, elle n'arrive jamais comme fichier téléversé.
+     */
+    String uploadMedia(byte[] bytes, String fileName, DossierStockage dossier);
+
     /** Lien signé d'un document. */
     String generatePresignedOrSignedUrl(String publicId, int expirationMinutes);
 

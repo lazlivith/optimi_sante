@@ -13,6 +13,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,6 +28,25 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Product p WHERE p.id = :id")
     Optional<Product> findByIdWithPessimisticLock(@Param("id") UUID id);
+
+    /**
+     * Références déjà connues, pour un import fournisseur.
+     *
+     * <p>Native, et c'est essentiel : {@code Product} porte un {@code @SQLRestriction} qui masque
+     * les produits désactivés ou supprimés. Les ignorer ici ferait croire qu'un SKU est libre,
+     * puis échouer l'insertion sur l'unicité de la colonne — sans que l'import sache pourquoi.</p>
+     */
+    @Query(value = """
+            SELECT p.id            AS id,
+                   lower(p.sku)    AS sku,
+                   p.supplier_id   AS supplier_id,
+                   p.is_active     AS is_active,
+                   p.deleted_at    AS deleted_at,
+                   p.image_url     AS image_url
+              FROM products p
+             WHERE p.tenant_id = :tenantId AND lower(p.sku) IN (:skus)
+            """, nativeQuery = true)
+    List<Map<String, Object>> trouverParSku(@Param("tenantId") UUID tenantId, @Param("skus") Collection<String> skus);
 
     // --- Requêtes admin natives : Product porte @SQLRestriction("deleted_at IS NULL AND
     // is_active = true"), qui s'applique à TOUTE requête hydratant l'entité, y compris les

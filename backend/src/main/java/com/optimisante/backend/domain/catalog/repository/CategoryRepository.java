@@ -14,6 +14,9 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
     
     // Find all root categories (no parent) for a specific tenant
     List<Category> findByTenantIdAndParentIsNull(UUID tenantId);
+
+    /** Rattachement d'un produit importé : le fichier fournisseur nomme la catégorie, il ne l'identifie pas. */
+    java.util.Optional<Category> findFirstByTenantIdAndNameIgnoreCase(UUID tenantId, String name);
     
     // For fetching children if needed manually, though they are fetched via relationships
     List<Category> findByTenantIdAndParentId(UUID tenantId, UUID parentId);

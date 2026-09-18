@@ -19,7 +19,7 @@
  * <pre>
  * optimisante/                 app.cloudinary.root-folder — compte partagé avec d'autres projets
  *   dev/ | prod/               app.cloudinary.environment — test et production jamais mêlés
- *     catalogue/               produits · galerie · videos
+ *     catalogue/               produits · galerie · videos · imports
  *     formations/              images · videos · brochures
  *     dossiers-candidats/      pieces · officiels · convocations · souscriptions
  *     documents-emis/          conventions · attestations · recus · devis · releves-reversement

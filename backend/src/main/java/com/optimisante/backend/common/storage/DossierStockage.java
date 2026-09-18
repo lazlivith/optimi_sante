@@ -28,6 +28,8 @@ public enum DossierStockage {
     CATALOGUE_PRODUITS("catalogue/produits", TypeRessource.IMAGE),
     CATALOGUE_GALERIE("catalogue/galerie", TypeRessource.IMAGE),
     CATALOGUE_VIDEOS("catalogue/videos", TypeRessource.VIDEO),
+    /** Fichiers catalogue déposés par les fournisseurs, conservés pour rejouer un import (V58). */
+    CATALOGUE_IMPORTS("catalogue/imports", TypeRessource.DOCUMENT),
 
     // ── Formations publiées par les CHU ────────────────────────────────────────────────
     FORMATIONS_IMAGES("formations/images", TypeRessource.IMAGE),

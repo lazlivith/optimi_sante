@@ -201,14 +201,31 @@ public class CloudinaryStorageService implements StorageService {
     }
 
     @Override
+    public String uploadMedia(byte[] bytes, String fileName, DossierStockage dossier) {
+        return televerserMedia(bytes, fileName, dossier);
+    }
+
+    @Override
     public String uploadMedia(org.springframework.web.multipart.MultipartFile file, DossierStockage dossier) {
+        try {
+            return televerserMedia(file.getBytes(), file.getOriginalFilename(), dossier);
+        } catch (IOException e) {
+            log.error("Failed to read MultipartFile: {}", e.getMessage(), e);
+            throw new RuntimeException("Could not read file for upload", e);
+        }
+    }
+
+    /** Chemin commun des deux dépôts de média : le fichier téléversé et l'image déjà en mémoire. */
+    private String televerserMedia(byte[] contenu, String fileName, DossierStockage dossier) {
         if (dossier.type() == DossierStockage.TypeRessource.DOCUMENT) {
             // Un document déposé en média serait public : il doit passer par uploadFile.
             throw new IllegalArgumentException("Le dossier " + dossier + " n'accepte pas de média.");
         }
         String resourceType = dossier.type() == DossierStockage.TypeRessource.VIDEO ? "video" : "image";
         try {
-            String publicId = UUID.randomUUID().toString();
+            // Clé lisible mais unique : le nom d'origine aide à retrouver un visuel dans la console.
+            String publicId = UUID.randomUUID() + (fileName == null || fileName.isBlank() ? ""
+                    : "_" + sansExtension(fileName).replaceAll("[^A-Za-z0-9_-]", "-"));
             Map<String, Object> uploadParams = ObjectUtils.asMap(
                     "folder", arborescence.dossier(dossier),
                     "public_id", publicId,
@@ -217,7 +234,6 @@ public class CloudinaryStorageService implements StorageService {
                                                     // contrairement à "raw" utilisé pour les documents.
                     "type", "upload"
             );
-            byte[] contenu = file.getBytes();
             Map<?, ?> uploadResult = reessai.executer("Téléversement média " + publicId,
                     () -> cloudinary.uploader().upload(contenu, uploadParams));
             return uploadResult.get("public_id").toString();

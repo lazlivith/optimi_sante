@@ -65,6 +65,14 @@ public class Product {
     @Column(name = "image_url", length = 512)
     private String imageUrl;
 
+    /**
+     * Fournisseur qui livre ce produit (V58). Nul pour les références historiques, et c'est ce qui
+     * les protège : un import de catalogue ne modifie que les produits de son propre fournisseur.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supplier_id")
+    private com.optimisante.backend.domain.catalog.supplier.Supplier supplier;
+
     @Column(name = "promo_price", precision = 10, scale = 2)
     private BigDecimal promoPrice;
 
