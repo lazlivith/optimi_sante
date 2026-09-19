@@ -5,13 +5,16 @@ import { vaultService } from '../../api/vaultService';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
-import { Check, X, FileText, Loader2, Search } from 'lucide-react';
+import { Check, X, FileText, Loader2, Search, Percent } from 'lucide-react';
+import { RemiseDevisDialog } from '../../components/catalog/RemiseDevisDialog';
 import { DocumentButton } from '../../components/documents/DocumentButton';
 
 export function QuotesAdminPage() {
   const [quotes, setQuotes] = useState<OrderResponseDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  // Devis en cours d'ajustement : remise négociée avant validation, PDF réémis par le serveur.
+  const [devisAjuste, setDevisAjuste] = useState<OrderResponseDto | null>(null);
 
   useEffect(() => {
     fetchQuotes();
@@ -99,6 +102,9 @@ export function QuotesAdminPage() {
                       </td>
                       <td className="px-6 py-4 font-semibold text-slate-900">
                         {quote.totalAmount.toFixed(2)} €
+                        {quote.quoteDiscountRate != null && quote.quoteDiscountRate > 0 && (
+                          <span className="block text-xs font-medium text-brand">remise {quote.quoteDiscountRate} %</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={quote.status} />
@@ -116,6 +122,14 @@ export function QuotesAdminPage() {
                       <td className="px-6 py-4 text-right space-x-2">
                         {quote.status === 'PENDING' && (
                           <>
+                            <button
+                              onClick={() => setDevisAjuste(quote)}
+                              disabled={processingId === quote.id}
+                              className="inline-flex items-center justify-center p-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition disabled:opacity-50"
+                              title="Ajuster : remise, stock, réémission du devis"
+                            >
+                              <Percent className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => handleUpdateStatus(quote.id, 'VALIDATED')}
                               disabled={processingId === quote.id}
@@ -143,6 +157,16 @@ export function QuotesAdminPage() {
           )}
         </div>
       </div>
+      {devisAjuste && (
+        <RemiseDevisDialog
+          devis={devisAjuste}
+          onClose={() => setDevisAjuste(null)}
+          onApplique={(maj) => {
+            setQuotes((prev) => prev.map((q) => (q.id === maj.id ? maj : q)));
+            setDevisAjuste(null);
+          }}
+        />
+      )}
     </div>
   );
 }

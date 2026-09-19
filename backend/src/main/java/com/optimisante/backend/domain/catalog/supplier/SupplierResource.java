@@ -38,9 +38,24 @@ public class SupplierResource {
      * {@link FichierCatalogue} reconnaît en premier ; d'autres intitulés usuels sont acceptés.
      */
     private static final String MODELE_CSV = """
-            sku;nom;description;prix;stock;categorie;image_urls
-            PROD-001;Tensiomètre bras Omron;Tensiomètre électronique, brassard 22-42 cm;45000;15;Matériel médical;https://exemple.fr/tensiometre.jpg
-            PROD-002;Boîte de gants nitrile (100);Gants d'examen non poudrés, taille M;9500;240;Consommables;https://exemple.fr/gants-1.jpg|https://exemple.fr/gants-2.jpg
+            sku;nom;description;categorie;prix_achat_ht;prix_vente;stock;image_urls
+            PAR-500;Paracétamol 500mg;Boîte de 16 gélules;Antalgiques;1200;;5000;https://exemple.fr/paracetamol.jpg
+            TEN-OMR;Tensiomètre Omron M3;Brassard 22-42 cm;Matériel médical;32000;;150;https://exemple.fr/omron-1.jpg|https://exemple.fr/omron-2.jpg
+            """;
+
+    /**
+     * Notice du modèle. Un fournisseur qui remplit « prix_vente » impose son tarif ; laissé vide,
+     * le prix public est calculé à partir du prix d'achat et de la marge.
+     */
+    private static final String NOTICE_MODELE = """
+            # Mode d'emploi — catalogue fournisseur Optimi Santé
+            # sku ........... votre référence, obligatoire, sert de clé de mise à jour
+            # nom ........... obligatoire
+            # categorie ..... nom exact de la famille Optimi Santé ; inconnue, le produit est rangé sans catégorie
+            # prix_achat_ht . votre prix grossiste ; Optimi Santé applique sa marge pour fixer le prix public
+            # prix_vente .... à laisser vide, sauf prix public imposé
+            # stock ......... quantité disponible
+            # image_urls .... une ou plusieurs adresses, séparées par |
             """;
 
     private final SupplierService supplierService;
@@ -91,7 +106,7 @@ public class SupplierResource {
     @EcommerceAdmin
     public ResponseEntity<byte[]> modele() {
         // BOM en tête : sans lui, Excel ouvre le fichier en latin-1 et affiche « Tensiomètre ».
-        byte[] contenu = ("﻿" + MODELE_CSV).getBytes(StandardCharsets.UTF_8);
+        byte[] contenu = ("﻿" + MODELE_CSV + NOTICE_MODELE).getBytes(StandardCharsets.UTF_8);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"modele-catalogue-optimi-sante.csv\"")
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
@@ -136,6 +151,7 @@ public class SupplierResource {
     private ImportView vue(CatalogImport i) {
         List<String> motifs = new ArrayList<>();
         boolean tronque = false;
+        String margeResume = null;
         if (i.getReport() != null) {
             try {
                 Map<?, ?> rapport = JSON.readValue(i.getReport(), Map.class);
@@ -144,6 +160,8 @@ public class SupplierResource {
                     liste.forEach(m -> motifs.add(String.valueOf(m)));
                 }
                 tronque = Boolean.TRUE.equals(rapport.get("tronque"));
+                Object marges = rapport.get("marges");
+                margeResume = marges == null ? null : String.valueOf(marges);
             } catch (Exception e) {
                 log.warn("Rapport d'import {} illisible : {}", i.getId(), e.getMessage());
             }
@@ -151,7 +169,7 @@ public class SupplierResource {
         return new ImportView(i.getId(), i.getSupplier().getId(), i.getFileName(), i.getStatus().name(),
                 i.getTotalRows(), i.getToCreate(), i.getToUpdate(), i.getIgnoredRows(), i.getErrorRows(),
                 i.getProcessedRows(), i.getCreatedCount(), i.getUpdatedCount(), i.getImageCount(),
-                motifs, tronque, i.getFailureReason(),
+                motifs, tronque, margeResume, i.getFailureReason(),
                 i.getCreatedAt(), i.getConfirmedAt(), i.getFinishedAt());
     }
 

@@ -24,6 +24,8 @@ public record OrderResponseDto(
         String documentS3Key,
         String promoCode,
         BigDecimal discountAmount,
+        /** Remise accordée par l'administration sur un devis, en pourcentage (V59). Nulle sinon. */
+        BigDecimal quoteDiscountRate,
         OffsetDateTime createdAt,
         List<OrderItemDto> items
 ) {}

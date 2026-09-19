@@ -48,6 +48,16 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
             """, nativeQuery = true)
     List<Map<String, Object>> trouverParSku(@Param("tenantId") UUID tenantId, @Param("skus") Collection<String> skus);
 
+    /**
+     * Stock d'un produit, même désactivé ou retiré de la vente.
+     *
+     * <p>Native pour la même raison que {@link #trouverParSku} : le {@code @SQLRestriction} de
+     * {@code Product} masque ces produits, et un devis peut porter sur une référence entre-temps
+     * désactivée — l'administration doit quand même voir ce qui reste en magasin.</p>
+     */
+    @Query(value = "SELECT stock_quantity FROM products WHERE id = :id", nativeQuery = true)
+    Integer trouverStock(@Param("id") UUID id);
+
     // --- Requêtes admin natives : Product porte @SQLRestriction("deleted_at IS NULL AND
     // is_active = true"), qui s'applique à TOUTE requête hydratant l'entité, y compris les
     // requêtes natives. Ces méthodes retournent une projection (AdminProductRow), jamais

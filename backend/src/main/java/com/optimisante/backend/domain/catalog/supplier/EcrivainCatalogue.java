@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.util.*;
 
@@ -46,10 +47,14 @@ public class EcrivainCatalogue {
      * @param motif        pourquoi la ligne est écartée ({@link Action#IGNORER} uniquement)
      */
     public record Decision(FichierCatalogue.Ligne ligne, Action action, UUID produitId,
-                           boolean aDejaImage, String motif) {
+                           boolean aDejaImage, String motif, MargeCatalogue.Calcul prix, UUID categorieId) {
     }
 
     public record Resultat(int crees, int misAJour, int ignores, int images, List<String> motifs) {
+    }
+
+    /** Ce qu'il faut pour décider : marges des catégories et commission du fournisseur. */
+    private record Bareme(Map<String, Category> categoriesParNom, BigDecimal margeFournisseur) {
     }
 
     /**
@@ -58,6 +63,7 @@ public class EcrivainCatalogue {
      */
     @Transactional(readOnly = true)
     public List<Decision> decider(UUID tenantId, UUID supplierId, List<FichierCatalogue.Ligne> lignes) {
+        Bareme bareme = bareme(tenantId, supplierId);
         List<String> skus = lignes.stream()
                 .filter(l -> l.erreur() == null)
                 .map(l -> l.sku().toLowerCase(Locale.ROOT))
@@ -77,42 +83,64 @@ public class EcrivainCatalogue {
             }
             String cle = ligne.sku().toLowerCase(Locale.ROOT);
             if (!vusDansLeFichier.add(cle)) {
-                decisions.add(new Decision(ligne, Action.IGNORER, null, false,
-                        "Référence en double dans le fichier : seule la première ligne est retenue."));
+                decisions.add(ecartee(ligne, "Référence en double dans le fichier : seule la première ligne est retenue."));
                 continue;
             }
             Map<String, Object> existant = existants.get(cle);
             if (existant == null) {
-                decisions.add(new Decision(ligne, Action.CREER, null, false, null));
+                decisions.add(retenue(ligne, Action.CREER, null, false, bareme));
                 continue;
             }
             if (existant.get("deleted_at") != null) {
-                decisions.add(new Decision(ligne, Action.IGNORER, null, false,
-                        "Référence appartenant à un produit supprimé."));
+                decisions.add(ecartee(ligne, "Référence appartenant à un produit supprimé."));
                 continue;
             }
             Object proprietaire = existant.get("supplier_id");
             if (proprietaire == null) {
-                decisions.add(new Decision(ligne, Action.IGNORER, null, false,
-                        "Référence déjà utilisée par un produit du catalogue, sans fournisseur : non modifiée."));
+                decisions.add(ecartee(ligne, "Référence déjà utilisée par un produit du catalogue, sans fournisseur : non modifiée."));
                 continue;
             }
             if (!supplierId.equals(UUID.fromString(String.valueOf(proprietaire)))) {
-                decisions.add(new Decision(ligne, Action.IGNORER, null, false,
-                        "Référence appartenant à un autre fournisseur."));
+                decisions.add(ecartee(ligne, "Référence appartenant à un autre fournisseur."));
                 continue;
             }
             if (Boolean.FALSE.equals(existant.get("is_active"))) {
-                decisions.add(new Decision(ligne, Action.IGNORER, null, false,
-                        "Produit désactivé : réactivez-le avant de le mettre à jour."));
+                decisions.add(ecartee(ligne, "Produit désactivé : réactivez-le avant de le mettre à jour."));
                 continue;
             }
             Object image = existant.get("image_url");
-            decisions.add(new Decision(ligne, Action.METTRE_A_JOUR,
-                    UUID.fromString(String.valueOf(existant.get("id"))),
-                    image != null && !String.valueOf(image).isBlank(), null));
+            decisions.add(retenue(ligne, Action.METTRE_A_JOUR, UUID.fromString(String.valueOf(existant.get("id"))),
+                    image != null && !String.valueOf(image).isBlank(), bareme));
         }
         return decisions;
+    }
+
+    /** Ligne écartée : aucun prix n'a de sens à calculer. */
+    private static Decision ecartee(FichierCatalogue.Ligne ligne, String motif) {
+        return new Decision(ligne, Action.IGNORER, null, false, motif, null, null);
+    }
+
+    /**
+     * Ligne retenue : le prix de vente est arrêté ICI, à la décision, et non à l'écriture. C'est ce
+     * qui permet à l'analyse d'annoncer exactement le prix qui sera porté au catalogue.
+     */
+    private static Decision retenue(FichierCatalogue.Ligne ligne, Action action, UUID produitId,
+                                    boolean aDejaImage, Bareme bareme) {
+        Category categorie = ligne.categorie() == null ? null
+                : bareme.categoriesParNom().get(ligne.categorie().trim().toLowerCase(Locale.ROOT));
+        MargeCatalogue.Calcul prix = MargeCatalogue.calculer(ligne.prix(), ligne.prixAchat(),
+                categorie == null ? null : categorie.getMarginRate(), bareme.margeFournisseur());
+        return new Decision(ligne, action, produitId, aDejaImage, null, prix,
+                categorie == null ? null : categorie.getId());
+    }
+
+    private Bareme bareme(UUID tenantId, UUID supplierId) {
+        Map<String, Category> parNom = new HashMap<>();
+        categoryRepository.findByTenantId(tenantId)
+                .forEach(c -> parNom.putIfAbsent(c.getName().trim().toLowerCase(Locale.ROOT), c));
+        BigDecimal commission = supplierRepository.findById(supplierId)
+                .map(Supplier::getCommissionRate).orElse(BigDecimal.ZERO);
+        return new Bareme(parNom, commission);
     }
 
     /**
@@ -144,6 +172,11 @@ public class EcrivainCatalogue {
             }
             Category categorie = categorie(tenantId, ligne.categorie(), ligne, motifs);
             String visuel = visuels.get(ligne.sku());
+            MargeCatalogue.Calcul prix = decision.prix();
+            if (prix.origine() == MargeCatalogue.Origine.AUCUNE && ligne.prixAchat() != null) {
+                motifs.add("Ligne " + ligne.numero() + " (" + ligne.sku() + ") : aucune marge définie "
+                        + "(ni sur la catégorie, ni sur le fournisseur), prix d'achat porté tel quel.");
+            }
 
             if (decision.action() == Action.CREER) {
                 Product produit = Product.builder()
@@ -152,7 +185,8 @@ public class EcrivainCatalogue {
                         .name(ligne.nom())
                         .slug(slugUnique(tenantId, ligne.nom()))
                         .description(ligne.description())
-                        .basePrice(ligne.prix())
+                        .basePrice(prix.prixVente())
+                        .purchasePrice(ligne.prixAchat())
                         .stockQuantity(ligne.stock() != null ? ligne.stock() : 0)
                         .category(categorie)
                         .imageUrl(visuel)
@@ -170,7 +204,10 @@ public class EcrivainCatalogue {
                 // Seules les colonnes présentes dans le fichier écrasent la fiche : un fichier sans
                 // colonne description ne doit pas vider les descriptions saisies à la main.
                 produit.setName(ligne.nom());
-                produit.setBasePrice(ligne.prix());
+                produit.setBasePrice(prix.prixVente());
+                if (ligne.prixAchat() != null) {
+                    produit.setPurchasePrice(ligne.prixAchat());
+                }
                 if (ligne.description() != null) {
                     produit.setDescription(ligne.description());
                 }

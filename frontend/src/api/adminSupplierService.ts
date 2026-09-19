@@ -46,6 +46,8 @@ export interface CatalogImport {
   createdCount: number;
   updatedCount: number;
   imageCount: number;
+  /** D'où vient le prix de vente des lignes retenues (marge catégorie, fournisseur, aucune). */
+  marginSummary: string | null;
   motifs: string[];
   motifsTronques: boolean;
   failureReason: string | null;

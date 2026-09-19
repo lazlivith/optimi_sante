@@ -245,6 +245,12 @@ export function AdminSupplierDetailPage() {
               </div>
             )}
 
+            {enCours.marginSummary && (
+              <p className="text-sm text-slate-600">
+                <span className="font-semibold text-brand-dark">Prix de vente :</span> {enCours.marginSummary}.
+              </p>
+            )}
+
             {enCours.motifs.length > 0 && (
               <details className="rounded-lg border border-slate-200">
                 <summary className="px-3 py-2 text-sm font-medium text-slate-700 cursor-pointer">

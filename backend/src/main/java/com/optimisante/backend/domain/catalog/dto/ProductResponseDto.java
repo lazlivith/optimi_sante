@@ -37,5 +37,14 @@ public record ProductResponseDto(
          * corrige a plusieurs reprises sur ce projet. Une liste de catalogue n'affiche de toute
          * facon qu'une vignette : la galerie n'y sert a rien.</p>
          */
-        java.util.List<ProductMediaDtos.GalleryImageView> gallery
+        java.util.List<ProductMediaDtos.GalleryImageView> gallery,
+
+        /**
+         * Quantité à partir de laquelle la boutique propose un devis plutôt qu'un achat direct.
+         *
+         * <p>Optimi Santé vend en gros à des hôpitaux et des pharmacies : au-delà de ce volume, le
+         * prix se négocie. Le seuil vient de la configuration ({@code app.catalog.quote-threshold})
+         * et non de la fiche produit, pour qu'il se règle en un endroit.</p>
+         */
+        Integer quoteThreshold
 ) {}

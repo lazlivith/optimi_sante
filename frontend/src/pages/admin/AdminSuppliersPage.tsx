@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { SupplierFormDialog } from '../../components/catalog/SupplierFormDialog';
+import { MargesCategoriesPanel } from '../../components/catalog/MargesCategoriesPanel';
 
 /**
  * Fournisseurs du catalogue : qui livre quoi, et par où passent les imports.
@@ -166,6 +167,10 @@ export function AdminSuppliersPage() {
             </table>
           </div>
         )}
+      </div>
+
+      <div className="mt-6">
+        <MargesCategoriesPanel onErreur={(message) => setToast({ message, type: 'error' })} />
       </div>
 
       <p className="mt-4 text-sm text-slate-500 flex items-start gap-2">

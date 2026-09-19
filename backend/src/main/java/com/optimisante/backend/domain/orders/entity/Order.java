@@ -74,6 +74,22 @@ public class Order {
     @Builder.Default
     private BigDecimal discountAmount = BigDecimal.ZERO;
 
+    /**
+     * Remise accordée par l'administration sur un devis, en pourcentage (V59).
+     *
+     * <p>{@code discountAmount} porte déjà le montant, mais pas son origine : sans le taux et son
+     * auteur, un devis remisé ne dit plus ni de combien ni par qui une fois la remise fondue dans
+     * le total.</p>
+     */
+    @Column(name = "quote_discount_rate", precision = 5, scale = 2)
+    private BigDecimal quoteDiscountRate;
+
+    @Column(name = "quote_adjusted_by")
+    private java.util.UUID quoteAdjustedBy;
+
+    @Column(name = "quote_adjusted_at")
+    private java.time.OffsetDateTime quoteAdjustedAt;
+
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 

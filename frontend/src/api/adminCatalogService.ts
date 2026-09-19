@@ -53,6 +53,8 @@ export interface AdminCategoryDto {
   id: string;
   name: string;
   slug: string;
+  /** Marge appliquée au prix d'achat lors d'un import ; nulle = celle du fournisseur s'applique. */
+  marginRate: number | null;
   /** Nombre de produits vivants (supprimes exclus, desactives inclus). */
   productCount: number;
 }
@@ -118,6 +120,13 @@ export const adminCatalogService = {
   /** Formations proposees au rattachement. Perimetre negoce, contenu minimal. */
   listTrainingsForLinking: async (): Promise<TrainingLookupDto[]> => {
     const { data } = await axiosClient.get<TrainingLookupDto[]>('/admin/catalog/trainings-lookup');
+    return data;
+  },
+
+  /** Fixe la marge d'une catégorie (sans taux : la marge est retirée). */
+  setCategoryMargin: async (id: string, rate: number | null): Promise<AdminCategoryDto> => {
+    const { data } = await axiosClient.patch<AdminCategoryDto>(
+      `/admin/catalog/categories/${id}/margin${rate === null ? '' : `?rate=${rate}`}`);
     return data;
   },
 

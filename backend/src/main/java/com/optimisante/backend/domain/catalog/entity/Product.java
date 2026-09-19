@@ -42,6 +42,13 @@ public class Product {
     @Column(name = "base_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal basePrice;
 
+    /**
+     * Prix d'achat grossiste, déposé par le fournisseur (V59). Nul pour les références saisies à la
+     * main : {@code basePrice} reste alors le seul prix connu.
+     */
+    @Column(name = "purchase_price", precision = 10, scale = 2)
+    private BigDecimal purchasePrice;
+
     @Column(name = "stock_quantity")
     @Builder.Default
     private Integer stockQuantity = 0;

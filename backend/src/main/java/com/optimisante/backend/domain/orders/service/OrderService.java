@@ -240,7 +240,7 @@ public class OrderService {
                 dto.id(), dto.orderNumber(), dto.paymentMethod(), dto.paymentStatus(),
                 dto.status(), dto.isQuote(), dto.totalAmount(), dto.stripePaymentIntentId(),
                 dto.stripeCheckoutSessionId(), null, clientSecret, dto.documentS3Key(),
-                dto.promoCode(), dto.discountAmount(), dto.createdAt(), dto.items()
+                dto.promoCode(), dto.discountAmount(), dto.quoteDiscountRate(), dto.createdAt(), dto.items()
         );
     }
 
@@ -367,6 +367,13 @@ public class OrderService {
                 .map(this::mapToResponseDto);
     }
 
+    /** Une commande vue par l'administration, construite comme partout ailleurs. */
+    @Transactional(readOnly = true)
+    public OrderResponseDto getOrderForAdmin(UUID orderId) {
+        return mapToResponseDto(orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Commande introuvable.")));
+    }
+
     @Transactional
     public OrderResponseDto updateOrderStatus(UUID orderId, OrderStatus newStatus) {
         Order order = orderRepository.findById(orderId)
@@ -453,6 +460,7 @@ public class OrderService {
                 order.getDocumentS3Key(),
                 order.getPromoCode() != null ? order.getPromoCode().getCode() : null,
                 order.getDiscountAmount(),
+                order.getQuoteDiscountRate(),
                 order.getCreatedAt(),
                 itemDtos
         );

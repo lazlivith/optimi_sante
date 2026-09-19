@@ -33,6 +33,15 @@ public class Category {
     @Column(nullable = false, length = 150)
     private String slug;
 
+    /**
+     * Marge appliquée au prix d'achat des produits de cette catégorie, en pourcentage (V59).
+     *
+     * <p>Prioritaire sur la commission du fournisseur : une marge se décide d'abord par famille de
+     * produits. Nulle, on retombe sur le fournisseur.</p>
+     */
+    @Column(name = "margin_rate", precision = 5, scale = 2)
+    private java.math.BigDecimal marginRate;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Category parent;

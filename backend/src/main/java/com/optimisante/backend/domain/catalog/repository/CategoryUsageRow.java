@@ -17,4 +17,7 @@ public interface CategoryUsageRow {
     String getName();
     String getSlug();
     long getProductCount();
+
+    /** Marge appliquée aux imports de cette catégorie, en pourcentage (V59). Nulle si non fixée. */
+    java.math.BigDecimal getMarginRate();
 }

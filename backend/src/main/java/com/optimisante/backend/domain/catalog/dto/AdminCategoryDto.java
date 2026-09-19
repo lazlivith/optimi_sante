@@ -14,5 +14,7 @@ public record AdminCategoryDto(
         UUID id,
         String name,
         String slug,
+        /** Marge appliquée au prix d'achat lors d'un import ; nulle = celle du fournisseur s'applique. */
+        java.math.BigDecimal marginRate,
         long productCount
 ) {}

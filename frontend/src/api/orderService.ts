@@ -25,6 +25,8 @@ export interface OrderResponseDto {
   status: string;
   isQuote: boolean;
   totalAmount: number;
+  /** Remise accordée par l'administration sur un devis, en pourcentage. */
+  quoteDiscountRate?: number | null;
   paymentUrl?: string;
   /** Renseigné uniquement pour un paiement STRIPE_CARD : initialise le Payment Element intégré (ui_mode "elements"). */
   clientSecret?: string;

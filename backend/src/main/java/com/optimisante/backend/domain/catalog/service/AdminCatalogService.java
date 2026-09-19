@@ -151,6 +151,26 @@ public class AdminCatalogService {
         return toResponseDto(updated, categoryName);
     }
 
+    /**
+     * Fixe la marge d'une catégorie (V59). Elle ne change aucun prix déjà en place : elle servira
+     * aux prochains imports, sur les produits de cette famille.
+     */
+    @Transactional
+    public AdminCategoryDto setCategoryMargin(UUID categoryId, java.math.BigDecimal rate) {
+        if (rate != null && (rate.signum() < 0 || rate.compareTo(java.math.BigDecimal.valueOf(300)) > 0)) {
+            throw new IllegalArgumentException("La marge doit être comprise entre 0 et 300 %.");
+        }
+        UUID tenantId = requireTenantId();
+        Category categorie = categoryRepository.findById(categoryId)
+                .filter(c -> c.getTenant().getId().equals(tenantId))
+                .orElseThrow(() -> new IllegalArgumentException("Catégorie introuvable."));
+        categorie.setMarginRate(rate);
+        categoryRepository.save(categorie);
+        return listCategoriesWithCounts().stream()
+                .filter(c -> c.id().equals(categoryId)).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Catégorie introuvable après enregistrement."));
+    }
+
     private String generateUniqueSlug(UUID tenantId, String name) {
         String base = slugify(name);
         String slug = base;
@@ -245,7 +265,7 @@ public class AdminCatalogService {
     public java.util.List<AdminCategoryDto> listCategoriesWithCounts() {
         return categoryRepository.findAllWithProductCount(requireTenantId()).stream()
                 .map(row -> new AdminCategoryDto(
-                        row.getId(), row.getName(), row.getSlug(), row.getProductCount()))
+                        row.getId(), row.getName(), row.getSlug(), row.getMarginRate(), row.getProductCount()))
                 .toList();
     }
 

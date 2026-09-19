@@ -157,6 +157,10 @@ public class CatalogService {
         return BigDecimal.ZERO;
     }
 
+    /** Volume à partir duquel la boutique propose un devis. Voir {@code ProductResponseDto#quoteThreshold}. */
+    @org.springframework.beans.factory.annotation.Value("${app.catalog.quote-threshold:50}")
+    private int seuilDevis;
+
     private ProductResponseDto mapToProductDto(Product product, BigDecimal b2bDiscountRate) {
         return mapToProductDto(product, b2bDiscountRate, null);
     }
@@ -220,7 +224,8 @@ public class CatalogService {
                 product.getVideoUrl(),
                 product.getVideoProvider(),
                 Boolean.TRUE.equals(product.getIsVideoPromoted()),
-                galerie == null ? java.util.List.of() : galerie
+                galerie == null ? java.util.List.of() : galerie,
+                seuilDevis
         );
     }
 }

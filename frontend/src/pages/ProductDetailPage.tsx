@@ -101,6 +101,12 @@ export function ProductDetailPage() {
   };
 
   const agir = () => (product.isQuoteOnly ? setIsQuoteModalOpen(true) : handleAddToCart());
+  /**
+   * Optimi Santé vend en gros : au-delà du seuil, le prix se négocie. Le bouton d'achat direct
+   * reste là — le devis s'ajoute, il ne remplace rien.
+   */
+  const seuilDevis = product.quoteThreshold ?? 50;
+  const grosVolume = !product.isQuoteOnly && quantity >= seuilDevis;
   const fiche = lireFiche(product.description);
   const apparentes = (memeRayon?.content ?? []).filter((p) => p.id !== product.id).slice(0, 4);
 
@@ -185,6 +191,8 @@ export function ProductDetailPage() {
             setQuantity={setQuantity}
             agir={agir}
             ancre={ancreAchat}
+            grosVolume={grosVolume}
+            demanderDevis={() => setIsQuoteModalOpen(true)}
           />
 
           {product.relatedTraining && (
@@ -292,12 +300,15 @@ export function ProductDetailPage() {
 }
 
 /** Prix, disponibilité, quantité, achat. Tout ce qu'il faut pour décider. */
-function PanneauAchat({ product, quantity, setQuantity, agir, ancre }: {
+function PanneauAchat({ product, quantity, setQuantity, agir, ancre, grosVolume, demanderDevis }: {
   product: Product;
   quantity: number;
   setQuantity: (n: number) => void;
   agir: () => void;
   ancre: React.RefObject<HTMLDivElement | null>;
+  /** Vrai au-delà du seuil de gros volume : le prix se négocie alors par devis. */
+  grosVolume: boolean;
+  demanderDevis: () => void;
 }) {
   const remise = product.isOnPromo && product.basePrice > product.finalPrice
     ? Math.round((1 - product.finalPrice / product.basePrice) * 100)
@@ -381,6 +392,24 @@ function PanneauAchat({ product, quantity, setQuantity, agir, ancre }: {
           {product.isQuoteOnly ? 'Demander un devis' : enRupture ? 'Indisponible' : 'Ajouter au panier'}
         </button>
       </div>
+
+      {/* Gros volume : l'achat direct reste possible, le devis s'ajoute. Optimi Santé approvisionne
+          des hôpitaux et des pharmacies, et à partir de ce volume le tarif se négocie. */}
+      {grosVolume && (
+        <div className="mt-3 rounded-xl border border-brand/30 bg-brand-light/40 p-4">
+          <p className="text-sm font-semibold text-brand-dark">Commande en gros volume</p>
+          <p className="mt-1 text-sm text-slate-600">
+            À partir de {product.quoteThreshold ?? 50} unités, demandez un devis : nos équipes
+            étudient un tarif dégressif et les délais de livraison.
+          </p>
+          <button
+            type="button" onClick={demanderDevis}
+            className="mt-3 inline-flex h-11 items-center justify-center rounded-xl border border-brand px-5 font-bold text-brand transition-colors hover:bg-brand hover:text-white"
+          >
+            Demander un devis B2B
+          </button>
+        </div>
+      )}
 
       <ul className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5">
         <li className="flex items-center gap-3">

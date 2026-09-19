@@ -138,6 +138,10 @@ app:
     kms:
       endpoint: ${AWS_KMS_ENDPOINT:http://localhost:4566}
       key-id: ${AWS_KMS_KEY_ID:default-kms-key-id}
+  catalog:
+    # Quantité à partir de laquelle la boutique propose « Demander un devis » plutôt que l'achat
+    # direct : Optimi Santé vend en gros, et au-delà de ce volume le prix se négocie.
+    quote-threshold: ${CATALOG_QUOTE_THRESHOLD:50}
   cloudinary:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:default}
     api-key: ${CLOUDINARY_API_KEY:default}

@@ -91,7 +91,7 @@ public class CatalogImportService {
                 .toUpdate((int) majs)
                 .ignoredRows((int) ignorees)
                 .errorRows((int) erreurs)
-                .report(enJson(motifs, (int) (erreurs + ignorees)))
+                .report(enJson(motifs, (int) (erreurs + ignorees), resumeDesMarges(decisions)))
                 .createdBy(adminId)
                 .build();
         log.info("Import analysé pour le fournisseur {} : {} création(s), {} mise(s) à jour, {} écartée(s), {} refusée(s)",
@@ -176,15 +176,41 @@ public class CatalogImportService {
         }
     }
 
-    private String enJson(List<String> motifs, int total) {
+    private String enJson(List<String> motifs, int total, String resumeMarges) {
         try {
-            return JSON.writeValueAsString(Map.of(
-                    "motifs", motifs,
-                    "total", total,
-                    "tronque", total > motifs.size()));
+            Map<String, Object> rapport = new java.util.LinkedHashMap<>();
+            rapport.put("motifs", motifs);
+            rapport.put("total", total);
+            rapport.put("tronque", total > motifs.size());
+            rapport.put("marges", resumeMarges);
+            return JSON.writeValueAsString(rapport);
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * D'où viendra le prix de vente, ligne par ligne, résumé en une phrase.
+     *
+     * <p>Annoncé AVANT confirmation : une catégorie sans marge et un fournisseur sans commission
+     * feraient revendre au prix d'achat, et cela doit se voir avant que deux mille prix ne soient
+     * écrits, pas après.</p>
+     */
+    private static String resumeDesMarges(List<EcrivainCatalogue.Decision> decisions) {
+        Map<MargeCatalogue.Origine, Long> parOrigine = decisions.stream()
+                .filter(d -> d.prix() != null)
+                .collect(java.util.stream.Collectors.groupingBy(d -> d.prix().origine(),
+                        java.util.stream.Collectors.counting()));
+        List<String> morceaux = new ArrayList<>();
+        long categorie = parOrigine.getOrDefault(MargeCatalogue.Origine.CATEGORIE, 0L);
+        long fournisseur = parOrigine.getOrDefault(MargeCatalogue.Origine.FOURNISSEUR, 0L);
+        long aucune = parOrigine.getOrDefault(MargeCatalogue.Origine.AUCUNE, 0L);
+        long fourni = parOrigine.getOrDefault(MargeCatalogue.Origine.PRIX_DE_VENTE_FOURNI, 0L);
+        if (categorie > 0) morceaux.add(categorie + " au taux de la catégorie");
+        if (fournisseur > 0) morceaux.add(fournisseur + " au taux du fournisseur");
+        if (aucune > 0) morceaux.add(aucune + " sans marge (prix d'achat tel quel)");
+        if (fourni > 0) morceaux.add(fourni + " au prix de vente du fichier");
+        return morceaux.isEmpty() ? null : String.join(" · ", morceaux);
     }
 
     private static UUID requireTenant() {

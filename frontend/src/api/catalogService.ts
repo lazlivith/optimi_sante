@@ -28,6 +28,8 @@ export interface Product {
   b2bDiscountRate: number;
   stockQuantity: number;
   isQuoteOnly: boolean;
+  /** Quantité à partir de laquelle la boutique propose un devis plutôt qu'un achat direct. */
+  quoteThreshold?: number;
   imageUrl?: string;
   category?: Category;
   isOnPromo?: boolean;

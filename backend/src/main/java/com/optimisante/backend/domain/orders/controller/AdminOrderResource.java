@@ -6,6 +6,7 @@ import com.optimisante.backend.domain.document.service.PdfGeneratorService;
 import com.optimisante.backend.domain.orders.dto.OrderResponseDto;
 import com.optimisante.backend.domain.orders.entity.OrderStatus;
 import com.optimisante.backend.domain.orders.service.OrderService;
+import com.optimisante.backend.domain.orders.service.RemiseDevisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import com.optimisante.backend.config.security.EcommerceAdmin;
@@ -28,6 +30,7 @@ public class AdminOrderResource {
     private final OrderService orderService;
     private final PdfGeneratorService pdfGeneratorService;
     private final StorageService storageService;
+    private final RemiseDevisService remiseDevisService;
 
     @GetMapping
     @EcommerceAdmin
@@ -51,6 +54,26 @@ public class AdminOrderResource {
     public ResponseEntity<Void> confirmPayment(@PathVariable UUID id) {
         orderService.confirmOrderPayment(id);
         return ResponseEntity.ok().build();
+    }
+
+    /** Lignes d'un devis, avec le stock disponible : ce que l'administration engage en validant. */
+    @GetMapping("/{id}/quote-lines")
+    @EcommerceAdmin
+    public ResponseEntity<List<RemiseDevisService.LigneDevis>> quoteLines(@PathVariable UUID id) {
+        return ResponseEntity.ok(remiseDevisService.lignes(id));
+    }
+
+    /** Remise globale accordée sur un devis ; le PDF est réémis avec les montants ajustés. */
+    @PostMapping("/{id}/quote-discount")
+    @EcommerceAdmin
+    public ResponseEntity<OrderResponseDto> applyQuoteDiscount(
+            @PathVariable UUID id,
+            @RequestParam java.math.BigDecimal rate,
+            org.springframework.security.core.Authentication auth) {
+        UUID adminId = UUID.fromString(auth.getPrincipal().toString());
+        remiseDevisService.appliquerRemise(id, rate, adminId);
+        // Le devis est relu après remise : une seule construction de réponse, celle du service.
+        return ResponseEntity.ok(orderService.getOrderForAdmin(id));
     }
 
     @PatchMapping("/{id}/status")
@@ -95,7 +118,8 @@ public class AdminOrderResource {
                         updatedOrder.id(), updatedOrder.orderNumber(), updatedOrder.paymentMethod(), updatedOrder.paymentStatus(),
                         updatedOrder.status(), updatedOrder.isQuote(), updatedOrder.totalAmount(), updatedOrder.stripePaymentIntentId(),
                         updatedOrder.stripeCheckoutSessionId(), updatedOrder.paymentUrl(), updatedOrder.clientSecret(), publicId,
-                        updatedOrder.promoCode(), updatedOrder.discountAmount(), updatedOrder.createdAt(), updatedOrder.items()
+                        updatedOrder.promoCode(), updatedOrder.discountAmount(), updatedOrder.quoteDiscountRate(),
+                        updatedOrder.createdAt(), updatedOrder.items()
                 );
 
                 log.info("PDF generated and uploaded for order {}: publicId={}", id, publicId);

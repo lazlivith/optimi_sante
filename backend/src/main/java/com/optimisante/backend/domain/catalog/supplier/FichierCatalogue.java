@@ -34,7 +34,11 @@ public final class FichierCatalogue {
             "sku", List.of("sku", "reference", "ref", "code", "code_produit"),
             "nom", List.of("nom", "name", "libelle", "designation", "intitule"),
             "description", List.of("description", "desc", "details"),
-            "prix", List.of("prix", "prix_ht", "prix_ttc", "price", "tarif", "prix_vente"),
+            // Deux prix distincts : ce que le fournisseur facture, et ce que la boutique affiche.
+            // « prix » seul reste un prix de vente, pour ne pas changer le sens des fichiers déjà déposés.
+            "prix_achat", List.of("prix_achat_ht", "prix_achat", "prix_achat_ttc", "prix_d_achat", "prix_d_achat_ht",
+                    "achat", "cout", "cout_achat", "prix_fournisseur", "purchase_price", "cost"),
+            "prix", List.of("prix", "prix_ht", "prix_ttc", "price", "tarif", "prix_vente", "prix_public"),
             "stock", List.of("stock", "quantite", "qty", "quantity", "stock_quantity"),
             "categorie", List.of("categorie", "famille", "category", "rayon"),
             "images", List.of("image_urls", "image_url", "images", "image", "photo", "lien_photo", "photos"));
@@ -47,10 +51,11 @@ public final class FichierCatalogue {
      * champs peuvent alors être incomplets.
      */
     public record Ligne(int numero, String sku, String nom, String description, BigDecimal prix,
-                        Integer stock, String categorie, List<String> images, String erreur) {
+                        BigDecimal prixAchat, Integer stock, String categorie, List<String> images,
+                        String erreur) {
 
         static Ligne refusee(int numero, String sku, String motif) {
-            return new Ligne(numero, sku, null, null, null, null, null, List.of(), motif);
+            return new Ligne(numero, sku, null, null, null, null, null, null, List.of(), motif);
         }
     }
 
@@ -98,15 +103,21 @@ public final class FichierCatalogue {
         }
 
         BigDecimal prix;
+        BigDecimal prixAchat;
         try {
             prix = montant(valeur(ligne, index, "prix"));
         } catch (NumberFormatException e) {
-            return Ligne.refusee(numero, sku, "Prix illisible : « " + valeur(ligne, index, "prix") + " ».");
+            return Ligne.refusee(numero, sku, "Prix de vente illisible : « " + valeur(ligne, index, "prix") + " ».");
         }
-        if (prix == null) {
-            return Ligne.refusee(numero, sku, "Prix absent.");
+        try {
+            prixAchat = montant(valeur(ligne, index, "prix_achat"));
+        } catch (NumberFormatException e) {
+            return Ligne.refusee(numero, sku, "Prix d'achat illisible : « " + valeur(ligne, index, "prix_achat") + " ».");
         }
-        if (prix.signum() < 0) {
+        if (prix == null && prixAchat == null) {
+            return Ligne.refusee(numero, sku, "Prix absent : indiquez un prix d'achat ou un prix de vente.");
+        }
+        if ((prix != null && prix.signum() < 0) || (prixAchat != null && prixAchat.signum() < 0)) {
             return Ligne.refusee(numero, sku, "Prix négatif.");
         }
 
@@ -120,8 +131,8 @@ public final class FichierCatalogue {
             return Ligne.refusee(numero, sku, "Stock négatif.");
         }
 
-        return new Ligne(numero, sku.trim(), nom.trim(), valeur(ligne, index, "description"), prix, stock,
-                valeur(ligne, index, "categorie"), images(valeur(ligne, index, "images")), null);
+        return new Ligne(numero, sku.trim(), nom.trim(), valeur(ligne, index, "description"), prix, prixAchat,
+                stock, valeur(ligne, index, "categorie"), images(valeur(ligne, index, "images")), null);
     }
 
     /** Plusieurs images dans une seule cellule, séparées par « | », « , » ou un espace. */

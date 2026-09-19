@@ -109,6 +109,14 @@ public class AdminCatalogResource {
      * porte l'arborescence) : l'administration a besoin du compteur, la boutique n'a que
      * faire de savoir combien de produits une catégorie contient.</p>
      */
+    /** Marge d'une catégorie, appliquée aux imports fournisseurs (V59). */
+    @PatchMapping("/categories/{id}/margin")
+    public ResponseEntity<AdminCategoryDto> setCategoryMargin(
+            @PathVariable UUID id,
+            @RequestParam(required = false) java.math.BigDecimal rate) {
+        return ResponseEntity.ok(adminCatalogService.setCategoryMargin(id, rate));
+    }
+
     @GetMapping("/categories")
     public ResponseEntity<List<AdminCategoryDto>> listCategories() {
         return ResponseEntity.ok(adminCatalogService.listCategoriesWithCounts());
