@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # Connexion PostgreSQL. En docker-compose : postgresql+psycopg2://postgres:...@postgres:5432/optimisante_db
-    database_url: str = "postgresql+psycopg2://postgres:Investx2026@localhost:5051/optimisante_db"
+    database_url: str = "postgresql+psycopg2://postgres:CHANGEZ_MOI@localhost:5051/optimisante_db"
 
     # Répertoire où sont écrits les livrables (CSV / XLSX). Monté en volume en docker-compose.
     export_dir: str = "/exports"

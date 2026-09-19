@@ -24,7 +24,9 @@ spring:
   datasource:
     url: jdbc:postgresql://127.0.0.1:5051/optimisante_db
     username: postgres
-    password: Investx2026
+    # Aucun mot de passe écrit ici : il vit dans docker/.env (POSTGRES_PASSWORD), que Git ignore.
+    # En conteneur, SPRING_DATASOURCE_PASSWORD prend le relais. Hors conteneur, exportez DB_PASSWORD.
+    password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10

@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: optimisante_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Investx2026
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - optimisante-pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -39,7 +39,7 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/optimisante_db
       - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=Investx2026
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
       - SPRING_DATA_REDIS_HOST=redis
       # Identifiants Cloudinary reels dans docker/.env (jamais pousse sur Git) - voir
       # docker/.env.example pour la marche a suivre.
@@ -89,7 +89,7 @@ services:
     ports:
       - "8100:8100"
     environment:
-      - DATABASE_URL=postgresql+psycopg2://postgres:Investx2026@postgres:5432/optimisante_db
+      - DATABASE_URL=postgresql+psycopg2://postgres:${POSTGRES_PASSWORD}@postgres:5432/optimisante_db
       - EXPORT_DIR=/exports
       - SCHEDULER_ENABLED=true
       - SCHEDULE_CRON_HOUR=2
@@ -117,7 +117,7 @@ services:
       - CHAT_MODEL=${CHAT_MODEL:-mistral/mistral-small-latest}
       - DRAFT_MODEL=${DRAFT_MODEL:-mistral/mistral-small-latest}
       - BACKEND_BASE_URL=http://backend:8080
-      - DATABASE_URL=postgresql+psycopg2://postgres:Investx2026@postgres:5432/optimisante_db
+      - DATABASE_URL=postgresql+psycopg2://postgres:${POSTGRES_PASSWORD}@postgres:5432/optimisante_db
     depends_on:
       - postgres
     restart: unless-stopped

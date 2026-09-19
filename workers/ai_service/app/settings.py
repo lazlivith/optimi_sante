@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     backend_base_url: str = "http://backend:8080"
 
     # --- Base de données (lecture de contexte catalogue) ----------------------
-    database_url: str = "postgresql+psycopg2://postgres:Investx2026@postgres:5432/optimisante_db"
+    database_url: str = "postgresql+psycopg2://postgres:CHANGEZ_MOI@postgres:5432/optimisante_db"
 
     def provider_of(self, model: str) -> str:
         return model.split("/", 1)[0] if "/" in model else model
