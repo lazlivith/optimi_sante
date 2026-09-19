@@ -9,7 +9,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Récupère le visuel d'un produit depuis l'adresse fournie dans le fichier catalogue.
@@ -29,6 +31,16 @@ import java.util.Optional;
 public class TelechargeurImage {
 
     static final long TAILLE_MAX_OCTETS = 8L * 1024 * 1024;
+
+    /**
+     * Formats d'image acceptés — matriciels seulement.
+     *
+     * <p><b>Le SVG est écarté volontairement.</b> Ce n'est pas une image mais un document XML, qui
+     * peut porter du script et appeler des ressources distantes. Il serait servi depuis le domaine
+     * de Cloudinary, donc sans effet sur les sessions de la plateforme, mais un visuel de produit
+     * n'a aucune raison d'être exécutable : autant ne pas le déposer du tout.</p>
+     */
+    private static final Set<String> FORMATS_ACCEPTES = Set.of("image/jpeg", "image/png", "image/webp");
 
     /** Trois sauts suffisent aux redirections légitimes d'un hébergeur d'images. */
     private static final int REDIRECTIONS_MAX = 3;
@@ -54,9 +66,9 @@ public class TelechargeurImage {
                 log.debug("Image {} : réponse {}", url, reponse.statusCode());
                 return Optional.empty();
             }
-            String type = reponse.headers().firstValue("content-type").orElse("");
-            if (!type.startsWith("image/")) {
-                log.debug("Image {} : type {} inattendu", url, type);
+            String type = typeAnnonce(reponse.headers().firstValue("content-type").orElse(""));
+            if (!FORMATS_ACCEPTES.contains(type)) {
+                log.debug("Image {} : type {} refusé", url, type.isEmpty() ? "absent" : type);
                 return Optional.empty();
             }
             byte[] contenu = reponse.body();
@@ -104,6 +116,17 @@ public class TelechargeurImage {
         }
         log.debug("Image {} : plus de {} redirections", adresse, REDIRECTIONS_MAX);
         return null;
+    }
+
+    /**
+     * Type MIME sans ses paramètres, normalisé. {@code image/jpg}, répandu bien que non
+     * standard, désigne un JPEG : le refuser écarterait des visuels parfaitement valides.
+     */
+    private static String typeAnnonce(String contentType) {
+        int pointVirgule = contentType.indexOf(';');
+        String type = (pointVirgule < 0 ? contentType : contentType.substring(0, pointVirgule))
+                .trim().toLowerCase(Locale.ROOT);
+        return type.equals("image/jpg") ? "image/jpeg" : type;
     }
 
     private static String nomDepuisUrl(String url) {

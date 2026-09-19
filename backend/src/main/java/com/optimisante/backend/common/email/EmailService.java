@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
 
 @Slf4j
 @Service
@@ -66,15 +67,36 @@ public class EmailService {
                         <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
                     </div>
                 </div>
-                """.formatted(recipientName, roleLabel, toEmail, temporaryPassword, loginUrl);
+                """.formatted(texte(recipientName), texte(roleLabel), texte(toEmail),
+                              texte(temporaryPassword), texte(loginUrl));
 
         send(toEmail, subject, html, EmailType.CREDENTIALS, recipientUserId);
+    }
+
+    /**
+     * Rend une valeur affichable dans le corps HTML d'un message.
+     *
+     * <p><b>Pourquoi.</b> Ces messages sont du HTML assemblé par interpolation, et plusieurs
+     * portent un texte saisi par quelqu'un d'autre que le destinataire : le nom du médecin part
+     * vers l'établissement, l'intitulé d'une formation vers le médecin. Sans échappement, un nom
+     * contenant une balise se retrouve interprété chez le lecteur — au mieux la mise en page
+     * casse, au pire le message affiche un lien que personne n'a écrit.</p>
+     *
+     * <p>Les mots de passe provisoires n'emploient que des lettres et des chiffres
+     * ({@code TemporaryPasswordGenerator}) : les faire passer ici ne les altère pas.</p>
+     */
+    private static String texte(String valeur) {
+        return valeur == null ? "" : HtmlUtils.htmlEscape(valeur);
     }
 
     /**
      * Envoi d'un e-mail transactionnel générique : {@code innerHtml} est le corps du message,
      * inséré dans la charte visuelle commune (en-tête vert, pied de page). Échec non bloquant,
      * comme {@link #sendCredentialsEmail} — utilisé par le {@code NotificationDispatcher}.
+     *
+     * <p><b>{@code innerHtml} est du HTML, et le reste.</b> L'appelant compose sa mise en forme ;
+     * c'est donc à lui d'échapper ce qu'il y insère et qui vient d'un utilisateur, comme le fait
+     * {@code DoctorApplicationService}. Le titre, lui, est échappé ici.</p>
      */
     public void sendHtml(String to, String subject, String heading, String innerHtml) {
         if (to == null || to.isBlank()) {
@@ -95,7 +117,7 @@ public class EmailService {
                         <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
                     </div>
                 </div>
-                """.formatted(heading, innerHtml);
+                """.formatted(texte(heading), innerHtml);
     }
 
     /**
@@ -157,7 +179,8 @@ public class EmailService {
                         <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
                     </div>
                 </div>
-                """.formatted(doctorName, institutionName, trainingTitle, nombreCreneaux, dossierUrl);
+                """.formatted(texte(doctorName), texte(institutionName), texte(trainingTitle),
+                              nombreCreneaux, texte(dossierUrl));
 
         send(toEmail, subject, html, EmailType.INTERVIEW_SLOTS, recipientUserId);
     }
@@ -198,8 +221,8 @@ public class EmailService {
                         <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
                     </div>
                 </div>
-                """.formatted(destinataire, doctorName, trainingTitle, creneau,
-                              meetingLink, meetingLink, meetingLink);
+                """.formatted(texte(destinataire), texte(doctorName), texte(trainingTitle), texte(creneau),
+                              texte(meetingLink), texte(meetingLink), texte(meetingLink));
 
         send(toEmail, subject, html, EmailType.INTERVIEW_CONFIRMED, recipientUserId);
     }
@@ -241,7 +264,8 @@ public class EmailService {
                         <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
                     </div>
                 </div>
-                """.formatted(destinataire, motif, montant, date, moyenPaiement, numeroRecu);
+                """.formatted(texte(destinataire), texte(motif), texte(montant), texte(date),
+                              texte(moyenPaiement), texte(numeroRecu));
 
         send(toEmail, subject, html, EmailType.PAYMENT_CONFIRMATION, recipientUserId,
              recuPdf == null ? null : PieceJointe.pdf(nomFichierRecu, recuPdf));

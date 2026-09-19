@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.HtmlUtils;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -49,7 +50,7 @@ public class NotificationDispatcher {
         if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
             emailService.sendHtml(e.doctorEmail(), "Optimi Santé — Votre dossier de formation a évolué",
                     "Mise à jour de votre dossier",
-                    "<p>" + body + "</p><p>Connectez-vous à votre espace médecin pour le détail.</p>");
+                    "<p>" + texte(body) + "</p><p>Connectez-vous à votre espace médecin pour le détail.</p>");
         }
     }
 
@@ -105,7 +106,7 @@ public class NotificationDispatcher {
                 "ENROLLMENT_SUBMITTED:" + e.enrollmentId());
         emailAdmins("Optimi Santé — Nouveau dossier de candidature",
                 "Nouveau dossier à instruire",
-                "<p>" + body + "</p><p>Adresse du candidat : " + e.doctorEmail() + "</p>");
+                "<p>" + texte(body) + "</p><p>Adresse du candidat : " + texte(e.doctorEmail()) + "</p>");
     }
 
     /** Dossier transmis au CHU : le medecin apprend que son dossier a passe la revue interne. */
@@ -130,7 +131,7 @@ public class NotificationDispatcher {
         if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
             emailService.sendHtml(e.doctorEmail(),
                     "Optimi Santé — Votre dossier est transmis à l'établissement",
-                    "Votre dossier est en cours de traitement", "<p>" + body + "</p>");
+                    "Votre dossier est en cours de traitement", "<p>" + texte(body) + "</p>");
         }
     }
 
@@ -152,7 +153,7 @@ public class NotificationDispatcher {
             emailService.sendHtml(e.doctorEmail(),
                     "Optimi Santé — Une pièce de votre dossier est à corriger",
                     "Votre dossier demande une correction",
-                    "<p>" + body + "</p><p>Déposez la pièce demandée depuis votre espace médecin, "
+                    "<p>" + texte(body) + "</p><p>Déposez la pièce demandée depuis votre espace médecin, "
                             + "puis resoumettez votre dossier.</p>");
         }
     }
@@ -189,12 +190,12 @@ public class NotificationDispatcher {
                 "ENROLLMENT_ACTION:" + e.enrollmentId());
 
         emailAdmins("Optimi Santé — L'établissement réclame une pièce",
-                "Demande de pièce complémentaire", "<p>" + body + "</p>");
+                "Demande de pièce complémentaire", "<p>" + texte(body) + "</p>");
         if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
             emailService.sendHtml(e.doctorEmail(),
                     "Optimi Santé — Une pièce complémentaire est demandée",
                     "Votre dossier demande une pièce",
-                    "<p>" + doctorBody + "</p><p>Déposez-la depuis votre espace médecin, "
+                    "<p>" + texte(doctorBody) + "</p><p>Déposez-la depuis votre espace médecin, "
                             + "puis resoumettez votre dossier.</p>");
         }
     }
@@ -232,7 +233,7 @@ public class NotificationDispatcher {
                             ? "Optimi Santé — Votre candidature est acceptée"
                             : "Optimi Santé — Réponse à votre candidature",
                     e.accepted() ? "Candidature acceptée" : "Candidature refusée",
-                    "<p>" + body + "</p>");
+                    "<p>" + texte(body) + "</p>");
         }
     }
 
@@ -290,7 +291,7 @@ public class NotificationDispatcher {
 
         if (notifications.emailAllowed(e.doctorUserId(), "DOCUMENT_ISSUED")) {
             emailService.sendHtml(e.doctorEmail(), "Optimi Santé — " + capitalize(e.kind()) + " disponible",
-                    "Votre document est prêt", "<p>" + body + "</p>");
+                    "Votre document est prêt", "<p>" + texte(body) + "</p>");
         }
     }
 
@@ -305,7 +306,7 @@ public class NotificationDispatcher {
                 "MOBILITY:" + e.enrollmentId() + ":" + e.newStatus());
         if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
             emailService.sendHtml(e.doctorEmail(), "Optimi Santé — Avancement de votre dossier",
-                    "Votre dossier avance", "<p>" + body + "</p>");
+                    "Votre dossier avance", "<p>" + texte(body) + "</p>");
         }
     }
 
@@ -326,7 +327,7 @@ public class NotificationDispatcher {
 
         if (notifications.emailAllowed(e.doctorUserId(), "ENROLLMENT_STATUS")) {
             emailService.sendHtml(e.doctorEmail(), "Optimi Santé — Votre dossier a été annulé",
-                    "Dossier annulé", "<p>" + body + "</p>");
+                    "Dossier annulé", "<p>" + texte(body) + "</p>");
         }
     }
 
@@ -367,9 +368,23 @@ public class NotificationDispatcher {
                 "Optimi Santé — Réponse à votre demande de partenariat",
                 "Votre demande de partenariat",
                 "<p>Bonjour,</p><p>Après examen, la demande de partenariat de "
-                        + e.institutionName() + " n'a pas été retenue"
-                        + (e.reason() == null || e.reason().isBlank() ? "." : " : " + e.reason())
+                        + texte(e.institutionName()) + " n'a pas été retenue"
+                        + (e.reason() == null || e.reason().isBlank() ? "." : " : " + texte(e.reason()))
                         + "</p><p>Vous pouvez nous recontacter si votre situation évolue.</p>");
+    }
+
+    /**
+     * Rend un texte saisi par un tiers affichable dans le corps HTML d'un message.
+     *
+     * <p>Ces corps sont assemblés par concaténation, et ce qu'ils portent vient de quelqu'un :
+     * le nom d'un médecin, l'intitulé d'une formation, le motif écrit par un administrateur.
+     * Sans cela, une balise dans l'un de ces champs serait interprétée chez le lecteur.</p>
+     *
+     * <p>L'échappement se fait ici, au moment d'écrire du HTML, et non sur le texte lui-même :
+     * le même libellé part aussi en notification dans l'application, où il doit rester tel quel.</p>
+     */
+    private static String texte(String valeur) {
+        return valeur == null ? "" : HtmlUtils.htmlEscape(valeur);
     }
 
     private static String capitalize(String value) {
