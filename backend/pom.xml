@@ -196,6 +196,29 @@
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<systemPropertyVariables>
+						<!--
+							Version de l'API Docker demandee aux tests qui demarrent un conteneur.
+
+							Le client Java embarque par Testcontainers reclame la 1.32 et ne negocie
+							pas. Un demon recent (Engine 29, MinAPIVersion 1.44) refuse alors la
+							premiere requete par un « 400 » au corps vide, que Testcontainers
+							rapporte comme « Could not find a valid Docker environment » : le
+							diagnostic accuse le socket alors que ni le pipe Windows ni le port TCP
+							ne sont en cause. 1.44 est le plancher, servi par tout Docker depuis la
+							version 25 (janvier 2024).
+
+							A poser ici, et non dans testcontainers.properties : la cle n'y est pas
+							lue (verifie).
+						-->
+						<api.version>1.44</api.version>
+					</systemPropertyVariables>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<executions>
 					<execution>
