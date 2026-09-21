@@ -61,6 +61,16 @@ public class PdfGeneratorService {
         return generatePdfFromTemplate("convention-tripartite", conventionData);
     }
 
+    /**
+     * Convention de formation professionnelle continue, pour un praticien exerçant en France.
+     *
+     * <p>Distincte de la convention tripartite : celle-ci organise un accueil et une mobilité,
+     * celle-là un achat de formation opposable à un financeur — DPC, FIF-PL ou employeur.</p>
+     */
+    public byte[] generateDpcConventionPdf(Map<String, Object> conventionData) {
+        return generatePdfFromTemplate("convention-dpc", conventionData);
+    }
+
     public byte[] generatePartnershipConventionPdf(Map<String, Object> data) {
         return generatePdfFromTemplate("convention-partenariat", data);
     }

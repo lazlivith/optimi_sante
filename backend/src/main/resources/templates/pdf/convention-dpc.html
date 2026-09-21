@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Convention de formation professionnelle</title>
+    <!--
+      Convention de formation professionnelle continue (articles L.6353-1 et suivants du Code du
+      travail), destinée aux praticiens exerçant en France.
+
+      Elle ne remplace pas la convention tripartite : celle-ci organise un accueil et une mobilité,
+      celle-là un achat de formation opposable à un financeur (DPC, FIF-PL, employeur). Les deux
+      parcours n'ont ni les mêmes parties ni les mêmes obligations — un seul document conditionnel
+      aurait mélangé deux contrats.
+
+      Toutes les valeurs passent par th:text : Thymeleaf les échappe, un intitulé de formation ou
+      un nom ne peut donc pas altérer la mise en page du document.
+    -->
+    <style>
+        @page { size: A4 portrait; margin: 18mm; }
+        body { font-family: Arial, sans-serif; font-size: 10.5pt; color: #333333; line-height: 1.5; }
+        .titre { text-align: center; border-bottom: 2px solid #117098; padding-bottom: 8px; margin-bottom: 18px; }
+        .titre h1 { color: #117098; font-size: 16pt; margin: 0; text-transform: uppercase; }
+        .titre p { font-size: 9.5pt; color: #666; margin: 6px 0 0 0; }
+        h2 { font-size: 11pt; color: #117098; margin: 16px 0 6px 0; border-bottom: 1px solid #dde5e9; padding-bottom: 3px; }
+        table.parties { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+        table.parties td { vertical-align: top; width: 50%; padding: 8px 10px; border: 1px solid #dde5e9; }
+        table.faits { width: 100%; border-collapse: collapse; margin: 6px 0; }
+        table.faits td { border: 1px solid #dde5e9; padding: 6px 8px; }
+        table.faits td.libelle { background: #f4f7f8; width: 38%; color: #555; }
+        .mention { font-size: 9pt; color: #666; }
+        .signatures { width: 100%; margin-top: 22px; border-collapse: collapse; }
+        .signatures td { width: 50%; padding: 10px; vertical-align: top; }
+        .cadre-signature { border: 1px solid #b9c7ce; height: 70px; margin-top: 6px; }
+    </style>
+</head>
+<body>
+
+<div th:replace="~{components/header :: header}"></div>
+
+<div class="titre">
+    <h1>Convention de formation professionnelle</h1>
+    <p>Articles L.6353-1 et suivants du Code du travail — <span th:text="${reference}">RÉFÉRENCE</span></p>
+</div>
+
+<h2>Entre les soussignés</h2>
+<table class="parties">
+    <tr>
+        <td>
+            <strong>L'organisme de formation</strong><br/>
+            <span th:text="${societe.denominationAffichee()}">Optimi Santé</span><br/>
+            <span th:text="${societe.adresseAffichee()}">Adresse</span><br/>
+            SIRET : <span th:text="${societe.siret()}">—</span><br/>
+            <!-- Le numéro de déclaration d'activité conditionne la prise en charge par un
+                 financeur : sans lui, la convention ne lui est pas opposable. -->
+            <span th:if="${societe.numeroAgrement() != null and !societe.numeroAgrement().isBlank()}">
+                Déclaration d'activité enregistrée sous le n°
+                <strong th:text="${societe.numeroAgrement()}">—</strong>
+            </span>
+            <span th:unless="${societe.numeroAgrement() != null and !societe.numeroAgrement().isBlank()}"
+                  style="color: #b45309;">
+                Numéro de déclaration d'activité : <strong>à compléter</strong>
+            </span>
+            <br/>
+            <span class="mention">Ci-après « l'organisme »</span>
+        </td>
+        <td>
+            <strong>Le bénéficiaire</strong><br/>
+            <span th:text="${doctorName}">Dr. Nom Prénom</span><br/>
+            <span th:text="${doctorSpecialty}">Spécialité</span><br/>
+            <span th:if="${rppsNumber != null}">
+                N° RPPS / ADELI : <strong th:text="${rppsNumber}">—</strong><br/>
+            </span>
+            <span th:text="${doctorEmail}">adresse@exemple.fr</span><br/>
+            <span class="mention">Ci-après « le bénéficiaire »</span>
+        </td>
+    </tr>
+</table>
+
+<h2>Article 1 — Objet</h2>
+<p>
+    L'organisme organise l'action de formation professionnelle continue désignée ci-dessous, à
+    laquelle le bénéficiaire s'inscrit. Elle relève des actions de formation au sens de
+    l'article L.6313-1 du Code du travail.
+</p>
+<table class="faits">
+    <tr><td class="libelle">Intitulé de l'action</td><td th:text="${trainingTitle}">Intitulé</td></tr>
+    <tr><td class="libelle">Nature</td><td>Action de formation professionnelle continue</td></tr>
+    <tr><td class="libelle">Lieu</td><td th:text="${location}">Établissement</td></tr>
+    <tr><td class="libelle">Dates</td>
+        <td>Du <span th:text="${startDate}">JJ/MM/AAAA</span> au <span th:text="${endDate}">JJ/MM/AAAA</span></td></tr>
+    <tr><td class="libelle">Durée</td>
+        <td>
+            <span th:text="${durationHours}">0</span> heures, soit
+            <span th:text="${durationDays}">0</span> jour(s)
+            <span class="mention">(base de 7 heures par journée de formation)</span>
+        </td></tr>
+</table>
+
+<h2>Article 2 — Programme et moyens pédagogiques</h2>
+<p th:text="${trainingDescription}">Programme de la formation.</p>
+<p class="mention">
+    Le programme détaillé, les moyens pédagogiques et techniques ainsi que les qualifications des
+    intervenants sont remis au bénéficiaire et déposés dans son espace personnel sur la plateforme.
+</p>
+
+<h2>Article 3 — Prix et modalités de règlement</h2>
+<table class="faits">
+    <tr><td class="libelle">Coût de l'action, TTC</td><td><strong th:text="${priceTtc}">0,00 €</strong></td></tr>
+    <tr><td class="libelle">Modalités de règlement</td><td th:text="${paymentTerms}">—</td></tr>
+</table>
+<p class="mention">
+    Le règlement s'effectue par la plateforme. Lorsque la formation est prise en charge par un
+    organisme financeur, le bénéficiaire lui transmet la présente convention ; à défaut d'accord
+    de prise en charge parvenu à l'organisme avant le premier jour de la formation, le coût reste
+    dû par le bénéficiaire.
+</p>
+
+<h2>Article 4 — Sanction de la formation</h2>
+<p>
+    À l'issue de l'action, une attestation de fin de formation mentionnant les objectifs, la nature
+    et la durée de l'action est remise au bénéficiaire, conformément à l'article L.6353-1 du Code
+    du travail.
+</p>
+
+<h2>Article 5 — Appréciation des résultats</h2>
+<p>
+    Les résultats sont appréciés par les évaluations conduites pendant l'action et par un
+    questionnaire de satisfaction remis à son issue. Les feuilles d'émargement signées par
+    demi-journée attestent de la présence du bénéficiaire.
+</p>
+
+<h2>Article 6 — Interruption, désistement et différend</h2>
+<p>
+    En cas d'abandon en cours d'action pour un motif autre que la force majeure, la partie du
+    coût correspondant aux heures non suivies reste acquise à l'organisme. Toute contestation qui
+    ne serait pas réglée à l'amiable relève des juridictions compétentes du ressort du siège de
+    l'organisme.
+</p>
+
+<p style="margin-top: 14px;">
+    Fait en deux exemplaires, le <span th:text="${currentDate}">JJ/MM/AAAA</span>.
+</p>
+
+<table class="signatures">
+    <tr>
+        <td>
+            Pour l'organisme<br/>
+            <span class="mention" th:text="${societe.denominationAffichee()}">Optimi Santé</span>
+            <div class="cadre-signature"></div>
+        </td>
+        <td>
+            Le bénéficiaire<br/>
+            <span class="mention">Signature précédée de la mention « lu et approuvé »</span>
+            <div class="cadre-signature"></div>
+        </td>
+    </tr>
+</table>
+
+<div th:replace="~{components/footer :: footer}"></div>
+
+</body>
+</html>

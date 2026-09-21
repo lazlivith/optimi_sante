@@ -184,6 +184,62 @@ public class EnrollmentService {
         return toResponseDto(generateConventionInternal(enrollmentId));
     }
 
+    /** Une journée de formation professionnelle compte sept heures : la convention s'exprime en heures. */
+    private static final int HEURES_PAR_JOURNEE = 7;
+
+    /**
+     * Complète les données propres à la convention de formation professionnelle.
+     *
+     * <p>Ce que la convention tripartite n'a pas à dire, et que le Code du travail exige ici :
+     * la durée en heures, le coût, les modalités de règlement et l'identifiant ordinal du
+     * praticien. Le numéro de déclaration d'activité de l'organisme vient de l'identité légale
+     * ({@code app.legal.numero-agrement}), déjà imprimée sur tous les documents.</p>
+     */
+    private void completerDonneesDpc(Map<String, Object> data, Enrollment enrollment,
+                                     DoctorProfile doctorProfile) {
+        var session = enrollment.getSession();
+        var formation = session.getTraining();
+
+        data.put("reference", "FPC-" + java.time.LocalDate.now().getYear() + "-"
+                + enrollment.getId().toString().substring(0, 8).toUpperCase());
+        data.put("rppsNumber", enrollment.getRppsNumber());
+        data.put("trainingTitle", formation.getTitle());
+        data.put("trainingDescription", formation.getDescription() == null || formation.getDescription().isBlank()
+                ? "Le programme détaillé est remis au bénéficiaire avant l'entrée en formation."
+                : formation.getDescription());
+        data.put("location", session.getLocation());
+
+        int jours = formation.getDurationDays() == null ? 0 : formation.getDurationDays();
+        data.put("durationDays", jours);
+        data.put("durationHours", jours * HEURES_PAR_JOURNEE);
+
+        java.math.BigDecimal montant = enrollmentPaymentService.resolveTuitionAmount(enrollment);
+        data.put("priceTtc", montantEnEuros(montant));
+        data.put("paymentTerms", modalitesDeReglement(enrollment, montant));
+    }
+
+    /**
+     * Modalités de règlement telles qu'elles s'appliquent réellement à ce dossier.
+     *
+     * <p>Décrites depuis ce qui est enregistré, et non depuis une règle générale : une convention
+     * qui annoncerait deux échéances à quelqu'un ayant déjà tout réglé serait fausse, et c'est
+     * elle que lira son financeur.</p>
+     */
+    private String modalitesDeReglement(Enrollment enrollment, java.math.BigDecimal montant) {
+        if (enrollmentPaymentService.findPaidTuition(enrollment.getId(), PaymentInstallment.FULL).isPresent()) {
+            return "Réglé en une fois, à l'inscription : " + montantEnEuros(montant) + ".";
+        }
+        var echeancier = enrollmentPaymentService.scheduleFor(enrollment);
+        return "Acompte de " + montantEnEuros(echeancier.depositAmount()) + " à l'inscription, "
+                + "solde de " + montantEnEuros(echeancier.balanceAmount())
+                + " avant le premier jour de la formation.";
+    }
+
+    private static String montantEnEuros(java.math.BigDecimal montant) {
+        return montant == null ? "—"
+                : montant.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString().replace('.', ',') + " €";
+    }
+
     private Enrollment generateConventionInternal(UUID enrollmentId) {
         Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
                 .orElseThrow(() -> new RuntimeException("Enrollment not found"));
@@ -218,11 +274,20 @@ public class EnrollmentService {
         data.put("endDate", enrollment.getSession().getEndDate()
                 .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
 
-        // Generate PDF
-        byte[] pdfBytes = pdfGeneratorService.generateTripartiteConventionPdf(data);
+        // Un praticien exerçant en France signe une convention de formation professionnelle,
+        // opposable à son financeur (DPC, FIF-PL, employeur) : la convention tripartite
+        // organise un accueil et une mobilité, ce qui ne le concerne pas.
+        boolean france = enrollment.getRegistrationType() == RegistrationType.LOCAL_FRANCE;
+        byte[] pdfBytes;
+        if (france) {
+            completerDonneesDpc(data, enrollment, doctorProfile);
+            pdfBytes = pdfGeneratorService.generateDpcConventionPdf(data);
+        } else {
+            pdfBytes = pdfGeneratorService.generateTripartiteConventionPdf(data);
+        }
 
         // Upload to Cloudinary using raw bytes directly instead of MockMultipartFile
-        String fileName = "CONV-2026-" + enrollment.getId();
+        String fileName = (france ? "CONV-FPC-" : "CONV-2026-") + enrollment.getId();
 
         try {
             String publicId = storageService.uploadGeneratedPdf(pdfBytes, DossierStockage.DOCUMENTS_CONVENTIONS, fileName);
@@ -230,7 +295,8 @@ public class EnrollmentService {
             log.info("Convention generated and uploaded for enrollment {} with key {}", enrollmentId, publicId);
             eventPublisher.publishEvent(new com.optimisante.backend.domain.notification.event.NotificationEvents.EnrollmentDocumentIssued(
                     enrollment.getId(), enrollment.getDoctor().getId(), enrollment.getDoctor().getEmail(),
-                    "convention tripartite", partnerUserId(enrollment), doctorDisplayName(enrollment)));
+                    france ? "convention de formation" : "convention tripartite",
+                    partnerUserId(enrollment), doctorDisplayName(enrollment)));
         } catch (Exception e) {
             log.error("Failed to upload convention PDF to Cloudinary for enrollment {}", enrollmentId, e);
             throw new RuntimeException("Failed to upload convention", e);

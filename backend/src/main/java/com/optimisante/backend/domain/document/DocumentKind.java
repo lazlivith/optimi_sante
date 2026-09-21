@@ -21,6 +21,8 @@ public enum DocumentKind {
     ATTESTATION_INSCRIPTION  ("attestation-ins",         "Attestation d'inscription"),
     ATTESTATION_SOUSCRIPTION ("attestation-souscription","Attestation de souscription"),
     CONVENTION_TRIPARTITE    ("convention-tripartite",   "Convention tripartite"),
+    /** Contrat d'achat de formation d'un praticien exerçant en France, opposable à son financeur. */
+    CONVENTION_FORMATION     ("convention-dpc",           "Convention de formation professionnelle"),
     CONVENTION_PARTENARIAT   ("convention-partenariat",  "Convention de partenariat"),
     CONVOCATION_ENTRETIEN    ("convocation-entretien",   "Convocation à l'entretien"),
     RELEVE_REVERSEMENT       ("releve-reversement",      "Relevé de reversement");

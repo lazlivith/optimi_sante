@@ -1,0 +1,101 @@
+# Profil des tests : aucune dépendance à l'environnement du poste.
+#
+# La source de données n'est PAS déclarée ici : elle vient du conteneur PostgreSQL démarré par
+# ConfigurationBaseDeTest, via @ServiceConnection. Écrire une URL ou un mot de passe ici
+# rétablirait exactement ce que ce profil sert à supprimer.
+#
+# Tout le reste est une valeur de test, choisie pour que le contexte démarre sans joindre le
+# moindre service extérieur : ni SMTP, ni Stripe, ni Cloudinary n'est appelé au démarrage.
+
+spring:
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      # Comme en dev et en production : le schéma appartient à Flyway, et une divergence
+      # entre les entités et les migrations doit faire échouer la suite de tests.
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  mail:
+    host: localhost
+    port: 3025
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+app:
+  # Identité légale : des valeurs manifestement fictives. CompanyIdentityGuard n'interrompt le
+  # démarrage que sous le profil prod, mais un document produit pendant un test doit rester
+  # reconnaissable comme un document de test.
+  legal:
+    denomination:    Optimi Santé (jeu de test)
+    forme-juridique: SAS
+    capital-social:  1 €
+    siret:           00000000000000
+    tva-intracom:    FR00000000000
+    rcs:             RCS de test
+    adresse:         1 rue de Test, 00000 Testville
+    iban:            FR7630006000011234567890189
+    bic:             TESTFRPP
+    email:           contact@a-definir.invalid
+    telephone:       "+33000000000"
+    numero-agrement: ""
+
+  security:
+    jwt:
+      # Clé propre aux tests : elle ne doit jamais valoir celle d'un environnement réel.
+      secret: cle-de-test-uniquement-au-moins-32-caracteres!
+      expiration-ms: 3600000
+
+  mail:
+    from: no-reply@optimisante.test
+    frontend-base-url: http://localhost:5173
+    mailtrap:
+      api-token: ""
+      account-id: ""
+
+  doctor-application:
+    fee-amount: 100.00
+
+  tuition:
+    deposit-rate: 60
+    deposit-rate-france: 50
+
+  catalog:
+    quote-threshold: 50
+
+  # Vides : les fonctions correspondantes se désactivent proprement, sans appel réseau.
+  reporting:
+    worker-base-url: ""
+  ai:
+    worker-base-url: ""
+
+  aws:
+    s3:
+      endpoint: http://localhost:4566
+      region: us-east-1
+      access-key: test
+      secret-key: test
+      bucket: optimisante-docs-test
+    kms:
+      endpoint: http://localhost:4566
+      key-id: test-kms-key
+
+  cloudinary:
+    cloud-name: test
+    api-key: test
+    api-secret: test
+    root-folder: optimisante
+    environment: test
+
+stripe:
+  api-key: sk_test_PLACEHOLDER
+  webhook-secret: whsec_PLACEHOLDER
+  currency: eur

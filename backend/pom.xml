@@ -28,7 +28,21 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<testcontainers.version>1.21.3</testcontainers.version>
 	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<!-- Le parent Spring Boot 4 ne gouverne pas les versions Testcontainers : on importe leur BOM. -->
+			<dependency>
+				<groupId>org.testcontainers</groupId>
+				<artifactId>testcontainers-bom</artifactId>
+				<version>${testcontainers.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
 		<!-- Lecture et ecriture de classeurs .xlsx : convention de partenariat renseignee
 		     par l'etablissement puis relue par le serveur. Licence Apache 2.0. -->
@@ -106,6 +120,29 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!--
+			Base de test : un vrai PostgreSQL, demarre par Testcontainers.
+
+			H2 en mode PostgreSQL ne convient pas ici : les migrations creent les extensions
+			pgcrypto et pg_trgm, des index GIN en gin_trgm_ops et utilisent l'operateur de
+			comparaison par expression reguliere. Une base qui les ignorerait ne prouverait
+			rien de ce que le schema fait reellement.
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>postgresql</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
