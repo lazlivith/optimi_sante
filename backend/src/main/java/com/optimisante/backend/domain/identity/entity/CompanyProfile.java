@@ -58,6 +58,7 @@ public class CompanyProfile {
     private String billingAddress;
 
     @Column(name = "b2b_discount_rate", precision = 5, scale = 2)
+    @Builder.Default
     private BigDecimal b2bDiscountRate = BigDecimal.ZERO;
 
     @UpdateTimestamp

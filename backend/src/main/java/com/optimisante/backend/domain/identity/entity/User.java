@@ -51,6 +51,7 @@ public class User {
     private Role role;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     @Column(name = "stripe_customer_id", length = 255)

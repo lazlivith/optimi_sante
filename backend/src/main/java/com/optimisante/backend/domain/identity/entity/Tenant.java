@@ -30,6 +30,7 @@ public class Tenant {
     private String domain;
 
     @Column(length = 10)
+    @Builder.Default
     private String currency = "EUR";
 
     @CreationTimestamp

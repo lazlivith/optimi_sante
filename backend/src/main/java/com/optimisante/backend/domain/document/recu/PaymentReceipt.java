@@ -38,6 +38,7 @@ public class PaymentReceipt {
     private BigDecimal montant;
 
     @Column(nullable = false, length = 3)
+    @Builder.Default
     private String devise = "EUR";
 
     @Column(name = "beneficiaire_user_id")
