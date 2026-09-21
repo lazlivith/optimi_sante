@@ -6,6 +6,8 @@ import type { TrainingSessionDto, EnrollmentResponseDto } from '../../api/enroll
 import { storageService } from '../../api/storageService';
 import { FileUploadDropzone } from '../../components/common/FileUploadDropzone';
 import { useAuth } from '../../context/AuthContext';
+import { QualificationParcours, qualificationComplete } from '../../components/enrollment/QualificationParcours';
+import type { RegistrationType } from '../../api/enrollmentService';
 
 export function TrainingEnrollmentPage() {
   const { id: trainingId } = useParams<{ id: string }>();
@@ -25,6 +27,10 @@ export function TrainingEnrollmentPage() {
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [selectedSession, setSelectedSession] = useState<TrainingSessionDto | null>(null);
   
+  // Posé avant le choix de la session : tout le dossier en découle.
+  const [parcours, setParcours] = useState<RegistrationType>('INTERNATIONAL_VISA');
+  const [rpps, setRpps] = useState('');
+
   const [enrollment, setEnrollment] = useState<EnrollmentResponseDto | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -58,7 +64,11 @@ export function TrainingEnrollmentPage() {
     if (!selectedSession) return;
     try {
       setIsSubmitting(true);
-      const res = await enrollmentService.createEnrollment({ sessionId: selectedSession.id });
+      const res = await enrollmentService.createEnrollment({
+        sessionId: selectedSession.id,
+        registrationType: parcours,
+        rppsNumber: parcours === 'LOCAL_FRANCE' ? rpps : undefined,
+      });
       setEnrollment(res);
       setCurrentStep(2);
     } catch (error) {
@@ -134,8 +144,13 @@ export function TrainingEnrollmentPage() {
           {currentStep === 1 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
               <h2 className="text-xl font-semibold text-slate-900 border-b border-slate-100 pb-4">
-                Étape 1 : Choix de la session
+                Étape 1 : Votre situation et la session
               </h2>
+
+              <QualificationParcours
+                parcours={parcours} onParcoursChange={setParcours}
+                rpps={rpps} onRppsChange={setRpps}
+              />
 
               {isLoadingSessions ? (
                 <div className="py-12 flex justify-center">
@@ -182,7 +197,7 @@ export function TrainingEnrollmentPage() {
               <div className="flex justify-end pt-6">
                 <button
                   onClick={handleCreateEnrollment}
-                  disabled={!selectedSession || isSubmitting}
+                  disabled={!selectedSession || isSubmitting || !qualificationComplete(parcours, rpps)}
                   className="px-6 py-3 bg-brand text-white font-semibold rounded-xl hover:bg-brand-fonce transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                 >
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}

@@ -1,8 +1,12 @@
+import type { RegistrationType } from './enrollmentService';
 import { axiosClient } from './axiosClient';
 
 export interface EnrollmentDetailDto {
   id: string;
   status: string;
+  /** INTERNATIONAL_VISA ou LOCAL_FRANCE : détermine le parcours affiché. */
+  registrationType?: RegistrationType;
+  rppsNumber?: string | null;
   trainingTitle: string;
   doctorName?: string;
   doctorEmail?: string;

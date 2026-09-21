@@ -14,14 +14,23 @@ export interface TrainingSessionDto {
 export interface EnrollmentResponseDto {
   id: string;
   status: string;
+  registrationType?: RegistrationType;
+  rppsNumber?: string | null;
   diplomaUrl?: string;
   medicalBoardRegistrationUrl?: string;
   passportUrl?: string;
   submittedAt: string;
 }
 
+/** Parcours suivi par le dossier : les étapes, l'échéancier et la convention en dépendent. */
+export type RegistrationType = 'INTERNATIONAL_VISA' | 'LOCAL_FRANCE';
+
 export interface EnrollmentRequestDto {
   sessionId: string;
+  /** Absent : parcours international, par continuité avec l'existant côté serveur. */
+  registrationType?: RegistrationType;
+  /** RPPS (11 chiffres) ou ADELI (9) — exigé pour un parcours France. */
+  rppsNumber?: string;
 }
 
 export interface DocumentUploadRequestDto {
@@ -33,6 +42,8 @@ export interface DocumentUploadRequestDto {
 export interface EnrollmentDetailDto {
   id: string;
   status: string;
+  registrationType?: RegistrationType;
+  rppsNumber?: string | null;
   trainingTitle: string;
   submittedAt: string;
   diplomaUrl?: string;
@@ -69,6 +80,12 @@ export const enrollmentService = {
 
   getMyEnrollments: async (): Promise<EnrollmentDetailDto[]> => {
     const { data } = await axiosClient.get<EnrollmentDetailDto[]>('/enrollments');
+    return data;
+  },
+
+  createFullCheckout: async (enrollmentId: string): Promise<TuitionCheckoutDto> => {
+    const { data } = await axiosClient.post<TuitionCheckoutDto>(
+      `/enrollments/${enrollmentId}/tuition-full-checkout`);
     return data;
   },
 

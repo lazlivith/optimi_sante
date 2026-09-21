@@ -1,3 +1,4 @@
+import type { RegistrationType } from './enrollmentService';
 import { axiosClient } from './axiosClient';
 
 export type OfficialDocumentCategory =
@@ -41,6 +42,7 @@ export interface VaultDossier {
   institutionName: string;
   sessionStart: string | null;
   status: string;
+  registrationType?: RegistrationType;
   entries: VaultEntry[];
 }
 

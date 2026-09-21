@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
-import { ETAPES_PARCOURS, LIBELLE_ACTEUR, etapeEnCours } from '../../lib/parcoursDossier';
+import { LIBELLE_ACTEUR, etapeDuParcours, etapesDuParcours } from '../../lib/parcoursDossier';
+import type { RegistrationType } from '../../api/enrollmentService';
 
 interface ParcoursDossierProps {
   statut: string;
@@ -7,6 +8,8 @@ interface ParcoursDossierProps {
   perspective?: 'medecin' | 'admin';
   /** `complet` sur le détail d'un dossier, `ligne` dans une liste. */
   variante?: 'complet' | 'ligne';
+  /** Absent : parcours international, seul existant avant la V60. */
+  parcours?: RegistrationType;
 }
 
 /**
@@ -15,17 +18,22 @@ interface ParcoursDossierProps {
  * <p>Sur écran large, les étapes s'alignent ; sur téléphone, elles s'empilent, l'étape en cours
  * dépliée avec qui doit agir. Huit pastilles de 40 px côte à côte ne tiennent pas dans 390 px :
  * l'ancien parcours à neuf statuts débordait de l'écran.</p>
+ *
+ * <p>Un praticien exerçant déjà en France en voit quatre : sans démarche consulaire, les étapes
+ * de visa n'ont rien à lui dire. La grille compte ses colonnes d'après la liste reçue.</p>
  */
-export function ParcoursDossier({ statut, perspective = 'medecin', variante = 'complet' }: ParcoursDossierProps) {
-  const enCours = etapeEnCours(statut);
+export function ParcoursDossier({ statut, perspective = 'medecin', variante = 'complet',
+                                  parcours }: ParcoursDossierProps) {
+  const etapes = etapesDuParcours(parcours);
+  const enCours = etapeDuParcours(statut, parcours);
   const clos = enCours < 0;
-  const termine = enCours >= ETAPES_PARCOURS.length;
+  const termine = enCours >= etapes.length;
   const pieceDemandee = statut === 'ACTION_REQUIRED';
   const acteurs = LIBELLE_ACTEUR[perspective];
 
   if (variante === 'ligne') {
-    const etape = ETAPES_PARCOURS[Math.min(Math.max(enCours, 0), ETAPES_PARCOURS.length - 1)];
-    const progression = clos ? 0 : termine ? 100 : (enCours / ETAPES_PARCOURS.length) * 100;
+    const etape = etapes[Math.min(Math.max(enCours, 0), etapes.length - 1)];
+    const progression = clos ? 0 : termine ? 100 : (enCours / etapes.length) * 100;
     return (
       <div className="min-w-[150px] max-w-[200px]">
         <div className="flex items-baseline justify-between gap-2 mb-1.5">
@@ -35,7 +43,7 @@ export function ParcoursDossier({ statut, perspective = 'medecin', variante = 'c
           </span>
           {!clos && (
             <span className="text-[11px] text-slate-400 tabular-nums shrink-0">
-              {termine ? '8/8' : `${enCours + 1}/8`}
+              {termine ? `${etapes.length}/${etapes.length}` : `${enCours + 1}/${etapes.length}`}
             </span>
           )}
         </div>
@@ -51,8 +59,9 @@ export function ParcoursDossier({ statut, perspective = 'medecin', variante = 'c
   }
 
   return (
-    <ol className="grid grid-cols-1 lg:grid-cols-8 gap-2 lg:gap-1.5" aria-label="Parcours du dossier">
-      {ETAPES_PARCOURS.map((etape, index) => {
+    <ol className={`grid grid-cols-1 gap-2 lg:gap-1.5 ${
+        etapes.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-8'}`} aria-label="Parcours du dossier">
+      {etapes.map((etape, index) => {
         const faite = !clos && index < enCours;
         const courante = !clos && index === enCours;
         return (
@@ -95,10 +104,10 @@ export function ParcoursDossier({ statut, perspective = 'medecin', variante = 'c
         );
       })}
       {/* Sur téléphone, seules les étapes faites et en cours sont listées : on dit ce qui reste. */}
-      {!clos && !termine && enCours < ETAPES_PARCOURS.length - 1 && (
+      {!clos && !termine && enCours < etapes.length - 1 && (
         <li className="lg:hidden px-3 text-xs text-slate-500">
-          Encore {ETAPES_PARCOURS.length - enCours - 1} étape{ETAPES_PARCOURS.length - enCours - 1 > 1 ? 's' : ''} :{' '}
-          {ETAPES_PARCOURS.slice(enCours + 1).map((e) => e.titre).join(', ')}.
+          Encore {etapes.length - enCours - 1} étape{etapes.length - enCours - 1 > 1 ? 's' : ''} :{' '}
+          {etapes.slice(enCours + 1).map((e) => e.titre).join(', ')}.
         </li>
       )}
     </ol>

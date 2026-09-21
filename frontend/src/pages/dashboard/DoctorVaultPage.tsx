@@ -76,7 +76,7 @@ export function DoctorVaultPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <ParcoursDossier statut={dossier.status} variante="ligne" />
+                    <ParcoursDossier statut={dossier.status} variante="ligne" parcours={dossier.registrationType} />
                     <Link
                       to={`/doctor/enrollments/${dossier.enrollmentId}`}
                       className="inline-flex items-center text-sm font-semibold text-brand hover:text-brand-fonce"

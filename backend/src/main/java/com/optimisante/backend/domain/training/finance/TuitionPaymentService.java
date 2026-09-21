@@ -63,6 +63,28 @@ public class TuitionPaymentService {
     }
 
     /**
+     * Ouvre le reglement integral, en une seule fois.
+     *
+     * <p>Meme porte que l'acompte — la candidature doit etre acceptee — mais une seule echeance
+     * au lieu de deux. Le service financier refuse ce rang aux dossiers internationaux : le
+     * controle du parcours n'est pas repete ici, pour qu'il n'existe qu'a un seul endroit.</p>
+     */
+    @Transactional
+    public TuitionCheckoutDto createFullCheckoutSession(UUID enrollmentId, UUID doctorId) {
+        Enrollment enrollment = requireOwned(enrollmentId, doctorId);
+
+        if (enrollment.getStatus() != EnrollmentStatus.PENDING_TUITION_FEE) {
+            throw new IllegalStateException(
+                    "Le paiement de la formation n'est ouvert qu'une fois la candidature acceptée "
+                            + "par l'établissement (statut actuel : " + enrollment.getStatus() + ").");
+        }
+
+        EnrollmentPayment payment = enrollmentPaymentService.openTuitionFull(enrollmentId);
+        return ouvrirSession(enrollment, payment, PaymentInstallment.FULL,
+                "Formation (règlement intégral) — ");
+    }
+
+    /**
      * Ouvre le solde : possible a partir de la delivrance du visa.
      *
      * <p>Pas avant : reclamer le solde tant que le visa n'est pas accorde ferait payer au
@@ -73,10 +95,12 @@ public class TuitionPaymentService {
     public TuitionCheckoutDto createBalanceCheckoutSession(UUID enrollmentId, UUID doctorId) {
         Enrollment enrollment = requireOwned(enrollmentId, doctorId);
 
-        if (!SOLDE_APPELABLE.contains(enrollment.getStatus())) {
-            throw new IllegalStateException(
-                    "Le solde n'est appelé qu'à la délivrance du visa (statut actuel : "
-                            + enrollment.getStatus() + ").");
+        if (!soldeAppelable(enrollment)) {
+            throw new IllegalStateException(enrollment.getRegistrationType().passeParLeVisa()
+                    ? "Le solde n'est appelé qu'à la délivrance du visa (statut actuel : "
+                      + enrollment.getStatus() + ")."
+                    : "Le solde s'ouvre une fois l'inscription confirmée (statut actuel : "
+                      + enrollment.getStatus() + ").");
         }
 
         EnrollmentPayment payment = enrollmentPaymentService.openTuitionBalance(enrollmentId);
@@ -93,6 +117,22 @@ public class TuitionPaymentService {
      */
     private static final java.util.EnumSet<EnrollmentStatus> SOLDE_APPELABLE =
             java.util.EnumSet.of(EnrollmentStatus.VISA_GRANTED, EnrollmentStatus.READY_TO_START);
+
+    /**
+     * Etats depuis lesquels le solde peut etre regle sur un parcours France.
+     *
+     * <p>Il n'y a rien ici a attendre : aucune demarche consulaire ne peut echouer, et la place
+     * est reservee des l'acompte encaisse. Le solde s'ouvre donc a la confirmation, et le
+     * medecin le regle quand il veut avant la session.</p>
+     */
+    private static final java.util.EnumSet<EnrollmentStatus> SOLDE_APPELABLE_FRANCE =
+            java.util.EnumSet.of(EnrollmentStatus.CONFIRMED, EnrollmentStatus.CONVENTION_ISSUED,
+                    EnrollmentStatus.READY_TO_START);
+
+    private static boolean soldeAppelable(Enrollment enrollment) {
+        return (enrollment.getRegistrationType().passeParLeVisa()
+                ? SOLDE_APPELABLE : SOLDE_APPELABLE_FRANCE).contains(enrollment.getStatus());
+    }
 
     private TuitionCheckoutDto ouvrirSession(Enrollment enrollment, EnrollmentPayment payment,
                                              PaymentInstallment rang, String prefixe) {

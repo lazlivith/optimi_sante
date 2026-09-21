@@ -122,6 +122,10 @@ app:
     # `VITE_LEGAL_PART_ACOMPTE` côté frontend, qui alimente les CGV. Annoncer un taux dans le
     # contrat et en prélever un autre est exactement l'incident survenu sur les frais de dossier.
     deposit-rate: ${TUITION_DEPOSIT_RATE:60}
+    # Parcours France : aucune demarche consulaire ne peut echouer entre les deux echeances,
+    # la place est acquise des l'acompte. Le partage est donc equilibre, et le solde s'ouvre
+    # a la confirmation plutot qu'a la delivrance d'un visa qui n'existe pas.
+    deposit-rate-france: ${TUITION_DEPOSIT_RATE_FRANCE:50}
   reporting:
     # Worker Python FastAPI de reporting analytique. Vide => fonctionnalité "Rapports" désactivée
     # proprement (message explicite côté admin). docker-compose fournit http://analytics:8100.

@@ -148,6 +148,7 @@ public class DossierVaultService {
 
     private static VaultDossier vue(Enrollment dossier, String etablissement, List<VaultEntry> lignes) {
         return new VaultDossier(dossier.getId(), dossier.getSession().getTraining().getTitle(), etablissement,
-                dossier.getSession().getStartDate(), dossier.getStatus().name(), lignes);
+                dossier.getSession().getStartDate(), dossier.getStatus().name(),
+                dossier.getRegistrationType().name(), lignes);
     }
 }

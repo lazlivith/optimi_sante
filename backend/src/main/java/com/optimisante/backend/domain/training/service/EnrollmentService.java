@@ -14,6 +14,7 @@ import com.optimisante.backend.domain.training.dto.EnrollmentResponseDto;
 import com.optimisante.backend.domain.training.dto.TrainingSessionResponseDto;
 import com.optimisante.backend.domain.training.entity.Enrollment;
 import com.optimisante.backend.domain.training.entity.EnrollmentStatus;
+import com.optimisante.backend.domain.training.entity.RegistrationType;
 import com.optimisante.backend.domain.training.entity.SessionStatus;
 import com.optimisante.backend.domain.training.entity.TrainingSession;
 import com.optimisante.backend.domain.training.repository.EnrollmentDocumentRepository;
@@ -78,6 +79,13 @@ public class EnrollmentService {
             throw new IllegalStateException("Cette session n'accepte plus d'inscriptions");
         }
 
+        // Contrôlé avant de prendre la place, et non après : un dossier refusé pour un numéro
+        // manquant ne doit pas laisser un siège consommé derrière lui.
+        if (dto.parcours() == RegistrationType.LOCAL_FRANCE && dto.rppsNormalise() == null) {
+            throw new IllegalArgumentException(
+                    "Indiquez votre numéro RPPS ou ADELI : il atteste de votre inscription à l'Ordre en France.");
+        }
+
         // Tente de décrémenter les places de manière atomique
         int updatedRows = trainingSessionRepository.decrementAvailableSeats(session.getId());
         if (updatedRows == 0) {
@@ -91,6 +99,8 @@ public class EnrollmentService {
         Enrollment enrollment = Enrollment.builder()
                 .doctor(doctor)
                 .session(session)
+                .registrationType(dto.parcours())
+                .rppsNumber(dto.rppsNormalise())
                 .build();
 
         Enrollment saved = enrollmentRepository.save(enrollment);
@@ -295,7 +305,8 @@ public class EnrollmentService {
     @Transactional
     public EnrollmentResponseDto submitToPartner(UUID enrollmentId, UUID adminId) {
         Enrollment enrollment = requireEnrollment(enrollmentId);
-        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.SUBMITTED_TO_PARTNER);
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.SUBMITTED_TO_PARTNER,
+                enrollment.getRegistrationType());
 
         enrollment.setStatus(EnrollmentStatus.SUBMITTED_TO_PARTNER);
         enrollment.setOptimiReviewedAt(OffsetDateTime.now());
@@ -323,7 +334,8 @@ public class EnrollmentService {
             throw new IllegalArgumentException("Un motif est obligatoire pour demander des corrections.");
         }
         Enrollment enrollment = requireEnrollment(enrollmentId);
-        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.ACTION_REQUIRED);
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.ACTION_REQUIRED,
+                enrollment.getRegistrationType());
 
         enrollment.setStatus(EnrollmentStatus.ACTION_REQUIRED);
         enrollment.setActionRequiredNote(note.trim());
@@ -349,7 +361,8 @@ public class EnrollmentService {
         if (!enrollment.getDoctor().getId().equals(doctorId)) {
             throw new AccessDeniedException("Ce dossier ne vous appartient pas.");
         }
-        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.UNDER_OPTIMI_REVIEW);
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.UNDER_OPTIMI_REVIEW,
+                enrollment.getRegistrationType());
 
         enrollment.setStatus(EnrollmentStatus.UNDER_OPTIMI_REVIEW);
         enrollment.setActionRequiredNote(null);
@@ -382,7 +395,8 @@ public class EnrollmentService {
         }
 
         EnrollmentStatus target = accept ? EnrollmentStatus.ACCEPTED_BY_PARTNER : EnrollmentStatus.REJECTED;
-        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), target);
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), target,
+                enrollment.getRegistrationType());
 
         if (!accept && (reason == null || reason.isBlank())) {
             throw new IllegalArgumentException("Un motif est obligatoire pour refuser une candidature.");
@@ -393,7 +407,8 @@ public class EnrollmentService {
         if (accept) {
             enrollment.setStatus(EnrollmentStatus.ACCEPTED_BY_PARTNER);
             // Enchaînement mécanique vers l'attente de paiement, en repassant par l'automate.
-            EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.PENDING_TUITION_FEE);
+            EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.PENDING_TUITION_FEE,
+                enrollment.getRegistrationType());
             enrollment.setStatus(EnrollmentStatus.PENDING_TUITION_FEE);
             log.info("Dossier {} accepté par le partenaire {} - en attente du paiement de la formation",
                     enrollmentId, partnerUserId);
@@ -433,7 +448,8 @@ public class EnrollmentService {
         if (!enrollment.getSession().getTraining().getPartnerProfile().getUser().getId().equals(partnerUserId)) {
             throw new AccessDeniedException("Vous n'êtes pas autorisé à examiner ce dossier.");
         }
-        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.ACTION_REQUIRED);
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.ACTION_REQUIRED,
+                enrollment.getRegistrationType());
 
         enrollment.setStatus(EnrollmentStatus.ACTION_REQUIRED);
         // Préfixe d'origine : le médecin et l'admin savent qui réclame la pièce.
@@ -464,7 +480,8 @@ public class EnrollmentService {
                             + "Utilisez la méthode métier correspondante.");
         }
         Enrollment enrollment = requireEnrollment(enrollmentId);
-        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), newStatus);
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), newStatus,
+                enrollment.getRegistrationType());
 
         enrollment.setStatus(newStatus);
         log.info("Dossier {} avancé au statut de mobilité {}", enrollmentId, newStatus);
@@ -484,7 +501,8 @@ public class EnrollmentService {
             throw new IllegalArgumentException("Un motif est obligatoire pour annuler un dossier.");
         }
         Enrollment enrollment = requireEnrollment(enrollmentId);
-        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.CANCELLED);
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.CANCELLED,
+                enrollment.getRegistrationType());
 
         enrollment.setStatus(EnrollmentStatus.CANCELLED);
         enrollment.setRejectionReason(reason.trim());
@@ -547,7 +565,8 @@ public class EnrollmentService {
 
         solder(payment, checkoutSessionId, paymentIntentId);
 
-        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.CONFIRMED);
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), EnrollmentStatus.CONFIRMED,
+                enrollment.getRegistrationType());
         enrollment.setStatus(EnrollmentStatus.CONFIRMED);
         enrollmentRepository.save(enrollment);
 
@@ -648,7 +667,8 @@ public class EnrollmentService {
         // Le dossier n'avance que si la convention existe réellement : afficher
         // « Convention émise » sans convention serait un mensonge pour le médecin.
         if (conventionOk && result.getStatus() == EnrollmentStatus.CONFIRMED) {
-            EnrollmentTransitions.assertAllowed(result.getStatus(), EnrollmentStatus.CONVENTION_ISSUED);
+            EnrollmentTransitions.assertAllowed(result.getStatus(), EnrollmentStatus.CONVENTION_ISSUED,
+                result.getRegistrationType());
             result.setStatus(EnrollmentStatus.CONVENTION_ISSUED);
             result = enrollmentRepository.save(result);
             log.info("Dossier {} avancé automatiquement à CONVENTION_ISSUED", enrollmentId);
@@ -775,7 +795,8 @@ public class EnrollmentService {
         // (bouton « Passer à l'étape suivante »). Elle est désormais soumise au MÊME
         // automate que les méthodes métier : sans cette garde, l'interface aurait
         // contourné toutes les règles posées par EnrollmentTransitions.
-        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), newStatus);
+        EnrollmentTransitions.assertAllowed(enrollment.getStatus(), newStatus,
+                enrollment.getRegistrationType());
 
         // Le solde de formation conditionne le passage a « pret a demarrer ». Sans cette
         // garde, l'echeancier ne serait qu'une facilite de paiement sans echeance reelle : le
@@ -979,6 +1000,8 @@ public class EnrollmentService {
         return EnrollmentResponseDto.builder()
                 .id(enrollment.getId())
                 .status(enrollment.getStatus().name())
+                .registrationType(enrollment.getRegistrationType().name())
+                .rppsNumber(enrollment.getRppsNumber())
                 .diplomaUrl(enrollment.getDiplomaUrl())
                 .medicalBoardRegistrationUrl(enrollment.getMedicalBoardRegistrationUrl())
                 .passportUrl(enrollment.getPassportUrl())
@@ -1017,6 +1040,8 @@ public class EnrollmentService {
         EnrollmentDetailDto.EnrollmentDetailDtoBuilder builder = EnrollmentDetailDto.builder()
                 .id(enrollment.getId())
                 .status(enrollment.getStatus().name())
+                .registrationType(enrollment.getRegistrationType().name())
+                .rppsNumber(enrollment.getRppsNumber())
                 .trainingTitle(enrollment.getSession().getTraining().getTitle())
                 .submittedAt(enrollment.getSubmittedAt())
                 .diplomaUrl(enrollment.getDiplomaUrl())

@@ -83,12 +83,65 @@ public final class EnrollmentTransitions {
         }
     }
 
+    /**
+     * Même contrôle, pour un parcours donné.
+     *
+     * <p>Un praticien déjà établi en France n'a pas de démarche consulaire : sa convention mène
+     * directement à la convocation. C'est la seule divergence entre les deux parcours, et elle
+     * tient en une arête — les dix autres transitions sont communes.</p>
+     *
+     * @param parcours {@code null} vaut parcours international, par continuité avec l'existant
+     */
+    public static void assertAllowed(EnrollmentStatus from, EnrollmentStatus to, RegistrationType parcours) {
+        if (from == to) {
+            throw new IllegalStateException("Le dossier est déjà au statut " + from + ".");
+        }
+        if (!isAllowed(from, to, parcours)) {
+            Set<EnrollmentStatus> possible = allowedFrom(from, parcours);
+            throw new IllegalStateException(
+                    "Transition interdite : " + from + " → " + to + ". "
+                            + (possible.isEmpty()
+                            ? "Ce dossier est dans un état terminal."
+                            : "Transitions possibles depuis " + from + " : " + possible + "."));
+        }
+    }
+
     public static boolean isAllowed(EnrollmentStatus from, EnrollmentStatus to) {
         return from != null && to != null && allowedFrom(from).contains(to);
+    }
+
+    public static boolean isAllowed(EnrollmentStatus from, EnrollmentStatus to, RegistrationType parcours) {
+        return from != null && to != null && allowedFrom(from, parcours).contains(to);
     }
 
     /** Transitions ouvertes depuis un état donné ; ensemble vide si l'état est terminal. */
     public static Set<EnrollmentStatus> allowedFrom(EnrollmentStatus from) {
         return ALLOWED.getOrDefault(from, Set.of());
+    }
+
+    /**
+     * Transitions ouvertes depuis un état, pour un parcours donné.
+     *
+     * <p>Le parcours France gagne l'arête {@code CONVENTION_ISSUED → READY_TO_START} et perd les
+     * deux étapes de visa : les lui laisser ouvertes reviendrait à demander un visa à quelqu'un
+     * qui réside déjà sur place.</p>
+     */
+    public static Set<EnrollmentStatus> allowedFrom(EnrollmentStatus from, RegistrationType parcours) {
+        Set<EnrollmentStatus> communes = allowedFrom(from);
+        if (parcours == null || parcours.passeParLeVisa()) {
+            return communes;
+        }
+        if (from == CONVENTION_ISSUED) {
+            // L'annulation reste possible : elle est portée par la liste commune.
+            Set<EnrollmentStatus> france = EnumSet.copyOf(communes);
+            france.remove(VISA_SUBMITTED);
+            france.add(READY_TO_START);
+            return Set.copyOf(france);
+        }
+        if (from == VISA_SUBMITTED || from == VISA_GRANTED) {
+            // États inatteignables sur ce parcours : aucun dossier France ne s'y trouve.
+            return Set.of();
+        }
+        return communes;
     }
 }

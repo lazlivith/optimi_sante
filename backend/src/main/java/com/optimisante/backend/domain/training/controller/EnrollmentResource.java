@@ -71,6 +71,21 @@ public class EnrollmentResource {
     }
 
     /**
+     * Ouvre le règlement <b>intégral</b> des frais de formation, en une seule fois.
+     *
+     * <p>Route distincte comme l'acompte et le solde, pour la même raison : c'est un choix du
+     * médecin au moment de régler, pas une variante d'un même appel. Réservée au parcours France
+     * — la règle est portée par le service financier, seul endroit où elle est écrite.</p>
+     */
+    @PostMapping("/enrollments/{id}/tuition-full-checkout")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public ResponseEntity<TuitionPaymentService.TuitionCheckoutDto> createFullCheckout(
+            @PathVariable UUID id, Authentication auth) {
+        UUID doctorId = UUID.fromString(auth.getPrincipal().toString());
+        return ResponseEntity.ok(tuitionPaymentService.createFullCheckoutSession(id, doctorId));
+    }
+
+    /**
      * Ouvre le <b>solde</b> des frais de formation, appelé à la délivrance du visa.
      *
      * <p>Route distincte de l'acompte plutôt qu'un paramètre : les deux moments n'ont ni les

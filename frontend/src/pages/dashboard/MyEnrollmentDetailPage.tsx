@@ -152,7 +152,7 @@ export function MyEnrollmentDetailPage() {
             )}
           </div>
 
-          {!isFailed && <ParcoursDossier statut={enrollment.status} />}
+          {!isFailed && <ParcoursDossier statut={enrollment.status} parcours={enrollment.registrationType} />}
         </div>
 
         {/* Pièce réclamée : la note vient de l'admin ou du CHU, elle doit être lue par

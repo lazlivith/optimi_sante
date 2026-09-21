@@ -85,7 +85,7 @@ export function MyEnrollmentsListPage() {
                   </div>
                   <div className="flex items-center gap-5 shrink-0">
                     {!isFailed && (
-                      <div className="hidden sm:block"><ParcoursDossier statut={e.status} variante="ligne" /></div>
+                      <div className="hidden sm:block"><ParcoursDossier statut={e.status} variante="ligne" parcours={e.registrationType} /></div>
                     )}
                     <StatusBadge status={e.status} />
                     <ChevronRight className="w-4 h-4 text-slate-400" />

@@ -45,6 +45,20 @@ public class Enrollment {
     @Builder.Default
     private EnrollmentStatus status = EnrollmentStatus.UNDER_OPTIMI_REVIEW;
 
+    /**
+     * Parcours emprunté par ce dossier. Comme le statut, la valeur d'entrée est portée ici :
+     * un dossier créé sans préciser son parcours est international, ce qui était le seul cas
+     * avant la V60.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "registration_type", nullable = false, length = 20)
+    @Builder.Default
+    private RegistrationType registrationType = RegistrationType.INTERNATIONAL_VISA;
+
+    /** Identifiant au répertoire national — RPPS (11 chiffres) ou ADELI (9) — pour un parcours France. */
+    @Column(name = "rpps_number", length = 11)
+    private String rppsNumber;
+
     @Column(name = "diploma_url", length = 512)
     private String diplomaUrl;
 

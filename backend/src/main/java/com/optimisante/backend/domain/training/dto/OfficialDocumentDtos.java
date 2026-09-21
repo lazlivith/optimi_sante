@@ -48,8 +48,9 @@ public final class OfficialDocumentDtos {
             VaultEntryState state, String reason, String downloadType, UUID downloadId) {
     }
 
+    /** {@code registrationType} : le coffre-fort affiche le parcours du dossier, à 8 ou 4 étapes. */
     public record VaultDossier(
             UUID enrollmentId, String trainingTitle, String institutionName, LocalDate sessionStart,
-            String status, List<VaultEntry> entries) {
+            String status, String registrationType, List<VaultEntry> entries) {
     }
 }

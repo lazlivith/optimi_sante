@@ -7,6 +7,8 @@
  * l'administration fait avancer un dossier : elle n'est pas remplacée.</p>
  */
 
+import type { RegistrationType } from '../api/enrollmentService';
+
 export type Acteur = 'medecin' | 'optimi' | 'chu';
 
 export interface EtapeParcours {
@@ -60,6 +62,54 @@ export function etapeEnCours(statut: string): number {
     default:
       return -1;
   }
+}
+
+/**
+ * Les 4 étapes d'un praticien déjà établi en France.
+ *
+ * <p>Mêmes statuts serveur, moins deux : aucune démarche consulaire ne s'intercale, donc la
+ * convention mène directement à la convocation. Le solde ne dépend plus d'un visa mais du seul
+ * choix du médecin, qui peut aussi tout régler en une fois.</p>
+ */
+export const ETAPES_FRANCE: EtapeParcours[] = [
+  { numero: 1, titre: 'Candidature', detail: 'Pièces, RPPS et frais de dossier', acteurs: ['medecin', 'optimi'] },
+  { numero: 2, titre: 'Validation CHU', detail: 'Prérequis vérifiés, candidature retenue', acteurs: ['chu'] },
+  { numero: 3, titre: 'Paiement', detail: 'En une fois, ou 50 % puis 50 %', acteurs: ['medecin'] },
+  { numero: 4, titre: 'Convention & convocation', detail: 'Déposées au coffre-fort', acteurs: ['optimi'] },
+];
+
+export function etapesDuParcours(parcours?: RegistrationType): EtapeParcours[] {
+  return parcours === 'LOCAL_FRANCE' ? ETAPES_FRANCE : ETAPES_PARCOURS;
+}
+
+/**
+ * Index de l'étape EN COURS sur le parcours France (0 à 3), ou 4 quand tout est accompli.
+ *
+ * Les statuts de visa n'y apparaissent pas : l'automate les ferme à ce parcours.
+ */
+function etapeFrance(statut: string): number {
+  switch (statut) {
+    case 'UNDER_OPTIMI_REVIEW':
+    case 'ACTION_REQUIRED':
+      return 0;
+    case 'SUBMITTED_TO_PARTNER':
+      return 1;
+    case 'ACCEPTED_BY_PARTNER':
+    case 'PENDING_TUITION_FEE':
+      return 2;
+    case 'CONFIRMED':
+    case 'CONVENTION_ISSUED':
+      return 3;
+    case 'READY_TO_START':
+      return 4;
+    default:
+      return -1;
+  }
+}
+
+/** Étape en cours, sur le parcours du dossier. */
+export function etapeDuParcours(statut: string, parcours?: RegistrationType): number {
+  return parcours === 'LOCAL_FRANCE' ? etapeFrance(statut) : etapeEnCours(statut);
 }
 
 export const LIBELLE_ACTEUR: Record<'medecin' | 'admin', Record<Acteur, string>> = {

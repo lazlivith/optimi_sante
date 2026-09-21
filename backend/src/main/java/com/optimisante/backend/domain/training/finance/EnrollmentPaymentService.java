@@ -41,6 +41,9 @@ public class EnrollmentPaymentService {
     @org.springframework.beans.factory.annotation.Value("${app.tuition.deposit-rate}")
     private BigDecimal depositRate;
 
+    @org.springframework.beans.factory.annotation.Value("${app.tuition.deposit-rate-france}")
+    private BigDecimal depositRateFrance;
+
     private final EnrollmentPaymentRepository paymentRepository;
     private final com.optimisante.backend.domain.document.recu.PaymentReceiptIssuer receiptIssuer;
     private final EnrollmentRepository enrollmentRepository;
@@ -139,10 +142,54 @@ public class EnrollmentPaymentService {
 
         Enrollment enrollment = requireEnrollment(enrollmentId);
         var echeancier = TuitionInstallmentCalculator.split(
-                resolveTuitionAmount(enrollment), depositRate);
+                resolveTuitionAmount(enrollment), tauxAcompte(enrollment));
 
         return ouvrirEcheance(enrollment, PaymentInstallment.DEPOSIT,
                 echeancier.depositAmount(), resolveCommissionRate(enrollment));
+    }
+
+    /**
+     * Part des frais exigee a l'admission, selon le parcours.
+     *
+     * <p>Sur un parcours international, l'acompte couvre une part majoritaire : entre les deux
+     * echeances s'intercale une demarche consulaire qui peut echouer, et l'etablissement a deja
+     * engage des moyens. Sur un parcours France, rien ne s'intercale et la place est acquise :
+     * le partage est equilibre.</p>
+     */
+    private BigDecimal tauxAcompte(Enrollment enrollment) {
+        return enrollment.getRegistrationType().passeParLeVisa() ? depositRate : depositRateFrance;
+    }
+
+    /**
+     * Ouvre le reglement integral des frais de formation, en une seule echeance.
+     *
+     * <p><b>Reserve au parcours France.</b> Regler d'avance la totalite d'une formation dont le
+     * visa n'est pas encore accorde ferait porter au medecin le risque d'un refus consulaire ;
+     * l'echeancier existe precisement pour lui eviter cela. Un praticien deja etabli en France
+     * n'encourt pas ce risque, et beaucoup preferent solder leur inscription en une fois.</p>
+     *
+     * <p>Le rang {@code FULL} n'etiquetait jusqu'ici que les dossiers anterieurs a l'echeancier
+     * (V45). Il retrouve ici son sens premier, et les lectures comptables qui filtrent sur
+     * {@code TUITION_FEE} continuent de le voir sans rien connaitre de ce cas.</p>
+     */
+    @Transactional
+    public EnrollmentPayment openTuitionFull(UUID enrollmentId) {
+        Enrollment enrollment = requireEnrollment(enrollmentId);
+        if (enrollment.getRegistrationType().passeParLeVisa()) {
+            throw new IllegalStateException(
+                    "Ce dossier suit l'échéancier acompte puis solde : le règlement en une fois "
+                            + "n'est proposé qu'aux praticiens exerçant déjà en France.");
+        }
+        if (findPaidTuition(enrollmentId, PaymentInstallment.FULL).isPresent()) {
+            throw new IllegalStateException("Ce dossier est déjà réglé en une fois.");
+        }
+        if (findPaidTuition(enrollmentId, PaymentInstallment.DEPOSIT).isPresent()) {
+            throw new IllegalStateException(
+                    "L'acompte de ce dossier est déjà réglé : seul le solde reste dû.");
+        }
+
+        return ouvrirEcheance(enrollment, PaymentInstallment.FULL,
+                resolveTuitionAmount(enrollment), resolveCommissionRate(enrollment));
     }
 
     /**
@@ -168,7 +215,7 @@ public class EnrollmentPaymentService {
 
         Enrollment enrollment = requireEnrollment(enrollmentId);
         var echeancier = TuitionInstallmentCalculator.split(
-                resolveTuitionAmount(enrollment), depositRate);
+                resolveTuitionAmount(enrollment), tauxAcompte(enrollment));
         if (!echeancier.hasBalance()) {
             throw new IllegalStateException("Aucun solde n'est dû sur ce dossier.");
         }
@@ -185,7 +232,7 @@ public class EnrollmentPaymentService {
         }
         Enrollment enrollment = requireEnrollment(enrollmentId);
         var echeancier = TuitionInstallmentCalculator.split(
-                resolveTuitionAmount(enrollment), depositRate);
+                resolveTuitionAmount(enrollment), tauxAcompte(enrollment));
 
         BigDecimal du = BigDecimal.ZERO;
         if (findPaidTuition(enrollmentId, PaymentInstallment.DEPOSIT).isEmpty()) {
@@ -200,7 +247,7 @@ public class EnrollmentPaymentService {
     /** L'echeancier tel qu'il s'applique a ce dossier, pour l'affichage. */
     @Transactional(readOnly = true)
     public TuitionInstallmentCalculator.TuitionSchedule scheduleFor(Enrollment enrollment) {
-        return TuitionInstallmentCalculator.split(resolveTuitionAmount(enrollment), depositRate);
+        return TuitionInstallmentCalculator.split(resolveTuitionAmount(enrollment), tauxAcompte(enrollment));
     }
 
     public Optional<EnrollmentPayment> findPaidTuition(UUID enrollmentId,

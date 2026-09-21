@@ -239,7 +239,8 @@ export function AdminEnrollmentDetailPage() {
 
               {!['REJECTED', 'CANCELLED'].includes(enrollment.status) && (
                 <div className="my-6">
-                  <ParcoursDossier statut={enrollment.status} perspective="admin" />
+                  <ParcoursDossier statut={enrollment.status} perspective="admin"
+                                    parcours={enrollment.registrationType} />
                 </div>
               )}
 

@@ -11,6 +11,9 @@ import java.util.UUID;
 public class EnrollmentDetailDto {
     private UUID id;
     private String status;
+    /** INTERNATIONAL_VISA ou LOCAL_FRANCE : l'interface en deduit le parcours a afficher. */
+    private String registrationType;
+    private String rppsNumber;
     private String trainingTitle;
     private String doctorName;
     private String doctorEmail;

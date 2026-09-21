@@ -212,7 +212,8 @@ export function AdminEnrollmentsListPage() {
                       <td className="px-6 py-4">
                         {isFailed
                           ? <span className="text-xs text-slate-400">Parcours interrompu</span>
-                          : <ParcoursDossier statut={e.status} perspective="admin" variante="ligne" />}
+                          : <ParcoursDossier statut={e.status} perspective="admin" variante="ligne"
+                                                              parcours={e.registrationType} />}
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={e.status} />
