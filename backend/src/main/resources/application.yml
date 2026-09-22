@@ -51,7 +51,11 @@ spring:
 
   flyway:
     enabled: true
-    locations: classpath:db/migration
+    # Deux emplacements en dev seulement : db/demo porte les formations fictives et les cinq
+    # comptes de test (V5, V11). Ils n'insèrent que des données, aucun schéma — voir
+    # db/demo/LISEZ-MOI.md. Le profil prod ne lit que db/migration : sans cela, toute base de
+    # production neuve recevrait un compte SUPER_ADMIN au mot de passe de test.
+    locations: classpath:db/migration,classpath:db/demo
     baseline-on-migrate: true
 
   data:
@@ -182,6 +186,11 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: false
+
+  flyway:
+    enabled: true
+    # Explicite, bien que ce soit la valeur par défaut : db/demo est exclu, et doit le rester.
+    locations: classpath:db/migration
 
   data:
     redis:
