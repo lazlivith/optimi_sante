@@ -1,0 +1,15 @@
+# Ce service est publié seul dans son propre dépôt : le .gitignore du monorepo ne l'y suit pas.
+
+# Secrets — adresse et identifiants de la base. Seul le modèle est versionné.
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Rapports produits par le service : des données, pas du code.
+exports/

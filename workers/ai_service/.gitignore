@@ -1,0 +1,12 @@
+# Ce service est publié seul dans son propre dépôt : le .gitignore du monorepo ne l'y suit pas.
+
+# Secrets — clés Gemini et Mistral, adresse de la base. Seul le modèle est versionné.
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
