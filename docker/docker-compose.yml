@@ -75,6 +75,10 @@ services:
       - REPORTING_WORKER_URL=http://analytics:8100
       # Service IA (extraction Gemini + assistant Mistral). Absent => fonctions IA désactivées.
       - AI_WORKER_URL=http://ai:8200
+      # Informations légales et bancaires
+      - LEGAL_IBAN=${LEGAL_IBAN:-FR7630006000011234567890189}
+      - LEGAL_BIC=${LEGAL_BIC:-AGRIFRPP}
+      - LEGAL_DENOMINATION=${LEGAL_DENOMINATION:-Optimi Santé SAS}
     depends_on:
       - postgres
       - redis
