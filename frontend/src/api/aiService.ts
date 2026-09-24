@@ -1,4 +1,5 @@
 import { axiosClient } from './axiosClient';
+import { API_BASE } from './apiBase';
 
 export interface AiStatus {
   configured: boolean;
@@ -157,7 +158,7 @@ export function streamChat(
 
   (async () => {
     try {
-      const response = await fetch('/api/v1/ai/chat/stream', {
+      const response = await fetch(`${API_BASE}/ai/chat/stream`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ question, conversationId: conversationId ?? null }),
