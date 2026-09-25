@@ -219,11 +219,17 @@ public class AiClient {
         String lower = detail.toLowerCase();
         log.warn("AI service call failed: {}", detail);
 
-        // Le worker renvoie 503 quand la clé du fournisseur manque : on nomme la variable à remplir.
-        if (detail.contains("503") || lower.contains("api_key")) {
+        // Clé absente : le worker le dit en toutes lettres (« Le fournisseur « x » n'est pas
+        // configuré »). On ne se fie plus au code 503 seul — le fournisseur l'emploie aussi pour
+        // signaler un modèle saturé, et l'exploitant partait alors renseigner une clé déjà en
+        // place. Constaté en production : Gemini répond « 503 This model is currently
+        // experiencing high demand » avec une clé parfaitement valide.
+        if (lower.contains("api_key") || lower.contains("n'est pas configuré")
+                || lower.contains("not configured")) {
             return new IllegalStateException(
                     "Fonction IA indisponible : clé API du fournisseur non configurée. "
-                            + "Renseignez GEMINI_API_KEY / MISTRAL_API_KEY dans docker/.env.");
+                            + "Renseignez GEMINI_API_KEY / MISTRAL_API_KEY dans l'environnement "
+                            + "du service IA.");
         }
 
         // Clé valide mais compte sans quota, ou débit dépassé : rien à corriger dans le code.
@@ -233,6 +239,16 @@ public class AiClient {
                     "Fonction IA momentanément indisponible : le fournisseur a refusé la requête "
                             + "(limite de débit ou quota atteint). Vérifiez le plan et les limites "
                             + "du compte sur la console du fournisseur.");
+        }
+
+        // Modèle saturé chez le fournisseur : rien à corriger, il faut réessayer. La distinguer
+        // du quota évite d'aller vérifier une facturation qui n'est pas en cause.
+        if (detail.contains("503") || lower.contains("high demand")
+                || lower.contains("overloaded") || lower.contains("unavailable")) {
+            return new IllegalStateException(
+                    "Fonction IA momentanément indisponible : le modèle est saturé chez le "
+                            + "fournisseur. Réessayez dans quelques instants ; si cela persiste, "
+                            + "changez de modèle (EXTRACTION_MODEL, CHAT_MODEL).");
         }
 
         // Erreur remontée par le modèle : son message est plus utile qu'un texte générique.
