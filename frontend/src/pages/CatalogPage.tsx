@@ -39,11 +39,18 @@ export function CatalogPage() {
       const uniqueMap = new Map<string, typeof cats[0]>();
       cats.forEach(cat => {
         const decodedName = cat.name.replace(/&amp;/g, '&');
-        if (!uniqueMap.has(decodedName)) {
+        const dejaVu = uniqueMap.get(decodedName);
+        // Deux libelles identiques designent le meme rayon : on garde celui qui a
+        // effectivement des produits, sinon le filtre menerait vers le jumeau vide.
+        if (!dejaVu || (dejaVu.productCount ?? 0) < (cat.productCount ?? 0)) {
           uniqueMap.set(decodedName, { ...cat, name: decodedName });
         }
       });
-      return Array.from(uniqueMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+      // Un rayon sans produit est une impasse : le proposer dans le filtre ne fait
+      // qu'allonger une liste de plus de deux cents entrees.
+      return Array.from(uniqueMap.values())
+        .filter(cat => (cat.productCount ?? 0) > 0)
+        .sort((a, b) => a.name.localeCompare(b.name));
     }
   });
 
@@ -152,7 +159,7 @@ export function CatalogPage() {
               >
                 <option value="">Toutes les catégories</option>
                 {categories?.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  <option key={cat.id} value={cat.id}>{cat.name} ({cat.productCount ?? 0})</option>
                 ))}
               </select>
             </div>
