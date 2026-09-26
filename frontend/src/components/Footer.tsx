@@ -61,6 +61,7 @@ export const Footer = () => {
             <Lien to="/services#negoce">Négoce médical</Lien>
             <Lien to="/services#partenariat">Devenir partenaire</Lien>
             <Lien to="/services#faq">Questions fréquentes</Lien>
+            <Lien to="/blog">Blog & événements</Lien>
           </Colonne>
 
           <Colonne titre="Boutique">

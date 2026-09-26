@@ -2,7 +2,7 @@ import {
   Truck,
   LayoutDashboard, TrendingUp, ShoppingBag, Package, Tag, FileText,
   GraduationCap, BookOpen, Building2, Mail, Banknote, Users,
-  BarChart3, FileSpreadsheet, ScrollText, ShieldCheck, BellRing, Bot,
+  BarChart3, FileSpreadsheet, ScrollText, ShieldCheck, BellRing, Bot, Newspaper,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -104,6 +104,10 @@ export const GOUVERNANCE_UNIVERSE: AdminUniverse = {
     { to: '/admin/ai', label: 'Intelligence artificielle', icon: Bot },
     { to: '/admin/audit', label: "Journal d'audit", icon: ScrollText },
     { to: '/admin/governance', label: 'Gouvernance / RGPD', icon: ShieldCheck },
+    // Le blog s'exprime au nom d'Optimi Sante, sur sa page d'accueil : ce n'est le metier
+    // ni du negoce ni de la mobilite. Son controleur est garde par @PlatformAdmin, et le
+    // menu doit dire la meme chose que le serveur.
+    { to: '/admin/blog', label: 'Blog & événements', icon: Newspaper },
   ],
 };
 

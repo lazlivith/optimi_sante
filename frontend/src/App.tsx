@@ -58,6 +58,9 @@ const AdminEmailsPage = lazy(() => import('./pages/admin/AdminEmailsPage').then(
 const AdminPayoutsPage = lazy(() => import('./pages/admin/AdminPayoutsPage').then(m => ({ default: m.AdminPayoutsPage })));
 const BecomePartnerPage = lazy(() => import('./pages/partnership/BecomePartnerPage').then(m => ({ default: m.BecomePartnerPage })));
 const ServicesPage = lazy(() => import('./pages/ServicesPage').then(m => ({ default: m.ServicesPage })));
+const BlogPage = lazy(() => import('./pages/BlogPage').then(m => ({ default: m.BlogPage })));
+const BlogPostPage = lazy(() => import('./pages/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
+const AdminBlogPage = lazy(() => import('./pages/admin/AdminBlogPage').then(m => ({ default: m.AdminBlogPage })));
 const LegalNoticePage = lazy(() => import('./pages/legal/LegalNoticePage').then(m => ({ default: m.LegalNoticePage })));
 const TermsPage = lazy(() => import('./pages/legal/TermsPage').then(m => ({ default: m.TermsPage })));
 const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
@@ -147,6 +150,9 @@ export function App() {
                 <Route path="reports" element={<AdminReportsPage />} />
                 <Route path="audit" element={<AdminAuditLogPage />} />
                 <Route path="governance" element={<AdminGovernancePage />} />
+                {/* Le blog parle au nom d'Optimi Sante sur sa page d'accueil : ni negoce
+                    ni mobilite, d'ou sa place ici, comme cote serveur (@PlatformAdmin). */}
+                <Route path="blog" element={<AdminBlogPage />} />
               </Route>
             </Route>
           </Route>
@@ -203,6 +209,10 @@ export function App() {
                       consultables sans compte, y compris par un visiteur qui hesite. */}
                   {/* Page de presentation, consultable avant tout engagement. */}
                   <Route path="/services" element={<ServicesPage />} />
+
+                  {/* Actualites et agenda des evenements, alimentes depuis /admin/blog. */}
+                  <Route path="/blog" element={<BlogPage />} />
+                  <Route path="/blog/:slug" element={<BlogPostPage />} />
 
                   <Route path="/mentions-legales" element={<LegalNoticePage />} />
                   <Route path="/cgv" element={<TermsPage />} />

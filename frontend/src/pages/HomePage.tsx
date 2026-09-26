@@ -7,6 +7,8 @@ import type { Product } from '../api/catalogService';
 import { useCart } from '../context/CartContext';
 import { ProductImage } from '../components/common/ProductImage';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { blogService } from '../api/blogService';
+import { formaterPeriode } from '../lib/dates';
 import { PromoHeroSlider } from '../components/home/PromoHeroSlider';
 import { CabinetSection } from '../components/home/CabinetSection';
 import { RayonsCarousel } from '../components/home/RayonsCarousel';
@@ -525,6 +527,14 @@ export function HomePage() {
   });
   const promos = promoData?.content ?? [];
 
+  // Le prochain evenement du blog, s'il y en a un : la banniere ci-dessous s'y adapte.
+  // Requete a part du reste, et sans blocage — le serveur repond 204 quand l'agenda est
+  // vide, et la page d'accueil ne doit pas attendre le blog pour s'afficher.
+  const { data: prochainEvenement } = useQuery({
+    queryKey: ['blog-prochain-evenement'],
+    queryFn: () => blogService.prochainEvenement(),
+  });
+
   return (
     <div className="flex flex-col bg-gray-50 min-h-screen">
       {/* Le carrousel montre les vraies promotions. Sans aucune promotion active, il
@@ -549,11 +559,28 @@ export function HomePage() {
       {/* Events Banner */}
       <section className="container mx-auto px-4 md:px-8 py-8">
         <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-8 text-white">
-            <p className="text-blue-200 text-xs font-bold uppercase mb-2">À venir</p>
-            <h3 className="text-2xl font-bold mb-2">Congrès National de Médecine</h3>
-            <p className="text-sm text-blue-100 mb-4">Bordeaux · 15-18 Octobre 2026</p>
-            <Link to="/formations" className="inline-flex items-center gap-2 bg-white text-blue-700 font-bold px-4 py-2 rounded-full text-sm hover:bg-blue-50 transition-colors">
+          {/* Le prochain evenement annonce sur le blog. Cette carte affichait auparavant un
+              congres ecrit en dur, avec ses dates : une annonce inventee sur la page
+              d'accueil d'un site en production. Sans evenement au programme, on invite au
+              blog plutot que d'en inventer un. */}
+          <div className="bg-gradient-to-br from-brand to-brand-dark rounded-2xl p-8 text-white">
+            <p className="text-brand-light/80 text-xs font-bold uppercase mb-2">
+              {prochainEvenement ? 'À venir' : 'Le blog'}
+            </p>
+            <h3 className="text-2xl font-bold mb-2">
+              {prochainEvenement ? prochainEvenement.title : 'Actualités & événements'}
+            </h3>
+            <p className="text-sm text-brand-light mb-4">
+              {prochainEvenement
+                ? [prochainEvenement.eventLocation,
+                   formaterPeriode(prochainEvenement.eventStartsOn, prochainEvenement.eventEndsOn)]
+                    .filter(Boolean).join(' · ')
+                : 'Congrès, salons et nouvelles de la plateforme.'}
+            </p>
+            <Link
+              to={prochainEvenement ? `/blog/${prochainEvenement.slug}` : '/blog'}
+              className="inline-flex items-center gap-2 bg-white text-brand font-bold px-4 py-2 rounded-full text-sm hover:bg-brand-light transition-colors"
+            >
               En savoir plus <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

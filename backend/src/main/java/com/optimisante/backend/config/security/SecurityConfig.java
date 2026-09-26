@@ -63,6 +63,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/catalog/**").permitAll()
                         .requestMatchers("/api/v1/payments/webhook").permitAll()
+                        // Le blog s'adresse aux visiteurs, et sa banniere s'affiche sur la
+                        // page d'accueil : en lecture seule, et seulement sur ce qui a ete mis
+                        // en ligne. L'ecriture passe par /api/v1/admin/blog, garde par ailleurs.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/blog", "/api/v1/blog/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/trainings").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/trainings/*/sessions").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/trainings/*/lead-capture").permitAll()
