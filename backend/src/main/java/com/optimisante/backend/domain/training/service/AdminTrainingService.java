@@ -139,6 +139,42 @@ public class AdminTrainingService {
         }
     }
 
+    /**
+     * Retire définitivement une formation, ses sessions et ses options.
+     *
+     * <p><b>Ce que la suppression refuse de faire.</b> Une session à laquelle un médecin s'est
+     * inscrit porte un dossier, parfois un paiement et une convention ; une session sur laquelle
+     * une candidature a été déposée porte une décision d'établissement. Les effacer au passage
+     * ferait disparaître des faits comptables et médicaux au motif qu'on voulait ranger un
+     * catalogue. La suppression est donc refusée dans ces deux cas, en nommant ce qui bloque.</p>
+     *
+     * <p><b>Ce qu'elle délie plutôt que d'effacer.</b> Un produit rattaché à la formation et un
+     * prospect capté sur sa page existent indépendamment d'elle : ils perdent le lien, pas leur
+     * existence.</p>
+     */
+    @Transactional
+    public void supprimer(UUID trainingId) {
+        Training formation = trainingRepository.findById(trainingId)
+                .orElseThrow(() -> new IllegalArgumentException("Formation introuvable."));
+
+        long dossiers = trainingRepository.compterDossiers(trainingId);
+        long candidatures = trainingRepository.compterCandidatures(trainingId);
+        if (dossiers > 0 || candidatures > 0) {
+            throw new IllegalStateException(
+                    "Suppression impossible : cette formation porte " + dossiers + " dossier(s) "
+                            + "et " + candidatures + " candidature(s). Dépubliez-la plutôt, pour "
+                            + "la retirer du catalogue sans effacer ces enregistrements.");
+        }
+
+        trainingRepository.delierProduits(trainingId);
+        trainingRepository.delierProspects(trainingId);
+        trainingRepository.supprimerOptions(trainingId);
+        long sessions = trainingRepository.supprimerSessions(trainingId);
+        trainingRepository.delete(formation);
+
+        log.info("Formation « {} » supprimée avec {} session(s)", formation.getTitle(), sessions);
+    }
+
     private String safeMediaUrl(String publicId, String resourceType) {
         if (publicId == null || publicId.isBlank()) return null;
         try {

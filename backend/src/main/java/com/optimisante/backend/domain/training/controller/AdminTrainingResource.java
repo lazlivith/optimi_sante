@@ -9,11 +9,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 import com.optimisante.backend.config.security.MobilityAdmin;
+import com.optimisante.backend.config.security.PlatformAdmin;
 
 @RestController
 @RequestMapping("/api/v1/admin/trainings")
@@ -66,5 +68,19 @@ public class AdminTrainingResource {
     public ResponseEntity<AdminTrainingResponseDto> reject(
             @PathVariable UUID id, @Valid @RequestBody TrainingRejectRequestDto dto) {
         return ResponseEntity.ok(adminTrainingService.reject(id, dto.reason()));
+    }
+
+    /**
+     * Retire définitivement une formation du catalogue.
+     *
+     * <p>Réservée au même rôle que la suppression d'un dossier : c'est une opération sans retour.
+     * Le service refuse d'effacer une formation qui porte des dossiers ou des candidatures — pour
+     * celles-là, c'est la dépublication qu'il faut.</p>
+     */
+    @DeleteMapping("/{id}")
+    @PlatformAdmin
+    public ResponseEntity<Void> supprimer(@PathVariable UUID id) {
+        adminTrainingService.supprimer(id);
+        return ResponseEntity.noContent().build();
     }
 }

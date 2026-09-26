@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, GraduationCap, Check, X, Image as ImageIcon, Video, Wallet, Package } from 'lucide-react';
+import { Loader2, GraduationCap, Check, X, Image as ImageIcon, Video, Wallet, Package, Trash2 } from 'lucide-react';
 import { adminTrainingService, type AdminTrainingDto } from '../../api/adminTrainingService';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -109,6 +109,35 @@ export function AdminTrainingsPage() {
     }
   };
 
+  /**
+   * Suppression définitive. Le serveur la refuse si la formation porte des dossiers ou des
+   * candidatures : son message nomme ce qui bloque, on l'affiche tel quel plutôt que de le
+   * remplacer par un texte générique qui n'apprendrait rien.
+   */
+  const handleDelete = async (t: AdminTrainingDto) => {
+    const confirme = window.confirm(
+      `Supprimer définitivement « ${t.title} » ?
+
+`
+      + `Ses sessions et ses options seront retirées avec elle. Les produits et les prospects `
+      + `qui lui sont rattachés seront conservés, simplement déliés.
+
+`
+      + `Cette action est irréversible.`,
+    );
+    if (!confirme) return;
+    setProcessingId(t.id);
+    try {
+      await adminTrainingService.supprimer(t.id);
+      setTrainings(prev => prev.filter(x => x.id !== t.id));
+      setToast({ message: `« ${t.title} » supprimée.`, type: 'success' });
+    } catch (err: any) {
+      setToast({ message: err?.response?.data?.message ?? 'La suppression a échoué.', type: 'error' });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const pendingCount = trainings.filter(t => t.approvalStatus === 'PENDING_REVIEW').length;
 
   return (
@@ -187,8 +216,9 @@ export function AdminTrainingsPage() {
                     </td>
                     <td className="px-6 py-4"><StatusBadge status={t.approvalStatus} /></td>
                     <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
                       {t.approvalStatus === 'PENDING_REVIEW' && (
-                        <div className="flex items-center justify-end gap-2">
+                        <>
                           <button
                             onClick={() => ouvrirRevue(t)}
                             disabled={processingId === t.id}
@@ -205,8 +235,18 @@ export function AdminTrainingsPage() {
                           >
                             <X className="w-4 h-4" />
                           </button>
-                        </div>
+                        </>
                       )}
+                        <button
+                          onClick={() => handleDelete(t)}
+                          disabled={processingId === t.id}
+                          className="inline-flex items-center justify-center p-2 text-slate-400 rounded-lg hover:bg-rose-100 hover:text-rose-700 transition disabled:opacity-50"
+                          title="Supprimer définitivement"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span className="sr-only">Supprimer {t.title}</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -44,6 +44,17 @@ export const adminTrainingService = {
     return data;
   },
 
+  /**
+   * Retire definitivement une formation, ses sessions et ses options.
+   *
+   * Le serveur refuse si elle porte des dossiers ou des candidatures : ces enregistrements
+   * valent preuve, et c'est la depublication qu'il faut dans ce cas. Son message nomme alors
+   * ce qui bloque, et se montre tel quel a l'utilisateur.
+   */
+  supprimer: async (id: string): Promise<void> => {
+    await axiosClient.delete(`/admin/trainings/${id}`);
+  },
+
   reject: async (id: string, reason: string): Promise<AdminTrainingDto> => {
     const { data } = await axiosClient.patch<AdminTrainingDto>(`/admin/trainings/${id}/reject`, { reason });
     return data;
