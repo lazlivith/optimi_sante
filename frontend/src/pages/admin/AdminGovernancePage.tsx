@@ -377,11 +377,13 @@ export function AdminGovernancePage() {
 
       {confirmAnon && (
         <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-rose-600" /> Anonymisation irréversible
             </h3>
-            <p className="text-sm text-slate-600 mt-3">
+            {/* `break-words` : une adresse e-mail n'offre aucun espace ou couper, et une
+                adresse un peu longue debordait de cette boite etroite sur telephone. */}
+            <p className="text-sm text-slate-600 mt-3 break-words">
               Toutes les données personnelles de <strong>{email}</strong> seront brouillées définitivement
               (identité, contacts, profil, leads, candidatures). Les commandes et inscriptions sont
               conservées mais rattachées à un compte anonyme. Cette action ne peut pas être annulée.

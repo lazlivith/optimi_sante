@@ -83,6 +83,10 @@ export function PartnerSessionsPage() {
           ) : sessions.length === 0 ? (
             <EmptyState icon={Calendar} title="Aucune session pour le moment." />
           ) : (
+            /* La carte est en `overflow-hidden` : sans ce conteneur, les colonnes qui ne
+               tiennent pas sur telephone etaient coupees net, sans defilement pour les
+               atteindre — la page ne debordait pas, mais le contenu etait perdu. */
+            <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                 <tr>
@@ -115,6 +119,7 @@ export function PartnerSessionsPage() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 

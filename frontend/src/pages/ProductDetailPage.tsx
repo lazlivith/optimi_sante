@@ -247,7 +247,7 @@ export function ProductDetailPage() {
 
       {isQuoteModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 p-6">
               <h2 className="text-xl font-bold text-brand-dark">Demande de Devis B2B</h2>
               <button onClick={() => setIsQuoteModalOpen(false)} className="text-slate-400 hover:text-brand-dark">

@@ -603,7 +603,7 @@ function ConfirmationExecution({ payout, tranches, enCours, onAnnuler, onConfirm
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-brand-dark/50 backdrop-blur-sm p-4"
       onMouseDown={(e) => { if (e.target === e.currentTarget && !enCours) onAnnuler(); }}>
       <div role="alertdialog" aria-modal="true" aria-labelledby="execution-titre"
-        className="bg-white w-full max-w-md rounded-2xl shadow-xl p-6">
+        className="bg-white w-full max-w-md rounded-2xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
         <h2 id="execution-titre" className="text-lg font-bold text-brand-dark">Le virement a-t-il été exécuté ?</h2>
         <p className="text-sm text-slate-600 mt-2">
           Confirmez uniquement si la banque a débité le compte d'Optimi Santé. Le virement{' '}

@@ -51,7 +51,7 @@ export const TrainingBrochureModal: React.FC<TrainingBrochureModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-6 shadow-xl">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-6 shadow-xl max-h-[90vh] overflow-y-auto">
         <div>
           <h3 className="text-lg font-bold text-slate-900">Mettre à jour la brochure</h3>
           <p className="text-sm text-slate-500">{trainingTitle}</p>

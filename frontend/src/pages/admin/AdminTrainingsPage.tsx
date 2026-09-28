@@ -261,7 +261,7 @@ export function AdminTrainingsPage() {
           décision — publier une formation, c'est en arrêter le tarif de dossier. */}
       {enRevue && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-5 border-b border-slate-100 bg-slate-50">
               <h2 className="text-lg font-bold text-brand-dark">Valider et publier</h2>
               <p className="text-sm text-slate-500 mt-0.5">
