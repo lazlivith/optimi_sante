@@ -458,7 +458,7 @@ export function AdminCatalogPage() {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">SKU</label>
                   <input type="text" required value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })}
@@ -481,7 +481,7 @@ export function AdminCatalogPage() {
                 <textarea rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
                   className="w-full rounded-md border-slate-300 shadow-sm p-2 border" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Stock</label>
                   <input type="number" min="0" value={form.stockQuantity}
@@ -515,7 +515,7 @@ export function AdminCatalogPage() {
                   <Tag className="w-4 h-4 text-rose-500" />
                   <h3 className="text-sm font-bold text-slate-700">Promotion (facultatif)</h3>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-600 mb-1">Prix promo (€)</label>
                     <input type="number" step="0.01" min="0" value={form.promoPrice ?? ''}

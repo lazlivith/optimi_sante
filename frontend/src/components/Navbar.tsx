@@ -70,7 +70,11 @@ export const Navbar = () => {
   return (
     <header className="bg-white sticky top-0 z-50 border-b border-gray-100 shadow-sm">
       {/* Main Header Row */}
-      <div className="container mx-auto px-4 h-24 flex items-center gap-5">
+      {/* Sur mobile, la rangee se replie : le logotype et les actions tiennent sur la
+          premiere ligne, la recherche passe dessous sur toute la largeur. Auparavant les
+          trois se disputaient une seule ligne — a 360 pixels ils en reclamaient 530, et
+          toutes les pages publiques debordaient de l'ecran. */}
+      <div className="container mx-auto px-4 py-3 sm:py-0 sm:h-24 flex flex-wrap items-center gap-x-3 gap-y-2.5 sm:flex-nowrap sm:gap-5">
 
         <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="Optimi Santé — accueil">
           {/* Sans la signature : meme a 64 pixels de haut elle reste illisible, et une mention
@@ -83,11 +87,12 @@ export const Navbar = () => {
 
               Le plafond de largeur passe a 240 pixels. Il ne mord pas aujourd'hui, mais un
               logotype plus allonge livre plus tard serait rapetisse en silence par l'ancien. */}
-          <LogoOptimi fond="clair" signature={false} className="h-16 md:h-20 w-auto max-w-[280px]" />
+          <LogoOptimi fond="clair" signature={false} className="h-10 sm:h-16 md:h-20 w-auto max-w-[150px] sm:max-w-[280px]" />
         </Link>
 
         {/* Search Bar — Central */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-2xl mx-auto">
+        <form onSubmit={handleSearch}
+              className="order-last w-full min-w-0 sm:order-none sm:w-auto sm:flex-1 sm:max-w-2xl sm:mx-auto">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -101,7 +106,7 @@ export const Navbar = () => {
         </form>
 
         {/* Right Zone */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto sm:ml-0">
           {/* Cart */}
           <Link to="/cart" className="relative p-2.5 text-gray-600 hover:text-brand-dark transition-colors rounded-full hover:bg-gray-100">
             <ShoppingCart className="w-5 h-5" />

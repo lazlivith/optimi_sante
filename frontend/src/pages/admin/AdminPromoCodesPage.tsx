@@ -142,7 +142,7 @@ export function AdminPromoCodesPage() {
                 <input type="text" required value={form.code} onChange={e => setForm({ ...form, code: e.target.value })}
                   placeholder="ex. RENTREE2026" className="w-full rounded-md border-slate-300 border p-2.5 font-mono uppercase" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Type de remise</label>
                   <select value={form.discountType} onChange={e => setForm({ ...form, discountType: e.target.value as 'PERCENTAGE' | 'FIXED_AMOUNT' })}
@@ -158,7 +158,7 @@ export function AdminPromoCodesPage() {
                     className="w-full rounded-md border-slate-300 border p-2.5" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Montant minimum (€)</label>
                   <input type="number" min={0} step="0.01" value={form.minOrderAmount ?? ''}
@@ -172,7 +172,7 @@ export function AdminPromoCodesPage() {
                     className="w-full rounded-md border-slate-300 border p-2.5" placeholder="Illimité" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Début (optionnel)</label>
                   <input type="date" value={form.startsAt ? form.startsAt.slice(0, 10) : ''}

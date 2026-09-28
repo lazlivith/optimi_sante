@@ -154,7 +154,7 @@ export function PartnerSessionsPage() {
                 </datalist>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Début</label>
                   <input type="date" required value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} className="w-full rounded-lg border-slate-300 border p-2.5" />
@@ -165,7 +165,7 @@ export function PartnerSessionsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Capacité</label>
                   <input type="number" min="1" required value={form.capacity} onChange={e => setForm({ ...form, capacity: parseInt(e.target.value) || 0 })} className="w-full rounded-lg border-slate-300 border p-2.5" />

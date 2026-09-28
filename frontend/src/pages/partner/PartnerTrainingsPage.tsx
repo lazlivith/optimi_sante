@@ -213,7 +213,7 @@ export function PartnerTrainingsPage() {
                 <input type="text" required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
                   className="w-full rounded-md border-slate-300 shadow-sm p-2 border" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Spécialité médicale</label>
                   <input type="text" required value={form.medicalSpecialty} onChange={e => setForm({ ...form, medicalSpecialty: e.target.value })}
@@ -231,7 +231,7 @@ export function PartnerTrainingsPage() {
                 <textarea rows={3} required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
                   className="w-full rounded-md border-slate-300 shadow-sm p-2 border" />
               </div>
-              <div className="grid grid-cols-2 gap-4 items-end">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Durée (jours)</label>
                   <input type="number" min="1" required value={form.durationDays}

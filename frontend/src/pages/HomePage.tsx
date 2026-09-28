@@ -461,7 +461,10 @@ function PromosSection({ products }: { products: Product[] }) {
     <section className="container mx-auto px-4 md:px-8 py-8">
       <h2 className="text-2xl font-bold text-gray-800 mb-5">Nos promos du mois</h2>
       <div className="relative">
-        <div className="grid grid-cols-5 gap-3">
+        {/* Cinq colonnes quelle que soit la largeur donnaient des vignettes de 57 pixels sur
+            telephone : ni la photo ni le prix n'y etaient lisibles. Le lot reste de cinq
+            produits, reparti sur plusieurs rangees tant que l'ecran est etroit. */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {products.slice(start, start + visible).map(p => (
             <ProductCardHome key={p.id} product={p} />
           ))}
