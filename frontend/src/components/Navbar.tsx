@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { adminHomeFor, ALL_ADMIN_ROLES } from '../lib/adminUniverses';
-import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, Settings, Search, Home, Briefcase, Database as DatabaseIcon, ShieldCheck } from 'lucide-react';
+import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, Settings, Search, Briefcase, Database as DatabaseIcon, ShieldCheck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { NotificationBell } from './common/NotificationBell';
 import { LogoOptimi } from '../components/marque/LogoOptimi';
+import { Menu } from 'lucide-react';
+import { MenuMobile } from './MenuMobile';
+import { useTiroirNavigation } from '../hooks/useTiroirNavigation';
 
 
 export const Navbar = () => {
@@ -13,7 +16,10 @@ export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [clientType, setClientType] = useState<'particulier' | 'professionnel'>('particulier');
+  // Meme tiroir que les espaces d'administration : fermeture a l'echappement, au
+  // changement de page et des que l'ecran repasse au-dessus de 1024 px, focus retenu dans
+  // le panneau et rendu au bouton. Reecrire tout cela ici en donnerait une seconde version.
+  const tiroir = useTiroirNavigation();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -74,7 +80,19 @@ export const Navbar = () => {
           premiere ligne, la recherche passe dessous sur toute la largeur. Auparavant les
           trois se disputaient une seule ligne — a 360 pixels ils en reclamaient 530, et
           toutes les pages publiques debordaient de l'ecran. */}
-      <div className="container mx-auto px-4 py-3 sm:py-0 sm:h-24 flex flex-wrap items-center gap-x-3 gap-y-2.5 sm:flex-nowrap sm:gap-5">
+      <div className="container mx-auto px-4 py-3 lg:py-0 lg:h-24 flex flex-wrap items-center gap-x-3 gap-y-2.5 lg:flex-nowrap lg:gap-5">
+
+        <button
+          ref={tiroir.bouton}
+          type="button"
+          onClick={tiroir.ouvrir}
+          aria-expanded={tiroir.ouvert}
+          aria-controls="menu-site"
+          aria-label="Ouvrir le menu"
+          className="lg:hidden p-2 -ml-2 rounded-lg text-brand-dark hover:bg-slate-100"
+        >
+          <Menu className="w-6 h-6" aria-hidden="true" />
+        </button>
 
         <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="Optimi Santé — accueil">
           {/* Sans la signature : meme a 64 pixels de haut elle reste illisible, et une mention
@@ -87,12 +105,12 @@ export const Navbar = () => {
 
               Le plafond de largeur passe a 240 pixels. Il ne mord pas aujourd'hui, mais un
               logotype plus allonge livre plus tard serait rapetisse en silence par l'ancien. */}
-          <LogoOptimi fond="clair" signature={false} className="h-10 sm:h-16 md:h-20 w-auto max-w-[150px] sm:max-w-[280px]" />
+          <LogoOptimi fond="clair" signature={false} className="h-10 lg:h-20 w-auto max-w-[150px] lg:max-w-[280px]" />
         </Link>
 
         {/* Search Bar — Central */}
         <form onSubmit={handleSearch}
-              className="order-last w-full min-w-0 sm:order-none sm:w-auto sm:flex-1 sm:max-w-2xl sm:mx-auto">
+              className="order-last w-full min-w-0 lg:order-none lg:w-auto lg:flex-1 lg:max-w-2xl lg:mx-auto">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -106,7 +124,7 @@ export const Navbar = () => {
         </form>
 
         {/* Right Zone */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto sm:ml-0">
+        <div className="flex items-center gap-1.5 lg:gap-2 shrink-0 ml-auto lg:ml-0">
           {/* Cart */}
           <Link to="/cart" className="relative p-2.5 text-gray-600 hover:text-brand-dark transition-colors rounded-full hover:bg-gray-100">
             <ShoppingCart className="w-5 h-5" />
@@ -130,7 +148,7 @@ export const Navbar = () => {
                 <div className="w-8 h-8 bg-brand-light rounded-full flex items-center justify-center">
                   <UserIcon className="w-4 h-4 text-brand" />
                 </div>
-                <div className="hidden sm:block text-left">
+                <div className="hidden lg:block text-left">
                   <p className="text-xs text-gray-500 leading-none">Bonjour</p>
                   <p className="text-sm font-semibold text-gray-800 leading-none mt-0.5">
                     {user.firstName || user.email.split('@')[0]}
@@ -139,7 +157,7 @@ export const Navbar = () => {
                     {getRoleLabel(user.role)}
                   </p>
                 </div>
-                <ChevronDown className="w-3 h-3 text-gray-400 hidden sm:block" />
+                <ChevronDown className="w-3 h-3 text-gray-400 hidden lg:block" />
               </button>
 
               {isDropdownOpen && (
@@ -207,27 +225,8 @@ export const Navbar = () => {
       </div>
 
       {/* Secondary Navigation */}
-      <div className="border-t border-gray-100 bg-white">
+      <div className="hidden lg:block border-t border-gray-100 bg-white">
         <div className="container mx-auto px-4 flex items-center h-12 gap-1">
-          {/* Client Type Switcher */}
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 mr-3">
-            <button
-              onClick={() => setClientType('particulier')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all ${clientType === 'particulier' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              <Home className="w-3.5 h-3.5" />
-              Particulier
-            </button>
-            <button
-              onClick={() => setClientType('professionnel')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all ${clientType === 'professionnel' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              <Briefcase className="w-3.5 h-3.5" />
-              Professionnel
-            </button>
-          </div>
-
-          <div className="w-px h-5 bg-gray-200 mx-1" />
 
           {/* Nav Links */}
           <nav className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
@@ -255,6 +254,13 @@ export const Navbar = () => {
           </nav>
         </div>
       </div>
+
+      <MenuMobile
+        ouvert={tiroir.ouvert}
+        fermer={tiroir.fermer}
+        fermerSurLien={tiroir.fermerSurLien}
+        panneau={tiroir.panneau}
+      />
     </header>
   );
 };

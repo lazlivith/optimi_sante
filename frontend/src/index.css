@@ -87,16 +87,17 @@
   :root {
     /* Hauteur de l'en-tete collante.
 
-       Sous 640px la rangee principale se replie en deux lignes — logotype et actions, puis
-       la recherche sur toute la largeur — et mesure 120px au lieu de 96. Avec les 48px de
-       navigation secondaire et les 2px de bordures : 170px sur telephone, 146px au-dela.
+       Sous 1024px — telephones, tablettes et iPad — la rangee principale se replie en deux
+       lignes (logotype et actions, puis la recherche pleine largeur) et la rangee de liens
+       cede la place au menu en panneau : 121px. Au-dela, une rangee de 96px et la rangee de
+       liens de 48px, bordures comprises : 146px.
        Les deux valeurs sont mesurees sur le rendu compile, pas deduites des classes.
 
        Tout ce qui se colle sous l'en-tete s'y refere, et rien ne recopie le nombre. Les deux
        fois ou ce calcul a ete ecrit a la main il etait faux : `top-16` oubliait la navigation
        secondaire (66px d'ecart), puis `top-32` oubliait les bordures (2px). Changer la hauteur
        de la rangee se fait desormais ici, et ailleurs nulle part. */
-    --hauteur-entete: 170px;
+    --hauteur-entete: 121px;
 
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -138,10 +139,10 @@
     @apply bg-brand-cream text-brand-dark;
   }
 
-  /* Palier `sm` de Tailwind : au-dela, la rangee principale de l'en-tete tient sur une
-     seule ligne et retrouve ses 96px. La valeur par defaut ci-dessus vaut pour le
-     telephone — c'est la lecture mobile d'abord, celle qui casse en silence si on l'oublie. */
-  @media (min-width: 640px) {
+  /* Palier `lg` de Tailwind : au-dela, l'en-tete retrouve sa rangee unique et sa rangee
+     de liens. La valeur par defaut ci-dessus vaut pour telephone ET tablette — c'est la
+     lecture mobile d'abord, celle qui casse en silence si on l'oublie. */
+  @media (min-width: 1024px) {
     :root {
       --hauteur-entete: 146px;
     }
