@@ -118,7 +118,7 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
             className="absolute left-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center
                        justify-center rounded-full bg-brand text-white shadow-md
                        transition-colors hover:bg-brand-fonce sm:left-2 sm:h-9 sm:w-9
-                       md:left-5 lg:h-10 lg:w-10"
+                       lg:left-4 lg:h-10 lg:w-10"
           >
             <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
           </button>
@@ -128,7 +128,7 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
             className="absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center
                        justify-center rounded-full bg-brand text-white shadow-md
                        transition-colors hover:bg-brand-fonce sm:right-2 sm:h-9 sm:w-9
-                       md:right-5 lg:h-10 lg:w-10"
+                       lg:right-4 lg:h-10 lg:w-10"
           >
             <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
           </button>
@@ -199,8 +199,8 @@ function Diapositive({ produit, rang, total, actif }: {
       <div
         className="relative grid grid-cols-[1.3fr_1fr] items-stretch gap-3
                    sm:grid-cols-[1.2fr_1fr]
-                   pl-11 pr-10 py-4 sm:gap-5 sm:px-12 sm:py-5 lg:grid-cols-[1.05fr_1fr] lg:gap-4
-                   lg:py-10 lg:pl-16 lg:pr-0
+                   pl-11 pr-10 py-4 sm:gap-5 sm:pl-14 sm:pr-12 sm:py-5
+                   lg:grid-cols-[1.05fr_1fr] lg:gap-4 lg:py-10 lg:pl-20 lg:pr-14
                    h-[10.5rem] sm:h-[12rem] lg:h-[22rem]"
       >
         {/* ── Texte ─────────────────────────────────────────────────────────────────── */}
