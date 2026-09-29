@@ -16,6 +16,11 @@ const DUREE_DIAPOSITIVE_MS = 6000;
  * défiler pour atteindre la boutique. Celle-ci tient en un tiers de cette hauteur, sur fond
  * clair — le produit y gagne, et la page commence enfin par la page.</p>
  *
+ * <p><b>Deux colonnes à toutes les largeurs.</b> La grille ne passait à deux colonnes qu'au-delà
+ * de 1024 px : en dessous, l'image se posait au-dessus du texte et la bannière atteignait
+ * 600 pixels sur une tablette — le reste de la page disparaissait sous la ligne de flottaison.
+ * Le texte tient désormais à gauche et le visuel à droite dès le téléphone, comme une bande.</p>
+ *
  * <p><b>Le fond clair change la place de l'image.</b> Elle nécessitait auparavant un cadre blanc
  * dédié, parce qu'un packshot sur fond blanc posé sur du bleu nuit laisse un rectangle. Sur un
  * fond clair, elle se pose directement : un cadre de moins, et le produit paraît plus grand
@@ -52,10 +57,7 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
 
   if (total === 0) return null;
 
-  const produit = products[Math.min(current, total - 1)];
-  const remise = produit.basePrice > 0
-    ? Math.round((1 - produit.finalPrice / produit.basePrice) * 100)
-    : 0;
+  const rang = Math.min(current, total - 1);
 
   return (
     <section
@@ -77,116 +79,52 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
         className="pointer-events-none absolute inset-y-0 right-0 w-full lg:w-3/5
                    bg-[radial-gradient(60%_70%_at_75%_50%,theme(colors.brand-light)_0%,transparent_70%)]"
       />
-      <div
-        aria-roledescription="diapositive"
-        aria-label={`Promotion ${current + 1} sur ${total}`}
-        className="relative grid items-center gap-6 lg:grid-cols-[1.05fr_1fr] lg:gap-4
-                   px-6 py-8 sm:px-10 lg:py-10 lg:pl-16 lg:pr-0
-                   min-h-[19rem] sm:min-h-[21rem] lg:min-h-[22rem]"
-      >
-        {/* ── Texte ─────────────────────────────────────────────────────────────────── */}
-        <div className="order-2 max-w-xl lg:order-1">
-          {remise > 0 && (
-            // Le surtitre porte la remise : c'est l'information qui décide, elle passe avant
-            // le nom du produit plutôt qu'après.
-            <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-brand-accent">
-              Promotion — {remise} % de remise
-            </p>
-          )}
 
-          <h1 className="mb-1.5 line-clamp-2 text-2xl font-extrabold uppercase leading-[1.08]
-                         tracking-tight text-brand-dark sm:text-3xl lg:text-[2.5rem]">
-            {produit.name}
-          </h1>
-
-          {produit.category?.name && (
-            <p className="mb-5 text-sm text-slate-600">{produit.category.name}</p>
-          )}
-
-          <div className="mb-6 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            {/* L'orange de la charte plafonne à 3,00:1 sur fond clair : c'est sa variante
-                assombrie qui porte le prix, à 5,13:1. */}
-            <span className="text-3xl font-extrabold text-brand-accent lg:text-4xl">
-              {produit.finalPrice.toFixed(0)} €
-            </span>
-            <span className="text-lg text-slate-600/80 line-through">
-              {produit.basePrice.toFixed(0)} €
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-            {/* Une seule action mise en avant. Deux boutons côte à côte se concurrencent, et
-                le visiteur hésite là où il n'y a rien à arbitrer. */}
-            <Link
-              to={cheminProduit(produit.slug)}
-              className="group inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3
-                         text-base font-bold text-white transition-colors hover:bg-brand-fonce"
-            >
-              Achetez maintenant
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-            <Link
-              to="/catalog?promo=true"
-              className="text-sm font-semibold text-brand underline-offset-4 hover:underline"
-            >
-              Toutes les promotions
-            </Link>
-          </div>
-
-          {produit.promoEndsAt && (
-            <p className="mt-5 text-xs italic text-slate-600">
-              Offre valable jusqu'au{' '}
-              {new Date(produit.promoEndsAt).toLocaleDateString('fr-FR')}
-            </p>
-          )}
-        </div>
-
-        {/* ── Visuel ────────────────────────────────────────────────────────────────── */}
-        <div className="relative order-1 flex justify-center lg:order-2 lg:justify-end">
-          <div className="relative h-44 w-full max-w-sm sm:h-52 lg:h-72 lg:max-w-none">
-            <PromoProductVisual
+      {/* Les diapositives sont toutes rendues cote a cote et le rail coulisse : le passage
+          d'une promotion a l'autre se voit, au lieu d'un remplacement instantane ou l'image
+          semblait clignoter. `motion-reduce` rend le saut sec a qui a demande moins
+          d'animations — le contenu change pareil, c'est le mouvement qui disparait. */}
+      <div className="relative overflow-hidden">
+        <div
+          className="flex transition-transform duration-500 ease-out motion-reduce:transition-none"
+          style={{ transform: `translateX(-${rang * 100}%)` }}
+        >
+          {products.map((produit, i) => (
+            <Diapositive
               key={produit.id}
-              product={produit}
-              objectFit="contain"
-              // Premiere image de la page : la differer retarderait le premier affichage.
-              chargement="eager"
-              className="h-full w-full drop-shadow-[0_18px_28px_rgba(11,36,48,0.14)]"
-              iconClassName="w-16 h-16"
+              produit={produit}
+              rang={i}
+              total={total}
+              actif={i === rang}
             />
-            {remise > 0 && (
-              // Encre sur l'orange de la charte : 5,35:1. Du blanc n'y tiendrait pas (3,00:1),
-              // et c'est justement ce que faisait la version précédente.
-              <span className="absolute left-0 top-0 rounded-full bg-brand-orange px-3 py-1
-                               text-xs font-bold text-brand-dark shadow-sm lg:left-2">
-                −{remise} %
-              </span>
-            )}
-          </div>
+          ))}
         </div>
       </div>
 
       {total > 1 && (
         <>
+          {/* Masquees sur telephone : a cette largeur elles mordraient sur le texte de la
+              bande, et les pastilles suffisent a se deplacer. */}
           <button
             type="button" aria-label="Promotion précédente"
             onClick={() => setCurrent((c) => (c - 1 + total) % total)}
-            className="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center
+            className="absolute left-2 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center
                        justify-center rounded-full bg-brand text-white shadow-md
-                       transition-colors hover:bg-brand-fonce md:left-5"
+                       transition-colors hover:bg-brand-fonce sm:flex md:left-5 lg:h-10 lg:w-10"
           >
             <ChevronLeft className="h-5 w-5" aria-hidden="true" />
           </button>
           <button
             type="button" aria-label="Promotion suivante"
             onClick={() => setCurrent((c) => (c + 1) % total)}
-            className="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center
+            className="absolute right-2 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center
                        justify-center rounded-full bg-brand text-white shadow-md
-                       transition-colors hover:bg-brand-fonce md:right-5"
+                       transition-colors hover:bg-brand-fonce sm:flex md:right-5 lg:h-10 lg:w-10"
           >
             <ChevronRight className="h-5 w-5" aria-hidden="true" />
           </button>
 
-          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
+          <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-2 lg:bottom-4">
             {products.map((p, i) => (
               // La pastille visible reste fine, mais la zone cliquable fait 24 px de haut :
               // un point de 8 px sur 8 est hors d'atteinte au doigt (WCAG 2.2, critere 2.5.8
@@ -196,13 +134,13 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
                 key={p.id} type="button"
                 onClick={() => setCurrent(i)}
                 aria-label={`Promotion ${i + 1} sur ${total}`}
-                aria-current={i === current}
+                aria-current={i === rang}
                 className="group flex h-6 items-center justify-center px-2"
               >
                 <span
                   aria-hidden="true"
                   className={`block h-2 rounded-full transition-all ${
-                    i === current ? 'w-7 bg-brand' : 'w-2 bg-slate-300 group-hover:bg-slate-400'
+                    i === rang ? 'w-7 bg-brand' : 'w-2 bg-slate-300 group-hover:bg-slate-400'
                   }`}
                 />
               </button>
@@ -211,5 +149,151 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
         </>
       )}
     </section>
+  );
+}
+
+/** Titre dont le niveau depend de l'etat de la diapositive. */
+function Titre({ niveau, className, children }: {
+  niveau: 'h1' | 'h2';
+  className: string;
+  children: React.ReactNode;
+}) {
+  const Balise = niveau;
+  return <Balise className={className}>{children}</Balise>;
+}
+
+/**
+ * Une promotion du rail.
+ *
+ * <p>Les diapositives hors champ restent dans le document — c'est ce qui permet au rail de
+ * coulisser — mais elles sortent de l'ordre de tabulation et du lecteur d'écran : sinon la
+ * tabulation traverserait des liens invisibles, et la page annoncerait cinq promotions
+ * là où une seule est affichée.</p>
+ */
+function Diapositive({ produit, rang, total, actif }: {
+  produit: Product;
+  rang: number;
+  total: number;
+  actif: boolean;
+}) {
+  const remise = produit.basePrice > 0
+    ? Math.round((1 - produit.finalPrice / produit.basePrice) * 100)
+    : 0;
+
+  return (
+    <div
+      aria-roledescription="diapositive"
+      aria-label={`Promotion ${rang + 1} sur ${total}`}
+      aria-hidden={!actif}
+      className={`w-full shrink-0 ${actif ? '' : 'pointer-events-none'}`}
+    >
+      <div
+        className="relative grid grid-cols-[1.3fr_1fr] items-stretch gap-3
+                   sm:grid-cols-[1.2fr_1fr]
+                   px-5 py-4 sm:gap-5 sm:px-12 sm:py-5 lg:grid-cols-[1.05fr_1fr] lg:gap-4
+                   lg:py-10 lg:pl-16 lg:pr-0
+                   h-[10.5rem] sm:h-[12rem] lg:h-[22rem]"
+      >
+        {/* ── Texte ─────────────────────────────────────────────────────────────────── */}
+        <div className="flex max-w-xl flex-col justify-center">
+          {remise > 0 && (
+            // Le surtitre porte la remise : c'est l'information qui décide, elle passe avant
+            // le nom du produit plutôt qu'après.
+            <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em]
+                          text-brand-accent sm:mb-2 sm:tracking-[0.18em] sm:text-xs">
+              Promotion — {remise} % de remise
+            </p>
+          )}
+
+          {/* La diapositive affichee porte le titre principal de la page d'accueil : c'etait
+              deja le cas avant que le rail ne rende toutes les promotions a la fois, et cinq
+              <h1> simultanes n'auraient aucun sens. Les autres restent en second niveau. */}
+          <Titre
+            niveau={actif ? 'h1' : 'h2'}
+            className="mb-1 line-clamp-2 text-sm font-extrabold uppercase leading-[1.15]
+                       tracking-tight text-brand-dark sm:mb-1.5 sm:text-lg
+                       lg:text-[2rem] lg:leading-[1.1]"
+          >
+            {produit.name}
+          </Titre>
+
+          {produit.category?.name && (
+            // Sacrifiee sur telephone : a cette largeur, la bande doit tenir en quatre lignes
+            // et le nom du produit dit deja de quoi il s'agit.
+            <p className="mb-2 hidden text-sm text-slate-600 lg:mb-5 lg:block">
+              {produit.category.name}
+            </p>
+          )}
+
+          <div className="mb-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 sm:mb-4 sm:gap-x-3 lg:mb-6">
+            {/* L'orange de la charte plafonne à 3,00:1 sur fond clair : c'est sa variante
+                assombrie qui porte le prix, à 5,13:1. */}
+            <span className="text-base font-extrabold text-brand-accent sm:text-xl lg:text-4xl">
+              {produit.finalPrice.toFixed(0)} €
+            </span>
+            <span className="text-xs text-slate-600/80 line-through sm:text-base lg:text-lg">
+              {produit.basePrice.toFixed(0)} €
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-x-6 sm:gap-y-3">
+            {/* Une seule action mise en avant. Deux boutons côte à côte se concurrencent, et
+                le visiteur hésite là où il n'y a rien à arbitrer. */}
+            <Link
+              to={cheminProduit(produit.slug)}
+              tabIndex={actif ? undefined : -1}
+              className="group inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5
+                         text-[11px] font-bold text-white transition-colors hover:bg-brand-fonce
+                         sm:gap-2 sm:px-6 sm:py-2.5 sm:text-sm lg:px-7 lg:py-3 lg:text-base"
+            >
+              Achetez maintenant
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 sm:h-4 sm:w-4" />
+            </Link>
+            <Link
+              to="/catalog?promo=true"
+              tabIndex={actif ? undefined : -1}
+              className="hidden text-sm font-semibold text-brand underline-offset-4
+                         hover:underline sm:inline"
+            >
+              Toutes les promotions
+            </Link>
+          </div>
+
+          {produit.promoEndsAt && (
+            <p className="mt-2 hidden text-xs italic text-slate-600 lg:mt-5 lg:block">
+              Offre valable jusqu'au{' '}
+              {new Date(produit.promoEndsAt).toLocaleDateString('fr-FR')}
+            </p>
+          )}
+        </div>
+
+        {/* ── Visuel ────────────────────────────────────────────────────────────────── */}
+        {/* `min-h-0` sur les deux : un element flex ne descend pas sous la hauteur de son
+            contenu (`min-height: auto`), et l'image imposait donc ses 302 px malgre `h-full`
+            — elle depassait la bande et s'y trouvait rognee. */}
+        <div className="relative flex min-h-0 items-stretch justify-center lg:justify-end">
+          <div className="relative h-full min-h-0 w-full overflow-hidden">
+            <PromoProductVisual
+              product={produit}
+              objectFit="contain"
+              // La premiere diapositive ouvre la page : la differer retarderait le premier
+              // affichage. Les suivantes attendent, elles ne sont pas encore a l'ecran.
+              chargement={rang === 0 ? 'eager' : 'lazy'}
+              className="h-full w-full drop-shadow-[0_18px_28px_rgba(11,36,48,0.14)]"
+              iconClassName="w-16 h-16"
+            />
+            {remise > 0 && (
+              // Encre sur l'orange de la charte : 5,35:1. Du blanc n'y tiendrait pas (3,00:1),
+              // et c'est justement ce que faisait la version précédente.
+              <span className="absolute left-0 top-0 rounded-full bg-brand-orange px-2 py-0.5
+                               text-[10px] font-bold text-brand-dark shadow-sm
+                               sm:px-3 sm:py-1 sm:text-xs lg:left-2">
+                −{remise} %
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
