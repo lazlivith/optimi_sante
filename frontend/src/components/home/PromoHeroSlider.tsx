@@ -37,9 +37,10 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
   const mouvementReduit = useReducedMotion();
 
   // Le défilement s'arrête dans trois cas : une seule promotion — faire clignoter un carrousel
-  // à une diapositive donne l'impression d'un bug ; le survol ou le focus clavier — on ne
-  // dérobe pas sous les yeux ce que quelqu'un est en train de lire (WCAG 2.2.2) ; et le
-  // réglage système de réduction des animations, qui vaut ici comme ailleurs.
+  // à une diapositive donne l'impression d'un bug ; le survol à la souris ou le focus clavier
+  // — on ne dérobe pas sous les yeux ce que quelqu'un est en train de lire (WCAG 2.2.2) ; et
+  // le réglage système de réduction des animations, qui l'arrête complètement et reste le
+  // moyen d'arrêt sur un appareil tactile, où il n'y a pas de survol.
   const doitDefiler = total > 1 && !enPause && !mouvementReduit;
 
   useEffect(() => {
@@ -63,8 +64,14 @@ export function PromoHeroSlider({ products }: { products: Product[] }) {
     <section
       aria-roledescription="carrousel"
       aria-label="Promotions en cours"
-      onMouseEnter={() => setEnPause(true)}
-      onMouseLeave={() => setEnPause(false)}
+      // Survol : uniquement pour un pointeur qui survole VRAIMENT — souris ou stylet.
+      // Un ecran tactile emet lui aussi une entree de pointeur des qu'un doigt effleure la
+      // zone, mais jamais la sortie correspondante : le carrousel restait alors fige pour
+      // le reste de la visite, ce qui est exactement ce qu'on observait sur telephone.
+      onPointerEnter={(e) => { if (e.pointerType !== 'touch') setEnPause(true); }}
+      onPointerLeave={(e) => { if (e.pointerType !== 'touch') setEnPause(false); }}
+      // Le focus clavier, lui, vaut sur tous les appareils : on ne derobe pas sous les yeux
+      // ce que quelqu'un est en train de parcourir a la tabulation.
       onFocusCapture={() => setEnPause(true)}
       onBlurCapture={() => setEnPause(false)}
       className="relative mx-4 md:mx-8 mt-4 overflow-hidden rounded-3xl bg-brand-cream
