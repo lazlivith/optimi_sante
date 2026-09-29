@@ -87,15 +87,22 @@ export const LoginPage = () => {
     + 'focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
 
   return (
-    <div className="bg-brand-cream">
-      {/* Deux panneaux a parts egales. L'ordre du DOM place le formulaire en premier : sur
-          mobile, ou les colonnes s'empilent, c'est lui qu'on doit atteindre sans defiler —
-          le panneau de marque passe alors en bandeau, plus haut, via `order`. */}
-      <div className="grid min-h-[calc(100vh-8.25rem)] lg:grid-cols-2">
+    <div className="bg-white">
+      {/* La page occupe l'ecran entier : sortie du gabarit du site, elle n'a plus ni barre
+          du haut ni pied de page. Une page d'identification a une seule chose a faire faire,
+          et le catalogue, le panier ou les mentions legales n'y sont que des sorties de
+          route. Le retour au site reste possible, en bas, sans concurrencer le formulaire. */}
+      <div className="grid min-h-screen lg:grid-cols-2">
 
         {/* ------------------------------------------------------------ formulaire -- */}
-        <div className="order-2 flex items-center justify-center px-6 py-12 sm:px-10 lg:order-1 lg:justify-end lg:py-16 lg:pr-16 xl:pr-24">
+        <div className="order-2 flex items-center justify-center px-6 py-10 sm:px-10 lg:order-2 lg:py-16 lg:px-16 xl:px-24">
           <div className="w-full max-w-[26rem]">
+            {/* Sur mobile le panneau de marque disparait : le logotype vient donc ici, sans
+                quoi rien n'identifierait le site sur cet ecran sans barre du haut. */}
+            <Link to="/" aria-label="Optimi Santé — accueil" className="mb-8 inline-block lg:hidden">
+              <LogoOptimi fond="clair" className="h-14 w-auto max-w-[220px]" />
+            </Link>
+
             <h1 className="text-[2rem] font-bold leading-tight tracking-tight text-brand-dark">
               Bienvenue
             </h1>
@@ -200,11 +207,22 @@ export const LoginPage = () => {
                 S'inscrire
               </Link>
             </p>
+
+            {/* Sans barre du haut, c'est la seule porte de sortie de la page : elle reste
+                discrete pour ne pas concurrencer le bouton de connexion. */}
+            <p className="mt-6 text-center">
+              <Link
+                to="/"
+                className="rounded text-[13px] text-slate-500 underline-offset-2 transition-colors hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
+              >
+                Retour au site
+              </Link>
+            </p>
           </div>
         </div>
 
         {/* -------------------------------------------------------- panneau de marque -- */}
-        <div className="relative order-1 flex items-center overflow-hidden bg-brand px-6 py-10 sm:px-12 lg:order-2 lg:py-16 lg:pl-16 xl:pl-24">
+        <div className="relative order-1 hidden items-center overflow-hidden bg-brand px-6 py-10 sm:px-12 lg:order-1 lg:flex lg:py-16 lg:pl-16 xl:pl-24">
           {/* Halo diagonal : il reprend la montée de la flèche du logo. Discret, et non un
               dégradé décoratif posé au hasard. */}
           <div
