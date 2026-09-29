@@ -182,6 +182,7 @@ export function App() {
           {/* Connexion : page entiere, sans barre du haut ni pied de page. Declaree avant
               la route generique pour qu'elle l'emporte sur elle. */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
           {/* Boutique / espaces B2C, B2B : navbar + footer classiques */}
           <Route
@@ -200,7 +201,6 @@ export function App() {
                   <Route path="/checkout/complete" element={<CheckoutCompletePage />} />
                   <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
                   <Route path="/checkout/cancel" element={<CheckoutCancelPage />} />
-                  <Route path="/register" element={<RegisterPage />} />
                   <Route path="/formations/:id" element={<TrainingDetailPage />} />
                   <Route path="/formations/:id/enroll" element={<TrainingEnrollmentPage />} />
                   <Route path="/formations/:id/postuler" element={<DoctorApplicationPage />} />

@@ -5,6 +5,7 @@ import { authService, FACILITY_TYPE_LABELS, type FacilityType } from '../../api/
 import { Toast } from '../../components/common/Toast';
 import { usePageMeta } from '../../hooks/usePageMeta';
 import { COUNTRIES } from '../../lib/countries';
+import { CadreAuthentification } from './CadreAuthentification';
 
 /** Styles partagés par tous les champs, pour garder une saisie homogène. */
 const FIELD =
@@ -67,18 +68,20 @@ export const RegisterPage = () => {
 
   if (success) {
     return (
-      <div className="min-h-[calc(100vh-200px)] flex items-center justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full text-center bg-white p-10 rounded-xl shadow-lg border border-slate-100">
-          <CheckCircle2 className="w-16 h-16 text-brand mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-brand-dark mb-2">Inscription réussie !</h2>
-          <p className="text-slate-600 mb-6">
-            Votre compte a été créé avec succès. Vous allez être redirigé vers la page de connexion...
-          </p>
-          <Link to="/login" className="text-brand font-medium hover:underline">
-            Aller à la connexion manuellement
+      <CadreAuthentification
+        titre="Inscription réussie"
+        sousTitre="Votre compte est créé. Vous allez être redirigé vers la page de connexion."
+      >
+        <div className="mt-8 rounded-xl border border-brand-light bg-brand-cream p-6 text-center">
+          <CheckCircle2 aria-hidden="true" className="mx-auto mb-3 h-12 w-12 text-brand" />
+          <Link
+            to="/login"
+            className="rounded font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
+          >
+            Aller à la connexion
           </Link>
         </div>
-      </div>
+      </CadreAuthentification>
     );
   }
 
@@ -90,15 +93,14 @@ export const RegisterPage = () => {
     }`;
 
   return (
-    <div className="min-h-[calc(100vh-200px)] flex items-center justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl w-full bg-white p-8 sm:p-10 rounded-xl shadow-lg border border-slate-100">
-        <div className="mb-8 text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-brand-dark">Créer un compte</h2>
-          <p className="mt-2 text-sm text-slate-600">Choisissez votre type de profil pour commencer</p>
-        </div>
-
+    <CadreAuthentification
+      titre="Créer un compte"
+      sousTitre="Choisissez votre type de profil pour commencer."
+      largeur="30rem"
+    >
+      <>
         {/* Sélecteur de parcours */}
-        <div className="flex gap-1 p-1 bg-slate-100 rounded-xl mb-8">
+        <div className="mt-8 flex gap-1 p-1 bg-slate-100 rounded-xl mb-8">
           <button type="button" onClick={() => setActiveTab('B2C')} className={tabClass('B2C')}>
             <UserIcon className="w-4 h-4" />
             Particulier
@@ -298,9 +300,9 @@ export const RegisterPage = () => {
             </Link>
           </div>
         </form>
-      </div>
+      </>
 
       {error && <Toast type="error" message={error} onClose={() => setError('')} />}
-    </div>
+    </CadreAuthentification>
   );
 };

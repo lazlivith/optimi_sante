@@ -2,23 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { authService } from '../../api/authService';
 import { useAuth } from '../../context/AuthContext';
-import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
 import { Toast } from '../../components/common/Toast';
 import { usePageMeta } from '../../hooks/usePageMeta';
 import { adminHomeFor } from '../../lib/adminUniverses';
-import { LogoOptimi } from '../../components/marque/LogoOptimi';
+import { CadreAuthentification } from './CadreAuthentification';
 
-/**
- * Ce que la plateforme fait réellement, dit en trois lignes.
- *
- * Les trois métiers d'Optimi Santé, et non des promesses génériques : quelqu'un qui arrive sur
- * cet écran sans savoir où il est doit pouvoir le comprendre avant de saisir ses identifiants.
- */
-const REPERES = [
-  'Mobilité médicale : candidatures, conventions, visas',
-  'Équipements de santé et matériel médical',
-  'Formations en établissement partenaire',
-];
 
 export const LoginPage = () => {
   usePageMeta('Connexion');
@@ -87,30 +76,12 @@ export const LoginPage = () => {
     + 'focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
 
   return (
-    <div className="bg-white">
-      {/* La page occupe l'ecran entier : sortie du gabarit du site, elle n'a plus ni barre
-          du haut ni pied de page. Une page d'identification a une seule chose a faire faire,
-          et le catalogue, le panier ou les mentions legales n'y sont que des sorties de
-          route. Le retour au site reste possible, en bas, sans concurrencer le formulaire. */}
-      <div className="grid min-h-screen lg:grid-cols-2">
-
-        {/* ------------------------------------------------------------ formulaire -- */}
-        <div className="order-2 flex items-center justify-center px-6 py-10 sm:px-10 lg:order-2 lg:py-16 lg:px-16 xl:px-24">
-          <div className="w-full max-w-[26rem]">
-            {/* Sur mobile le panneau de marque disparait : le logotype vient donc ici, sans
-                quoi rien n'identifierait le site sur cet ecran sans barre du haut. */}
-            <Link to="/" aria-label="Optimi Santé — accueil" className="mb-8 inline-block lg:hidden">
-              <LogoOptimi fond="clair" className="h-14 w-auto max-w-[220px]" />
-            </Link>
-
-            <h1 className="text-[2rem] font-bold leading-tight tracking-tight text-brand-dark">
-              Bienvenue
-            </h1>
-            <p className="mt-2 text-[15px] text-slate-600">
-              Connectez-vous à votre espace Optimi Santé.
-            </p>
-
-            <form className="mt-9 space-y-5" onSubmit={handleSubmit}>
+    <CadreAuthentification
+      titre="Bienvenue"
+      sousTitre="Connectez-vous à votre espace Optimi Santé."
+    >
+      <>
+        <form className="mt-9 space-y-5" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="email" className="mb-1.5 block text-sm font-semibold text-brand-dark">
                   Adresse email
@@ -198,73 +169,16 @@ export const LoginPage = () => {
               </button>
             </form>
 
-            <p className="mt-8 border-t border-brand-light pt-6 text-center text-sm text-slate-600">
-              Pas encore de compte ?{' '}
-              <Link
-                to="/register"
-                className="rounded font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
-              >
-                S'inscrire
-              </Link>
-            </p>
-
-            {/* Sans barre du haut, c'est la seule porte de sortie de la page : elle reste
-                discrete pour ne pas concurrencer le bouton de connexion. */}
-            <p className="mt-6 text-center">
-              <Link
-                to="/"
-                className="rounded text-[13px] text-slate-500 underline-offset-2 transition-colors hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
-              >
-                Retour au site
-              </Link>
-            </p>
-          </div>
-        </div>
-
-        {/* -------------------------------------------------------- panneau de marque -- */}
-        <div className="relative order-1 hidden items-center overflow-hidden bg-brand px-6 py-10 sm:px-12 lg:order-1 lg:flex lg:py-16 lg:pl-16 xl:pl-24">
-          {/* Halo diagonal : il reprend la montée de la flèche du logo. Discret, et non un
-              dégradé décoratif posé au hasard. */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_85%_10%,rgba(236,114,38,0.22),transparent_60%)]"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-white/[0.04]"
-          />
-
-          <div className="relative w-full max-w-md">
-            <Link to="/" aria-label="Optimi Santé — accueil" className="inline-block">
-              <LogoOptimi
-                fond="sombre"
-                className="h-16 w-auto max-w-[260px] lg:h-24 lg:max-w-[340px]"
-              />
-            </Link>
-
-            {/* La signature de marque, telle qu'elle figure sur le logo. */}
-            <p className="mt-5 text-[15px] font-medium text-white/70 lg:text-lg">
-              Soutenir le handicap et le soin.
-            </p>
-
-            {/* Masqués sur mobile : le bandeau y sert à identifier la marque, pas à raconter
-                l'offre — et tout ce qui s'y ajoute repousse le formulaire hors de l'écran. */}
-            <ul className="mt-10 hidden space-y-4 lg:block">
-              {REPERES.map((repere) => (
-                <li key={repere} className="flex items-start gap-3 text-[15px] text-white/85">
-                  <ShieldCheck aria-hidden="true" className="mt-0.5 h-[18px] w-[18px] shrink-0 text-brand-accent" />
-                  <span>{repere}</span>
-                </li>
-              ))}
-            </ul>
-
-            <p className="mt-10 hidden border-t border-white/15 pt-6 text-[13px] leading-relaxed text-white/55 lg:block">
-              Vos documents sont conservés dans un espace personnel, accessible à vous seul et
-              aux équipes chargées de votre dossier.
-            </p>
-          </div>
-        </div>
-      </div>
+        <p className="mt-8 border-t border-brand-light pt-6 text-center text-sm text-slate-600">
+          Pas encore de compte ?{' '}
+          <Link
+            to="/register"
+            className="rounded font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
+          >
+            S'inscrire
+          </Link>
+        </p>
+      </>
 
       {error && (
         <Toast
@@ -280,6 +194,6 @@ export const LoginPage = () => {
           onClose={() => setSuccess('')}
         />
       )}
-    </div>
+    </CadreAuthentification>
   );
 };
