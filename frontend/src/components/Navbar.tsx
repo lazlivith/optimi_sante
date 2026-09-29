@@ -8,6 +8,7 @@ import { NotificationBell } from './common/NotificationBell';
 import { LogoOptimi } from '../components/marque/LogoOptimi';
 import { Menu } from 'lucide-react';
 import { MenuMobile } from './MenuMobile';
+import { MenuServices } from './MenuServices';
 import { useTiroirNavigation } from '../hooks/useTiroirNavigation';
 
 
@@ -238,9 +239,7 @@ export const Navbar = () => {
             </Link>
             {/* Place juste apres les formations : c'est en hesitant devant une formation qu'on
                 veut savoir ce qui est pris en charge autour. */}
-            <Link to="/services" className="whitespace-nowrap px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-brand-dark transition-colors rounded-md hover:bg-gray-50">
-              Nos Services
-            </Link>
+            <MenuServices />
             <Link to="/devenir-partenaire" className="whitespace-nowrap px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-brand-dark transition-colors rounded-md hover:bg-gray-50">
               Devenir Partenaire
             </Link>

@@ -1,9 +1,10 @@
-import type { RefObject } from 'react';
+import { useState, type RefObject } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, User as UserIcon, X } from 'lucide-react';
+import { ChevronDown, ShoppingCart, User as UserIcon, X } from 'lucide-react';
 import { LogoOptimi } from './marque/LogoOptimi';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { GROUPES_SERVICES } from '../lib/servicesMenu';
 
 /**
  * Menu de navigation du site sur telephone et tablette.
@@ -83,7 +84,7 @@ export function MenuMobile({ ouvert, fermer, fermerSurLien, panneau }: {
       <nav className="flex-1 overflow-y-auto px-5 divide-y divide-slate-100">
         <Entree to="/">Accueil</Entree>
         <Entree to="/formations">Formations Médicales</Entree>
-        <Entree to="/services">Nos Services</Entree>
+        <AccordeonServices />
         <Entree to="/devenir-partenaire">Devenir Partenaire</Entree>
         <Entree to="/catalog">Catalogue</Entree>
         <Entree to="/blog">Blog &amp; événements</Entree>
@@ -94,6 +95,64 @@ export function MenuMobile({ ouvert, fermer, fermerSurLien, panneau }: {
           </span>
         </Entree>
       </nav>
+    </div>
+  );
+}
+
+/**
+ * « Nos Services » se deplie sur place, au lieu d'emmener ailleurs.
+ *
+ * <p>Le panneau deroulant du grand format montre les huit prestations d'un coup. Sur
+ * telephone il n'y a pas la place : l'entree se deplie donc en liste, et affiche exactement
+ * les memes entrees, lues de la meme source. Un lien vers la page entiere reste en fin de
+ * liste, pour qui veut tout parcourir.</p>
+ */
+function AccordeonServices() {
+  const [ouvert, setOuvert] = useState(false);
+  return (
+    <div className="py-1">
+      <button
+        type="button"
+        onClick={() => setOuvert((o) => !o)}
+        aria-expanded={ouvert}
+        className="flex w-full items-center justify-between py-3 text-[15px] font-semibold text-brand-dark"
+      >
+        Nos Services
+        <ChevronDown
+          aria-hidden="true"
+          className={`h-4 w-4 text-slate-400 transition-transform ${ouvert ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {ouvert && (
+        <ul className="pb-2 pl-1">
+          {GROUPES_SERVICES.map((groupe) => (
+            <li key={groupe.titre} className="mb-3 last:mb-0">
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                {groupe.titre}
+              </p>
+              <ul>
+                {groupe.entrees.map((entree) => (
+                  <li key={entree.to}>
+                    <Link
+                      to={entree.to}
+                      className="flex items-center gap-2.5 py-2.5 text-sm text-slate-600 hover:text-brand"
+                    >
+                      <entree.icon aria-hidden="true" className="h-4 w-4 shrink-0 text-brand" />
+                      {entree.titre}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+          <li>
+            <Link to="/services" className="block py-2.5 text-sm font-semibold text-brand">
+              Voir tous les services
+            </Link>
+          </li>
+        </ul>
+      )}
     </div>
   );
 }
