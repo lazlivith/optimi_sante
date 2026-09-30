@@ -23,6 +23,11 @@ export function MenuServices() {
   // seul un second clic depingle.
   const [survole, setSurvole] = useState(false);
   const [epingle, setEpingle] = useState(false);
+  // Position calculee du panneau. Il est en `fixed` et non `absolute` : la rangee de liens
+  // qui l'accueille porte `overflow-x-auto`, ce qui rend AUSSI `overflow-y` non visible.
+  // Un panneau de 464 px de haut y etait donc entierement rogne par un conteneur de 28 px —
+  // a l'ecran, il ne restait que la barre de defilement de cette rangee.
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
   const ouvert = survole || epingle;
   const fermer = () => { setSurvole(false); setEpingle(false); };
   const conteneur = useRef<HTMLDivElement>(null);
@@ -31,6 +36,21 @@ export function MenuServices() {
 
   // Le menu a rempli son rôle dès qu'on a navigué — y compris vers une ancre de la même page.
   useEffect(() => { setSurvole(false); setEpingle(false); }, [pathname, hash]);
+
+  // Le panneau est ancre sous le bouton, et ramene dans l'ecran s'il en sortait a droite.
+  useEffect(() => {
+    if (!ouvert) return;
+    const placer = () => {
+      const bord = bouton.current?.getBoundingClientRect();
+      if (!bord) return;
+      const largeur = Math.min(736, window.innerWidth - 48);
+      const gauche = Math.min(bord.left, window.innerWidth - largeur - 12);
+      setPosition({ top: bord.bottom + 8, left: Math.max(12, gauche) });
+    };
+    placer();
+    window.addEventListener('resize', placer);
+    return () => window.removeEventListener('resize', placer);
+  }, [ouvert]);
 
   useEffect(() => {
     if (!ouvert) return;
@@ -77,7 +97,8 @@ export function MenuServices() {
       {ouvert && (
         <div
           id="menu-services"
-          className="absolute left-0 top-full z-50 w-[min(46rem,calc(100vw-3rem))] rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
+          style={position ? { top: position.top, left: position.left } : { visibility: 'hidden' }}
+          className="fixed z-50 w-[min(46rem,calc(100vw-3rem))] rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
         >
           <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
             {GROUPES_SERVICES.map((groupe) => (
