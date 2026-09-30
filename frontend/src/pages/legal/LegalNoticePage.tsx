@@ -21,6 +21,7 @@ export function LegalNoticePage() {
       <h2>Éditeur du site</h2>
       <dl>
         <Ligne label="Dénomination sociale">{LEGAL.raisonSociale}</Ligne>
+        <Ligne label="Nom commercial">{LEGAL.nomCommercial}</Ligne>
         <Ligne label="Forme juridique">{LEGAL.formeJuridique}</Ligne>
         <Ligne label="Capital social"><Manquant valeur={ou(LEGAL.capitalSocial)} /></Ligne>
         <Ligne label="Siège social">
@@ -56,7 +57,11 @@ export function LegalNoticePage() {
       <dl>
         <Ligne label="Hébergeur"><Manquant valeur={ou(LEGAL.hebergeurNom)} /></Ligne>
         <Ligne label="Adresse"><Manquant valeur={ou(LEGAL.hebergeurAdresse)} /></Ligne>
-        <Ligne label="Téléphone"><Manquant valeur={ou(LEGAL.hebergeurTelephone)} /></Ligne>
+        <Ligne label="Contact">
+          {LEGAL.hebergeurTelephone ?? (
+            <a href={`mailto:${LEGAL.hebergeurContact}`}>{LEGAL.hebergeurContact}</a>
+          )}
+        </Ligne>
       </dl>
       <p>
         L'infrastructure est déployée sur des serveurs situés dans l'Union européenne, sous

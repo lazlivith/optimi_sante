@@ -6,7 +6,7 @@ import { LEGAL } from '../config/legal';
 import { newsletterService } from '../api/newsletterService';
 import { LogoOptimi } from '../components/marque/LogoOptimi';
 
-const WHATSAPP = 'https://wa.me/33600000000';
+const WHATSAPP = LEGAL.whatsapp;
 
 /**
  * Libellé du consentement, défini ici et envoyé tel quel au serveur.

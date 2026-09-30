@@ -21,8 +21,17 @@ const lire = (valeur: unknown): string | null => {
 };
 
 export const LEGAL = {
-  /** Dénomination sociale. */
-  raisonSociale: 'OPTIMI SANTÉ',
+  /**
+   * Dénomination sociale de l'éditeur — la société, pas la marque.
+   *
+   * <p>La page annonçait « OPTIMI SANTÉ », qui est le nom sous lequel le site s'adresse au
+   * public. L'éditeur au sens de la LCEN est la société immatriculée : c'est elle qui engage
+   * sa responsabilité, et c'est son nom qu'un litige ou une mise en demeure vise.</p>
+   */
+  raisonSociale: lire(env.VITE_LEGAL_RAISON_SOCIALE) ?? 'HOLDING GUIDON',
+
+  /** Le nom sous lequel le site est exploité, et sous lequel le public le connaît. */
+  nomCommercial: lire(env.VITE_LEGAL_NOM_COMMERCIAL) ?? 'Optimi Santé',
 
   formeJuridique: 'Société par Actions Simplifiée (SAS)',
 
@@ -63,8 +72,8 @@ export const LEGAL = {
    * <p>« a-definir » plutôt qu'un nom crédible : une adresse fictive <i>plausible</i> se lit
    * comme une vraie et part en production sans qu'on la voie. Celle-ci se dénonce.</p>
    */
-  emailContact: lire(env.VITE_LEGAL_EMAIL_CONTACT) ?? 'contact@a-definir.invalid',
-  emailDpo: lire(env.VITE_LEGAL_EMAIL_DPO) ?? 'dpo@a-definir.invalid',
+  emailContact: lire(env.VITE_LEGAL_EMAIL_CONTACT) ?? 'infos@optimisante.com',
+  emailDpo: lire(env.VITE_LEGAL_EMAIL_DPO) ?? 'infos@optimisante.com',
   telephone: lire(env.VITE_LEGAL_TELEPHONE) ?? '+33 7 59 61 92 06',
 
   /**
@@ -72,15 +81,29 @@ export const LEGAL = {
    * sociale, son adresse et son téléphone. « AWS ou OVHcloud ou Scaleway » n'est pas une
    * mention valable — il faut choisir.
    */
-  hebergeurNom: lire(env.VITE_LEGAL_HEBERGEUR_NOM),
-  hebergeurAdresse: lire(env.VITE_LEGAL_HEBERGEUR_ADRESSE),
+  hebergeurNom: lire(env.VITE_LEGAL_HEBERGEUR_NOM) ?? 'Vercel Inc.',
+  hebergeurAdresse: lire(env.VITE_LEGAL_HEBERGEUR_ADRESSE)
+    ?? '340 S Lemon Ave #4133, Walnut, CA 91789, États-Unis',
   hebergeurTelephone: lire(env.VITE_LEGAL_HEBERGEUR_TEL),
+  /** Vercel ne publie pas de numero : son adresse de contact tient lieu de moyen de le joindre. */
+  hebergeurContact: lire(env.VITE_LEGAL_HEBERGEUR_CONTACT) ?? 'privacy@vercel.com',
 
   /** Organisme de médiation de la consommation — obligatoire pour la vente aux particuliers. */
   mediateurNom: lire(env.VITE_LEGAL_MEDIATEUR_NOM),
   mediateurSite: lire(env.VITE_LEGAL_MEDIATEUR_SITE),
 
   dateMaj: '9 septembre 2026',
+
+  /**
+   * Lien WhatsApp, derive du numero declare ci-dessus.
+   *
+   * <p>Quatre pages portaient `wa.me/33600000000` en dur — un numero de demonstration. Le
+   * deriver interdit qu'un changement de numero laisse derriere lui un bouton qui ne mene
+   * nulle part.</p>
+   */
+  get whatsapp() {
+    return `https://wa.me/${(this.telephone ?? '').replace(/\D/g, '')}`;
+  },
 } as const;
 
 /**

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { LEGAL } from '../../config/legal';
 import { Link } from 'react-router-dom';
 import {
   Download, Loader2, ShieldCheck, User as UserIcon, Building2, ShoppingBag, Mail, Pencil,
@@ -177,7 +178,7 @@ export function MyPersonalDataPage() {
               <Pencil className="w-4 h-4" /> Modifier mon profil
             </Link>
             <a
-              href="https://wa.me/33600000000"
+              href={LEGAL.whatsapp}
               target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors"
             >

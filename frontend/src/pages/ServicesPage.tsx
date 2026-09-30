@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { LEGAL } from '../config/legal';
 import { ArrowRight } from 'lucide-react';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { SERVICES } from './services/contenu';
@@ -44,7 +45,7 @@ export function ServicesPage() {
               Voir les formations <ArrowRight className="w-4 h-4" />
             </Link>
             <a
-              href="https://wa.me/33600000000"
+              href={LEGAL.whatsapp}
               target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold transition-colors"
             >

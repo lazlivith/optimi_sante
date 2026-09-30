@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { LEGAL } from '../config/legal';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Heart, ShoppingCart, ArrowRight, MessageCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -629,7 +630,7 @@ export function HomePage() {
 
       {/* WhatsApp Floating Button */}
       <a
-        href="https://wa.me/33600000000"
+        href={LEGAL.whatsapp}
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-green-500 rounded-full flex items-center justify-center shadow-lg hover:bg-green-600 transition-colors hover:scale-110"
