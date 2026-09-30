@@ -17,23 +17,30 @@ import { GROUPES_SERVICES } from '../lib/servicesMenu';
  * suivante.</p>
  */
 export function MenuServices() {
-  const [ouvert, setOuvert] = useState(false);
+  // Deux etats, et non un seul. Avec un unique booleen, le survol ouvrait le panneau puis
+  // le clic le BASCULAIT — donc le refermait aussitot : a la souris, cliquer sur « Nos
+  // Services » ne montrait rien. Le survol ouvre tant qu'il dure ; le clic epingle, et
+  // seul un second clic depingle.
+  const [survole, setSurvole] = useState(false);
+  const [epingle, setEpingle] = useState(false);
+  const ouvert = survole || epingle;
+  const fermer = () => { setSurvole(false); setEpingle(false); };
   const conteneur = useRef<HTMLDivElement>(null);
   const bouton = useRef<HTMLButtonElement>(null);
   const { pathname, hash } = useLocation();
 
   // Le menu a rempli son rôle dès qu'on a navigué — y compris vers une ancre de la même page.
-  useEffect(() => { setOuvert(false); }, [pathname, hash]);
+  useEffect(() => { setSurvole(false); setEpingle(false); }, [pathname, hash]);
 
   useEffect(() => {
     if (!ouvert) return;
     const auClavier = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      setOuvert(false);
+      fermer();
       bouton.current?.focus();
     };
     const auClic = (e: MouseEvent) => {
-      if (!conteneur.current?.contains(e.target as Node)) setOuvert(false);
+      if (!conteneur.current?.contains(e.target as Node)) fermer();
     };
     document.addEventListener('keydown', auClavier);
     document.addEventListener('mousedown', auClic);
@@ -47,13 +54,13 @@ export function MenuServices() {
     <div
       ref={conteneur}
       className="relative"
-      onMouseEnter={() => setOuvert(true)}
-      onMouseLeave={() => setOuvert(false)}
+      onMouseEnter={() => setSurvole(true)}
+      onMouseLeave={() => setSurvole(false)}
     >
       <button
         ref={bouton}
         type="button"
-        onClick={() => setOuvert((o) => !o)}
+        onClick={() => (epingle ? fermer() : setEpingle(true))}
         aria-expanded={ouvert}
         aria-controls="menu-services"
         className={`flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:bg-gray-50 ${
