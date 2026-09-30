@@ -58,6 +58,7 @@ const AdminEmailsPage = lazy(() => import('./pages/admin/AdminEmailsPage').then(
 const AdminPayoutsPage = lazy(() => import('./pages/admin/AdminPayoutsPage').then(m => ({ default: m.AdminPayoutsPage })));
 const BecomePartnerPage = lazy(() => import('./pages/partnership/BecomePartnerPage').then(m => ({ default: m.BecomePartnerPage })));
 const ServicesPage = lazy(() => import('./pages/ServicesPage').then(m => ({ default: m.ServicesPage })));
+const ServiceDetailPage = lazy(() => import('./pages/services/ServiceDetailPage').then(m => ({ default: m.ServiceDetailPage })));
 const BlogPage = lazy(() => import('./pages/BlogPage').then(m => ({ default: m.BlogPage })));
 const BlogPostPage = lazy(() => import('./pages/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
 const AdminBlogPage = lazy(() => import('./pages/admin/AdminBlogPage').then(m => ({ default: m.AdminBlogPage })));
@@ -212,6 +213,9 @@ export function App() {
                       consultables sans compte, y compris par un visiteur qui hesite. */}
                   {/* Page de presentation, consultable avant tout engagement. */}
                   <Route path="/services" element={<ServicesPage />} />
+                  {/* Une page par prestation : le menu y mene directement, au lieu de
+                      deposer le visiteur au milieu d'une page qui deroule tout. */}
+                  <Route path="/services/:slug" element={<ServiceDetailPage />} />
 
                   {/* Actualites et agenda des evenements, alimentes depuis /admin/blog. */}
                   <Route path="/blog" element={<BlogPage />} />

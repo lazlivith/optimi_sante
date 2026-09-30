@@ -15,7 +15,7 @@ const DUREE_SURBRILLANCE = 1600;
  * Gère le défilement à chaque navigation.
  *
  * <p>React Router <b>n'atteint pas les ancres</b> : cliquer sur un lien vers
- * {@code /services#faq} depuis une autre page charge bien la page, mais laisse le visiteur en
+ * {@code /services/questions-frequentes} depuis une autre page charge bien la page, mais laisse le visiteur en
  * haut. Le fragment est purement décoratif tant que personne ne le traite. Ce composant s'en
  * charge, et remet aussi le défilement en haut lors d'une navigation ordinaire — sans quoi on
  * arrive au milieu d'une page parce qu'on avait fait défiler la précédente.</p>

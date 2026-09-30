@@ -55,19 +55,19 @@ export const Footer = () => {
 
           <Colonne titre="À propos">
             <Lien to="/services">Qui sommes-nous ?</Lien>
-            <Lien to="/services#accompagnement">Accompagnement visa</Lien>
-            <Lien to="/services#pack">Pack logistique</Lien>
-            <Lien to="/services#formations">Le parcours</Lien>
-            <Lien to="/services#negoce">Négoce médical</Lien>
-            <Lien to="/services#partenariat">Devenir partenaire</Lien>
-            <Lien to="/services#faq">Questions fréquentes</Lien>
+            <Lien to="/services/accompagnement-visa">Accompagnement visa</Lien>
+            <Lien to="/services/pack-logistique">Pack logistique</Lien>
+            <Lien to="/services/parcours">Le parcours</Lien>
+            <Lien to="/services/negoce-medical">Négoce médical</Lien>
+            <Lien to="/services/etablissements-partenaires">Devenir partenaire</Lien>
+            <Lien to="/services/questions-frequentes">Questions fréquentes</Lien>
             <Lien to="/blog">Blog & événements</Lien>
           </Colonne>
 
           <Colonne titre="Boutique">
             <Lien to="/catalog">Tout le catalogue</Lien>
             <Lien to="/catalog?promo=true">Promotions</Lien>
-            <Lien to="/services#devis">Devis pour professionnels</Lien>
+            <Lien to="/services/devis-professionnel">Devis pour professionnels</Lien>
             <Lien to="/formations">Nos formations</Lien>
             <Lien to="/login">Accès espace professionnel</Lien>
           </Colonne>

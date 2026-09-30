@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 
 export interface EntreeService {
-  /** Ancre de la section correspondante dans /services. */
+  /** Adresse de la page du service. */
   to: string;
   titre: string;
   texte: string;
@@ -37,25 +37,25 @@ export const GROUPES_SERVICES: GroupeServices[] = [
     titre: 'Mobilité médicale',
     entrees: [
       {
-        to: '/services#accompagnement',
+        to: '/services/accompagnement-visa',
         titre: 'Accompagnement visa & administratif',
         texte: 'Dossier consulaire, titre de séjour et démarches jusqu’à l’arrivée.',
         icon: Stamp,
       },
       {
-        to: '/services#pack',
+        to: '/services/pack-logistique',
         titre: 'Le pack logistique',
         texte: 'Logement, transfert et installation à la prise de poste.',
         icon: Home,
       },
       {
-        to: '/services#formations',
+        to: '/services/parcours',
         titre: 'Le parcours, étape par étape',
         texte: 'De la candidature à l’entrée en établissement partenaire.',
         icon: GraduationCap,
       },
       {
-        to: '/services#tarifs',
+        to: '/services/frais-et-conditions',
         titre: 'Frais, règlement et conditions',
         texte: 'Frais de dossier, échéances et conditions de règlement.',
         icon: Wallet,
@@ -66,25 +66,25 @@ export const GROUPES_SERVICES: GroupeServices[] = [
     titre: 'Négoce & partenaires',
     entrees: [
       {
-        to: '/services#negoce',
+        to: '/services/negoce-medical',
         titre: 'Négoce d’équipements médicaux',
         texte: 'Équipements, consommables et mobilier de soin, au catalogue.',
         icon: ShoppingBag,
       },
       {
-        to: '/services#devis',
+        to: '/services/devis-professionnel',
         titre: 'Devis pour les professionnels',
         texte: 'Composez votre demande, nous chiffrons la configuration.',
         icon: FileText,
       },
       {
-        to: '/services#partenariat',
+        to: '/services/etablissements-partenaires',
         titre: 'Établissements partenaires',
         texte: 'Les CHU et cliniques qui accueillent les praticiens.',
         icon: Building2,
       },
       {
-        to: '/services#faq',
+        to: '/services/questions-frequentes',
         titre: 'Questions fréquentes',
         texte: 'Les réponses aux questions posées avant de s’engager.',
         icon: CircleHelp,
