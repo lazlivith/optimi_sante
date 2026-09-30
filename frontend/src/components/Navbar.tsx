@@ -227,10 +227,13 @@ export const Navbar = () => {
 
       {/* Secondary Navigation */}
       <div className="hidden lg:block border-t border-gray-100 bg-white">
-        <div className="container mx-auto px-4 flex items-center h-12 gap-1">
+        <div className="container mx-auto px-4 flex items-center justify-center h-12 gap-1">
 
           {/* Nav Links */}
-          <nav className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
+          {/* `justify-center` sur les DEUX : le conteneur centre la rangee dans la page, et
+              la rangee centre ses liens. Sans le second, une rangee plus etroite que son
+              conteneur resterait collee a gauche a l'interieur. */}
+          <nav className="flex items-center justify-center gap-0.5 overflow-x-auto scrollbar-hide">
             <Link to="/" className="whitespace-nowrap px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-brand-dark transition-colors rounded-md hover:bg-gray-50">
               Accueil
             </Link>
