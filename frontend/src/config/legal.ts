@@ -33,15 +33,24 @@ export const LEGAL = {
     "Intermédiaire à valeur ajoutée : ingénierie de formation médicale continue, négoce "
     + "d'équipements de santé et organisation de la mobilité médicale internationale.",
 
-  /** Adresse complète du siège. Une ville seule ne satisfait pas l'obligation légale. */
-  adresseSiege: lire(env.VITE_LEGAL_ADRESSE_SIEGE),
-  villeSiege: lire(env.VITE_LEGAL_VILLE_SIEGE) ?? 'Bordeaux, France',
+  /**
+   * Identite reglementaire de l'editeur.
+   *
+   * <p>Les valeurs par defaut ne sont plus vides : ce sont les identifiants reels, et une
+   * mention legale doit etre publique — c'est meme sa raison d'etre. Les placer ici plutot
+   * que dans un fichier d'environnement evite de les confier a la configuration d'un
+   * hebergeur, ou une variable oubliee remettrait la page en infraction sans rien signaler.
+   * La surcharge par `VITE_LEGAL_*` reste possible pour les corriger sans redeployer.</p>
+   */
+  adresseSiege: lire(env.VITE_LEGAL_ADRESSE_SIEGE)
+    ?? "1 rue Larc Gauthier, 33140 Villenave-d'Ornon",
+  villeSiege: lire(env.VITE_LEGAL_VILLE_SIEGE) ?? "Villenave-d'Ornon, France",
 
-  siren: lire(env.VITE_LEGAL_SIREN),
-  siret: lire(env.VITE_LEGAL_SIRET),
-  rcs: lire(env.VITE_LEGAL_RCS),
-  tvaIntracom: lire(env.VITE_LEGAL_TVA),
-  capitalSocial: lire(env.VITE_LEGAL_CAPITAL),
+  siren: lire(env.VITE_LEGAL_SIREN) ?? '937 848 869',
+  siret: lire(env.VITE_LEGAL_SIRET) ?? '937 848 869 00023',
+  rcs: lire(env.VITE_LEGAL_RCS) ?? 'RCS Bordeaux 937 848 869',
+  tvaIntracom: lire(env.VITE_LEGAL_TVA) ?? 'FR24937848869',
+  capitalSocial: lire(env.VITE_LEGAL_CAPITAL) ?? '250 000 €',
 
   /**
    * Adresses de contact et du délégué à la protection des données.
@@ -56,7 +65,7 @@ export const LEGAL = {
    */
   emailContact: lire(env.VITE_LEGAL_EMAIL_CONTACT) ?? 'contact@a-definir.invalid',
   emailDpo: lire(env.VITE_LEGAL_EMAIL_DPO) ?? 'dpo@a-definir.invalid',
-  telephone: lire(env.VITE_LEGAL_TELEPHONE),
+  telephone: lire(env.VITE_LEGAL_TELEPHONE) ?? '+33 7 59 61 92 06',
 
   /**
    * Hébergeur : la loi impose de nommer **celui qui héberge réellement**, avec sa raison
