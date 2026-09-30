@@ -198,9 +198,9 @@ export function CatalogPage() {
         )}
 
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-slate-200 p-5 animate-pulse">
+              <div key={i} className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-5 animate-pulse">
                 <div className="aspect-square bg-slate-100 rounded-xl mb-4" />
                 <div className="h-3 bg-slate-100 rounded w-1/3 mb-3" />
                 <div className="h-4 bg-slate-100 rounded w-4/5 mb-2" />
@@ -237,7 +237,7 @@ export function CatalogPage() {
                 ? `${produits.length} produits affichés sur ${nombreResultats ?? produits.length}`
                 : `${produits.length} produit sur ${nombreResultats ?? produits.length}`}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
               {produits.map((product: Product) => (
                 <div
                   key={product.id}
@@ -246,7 +246,7 @@ export function CatalogPage() {
                   {/* `contain` et non `cover` : les visuels du catalogue sont des packshots
                       aux cadrages variables, et un recadrage automatique amputait l'article —
                       or c'est sur cette vignette que l'acheteur le reconnaît. */}
-                  <Link to={cheminProduit(product.slug)} className="block relative aspect-square bg-white overflow-hidden p-4">
+                  <Link to={cheminProduit(product.slug)} className="block relative aspect-square bg-white overflow-hidden p-3 sm:p-4">
                     <PromoProductVisual
                       product={product}
                       className="w-full h-full group-hover:scale-105 transition-transform duration-500"
@@ -254,31 +254,31 @@ export function CatalogPage() {
                       objectFit="contain"
                     />
                     {product.isOnPromo && (
-                      <div className="absolute top-3 left-3">
-                        <span className="px-2.5 py-1 text-[10px] font-bold text-white bg-rose-600 rounded-md tracking-wider shadow-sm">
+                      <div className="absolute top-2 left-2 sm:top-3 sm:left-3">
+                        <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] font-bold text-white bg-rose-600 rounded-md tracking-wider shadow-sm">
                           PROMO
                         </span>
                       </div>
                     )}
-                    <div className="absolute top-3 right-3 flex flex-col gap-2">
+                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 flex flex-col gap-2">
                       {product.isQuoteOnly ? (
-                        <span className="px-2.5 py-1 text-[10px] font-bold text-brand-accent border border-brand-orange/30 bg-orange-50 rounded-md tracking-wider shadow-sm">
+                        <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] font-bold text-brand-accent border border-brand-orange/30 bg-orange-50 rounded-md tracking-wider shadow-sm">
                           SUR DEVIS
                         </span>
                       ) : product.stockQuantity < 5 ? (
-                        <span className="px-2.5 py-1 text-[10px] font-bold text-red-600 border border-red-200 bg-red-50 rounded-md tracking-wider shadow-sm">
+                        <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] font-bold text-red-600 border border-red-200 bg-red-50 rounded-md tracking-wider shadow-sm">
                           STOCK BAS
                         </span>
                       ) : null}
                     </div>
                   </Link>
 
-                  <div className="flex-1 flex flex-col p-5">
-                    <div className="flex-1 flex flex-col mb-4">
+                  <div className="flex-1 flex flex-col p-3 sm:p-5">
+                    <div className="flex-1 flex flex-col mb-3 sm:mb-4">
                       {/* text-slate-400 sur blanc plafonne a 2,56:1, tres en dessous des
                           4,5:1 exiges (WCAG 1.4.3), et 11 px sur telephone n'aidaient pas.
                           slate-500 atteint 4,76:1. */}
-                      <span className="text-xs text-slate-500 mb-1.5">{(product.category?.name || 'Général').replace(/&amp;/g, '&')}</span>
+                      <span className="text-[11px] sm:text-xs text-slate-500 mb-1 sm:mb-1.5">{(product.category?.name || 'Général').replace(/&amp;/g, '&')}</span>
                       <Link to={cheminProduit(product.slug)} className="font-semibold text-sm text-brand-dark group-hover:text-brand transition-colors leading-snug line-clamp-2">
                         {product.name}
                       </Link>
@@ -291,7 +291,7 @@ export function CatalogPage() {
                             {product.basePrice.toFixed(0)} €
                           </span>
                         )}
-                        <span className={`text-lg font-bold ${product.isOnPromo ? 'text-rose-600' : 'text-brand-dark'}`}>
+                        <span className={`text-base sm:text-lg font-bold ${product.isOnPromo ? 'text-rose-600' : 'text-brand-dark'}`}>
                           {product.isQuoteOnly ? 'Sur devis' : `${product.finalPrice.toFixed(0)} €`}
                         </span>
                       </div>
