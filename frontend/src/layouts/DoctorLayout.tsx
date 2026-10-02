@@ -1,4 +1,5 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
+import { LogoOptimi } from '../components/marque/LogoOptimi';
 import { useAuth } from '../context/AuthContext';
 import { PageTransition } from '../components/common/PageTransition';
 import {
@@ -36,13 +37,12 @@ export function DoctorLayout() {
         aria-label="Menu de l'espace"
         className={`${classesTiroir(tiroir.ouvert)} bg-brand-dark text-slate-300`}
       >
-        <div className="h-16 flex items-center gap-2 px-6 border-b border-white/10">
-          <div className="bg-brand text-white font-bold rounded-lg flex items-center justify-center w-8 h-8 text-xs">
-            OS
-          </div>
-          <div>
-            <div className="text-sm font-bold text-white leading-none">Optimi Santé</div>
-            <div className="text-[10px] text-slate-400 leading-none mt-1">Espace Médecin</div>
+        <div className="h-16 flex items-center gap-3 px-6 border-b border-white/10">
+          {/* Le logotype ecrit deja « Optimi Sante » : la ligne de titre qui le doublait a
+              disparu, et seul l'intitule de l'espace subsiste sous lui. */}
+          <div className="min-w-0">
+            <LogoOptimi fond="sombre" signature={false} className="h-9 w-auto max-w-[170px]" />
+            <div className="text-[10px] text-slate-400 leading-none mt-1.5">Espace Médecin</div>
           </div>
           <FermerTiroir onFermer={tiroir.fermer} />
         </div>
