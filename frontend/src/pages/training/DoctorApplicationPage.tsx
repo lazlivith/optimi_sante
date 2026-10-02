@@ -57,6 +57,9 @@ export function DoctorApplicationPage() {
     }
   };
 
+  /** Message du serveur quand la candidature vise un compte client auquel il faut se connecter. */
+  const [connexionRequise, setConnexionRequise] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSession) return;
@@ -75,11 +78,52 @@ export function DoctorApplicationPage() {
         setToast({ message: 'Erreur : impossible d\'initialiser le paiement.', type: 'error' });
       }
     } catch (err: any) {
-      setToast({ message: err.response?.data?.message || "Erreur lors de l'envoi de la candidature.", type: 'error' });
+      const message: string = err.response?.data?.message
+        || "Erreur lors de l'envoi de la candidature.";
+      // Un client particulier deja inscrit n'est pas en faute : son compte PEUT devenir un
+      // compte medecin, a condition qu'il y soit connecte — sans quoi n'importe qui pourrait
+      // candidater au nom de son adresse. Lui afficher une erreur rouge le laissait sans
+      // recours ; on lui ouvre la porte au lieu de la lui montrer fermee.
+      if (message.includes('Connectez-vous à ce compte')) {
+        setConnexionRequise(message);
+      } else {
+        setToast({ message, type: 'error' });
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (connexionRequise) {
+    return (
+      <div className="min-h-screen bg-slate-50 py-12 px-4">
+        <div className="max-w-xl mx-auto rounded-2xl border border-slate-200 bg-white p-8">
+          <h1 className="text-xl font-bold text-brand-dark mb-3">
+            Vous avez déjà un compte chez nous
+          </h1>
+          <p className="text-slate-600 leading-relaxed mb-6">{connexionRequise}</p>
+          <div className="flex flex-wrap gap-3">
+            {/* `state.from` ramene ici apres la connexion : sans cela, la personne se
+                retrouverait sur l'accueil et devrait recommencer sa candidature. */}
+            <Link
+              to="/login"
+              state={{ from: { pathname: window.location.pathname } }}
+              className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 font-semibold text-white transition-colors hover:bg-brand-fonce"
+            >
+              Me connecter à ce compte
+            </Link>
+            <button
+              type="button"
+              onClick={() => setConnexionRequise(null)}
+              className="rounded-xl border border-slate-200 px-5 py-2.5 font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+            >
+              Utiliser une autre adresse
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4">

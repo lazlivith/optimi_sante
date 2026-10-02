@@ -139,8 +139,13 @@ public class CatalogService {
             return BigDecimal.ZERO;
         }
 
+        // Un etablissement partenaire est aussi un client de la boutique : il achete du
+        // materiel. Le taux lui-meme vit sur le profil d'entreprise — ce test n'est qu'un
+        // portillon, et le restreindre au seul role B2B privait les partenaires d'une remise
+        // pourtant negociee avec eux.
         boolean isB2B = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_" + Role.CLIENT_B2B.name()));
+                .anyMatch(a -> a.getAuthority().equals("ROLE_" + Role.CLIENT_B2B.name())
+                        || a.getAuthority().equals("ROLE_" + Role.CENTRE_FORMATION.name()));
 
         if (isB2B) {
             try {

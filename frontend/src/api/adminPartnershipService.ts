@@ -12,8 +12,20 @@ export const adminPartnershipService = {
     return data.downloadUrl;
   },
 
-  approve: async (id: string): Promise<PartnershipRequestDto> => {
-    const { data } = await axiosClient.patch<PartnershipRequestDto>(`/admin/partnership-requests/${id}/approve`);
+  /**
+   * Valide la demande et ouvre l'espace partenaire.
+   *
+   * `b2bDiscountRate` est la remise boutique accordee a l'etablissement, en pourcentage :
+   * un partenaire achete aussi du materiel. `confirmerConversion` n'est necessaire que si
+   * l'adresse appartient deja a un compte client ou medecin — le serveur refuse alors sans
+   * elle, en disant ce qui serait perdu.
+   */
+  approve: async (
+    id: string,
+    decision: { b2bDiscountRate: number; confirmerConversion?: boolean },
+  ): Promise<PartnershipRequestDto> => {
+    const { data } = await axiosClient.patch<PartnershipRequestDto>(
+      `/admin/partnership-requests/${id}/approve`, decision);
     return data;
   },
 

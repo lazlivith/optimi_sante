@@ -6,13 +6,17 @@ import com.optimisante.backend.domain.document.service.DocumentLinkService;
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.config.tenant.TenantContext;
 import com.optimisante.backend.domain.document.service.PdfGeneratorService;
+import com.optimisante.backend.domain.identity.entity.CompanyProfile;
+import com.optimisante.backend.domain.identity.entity.FacilityType;
 import com.optimisante.backend.domain.identity.entity.PartnerProfile;
 import com.optimisante.backend.domain.identity.entity.Role;
 import com.optimisante.backend.domain.identity.entity.Tenant;
 import com.optimisante.backend.domain.identity.entity.User;
+import com.optimisante.backend.domain.identity.repository.CompanyProfileRepository;
 import com.optimisante.backend.domain.identity.repository.PartnerProfileRepository;
 import com.optimisante.backend.domain.identity.repository.TenantRepository;
 import com.optimisante.backend.domain.identity.repository.UserRepository;
+import com.optimisante.backend.domain.partnership.dto.PartnershipApprovalRequestDto;
 import com.optimisante.backend.domain.partnership.dto.PartnershipRequestResponseDto;
 import com.optimisante.backend.domain.partnership.entity.PartnershipRequest;
 import com.optimisante.backend.domain.partnership.entity.PartnershipStatus;
@@ -23,7 +27,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.HtmlUtils;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -40,6 +46,7 @@ public class PartnershipService {
     private final UserRepository userRepository;
     private final TenantRepository tenantRepository;
     private final PartnerProfileRepository partnerProfileRepository;
+    private final CompanyProfileRepository companyProfileRepository;
     private final StorageService storageService;
     private final DocumentLinkService documentLinkService;
     private final PdfGeneratorService pdfGeneratorService;
@@ -109,8 +116,27 @@ public class PartnershipService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Approuve une demande de partenariat et ouvre l'espace de l'établissement.
+     *
+     * <p><b>Une adresse déjà connue ne bloque plus l'approbation.</b> Auparavant, toute
+     * demande dont l'e-mail appartenait déjà à un compte était refusée ici : l'administrateur
+     * ne pouvait rien faire, la demande restait en attente indéfiniment, et l'établissement
+     * n'obtenait jamais ses accès. Or un responsable de CHU est souvent déjà client de la
+     * boutique — c'est le cas normal, pas l'exception.</p>
+     *
+     * <p><b>Un compte n'a qu'un rôle.</b> Convertir un compte client ou médecin en compte
+     * partenaire lui retire donc l'espace qu'il avait. Ce n'est pas une décision à prendre en
+     * silence : elle exige une confirmation explicite de l'administrateur, et le refus nomme
+     * précisément ce qui serait perdu. Un compte d'administration n'est jamais converti.</p>
+     *
+     * <p><b>La remise accompagne le partenariat.</b> Un partenaire achète aussi du matériel :
+     * son compte reçoit un profil d'entreprise portant le taux saisi à l'approbation. Le taux
+     * est une négociation, pas un barème — il est donc demandé, et non déduit.</p>
+     */
     @Transactional
-    public PartnershipRequestResponseDto approveRequest(UUID requestId) {
+    public PartnershipRequestResponseDto approveRequest(UUID requestId,
+                                                       PartnershipApprovalRequestDto decision) {
         PartnershipRequest request = partnershipRequestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Partnership request not found"));
 
@@ -118,45 +144,71 @@ public class PartnershipService {
             throw new IllegalStateException("Cette demande a déjà été traitée");
         }
 
-        if (userRepository.existsByEmail(request.getContactEmail())) {
-            throw new IllegalStateException("Un compte existe déjà avec cet email");
-        }
+        final BigDecimal remise = decision == null || decision.getB2bDiscountRate() == null
+                ? BigDecimal.ZERO : decision.getB2bDiscountRate();
+        final boolean conversionConfirmee = decision != null && decision.isConfirmerConversion();
 
         UUID tenantId = requireTenantId();
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new RuntimeException("Tenant not found"));
 
-        String temporaryPassword = TemporaryPasswordGenerator.generate();
+        User existant = userRepository.findByEmail(request.getContactEmail()).orElse(null);
+        String temporaryPassword = null;
+        User user;
 
-        User user = User.builder()
-                .tenant(tenant)
-                .email(request.getContactEmail())
-                .passwordHash(passwordEncoder.encode(temporaryPassword))
-                .role(Role.CENTRE_FORMATION)
-                .isActive(true)
-                .build();
-        user = userRepository.save(user);
+        if (existant == null) {
+            temporaryPassword = TemporaryPasswordGenerator.generate();
+            user = userRepository.save(User.builder()
+                    .tenant(tenant)
+                    .email(request.getContactEmail())
+                    .passwordHash(passwordEncoder.encode(temporaryPassword))
+                    .role(Role.CENTRE_FORMATION)
+                    .isActive(true)
+                    .build());
+        } else {
+            user = reutiliserCompteExistant(existant, conversionConfirmee);
+        }
 
-        PartnerProfile profile = PartnerProfile.builder()
-                .user(user)
-                .institutionName(request.getInstitutionName())
-                .finessAccreditation(request.getFinessAccreditation())
-                .contactPersonName(request.getContactPersonName())
-                .contactEmail(request.getContactEmail())
-                .contactPhone(request.getContactPhone())
-                .address(request.getAddress())
-                .isVerified(true)
-                .build();
-        partnerProfileRepository.save(profile);
+        if (partnerProfileRepository.findByUserId(user.getId()).isEmpty()) {
+            PartnerProfile profile = PartnerProfile.builder()
+                    .user(user)
+                    .institutionName(request.getInstitutionName())
+                    .finessAccreditation(request.getFinessAccreditation())
+                    .contactPersonName(request.getContactPersonName())
+                    .contactEmail(request.getContactEmail())
+                    .contactPhone(request.getContactPhone())
+                    .address(request.getAddress())
+                    .isVerified(true)
+                    .build();
+            partnerProfileRepository.save(profile);
+        }
+
+        appliquerRemise(user, request, remise);
 
         request.setStatus(PartnershipStatus.APPROVED);
         request.setCreatedUser(user);
         request.setReviewedAt(OffsetDateTime.now());
         request = partnershipRequestRepository.save(request);
 
-        // `user` transmis pour tracer le destinataire (renvoi possible depuis l'admin).
-        emailService.sendCredentialsEmail(
-                request.getContactEmail(), request.getContactPersonName(), temporaryPassword, "Partenaire CHU", user);
+        if (temporaryPassword != null) {
+            // `user` transmis pour tracer le destinataire (renvoi possible depuis l'admin).
+            emailService.sendCredentialsEmail(
+                    request.getContactEmail(), request.getContactPersonName(), temporaryPassword,
+                    "Partenaire CHU", user);
+        } else {
+            // Le compte existait : la personne a deja un mot de passe qu'elle a choisi. En
+            // generer un nouveau l'invaliderait et mettrait un identifiant valide dans une
+            // boite mail sans necessite. On dit ce qui a change, et le seul geste a faire.
+            emailService.sendHtml(request.getContactEmail(),
+                    "Optimi Santé — Votre espace partenaire est ouvert",
+                    "Votre espace partenaire est ouvert",
+                    "<p>Bonjour " + HtmlUtils.htmlEscape(request.getContactPersonName()) + ",</p>"
+                    + "<p>Votre demande de partenariat pour <strong>"
+                    + HtmlUtils.htmlEscape(request.getInstitutionName())
+                    + "</strong> est acceptée. Votre espace partenaire est ouvert.</p>"
+                    + "<p>Reconnectez-vous avec <strong>vos identifiants habituels</strong> : "
+                    + "vous y publierez vos sessions et suivrez les candidatures reçues.</p>");
+        }
 
         eventPublisher.publishEvent(
                 new com.optimisante.backend.domain.notification.event.NotificationEvents.PartnerAccountValidated(
@@ -164,6 +216,81 @@ public class PartnershipService {
 
         log.info("Demande de partenariat {} approuvée, compte {} créé", requestId, user.getEmail());
         return toDto(request);
+    }
+
+    /**
+     * Le compte existe deja : qui peut devenir partenaire, et a quelle condition ?
+     *
+     * <p>Un compte d'administration n'est jamais converti — ce serait transformer un
+     * administrateur en partenaire et lui retirer la plateforme. Un compte deja partenaire est
+     * repris tel quel. Les autres — client particulier, client professionnel, medecin —
+     * perdent leur espace actuel, et la conversion exige donc une confirmation explicite.</p>
+     */
+    private User reutiliserCompteExistant(User existant, boolean conversionConfirmee) {
+        Role role = existant.getRole();
+
+        if (role == Role.CENTRE_FORMATION) {
+            return existant;
+        }
+
+        if (role == Role.ADMIN || role == Role.SUPER_ADMIN
+                || role == Role.ADMIN_ECOMMERCE || role == Role.ADMIN_MOBILITE) {
+            throw new IllegalStateException(
+                    "Cette adresse appartient à un compte d'administration de la plateforme. "
+                            + "Elle ne peut pas devenir un compte partenaire : demandez à "
+                            + "l'établissement une adresse de contact dédiée.");
+        }
+
+        if (!conversionConfirmee) {
+            throw new IllegalStateException(
+                    "Cette adresse appartient déjà à un compte « " + libelle(role) + " ». "
+                            + "L'approuver convertira ce compte en compte partenaire : il perdra "
+                            + "l'accès à son espace actuel, ses commandes et son historique restant "
+                            + "intacts. Confirmez la conversion pour continuer, ou demandez une "
+                            + "adresse de contact dédiée à l'établissement.");
+        }
+
+        existant.setRole(Role.CENTRE_FORMATION);
+        log.info("Compte {} converti de {} en partenaire, sur confirmation de l'administrateur",
+                existant.getEmail(), role);
+        return userRepository.save(existant);
+    }
+
+    private static String libelle(Role role) {
+        return switch (role) {
+            case CLIENT_B2C -> "client particulier";
+            case CLIENT_B2B -> "client professionnel";
+            case MEDECIN -> "médecin";
+            default -> role.name();
+        };
+    }
+
+    /**
+     * La remise boutique accordée à l'établissement.
+     *
+     * <p>Un partenaire est aussi un client : il achète du matériel. Le taux vit sur le profil
+     * d'entreprise, comme pour tout compte professionnel — c'est la même source que celle que
+     * lit le calcul des prix, et non une seconde notion de remise qui finirait par diverger.</p>
+     *
+     * <p>Le profil d'entreprise existe peut-être déjà, si le compte était client professionnel :
+     * on met alors son taux à jour plutôt que d'en créer un second, ce que l'unicité par compte
+     * interdit de toute façon.</p>
+     */
+    private void appliquerRemise(User user, PartnershipRequest request, BigDecimal remise) {
+        CompanyProfile profil = companyProfileRepository.findByUserId(user.getId())
+                .orElseGet(() -> CompanyProfile.builder()
+                        .user(user)
+                        .companyName(request.getInstitutionName())
+                        // Le numero FINESS identifie l'etablissement de sante : c'est le seul
+                        // identifiant dont la demande dispose, et le champ est obligatoire.
+                        .taxId(request.getFinessAccreditation() != null
+                                ? request.getFinessAccreditation() : "FINESS non communiqué")
+                        .facilityType(FacilityType.HOSPITAL)
+                        .contactName(request.getContactPersonName())
+                        .billingAddress(request.getAddress())
+                        .build());
+        profil.setB2bDiscountRate(remise);
+        companyProfileRepository.save(profil);
     }
 
     @Transactional

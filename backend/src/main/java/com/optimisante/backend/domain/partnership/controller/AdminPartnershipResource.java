@@ -2,10 +2,12 @@ package com.optimisante.backend.domain.partnership.controller;
 
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.domain.document.service.DocumentLinkService;
+import com.optimisante.backend.domain.partnership.dto.PartnershipApprovalRequestDto;
 import com.optimisante.backend.domain.partnership.dto.PartnershipRequestResponseDto;
 import com.optimisante.backend.domain.partnership.repository.PartnershipRequestRepository;
 import com.optimisante.backend.domain.partnership.service.PartnershipService;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -40,8 +42,10 @@ public class AdminPartnershipResource {
     }
 
     @PatchMapping("/{id}/approve")
-    public ResponseEntity<PartnershipRequestResponseDto> approve(@PathVariable UUID id) {
-        return ResponseEntity.ok(partnershipService.approveRequest(id));
+    public ResponseEntity<PartnershipRequestResponseDto> approve(
+            @PathVariable UUID id,
+            @Valid @RequestBody(required = false) PartnershipApprovalRequestDto decision) {
+        return ResponseEntity.ok(partnershipService.approveRequest(id, decision));
     }
 
     @PatchMapping("/{id}/reject")

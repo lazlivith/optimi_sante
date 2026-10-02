@@ -30,13 +30,52 @@ export function AdminPartnershipRequestsPage() {
   useEffect(() => { fetchRequests(); }, []);
 
   const handleApprove = async (id: string) => {
+    // Le taux est demande a chaque validation : c'est une negociation commerciale propre a
+    // l'etablissement, pas un bareme que le systeme pourrait deduire.
+    const saisie = window.prompt(
+      'Remise boutique accordée à cet établissement, en % :\n\n'
+      + "Un partenaire est aussi un client — ce taux s'applique à ses achats de matériel.\n"
+      + "Laissez 0 s'il n'y a pas d'accord tarifaire.",
+      '0',
+    );
+    if (saisie === null) return;
+    const taux = Number(saisie.replace(',', '.'));
+    if (!Number.isFinite(taux) || taux < 0 || taux > 100) {
+      setToast({ message: 'La remise doit être un nombre entre 0 et 100.', type: 'error' });
+      return;
+    }
+
+    await validerDemande(id, taux, false);
+  };
+
+  /**
+   * Envoie la validation, et ne demande la confirmation de conversion que si le serveur la
+   * reclame — c'est lui qui sait si l'adresse appartient deja a un compte, et ce qui serait
+   * perdu. L'ecran ne redit donc pas la regle : il repete ce que le serveur a explique.
+   */
+  const validerDemande = async (id: string, taux: number, confirmerConversion: boolean) => {
     setProcessingId(id);
     try {
-      const updated = await adminPartnershipService.approve(id);
+      const updated = await adminPartnershipService.approve(id, {
+        b2bDiscountRate: taux, confirmerConversion,
+      });
       setRequests(prev => prev.map(r => r.id === id ? updated : r));
-      setToast({ message: 'Partenariat validé — identifiants envoyés par email.', type: 'success' });
+      setToast({
+        message: 'Partenariat validé — accès envoyés par email.',
+        type: 'success',
+      });
     } catch (err: any) {
-      setToast({ message: err.response?.data?.message || 'Erreur lors de la validation.', type: 'error' });
+      const message: string = err.response?.data?.message || 'Erreur lors de la validation.';
+      if (!confirmerConversion && message.includes('Confirmez la conversion')) {
+        setProcessingId(null);
+        if (window.confirm(`${message}
+
+Confirmer la conversion de ce compte ?`)) {
+          await validerDemande(id, taux, true);
+        }
+        return;
+      }
+      setToast({ message, type: 'error' });
     } finally {
       setProcessingId(null);
     }
