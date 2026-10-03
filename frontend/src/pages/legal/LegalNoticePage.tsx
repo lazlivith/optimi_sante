@@ -40,8 +40,10 @@ export function LegalNoticePage() {
 
       <h2>Directeur de la publication</h2>
       <p>
-        <strong>{LEGAL.directeurPublication}</strong>, fondateur et dirigeant de{' '}
-        {LEGAL.raisonSociale}.
+        {/* « President » et non « PDG » : la societe est une SAS, ou c'est le titre du
+            representant legal. « President-directeur general » appartient a la societe
+            anonyme, et une mention legale se lit contre les statuts. */}
+        <strong>{LEGAL.directeurPublication}</strong>, président de {LEGAL.raisonSociale}.
       </p>
 
       <h2>Activité</h2>
