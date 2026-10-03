@@ -104,8 +104,20 @@
             <td>Remise déduite</td>
             <td class="valeur" th:text="'− ' + ${remise}">− 0,00 €</td>
         </tr>
+        <!-- Ventilation de la taxe. Les prix sont annonces toutes taxes comprises : elle
+             n'ajoute donc rien au montant regle, elle montre ce qu'il contenait deja. Absente
+             quand le regime du reglement n'est pas tranche, plutot que d'annoncer un taux
+             qu'on n'a pas etabli. -->
+        <tr th:if="${aTva}">
+            <td>Total hors taxes</td>
+            <td class="valeur" th:text="${totalHt}">0,00 €</td>
+        </tr>
+        <tr th:if="${aTva}" th:each="base : ${ventilationTva}">
+            <td th:text="'dont TVA ' + ${base.taux} + ' % (base ' + ${base.ht} + ')'">dont TVA</td>
+            <td class="valeur" th:text="${base.taxe}">0,00 €</td>
+        </tr>
         <tr class="paye">
-            <td>Montant réglé</td>
+            <td th:text="${aTva} ? 'Montant réglé (TTC)' : 'Montant réglé'">Montant réglé</td>
             <td class="valeur" th:text="${montantPaye}">0,00 €</td>
         </tr>
     </table>

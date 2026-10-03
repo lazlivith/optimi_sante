@@ -22,6 +22,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.optimisante.backend.domain.catalog.service.ServiceTva;
+
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -50,6 +52,7 @@ public class PaymentReceiptIssuer {
 
     private static final DateTimeFormatter JOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
+    private final com.optimisante.backend.domain.catalog.service.ServiceTva serviceTva;
     private final PaymentReceiptRepository receipts;
     private final com.optimisante.backend.common.email.EmailService emailService;
     private final DocumentNumberService numeros;
@@ -199,6 +202,30 @@ public class PaymentReceiptIssuer {
         v.put("remise", montant(e.remise()));
         v.put("aRemise", e.remise().signum() > 0);
         v.put("montantPaye", montant(e.montantPaye()));
+
+        // Ventilation de la taxe, quand les lignes portent un taux. Les prix etant annonces
+        // TTC, elle n'ajoute rien au montant paye : elle montre ce qu'il contenait deja.
+        // Un reglement dont le regime n'est pas tranche — frais de dossier d'une formation —
+        // ne porte aucun taux : le recu reste alors celui d'avant, plutot que d'annoncer une
+        // taxe qu'on n'a pas etablie.
+        List<ServiceTva.LigneTaxable> taxables = e.lignes().stream()
+                .filter(l -> l.tauxTva() != null)
+                .map(l -> new ServiceTva.LigneTaxable(l.total(), l.tauxTva()))
+                .toList();
+        List<ServiceTva.Ventilation> ventilation = taxables.isEmpty()
+                ? List.of() : serviceTva.ventiler(taxables);
+
+        v.put("aTva", !ventilation.isEmpty());
+        v.put("ventilationTva", ventilation.stream().map(x -> Map.of(
+                "taux", x.taux().stripTrailingZeros().toPlainString().replace('.', ','),
+                "ht", montant(x.ht()),
+                "taxe", montant(x.taxe()))).toList());
+        v.put("totalHt", montant(ventilation.stream()
+                .map(ServiceTva.Ventilation::ht)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)));
+        v.put("totalTva", montant(ventilation.stream()
+                .map(ServiceTva.Ventilation::taxe)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)));
         return v;
     }
 

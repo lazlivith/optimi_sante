@@ -36,4 +36,16 @@ public class OrderItem {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
+
+    /**
+     * Taux de TVA retenu au moment de la vente, en pourcentage.
+     *
+     * <p>Recopie ici, et non lu sur le produit a l'affichage : un document fiscal doit
+     * refleter le taux applicable le jour de la vente. Si le taux d'un produit est corrige
+     * plus tard, ou si la loi change, les factures deja emises ne doivent pas se mettre a
+     * jour toutes seules — elles decriraient une operation qui n'a jamais eu lieu.</p>
+     */
+    @Column(name = "vat_rate", nullable = false, precision = 4, scale = 2)
+    @Builder.Default
+    private BigDecimal vatRate = new BigDecimal("20.00");
 }

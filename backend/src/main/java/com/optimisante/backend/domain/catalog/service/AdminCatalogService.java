@@ -7,6 +7,7 @@ import com.optimisante.backend.domain.catalog.dto.AdminProductRequestDto;
 import com.optimisante.backend.domain.catalog.dto.AdminProductResponseDto;
 import com.optimisante.backend.domain.catalog.entity.Category;
 import com.optimisante.backend.domain.catalog.entity.Product;
+import com.optimisante.backend.domain.catalog.service.ServiceTva;
 import com.optimisante.backend.domain.catalog.repository.AdminProductRow;
 import com.optimisante.backend.domain.catalog.repository.CategoryRepository;
 import com.optimisante.backend.domain.catalog.repository.ProductRepository;
@@ -26,6 +27,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AdminCatalogService {
+
+    private final ServiceTva serviceTva;
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
@@ -96,6 +99,7 @@ public class AdminCatalogService {
                 .training(formation)
                 .imageUrl(dto.imageUrl())
                 .promoPrice(dto.promoPrice())
+                .vatRate(dto.vatRate())
                 .promoStartsAt(dto.promoStartsAt())
                 .promoEndsAt(dto.promoEndsAt())
                 .build();
@@ -128,6 +132,7 @@ public class AdminCatalogService {
         // Toujours réassignés (pas de vérification != null) pour permettre de retirer une
         // promotion existante depuis le formulaire d'édition, pas seulement d'en ajouter une.
         product.setPromoPrice(dto.promoPrice());
+        product.setVatRate(dto.vatRate());
         product.setPromoStartsAt(dto.promoStartsAt());
         product.setPromoEndsAt(dto.promoEndsAt());
 
@@ -215,6 +220,10 @@ public class AdminCatalogService {
                 .categoryId(p.getCategory() != null ? p.getCategory().getId() : null)
                 .categoryName(p.getCategory() != null ? p.getCategory().getName() : null)
                 .promoPrice(p.getPromoPrice())
+                .vatRate(p.getVatRate())
+                // Le taux reellement applique, pour que l'ecran montre ce qui
+                // sera facture et non seulement ce qui est saisi.
+                .vatRateApplique(serviceTva.tauxDe(p))
                 .promoStartsAt(p.getPromoStartsAt())
                 .promoEndsAt(p.getPromoEndsAt())
                 .trainingId(p.getTraining() != null ? p.getTraining().getId() : null)

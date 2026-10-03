@@ -16,6 +16,10 @@ export interface AdminProductDto {
   categoryId: string | null;
   categoryName: string | null;
   promoPrice?: number | null;
+  /** Taux de TVA propre au produit, ou null s'il herite de sa categorie. */
+  vatRate?: number | null;
+  /** Taux reellement applique apres resolution en cascade. Lecture seule. */
+  vatRateApplique?: number | null;
   promoStartsAt?: string | null;
   promoEndsAt?: string | null;
   /** Formation rattachee (offre liee), null si aucune. */
@@ -44,6 +48,8 @@ export interface AdminProductRequestDto {
   categoryId?: string;
   imageUrl?: string;
   promoPrice?: number | null;
+  /** Taux de TVA en %. `null` ou absent : herite de la categorie, puis du taux normal. */
+  vatRate?: number | null;
   promoStartsAt?: string | null;
   promoEndsAt?: string | null;
   trainingId?: string | null;

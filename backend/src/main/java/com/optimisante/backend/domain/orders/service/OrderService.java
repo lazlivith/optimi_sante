@@ -50,6 +50,7 @@ public class OrderService {
     private final UserRepository userRepository;
     private final TenantRepository tenantRepository;
     private final CompanyProfileRepository companyProfileRepository;
+    private final com.optimisante.backend.domain.catalog.service.ServiceTva serviceTva;
     private final StockReservationService stockReservationService;
     private final StockReservationRepository stockReservationRepository;
     private final StripePaymentService stripePaymentService;
@@ -149,6 +150,9 @@ public class OrderService {
                     .unitPrice(unitPrice)
                     .quantity(itemDto.quantity())
                     .subtotal(subtotal)
+                    // Le taux est recopie, pas reference : la facture doit rester celle du
+                    // jour de la vente, meme si le taux du produit est corrige ensuite.
+                    .vatRate(serviceTva.tauxDe(product))
                     .build();
             
             order.getItems().add(orderItem);
@@ -229,6 +233,25 @@ public class OrderService {
                     return map;
                 }).collect(Collectors.toList());
                 quoteData.put("items", itemsList);
+
+                // Le devis annoncait « Total HT » suivi d'une « TVA (0 % — Export/Exonere) »
+                // ecrite en dur, avec le meme montant partout : un devis a un etablissement
+                // francais y declarait donc une taxe nulle qui ne lui est pas applicable. Les
+                // prix etant TTC, la taxe est extraite et ventilee par taux.
+                var ventilation = serviceTva.ventiler(savedOrder.getItems().stream()
+                        .map(i -> new com.optimisante.backend.domain.catalog.service.ServiceTva
+                                .LigneTaxable(i.getSubtotal(), i.getVatRate()))
+                        .toList());
+                quoteData.put("ventilationTva", ventilation.stream().map(x -> java.util.Map.of(
+                        "taux", x.taux().stripTrailingZeros().toPlainString(),
+                        "ht", x.ht().toPlainString(),
+                        "taxe", x.taxe().toPlainString())).toList());
+                quoteData.put("totalHt", ventilation.stream()
+                        .map(com.optimisante.backend.domain.catalog.service.ServiceTva.Ventilation::ht)
+                        .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add).toPlainString());
+                quoteData.put("totalTva", ventilation.stream()
+                        .map(com.optimisante.backend.domain.catalog.service.ServiceTva.Ventilation::taxe)
+                        .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add).toPlainString());
 
                 String pdfUrl = pdfGeneratorService.generateAndUploadPdf("devis-b2b", quoteData, DossierStockage.DOCUMENTS_DEVIS, "QUOTE-" + savedOrder.getOrderNumber());
                 savedOrder.setDocumentS3Key(pdfUrl);
@@ -331,8 +354,11 @@ public class OrderService {
                         : order.getPaymentMethod().libelle(),
                 order.getCreatedAt(),
                 order.getItems().stream()
-                        .map(i -> new Encaissement.LigneEncaissement(
-                                libelleLigne(i), i.getQuantity(), i.getUnitPrice(), i.getSubtotal()))
+                        // Le taux fige sur la ligne accompagne le recu : c'est lui qui
+                        // permet d'y ventiler la taxe, et non le taux actuel du produit.
+                        .map(i -> Encaissement.LigneEncaissement.vente(
+                                libelleLigne(i), i.getQuantity(), i.getUnitPrice(),
+                                i.getSubtotal(), i.getVatRate()))
                         .toList(),
                 order.getUser() == null ? null : order.getUser().getId(),
                 null,

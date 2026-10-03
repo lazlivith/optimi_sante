@@ -10,7 +10,7 @@ import { EmptyState } from '../../components/common/EmptyState';
 
 const EMPTY_FORM: AdminProductRequestDto = {
   sku: '', name: '', description: '', basePrice: 0, stockQuantity: 0, stockThreshold: 5, isQuoteOnly: false,
-  categoryId: undefined, imageUrl: '', promoPrice: undefined, promoStartsAt: undefined, promoEndsAt: undefined,
+  categoryId: undefined, imageUrl: '', promoPrice: undefined, vatRate: undefined, promoStartsAt: undefined, promoEndsAt: undefined,
   trainingId: undefined
 };
 
@@ -137,7 +137,7 @@ export function AdminCatalogPage() {
       sku: p.sku, name: p.name, description: p.description || '', basePrice: p.basePrice,
       stockQuantity: p.stockQuantity, stockThreshold: p.stockThreshold, isQuoteOnly: p.isQuoteOnly,
       categoryId: p.categoryId || undefined, imageUrl: p.imageUrl || '',
-      promoPrice: p.promoPrice ?? undefined, promoStartsAt: p.promoStartsAt ?? undefined, promoEndsAt: p.promoEndsAt ?? undefined,
+      promoPrice: p.promoPrice ?? undefined, vatRate: p.vatRate ?? undefined, promoStartsAt: p.promoStartsAt ?? undefined, promoEndsAt: p.promoEndsAt ?? undefined,
       trainingId: p.trainingId ?? undefined
     });
     setIsModalOpen(true);
@@ -508,6 +508,34 @@ export function AdminCatalogPage() {
                   onChange={e => setForm({ ...form, isQuoteOnly: e.target.checked })}
                   className="rounded border-slate-300 text-brand focus:ring-brand" />
                 <label htmlFor="isQuoteOnly" className="text-sm text-slate-700">Produit uniquement sur devis (B2B)</label>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100">
+                {/* Les prix du catalogue sont annonces TTC : ce taux ne les modifie pas, il
+                    sert a ventiler la taxe sur les recus et les factures. Laisse vide, le
+                    produit herite de sa categorie, puis du taux normal. */}
+                <label className="block text-xs font-medium text-slate-600 mb-1">
+                  Taux de TVA
+                </label>
+                <select
+                  value={form.vatRate ?? ''}
+                  onChange={e => setForm({
+                    ...form,
+                    vatRate: e.target.value ? parseFloat(e.target.value) : undefined,
+                  })}
+                  className="w-full rounded-md border-slate-300 shadow-sm p-2 border"
+                >
+                  <option value="">Hériter de la catégorie</option>
+                  <option value="20">20 % — taux normal</option>
+                  <option value="10">10 % — taux intermédiaire</option>
+                  <option value="5.5">5,5 % — matériel pour personnes handicapées</option>
+                  <option value="2.1">2,1 % — médicaments remboursables</option>
+                  <option value="0">0 % — exonéré</option>
+                </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  Le prix affiché reste inchangé : ce taux sert à ventiler la TVA sur les
+                  documents. À faire valider par votre comptable.
+                </p>
               </div>
 
               <div className="pt-4 border-t border-slate-100">

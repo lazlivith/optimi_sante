@@ -69,8 +69,8 @@
             <tr>
                 <th>Description</th>
                 <th style="text-align: right;">Qté</th>
-                <th style="text-align: right;">Prix Unitaire HT</th>
-                <th style="text-align: right;">Total HT</th>
+                <th style="text-align: right;">Prix Unitaire TTC</th>
+                <th style="text-align: right;">Total TTC</th>
             </tr>
         </thead>
         <tbody>
@@ -84,13 +84,16 @@
     </table>
 
     <table class="totals-table">
+        <!-- La TVA etait ecrite en dur a 0 % « Export/Exonere », et le meme montant
+             figurait en HT et en TTC. Les prix etant annonces TTC, la taxe est desormais
+             EXTRAITE et ventilee par taux : le total a payer ne change pas. -->
         <tr>
             <td>Total HT :</td>
-            <td style="text-align: right;" th:text="${#numbers.formatDecimal(totalAmount, 1, 'WHITESPACE', 2, 'POINT')} + ' €'">100.00 €</td>
+            <td style="text-align: right;" th:text="${#numbers.formatDecimal(totalHt, 1, 'WHITESPACE', 2, 'POINT')} + ' €'">100.00 €</td>
         </tr>
-        <tr>
-            <td>TVA (0% - Export/Exonéré) :</td>
-            <td style="text-align: right;">0.00 €</td>
+        <tr th:each="base : ${ventilationTva}">
+            <td th:text="'TVA ' + ${base.taux} + ' % (base ' + ${#numbers.formatDecimal(base.ht, 1, 'WHITESPACE', 2, 'POINT')} + ' €) :'">TVA</td>
+            <td style="text-align: right;" th:text="${#numbers.formatDecimal(base.taxe, 1, 'WHITESPACE', 2, 'POINT')} + ' €'">0.00 €</td>
         </tr>
         <tr class="total-row">
             <td>TOTAL TTC :</td>

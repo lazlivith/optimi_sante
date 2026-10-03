@@ -49,6 +49,16 @@ public class Product {
     @Column(name = "purchase_price", precision = 10, scale = 2)
     private BigDecimal purchasePrice;
 
+    /**
+     * Taux de TVA applicable, en pourcentage. {@code null} : herite de la categorie.
+     *
+     * <p>Le taux vit sur le PRODUIT et non sur sa famille, parce que deux articles du meme
+     * rayon peuvent relever de taux differents : un fauteuil roulant ouvre droit au taux
+     * reduit, un fauteuil de pesee non. La categorie ne fournit qu'un defaut.</p>
+     */
+    @Column(name = "vat_rate", precision = 4, scale = 2)
+    private BigDecimal vatRate;
+
     @Column(name = "stock_quantity")
     @Builder.Default
     private Integer stockQuantity = 0;

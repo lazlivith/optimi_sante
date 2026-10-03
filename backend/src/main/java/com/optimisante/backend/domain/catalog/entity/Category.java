@@ -42,6 +42,10 @@ public class Category {
     @Column(name = "margin_rate", precision = 5, scale = 2)
     private java.math.BigDecimal marginRate;
 
+    /** Taux de TVA par defaut des produits du rayon, en pourcentage. {@code null} : taux normal. */
+    @Column(name = "vat_rate", precision = 4, scale = 2)
+    private java.math.BigDecimal vatRate;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Category parent;

@@ -24,6 +24,12 @@ public class AdminProductResponseDto {
     private UUID categoryId;
     private String categoryName;
     private BigDecimal promoPrice;
+
+    /** Taux de TVA propre au produit, ou {@code null} s'il herite de sa categorie. */
+    private BigDecimal vatRate;
+
+    /** Le taux reellement applique, apres resolution en cascade. Lecture seule. */
+    private BigDecimal vatRateApplique;
     private OffsetDateTime promoStartsAt;
     private OffsetDateTime promoEndsAt;
 

@@ -58,16 +58,32 @@ public record Encaissement(
         if (payeLe == null) payeLe = OffsetDateTime.now();
     }
 
-    /** Une ligne du détail. */
+    /**
+     * Une ligne du détail.
+     *
+     * <p>{@code tauxTva} est facultatif. Les ventes de la boutique le portent, et le reçu
+     * affiche alors la ventilation que la loi attend. Un règlement dont le régime de taxe
+     * n'est pas tranché — les frais de dossier d'une formation, dont le lieu d'imposition
+     * dépend du parcours — le laisse nul : le reçu reste alors celui d'avant, plutôt
+     * qu'annoncer une taxe qu'on n'a pas établie.</p>
+     */
     public record LigneEncaissement(
             String designation,
             int quantite,
             BigDecimal prixUnitaire,
-            BigDecimal total
+            BigDecimal total,
+            BigDecimal tauxTva
     ) {
         /** Ligne unique, pour un règlement qui n'a pas de détail (des frais, un acompte). */
         public static LigneEncaissement unique(String designation, BigDecimal montant) {
-            return new LigneEncaissement(designation, 1, montant, montant);
+            return new LigneEncaissement(designation, 1, montant, montant, null);
+        }
+
+        /** Ligne de vente : le montant est TTC, et le taux sert à en extraire la taxe. */
+        public static LigneEncaissement vente(String designation, int quantite,
+                                              BigDecimal prixUnitaire, BigDecimal total,
+                                              BigDecimal tauxTva) {
+            return new LigneEncaissement(designation, quantite, prixUnitaire, total, tauxTva);
         }
     }
 }
