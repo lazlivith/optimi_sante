@@ -57,6 +57,42 @@ public class Order {
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
+    /**
+     * Adresse de destination, RECOPIEE sur la commande.
+     *
+     * <p>Une commande est un engagement date : elle garde l'adresse telle qu'elle etait au
+     * moment de l'achat. La lire sur le compte client ferait reecrire la destination des
+     * anciennes commandes au premier demenagement — alors que le transporteur, lui, a livre
+     * a l'ancienne.</p>
+     */
+    @Column(name = "shipping_recipient", length = 150)
+    private String shippingRecipient;
+
+    @Column(name = "shipping_line1", length = 255)
+    private String shippingLine1;
+
+    @Column(name = "shipping_line2", length = 255)
+    private String shippingLine2;
+
+    @Column(name = "shipping_postal_code", length = 20)
+    private String shippingPostalCode;
+
+    @Column(name = "shipping_city", length = 120)
+    private String shippingCity;
+
+    /** Code ISO 3166-1 alpha-2 du pays de destination. */
+    @Column(name = "shipping_country", length = 2)
+    private String shippingCountry;
+
+    /** Zone retenue au moment de la commande. Figee : un redecoupage ne reecrit pas le passe. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "shipping_zone", length = 30)
+    private com.optimisante.backend.domain.orders.shipping.ZoneLivraison shippingZone;
+
+    @Column(name = "shipping_cost", nullable = false, precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal shippingCost = BigDecimal.ZERO;
+
     @Column(name = "stripe_payment_intent_id", length = 255)
     private String stripePaymentIntentId;
 

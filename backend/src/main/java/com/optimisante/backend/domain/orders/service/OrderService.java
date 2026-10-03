@@ -51,6 +51,7 @@ public class OrderService {
     private final TenantRepository tenantRepository;
     private final CompanyProfileRepository companyProfileRepository;
     private final com.optimisante.backend.domain.catalog.service.ServiceTva serviceTva;
+    private final com.optimisante.backend.domain.orders.shipping.ServiceLivraison serviceLivraison;
     private final StockReservationService stockReservationService;
     private final StockReservationRepository stockReservationRepository;
     private final StripePaymentService stripePaymentService;
@@ -63,16 +64,21 @@ public class OrderService {
 
     @Transactional
     public OrderResponseDto createCheckoutOrder(CheckoutRequestDto request) {
-        return processOrderCreation(request.items(), request.paymentMethod(), false, null, request.promoCode());
+        return processOrderCreation(request.items(), request.paymentMethod(), false, null,
+                request.promoCode(), request);
     }
 
     @Transactional
     public OrderResponseDto createQuoteRequest(QuoteRequestDto request) {
         // Les codes promo ne s'appliquent pas aux devis B2B (négociation individuelle ensuite).
-        return processOrderCreation(request.items(), PaymentMethod.QUOTE_REQUEST, true, request.notes(), null);
+        // Pas d'adresse non plus : un devis se chiffre avant que la destination soit arretee,
+        // et les frais de port seront ajoutes a la commande qui en decoulera.
+        return processOrderCreation(request.items(), PaymentMethod.QUOTE_REQUEST, true,
+                request.notes(), null, null);
     }
 
-    private OrderResponseDto processOrderCreation(List<CheckoutItemDto> items, PaymentMethod paymentMethod, boolean isQuote, String notes, String promoCodeInput) {
+    private OrderResponseDto processOrderCreation(List<CheckoutItemDto> items, PaymentMethod paymentMethod, boolean isQuote, String notes, String promoCodeInput,
+                                                  CheckoutRequestDto livraison) {
         UUID tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             throw new IllegalStateException("Tenant context is required");
@@ -167,6 +173,23 @@ public class OrderService {
             discountResult = promoCodeService.validateAndComputeDiscount(promoCodeInput, totalAmount);
             totalAmount = totalAmount.subtract(discountResult.discountAmount());
             order.setDiscountAmount(discountResult.discountAmount());
+        }
+
+        // Frais de port : apres les remises, avant le paiement. Le total envoye a Stripe doit
+        // etre celui que le client voit, frais compris — sinon il est debite d'un montant
+        // qu'il n'a jamais valide.
+        if (livraison != null && livraison.shippingCountry() != null
+                && !livraison.shippingCountry().isBlank()) {
+            var frais = serviceLivraison.calculer(livraison.shippingCountry(), totalAmount);
+            order.setShippingRecipient(livraison.shippingRecipient());
+            order.setShippingLine1(livraison.shippingLine1());
+            order.setShippingLine2(livraison.shippingLine2());
+            order.setShippingPostalCode(livraison.shippingPostalCode());
+            order.setShippingCity(livraison.shippingCity());
+            order.setShippingCountry(livraison.shippingCountry().trim().toUpperCase());
+            order.setShippingZone(frais.zone());
+            order.setShippingCost(frais.montant());
+            totalAmount = totalAmount.add(frais.montant());
         }
 
         order.setTotalAmount(totalAmount);

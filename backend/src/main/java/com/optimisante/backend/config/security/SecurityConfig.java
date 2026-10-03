@@ -62,6 +62,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/file/*").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/catalog/**").permitAll()
+                        // Le cout de la livraison doit etre connu AVANT de valider : c'est ce
+                        // que les conditions generales promettent, et un visiteur non connecte
+                        // remplit son panier avant d'avoir un compte.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/shipping/**").permitAll()
                         .requestMatchers("/api/v1/payments/webhook").permitAll()
                         // Le blog s'adresse aux visiteurs, et sa banniere s'affiche sur la
                         // page d'accueil : en lecture seule, et seulement sur ce qui a ete mis
