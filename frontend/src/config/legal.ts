@@ -36,7 +36,7 @@ export const LEGAL = {
   formeJuridique: 'Société par Actions Simplifiée (SAS)',
 
   /** Directeur de la publication au sens de la LCEN. */
-  directeurPublication: 'Livith Désiré Boungou-Laz',
+  directeurPublication: 'Andoche Guide Varin Tchiloemba',
 
   objetSocial:
     "Intermédiaire à valeur ajoutée : ingénierie de formation médicale continue, négoce "
