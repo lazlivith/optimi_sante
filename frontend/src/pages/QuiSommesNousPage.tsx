@@ -1,52 +1,46 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, GraduationCap, ShoppingBag, Plane, Building2 } from 'lucide-react';
+import { ArrowRight, GraduationCap, ShoppingBag, Plane } from 'lucide-react';
 import { LEGAL } from '../config/legal';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 /**
- * Qui est Optimi Santé.
+ * Qui est Optimi Santé, en bref.
  *
- * <p>Le lien « Qui sommes-nous ? » menait jusqu'ici à la page des services, qui répond à une
- * autre question : <i>ce que nous faisons pour vous</i>. Un visiteur qui demande qui nous
- * sommes veut savoir à qui il confie un dossier consulaire ou une commande — la réponse
- * arrive donc en premier, avant toute offre.</p>
+ * <p>Le lien « Qui sommes-nous ? » menait à la page des services, qui répond à une autre
+ * question : <i>ce que nous faisons pour vous</i>. Un visiteur qui demande qui nous sommes a
+ * sa réponse ici, dès la première phrase.</p>
  *
- * <p><b>Rien n'est affirmé ici qui ne soit vérifiable.</b> Pas d'ancienneté, pas de nombre de
- * médecins accompagnés, pas de liste d'établissements : ce sont des arguments qui se
- * contrôlent, et une page de présentation qui en invente décrédibilise le reste du site. Les
- * éléments d'identité viennent de {@link LEGAL}, la même source que les mentions légales : ils
- * ne peuvent donc pas diverger d'une page à l'autre.</p>
+ * <p><b>Une présentation s'ouvre sur ce qu'on est.</b> Une première version décrivait la
+ * société par ce qu'elle ne fait pas — ne soigne pas, ne forme pas elle-même, ne fabrique
+ * rien. C'était exact et mal orienté : un visiteur lit cette page pour savoir à qui il
+ * s'adresse, pas pour une mise au point. L'activité est donc énoncée au positif, sans pour
+ * autant avancer d'ancienneté ni de chiffres que le site ne peut pas étayer.</p>
  */
 export function QuiSommesNousPage() {
   usePageMeta('Qui sommes-nous ?',
-    `${LEGAL.nomCommercial} relie équipements médicaux, formations cliniques en France et `
-    + "organisation de la mobilité médicale internationale. Qui nous sommes, ce que nous "
-    + 'faisons, et qui porte la société.');
+    `${LEGAL.nomCommercial} accompagne les professionnels de santé sur trois terrains : `
+    + "l'équipement médical, la formation clinique et la mobilité médicale internationale.");
 
   const metiers = [
     {
       icon: GraduationCap,
       titre: 'Formation médicale',
-      texte: "Nous construisons des parcours de formation clinique avec des établissements "
-        + "de santé français, qui en restent les seuls dispensateurs. Nous en assurons "
-        + "l'ingénierie : la mise en relation, le dossier, le suivi jusqu'à la première "
-        + 'journée en service.',
+      texte: "Des parcours de formation clinique construits avec des établissements de santé "
+        + 'français, de la candidature à la première journée en service.',
       lien: { to: '/formations', libelle: 'Voir les formations' },
     },
     {
       icon: Plane,
       titre: 'Mobilité internationale',
-      texte: "Un stage clinique en France suppose un dossier consulaire, une assurance, un "
-        + "logement et une arrivée à organiser. Nous prenons en charge cette part "
-        + "administrative et logistique, que le médecin assemblerait sinon seul, à distance.",
+      texte: "Le dossier consulaire, l'assurance, l'hébergement et l'accueil à l'arrivée : "
+        + 'tout ce qu\'un séjour de formation en France demande, pris en charge.',
       lien: { to: '/services', libelle: 'Nos services' },
     },
     {
       icon: ShoppingBag,
       titre: 'Équipements de santé',
-      texte: "Nous distribuons du matériel et des consommables médicaux aux établissements, "
-        + 'aux professionnels et aux particuliers, avec des conditions propres aux comptes '
-        + 'professionnels et une livraison en France et vers une partie du continent africain.',
+      texte: 'Matériel et consommables médicaux pour les établissements, les professionnels '
+        + 'et les particuliers, livrés en France et vers l\'Afrique.',
       lien: { to: '/catalog', libelle: 'Voir le catalogue' },
     },
   ];
@@ -59,25 +53,24 @@ export function QuiSommesNousPage() {
             Qui sommes-nous
           </p>
           <h1 className="mb-5 text-3xl font-bold leading-tight md:text-5xl">
-            Un intermédiaire, et nous l'assumons.
+            Trois métiers, un seul interlocuteur.
           </h1>
 
-          {/* La reponse, d'abord. Un visiteur qui clique sur « Qui sommes-nous ? » ne doit pas
-              avoir a deduire la reponse d'un catalogue de prestations. */}
+          {/* La reponse, d'abord et au positif. Un visiteur qui clique sur « Qui sommes-nous ? »
+              ne doit ni deduire la reponse d'un catalogue de prestations, ni lire une liste de
+              ce que la societe ne fait pas. */}
           <div className="max-w-2xl space-y-4 text-lg leading-relaxed text-slate-300">
             <p>
-              <strong className="text-white">{LEGAL.nomCommercial}</strong> est le nom
-              commercial de {LEGAL.raisonSociale}, société immatriculée à Bordeaux et établie
-              en Gironde. Nous ne soignons pas, nous ne formons pas nous-mêmes et nous ne
-              fabriquons rien : nous relions des professionnels de santé à ceux qui le font.
+              <strong className="text-white">{LEGAL.nomCommercial}</strong> est une société
+              française, établie en Gironde et immatriculée à Bordeaux. Nous accompagnons les
+              professionnels de santé sur trois terrains : l'équipement médical, la formation
+              clinique et la mobilité médicale internationale.
             </p>
             <p>
-              Concrètement, nous réunissons trois choses qu'un médecin ou un établissement
-              devrait sinon assembler séparément : des <strong className="text-white">
-              équipements médicaux</strong>, des <strong className="text-white">formations
-              cliniques</strong> dans des établissements français, et{' '}
-              <strong className="text-white">l'organisation d'un séjour de formation</strong>
-              {' '}— visa, assurance, hébergement, arrivée. Trois métiers, un seul
+              Notre métier est de réunir ce qui se traite d'ordinaire séparément. Un médecin
+              qui vient se former dans un établissement français trouve chez nous sa formation,
+              le dossier qui l'accompagne et la logistique de son séjour. Un établissement ou
+              un professionnel y trouve son matériel et ses consommables. Un seul
               interlocuteur, et des conditions annoncées avant l'engagement.
             </p>
           </div>
@@ -100,119 +93,38 @@ export function QuiSommesNousPage() {
         </div>
       </section>
 
-      <div className="container mx-auto max-w-5xl space-y-12 px-4 py-12 md:px-8">
-        <section>
-          <h2 className="mb-6 text-2xl font-bold text-brand-dark">Nos trois métiers</h2>
-          <div className="grid gap-5 md:grid-cols-3">
-            {metiers.map(({ icon: Icone, titre, texte, lien }) => (
-              <div key={titre} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6">
-                <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-light text-brand">
-                  <Icone className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <h3 className="mb-2 font-bold text-brand-dark">{titre}</h3>
-                <p className="mb-4 flex-1 text-sm leading-relaxed text-slate-600">{texte}</p>
-                <Link
-                  to={lien.to}
-                  className="inline-flex items-center gap-1.5 text-sm font-bold text-brand hover:underline"
-                >
-                  {lien.libelle} <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <h2 className="mb-4 text-2xl font-bold text-brand-dark">À qui nous nous adressons</h2>
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <h3 className="mb-2 font-bold text-brand-dark">
-                Aux médecins qui se forment en France
-              </h3>
-              <p className="text-sm leading-relaxed text-slate-600">
-                Candidature, convention, dossier consulaire, assurance, logement, accueil à
-                l'arrivée. Les frais applicables et ce qu'il advient en cas de refus de visa
-                sont annoncés avant le dépôt, pas après.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <h3 className="mb-2 font-bold text-brand-dark">
-                Aux établissements et aux professionnels
-              </h3>
-              <p className="text-sm leading-relaxed text-slate-600">
-                Centres de formation qui accueillent des praticiens, acheteurs d'équipements et
-                de consommables, structures qui demandent un devis. Un compte professionnel
-                ouvre ses propres conditions tarifaires.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <h2 className="mb-4 text-2xl font-bold text-brand-dark">Qui porte la société</h2>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <div className="mb-5 flex items-start gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-light text-brand">
-                <Building2 className="h-5 w-5" aria-hidden="true" />
+      <div className="container mx-auto max-w-5xl px-4 py-12 md:px-8">
+        <div className="grid gap-5 md:grid-cols-3">
+          {metiers.map(({ icon: Icone, titre, texte, lien }) => (
+            <div key={titre} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6">
+              <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-light text-brand">
+                <Icone className="h-5 w-5" aria-hidden="true" />
               </span>
-              <p className="text-sm leading-relaxed text-slate-600">
-                Savoir à qui l'on confie un dossier ou une commande fait partie de la réponse.
-                Voici l'identité de l'éditeur, telle qu'elle figure aux mentions légales.
-              </p>
-            </div>
-
-            <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Dénomination
-                </dt>
-                <dd className="font-semibold text-brand-dark">{LEGAL.raisonSociale}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Forme juridique
-                </dt>
-                <dd className="text-slate-700">{LEGAL.formeJuridique}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Président
-                </dt>
-                <dd className="text-slate-700">{LEGAL.directeurPublication}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Capital social
-                </dt>
-                <dd className="text-slate-700">{LEGAL.capitalSocial}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Siège social
-                </dt>
-                <dd className="text-slate-700">{LEGAL.adresseSiege}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Immatriculation
-                </dt>
-                <dd className="text-slate-700">{LEGAL.rcs}</dd>
-              </div>
-            </dl>
-
-            <div className="mt-6 flex flex-wrap gap-4 border-t border-slate-100 pt-4 text-sm">
-              <Link to="/mentions-legales" className="font-bold text-brand hover:underline">
-                Mentions légales
-              </Link>
-              <Link to="/cgv" className="font-bold text-brand hover:underline">
-                Conditions générales
-              </Link>
-              <Link to="/politique-confidentialite" className="font-bold text-brand hover:underline">
-                Protection des données
+              <h2 className="mb-2 font-bold text-brand-dark">{titre}</h2>
+              <p className="mb-4 flex-1 text-sm leading-relaxed text-slate-600">{texte}</p>
+              <Link
+                to={lien.to}
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-brand hover:underline"
+              >
+                {lien.libelle} <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </div>
-          </div>
-        </section>
+          ))}
+        </div>
+
+        {/* L'identite de l'editeur n'est pas recopiee ici : elle est deja aux mentions
+            legales, et deux copies d'une meme information finissent par diverger. */}
+        <p className="mt-8 text-sm leading-relaxed text-slate-500">
+          {LEGAL.raisonSociale}, {LEGAL.formeJuridique}, présidée par{' '}
+          {LEGAL.directeurPublication}. Siège social : {LEGAL.adresseSiege}.{' '}
+          <Link to="/mentions-legales" className="font-semibold text-brand hover:underline">
+            Mentions légales
+          </Link>
+          {' · '}
+          <Link to="/cgv" className="font-semibold text-brand hover:underline">
+            Conditions générales
+          </Link>
+        </p>
       </div>
     </div>
   );
