@@ -43,13 +43,11 @@ export interface RapportDossier {
 }
 
 export const partnershipService = {
-  getConventionTemplateUrl: async (): Promise<string> => {
-    const { data } = await axiosClient.get<{ downloadUrl: string }>('/partnership/convention-template');
-    return data.downloadUrl;
-  },
-
   /** Adresse du modèle Excel. Le serveur le produit à la demande, il n'est jamais figé. */
   modeleDossierUrl: (): string => '/api/v1/partnership/dossier-modele',
+
+  /** Modele de convention cadre, en classeur : les cases se saisissent au clavier. */
+  modeleConventionUrl: (): string => '/api/v1/partnership/convention-modele',
 
   /**
    * Fait relire un dossier rempli et rend le rapport.

@@ -54,19 +54,6 @@ public class PartnershipService {
     private final EmailService emailService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
-    /**
-     * Génère (à la volée, comme les autres documents du projet) le modèle vierge de convention
-     * de partenariat et renvoie une URL de téléchargement.
-     */
-    public String getConventionTemplateUrl() {
-        byte[] pdfBytes = pdfGeneratorService.generatePartnershipConventionPdf(java.util.Map.of());
-        // Modèle vierge, non nominatif : clé stable, sinon chaque prospect qui le télécharge
-        // laisserait un fichier de plus dans le stockage.
-        String publicId = storageService.uploadPublicTemplate(pdfBytes, DossierStockage.PARTENARIATS_MODELES,
-                "modele-convention-partenariat");
-        return documentLinkService.lienDeTelechargement(publicId);
-    }
-
     @Transactional
     public PartnershipRequestResponseDto submitRequest(
             String institutionName, String finessAccreditation, String contactPersonName,

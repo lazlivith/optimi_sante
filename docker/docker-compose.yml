@@ -78,7 +78,10 @@ services:
       # Informations légales et bancaires
       - LEGAL_IBAN=${LEGAL_IBAN:-FR7630006000011234567890189}
       - LEGAL_BIC=${LEGAL_BIC:-AGRIFRPP}
-      - LEGAL_DENOMINATION=${LEGAL_DENOMINATION:-Optimi Santé SAS}
+      # « Optimi Santé » est le nom commercial ; la personne morale qui s'engage est la
+      # societe immatriculee. Une convention conclue avec « Optimi Sante SAS » serait
+      # conclue avec une societe qui n'existe pas.
+      - LEGAL_DENOMINATION=${LEGAL_DENOMINATION:-HOLDING GUIDON}
     depends_on:
       - postgres
       - redis

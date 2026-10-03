@@ -3,6 +3,7 @@ package com.optimisante.backend.domain.partnership.controller;
 import com.optimisante.backend.domain.partnership.dto.PartnershipRequestResponseDto;
 import com.optimisante.backend.domain.partnership.service.PartnershipService;
 import lombok.RequiredArgsConstructor;
+import com.optimisante.backend.domain.partnership.excel.ConventionExcelWriter;
 import com.optimisante.backend.domain.partnership.excel.DossierExcelReader;
 import com.optimisante.backend.domain.partnership.excel.DossierExcelWriter;
 import org.springframework.http.ContentDisposition;
@@ -20,11 +21,31 @@ public class PartnershipResource {
 
     private final PartnershipService partnershipService;
     private final DossierExcelWriter dossierExcelWriter;
+    private final ConventionExcelWriter conventionExcelWriter;
     private final DossierExcelReader dossierExcelReader;
 
-    @GetMapping("/convention-template")
-    public ResponseEntity<Map<String, String>> getConventionTemplate() {
-        return ResponseEntity.ok(Map.of("downloadUrl", partnershipService.getConventionTemplateUrl()));
+    /**
+     * Modèle de convention cadre, en classeur, produit à la demande.
+     *
+     * <p>Servait auparavant un PDF : le centre devait l'imprimer pour le remplir à la main, et
+     * les dossiers revenaient manuscrits — l'IBAN recopié à la main étant précisément le champ
+     * qu'on ne veut pas deviner. Les cases se saisissent désormais au clavier, et l'impression
+     * reste possible pour la signature.</p>
+     *
+     * <p>Régénéré à chaque appel plutôt que servi depuis un fichier figé, comme le classeur de
+     * dossier : c'est la seule façon qu'il ne se décale jamais du texte que nous tenons.</p>
+     */
+    @GetMapping(value = "/convention-modele", produces =
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    public ResponseEntity<byte[]> modeleConvention() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment()
+                                .filename("convention-partenariat-optimi-sante.xlsx",
+                                          java.nio.charset.StandardCharsets.UTF_8)
+                                .build().toString())
+                .header("X-Robots-Tag", "noindex, nofollow")
+                .body(conventionExcelWriter.modeleVierge());
     }
 
     /**

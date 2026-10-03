@@ -1,10 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { UploadCloud, CheckCircle2, Building2, ShieldCheck } from 'lucide-react';
+import { UploadCloud, CheckCircle2, Building2, ShieldCheck, FileSpreadsheet } from 'lucide-react';
 import { partnershipService } from '../../api/partnershipService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { usePageMeta } from '../../hooks/usePageMeta';
-import { DocumentButton } from '../../components/documents/DocumentButton';
 import { DossierExcelPanel } from '../../components/partnership/DossierExcelPanel';
 
 const CONDITIONS = [
@@ -109,12 +108,17 @@ export function BecomePartnerPage() {
             </ul>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <DocumentButton
-                libelle="Télécharger la convention type"
-                variante="bouton"
-                obtenirLien={() => partnershipService.getConventionTemplateUrl()}
-                className="px-5 py-3 rounded-xl border border-brand !bg-white !text-brand hover:!bg-brand-light"
-              />
+              {/* Un lien et non un bouton : c'est une navigation vers un fichier, et le
+                  navigateur sait la gerer seul — y compris l'ouvrir dans le tableur installe.
+                  Le modele etait servi en PDF, que le centre ne pouvait pas remplir autrement
+                  qu'a la main. */}
+              <a
+                href={partnershipService.modeleConventionUrl()}
+                className="inline-flex items-center justify-center px-5 py-3 rounded-xl border border-brand bg-white text-brand font-bold hover:bg-brand-light transition-colors"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-2" aria-hidden="true" />
+                Télécharger la convention (XLSX)
+              </a>
               <button
                 onClick={scrollToForm}
                 className="inline-flex items-center justify-center px-5 py-3 bg-brand-dark text-white font-bold rounded-xl hover:bg-slate-800 transition-colors"
