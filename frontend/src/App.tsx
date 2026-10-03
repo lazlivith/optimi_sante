@@ -59,6 +59,7 @@ const AdminEmailsPage = lazy(() => import('./pages/admin/AdminEmailsPage').then(
 const AdminPayoutsPage = lazy(() => import('./pages/admin/AdminPayoutsPage').then(m => ({ default: m.AdminPayoutsPage })));
 const BecomePartnerPage = lazy(() => import('./pages/partnership/BecomePartnerPage').then(m => ({ default: m.BecomePartnerPage })));
 const ServicesPage = lazy(() => import('./pages/ServicesPage').then(m => ({ default: m.ServicesPage })));
+const QuiSommesNousPage = lazy(() => import('./pages/QuiSommesNousPage').then(m => ({ default: m.QuiSommesNousPage })));
 const ServiceDetailPage = lazy(() => import('./pages/services/ServiceDetailPage').then(m => ({ default: m.ServiceDetailPage })));
 const BlogPage = lazy(() => import('./pages/BlogPage').then(m => ({ default: m.BlogPage })));
 const BlogPostPage = lazy(() => import('./pages/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
@@ -213,6 +214,10 @@ export function App() {
 
                   {/* Pages juridiques : publiques par obligation — elles doivent etre
                       consultables sans compte, y compris par un visiteur qui hesite. */}
+                  {/* « Qui sommes-nous ? » menait a /services, qui repond a une autre
+                      question : ce que nous faisons pour vous. Un visiteur qui demande qui
+                      nous sommes a sa reponse ici, des la premiere phrase. */}
+                  <Route path="/qui-sommes-nous" element={<QuiSommesNousPage />} />
                   {/* Page de presentation, consultable avant tout engagement. */}
                   <Route path="/services" element={<ServicesPage />} />
                   {/* Une page par prestation : le menu y mene directement, au lieu de

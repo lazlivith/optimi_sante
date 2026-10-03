@@ -54,7 +54,8 @@ export const Footer = () => {
           </div>
 
           <Colonne titre="À propos">
-            <Lien to="/services">Qui sommes-nous ?</Lien>
+            <Lien to="/qui-sommes-nous">Qui sommes-nous ?</Lien>
+            <Lien to="/services">Nos services</Lien>
             <Lien to="/services/accompagnement-visa">Accompagnement visa</Lien>
             <Lien to="/services/pack-logistique">Pack logistique</Lien>
             <Lien to="/services/parcours">Le parcours</Lien>
