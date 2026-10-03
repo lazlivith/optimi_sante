@@ -385,7 +385,14 @@ public class OrderService {
                         .toList(),
                 order.getUser() == null ? null : order.getUser().getId(),
                 null,
-                order.getId()
+                order.getId(),
+                // Pas de zone : la commande n'a pas d'adresse de destination — une demande de
+                // devis, ou une commande anterieure a la grille de livraison. Le recu reste
+                // alors celui d'avant, sans pied de transport.
+                order.getShippingZone() == null ? null : new Encaissement.Livraison(
+                        order.getShippingCost(),
+                        order.getShippingZone()
+                                != com.optimisante.backend.domain.orders.shipping.ZoneLivraison.FRANCE)
         )).ifPresent(recu -> {
             // La commande continue de porter la clé du document : c'est ce que lit « Mes
             // commandes » pour proposer « Ouvrir le PDF ».

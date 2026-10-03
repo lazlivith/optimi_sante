@@ -104,6 +104,13 @@
     <div style="clear: both; margin-top: 60px;">
         <p><strong>Conditions de paiement :</strong></p>
         <p>Paiement par virement bancaire sous 30 jours à réception de facture. Merci de préciser la référence du devis lors de votre virement.</p>
+        <!-- Un devis se demande sans adresse de destination : le transport ne peut pas y etre
+             chiffre. Le dire ici evite qu'il soit lu comme inclus. -->
+        <p><strong>Transport :</strong></p>
+        <p>Les montants ci-dessus ne comprennent pas les frais de transport, chiffrés selon
+           l'adresse de livraison. Hors de France, les expéditions sont livrées DAP : les
+           droits de douane, taxes et formalités d'importation du pays de destination restent
+           à la charge du destinataire.</p>
     </div>
 
     <div th:replace="~{components/footer :: footer}"></div>

@@ -123,6 +123,11 @@ public class TrainingService {
                             .imageUrl(safeMediaUrl(training.getImageS3Key(), "image"))
                             .videoUrl(safeMediaUrl(training.getVideoS3Key(), "video"))
                             .price(training.getPrice())
+                            // Le lieu de la session dit « Paris » ; l'adresse du centre dit
+                            // ou se presenter. Les deux coexistent : la session peut se tenir
+                            // ailleurs que dans les locaux du partenaire.
+                            .centerName(training.getPartnerProfile().getInstitutionName())
+                            .centerAddress(training.getPartnerProfile().getAddress())
                             .build();
                 })
                 .collect(Collectors.toList());

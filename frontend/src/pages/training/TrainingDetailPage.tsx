@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Download, Loader2, CheckCircle, GraduationCap, Clock, MapPin, Stamp, ShieldCheck, Home, Car, ArrowRight } from 'lucide-react';
+import { CarteAdresse } from '../../components/carte/CarteAdresse';
 import { trainingService, type LeadCaptureRequestDto, type TrainingSummaryDto } from '../../api/trainingService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -165,6 +166,29 @@ export function TrainingDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* Ou se rendre. Le lieu de la session tient en un mot — « Paris » — la ou un
+                candidat qui vient d'un autre pays a besoin de voir le quartier avant de
+                reserver son logement et son transport. La carte est un cadre OpenStreetMap :
+                aucune bibliotheque de cartographie n'entre dans le paquet. */}
+            {training?.centerAddress && (
+              <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-brand mb-2">
+                  Centre de formation
+                </p>
+                {training.centerName && (
+                  <p className="font-semibold text-brand-dark">{training.centerName}</p>
+                )}
+                <p className="text-sm text-slate-600 mb-4 whitespace-pre-line">
+                  {training.centerAddress}
+                </p>
+                <CarteAdresse
+                  adresse={training.centerAddress}
+                  legende="Emplacement du centre, fourni par OpenStreetMap."
+                  hauteur={260}
+                />
+              </div>
+            )}
 
             {/* Frais de dossier annonces AVANT le bouton « Postuler » : c'est le seul montant
                 demande a ce stade, et le decouvrir a l'ecran de paiement serait une mauvaise

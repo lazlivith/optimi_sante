@@ -27,6 +27,9 @@ export interface TrainingSummaryDto {
   price: number;
   /** Frais de dossier applicables, repli global deja resolu par le serveur. */
   applicationFee: number | null;
+  /** Le centre qui dispense la formation, et l'adresse de ses locaux. */
+  centerName: string | null;
+  centerAddress: string | null;
 }
 
 export const trainingService = {

@@ -87,6 +87,8 @@ public class EnrollmentPaymentService {
                         motif.libelle(), payment.getGrossAmount())),
                 utilisateur == null ? null : utilisateur.getId(),
                 enrollment == null ? null : enrollment.getId(),
+                null,
+                // Des frais de dossier n'expedient rien : aucun pied de transport.
                 null));
     }
 

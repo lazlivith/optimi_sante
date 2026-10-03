@@ -29,4 +29,14 @@ public class TrainingSummaryDto {
      * deux ne serait pas celui preleve.</p>
      */
     private BigDecimal applicationFee;
+
+    /**
+     * Le centre qui dispense la formation, et l'adresse de ses locaux.
+     *
+     * <p>Rien d'autre du profil partenaire ne sort ici : ni le contact, ni le telephone, ni
+     * le numero d'agrement. Un candidat a besoin de savoir ou se rendre, pas de joindre
+     * directement le centre — les echanges passent par la plateforme.</p>
+     */
+    private String centerName;
+    private String centerAddress;
 }

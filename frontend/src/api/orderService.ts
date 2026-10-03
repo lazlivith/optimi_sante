@@ -10,6 +10,17 @@ export interface CheckoutRequestDto {
   items: CheckoutItemDto[];
   paymentMethod: 'STRIPE_CARD' | 'BANK_TRANSFER' | 'QUOTE_REQUEST';
   promoCode?: string;
+  /**
+   * Adresse de destination. Facultative : une demande de devis n'en a pas toujours une, et
+   * sans pays le serveur ne facture aucun frais de port — le comportement d'avant.
+   */
+  shippingRecipient?: string;
+  shippingLine1?: string;
+  shippingLine2?: string;
+  shippingPostalCode?: string;
+  shippingCity?: string;
+  /** Code ISO 3166-1 alpha-2 du pays de destination. */
+  shippingCountry?: string;
 }
 
 export interface QuoteRequestDto {

@@ -30,6 +30,8 @@ import java.util.UUID;
  * @param payeurUserId    compte auquel rattacher le reçu, s'il existe
  * @param enrollmentId    dossier de formation concerné, pour le classement au coffre-fort
  * @param orderId         commande concernée, le cas échéant
+ * @param livraison       frais de port et régime douanier, {@code null} pour un règlement qui
+ *                        n'expédie rien (les frais de dossier d'une formation)
  */
 public record Encaissement(
         String reference,
@@ -41,7 +43,8 @@ public record Encaissement(
         List<LigneEncaissement> lignes,
         UUID payeurUserId,
         UUID enrollmentId,
-        UUID orderId
+        UUID orderId,
+        Livraison livraison
 ) {
 
     public Encaissement {
@@ -56,6 +59,23 @@ public record Encaissement(
         if (remise == null) remise = BigDecimal.ZERO;
         if (lignes == null) lignes = List.of();
         if (payeLe == null) payeLe = OffsetDateTime.now();
+    }
+
+    /**
+     * Le transport, tel que le document doit l'énoncer.
+     *
+     * <p>Les frais de port apparaissent en pied de totaux, et non comme une ligne d'article :
+     * ils ne partagent pas forcément le régime de taxe de la marchandise, et les mêler à la
+     * ventilation ferait annoncer un taux qu'on n'a pas établi.</p>
+     *
+     * @param frais ce qui a été facturé pour le transport, {@code ZERO} si offert ou absent
+     * @param dap   l'expédition quitte la France : le destinataire acquitte droits et taxes
+     *              locales à l'arrivée, et le document doit le dire — pas le livreur
+     */
+    public record Livraison(BigDecimal frais, boolean dap) {
+        public Livraison {
+            if (frais == null) frais = BigDecimal.ZERO;
+        }
     }
 
     /**

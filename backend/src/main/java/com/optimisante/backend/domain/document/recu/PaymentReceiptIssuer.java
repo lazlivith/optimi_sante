@@ -199,6 +199,14 @@ public class PaymentReceiptIssuer {
                 "prixUnitaire", montant(l.prixUnitaire()),
                 "total", montant(l.total()))).toList());
 
+        // Le transport en pied de totaux, hors ventilation de la taxe : les frais de port ne
+        // partagent pas forcement le regime de la marchandise.
+        var livraison = e.livraison();
+        v.put("aLivraison", livraison != null);
+        v.put("livraisonOfferte", livraison != null && livraison.frais().signum() == 0);
+        v.put("fraisLivraison", montant(livraison == null ? BigDecimal.ZERO : livraison.frais()));
+        v.put("livraisonDap", livraison != null && livraison.dap());
+
         v.put("remise", montant(e.remise()));
         v.put("aRemise", e.remise().signum() > 0);
         v.put("montantPaye", montant(e.montantPaye()));

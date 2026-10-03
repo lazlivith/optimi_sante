@@ -7,6 +7,10 @@ import { StripeEmbeddedCheckout } from '../components/payment/StripeEmbeddedChec
 import { Loader2, ArrowLeft, CreditCard, Building, Tag, X } from 'lucide-react';
 import { Toast, type ToastType } from '../components/common/Toast';
 import { usePageMeta } from '../hooks/usePageMeta';
+import {
+  FormulaireLivraison, ADRESSE_VIDE, adresseComplete, type AdresseLivraison,
+} from '../components/checkout/FormulaireLivraison';
+import type { EstimationLivraison } from '../api/adminShippingService';
 
 export const CheckoutPage = () => {
   usePageMeta('Paiement sécurisé');
@@ -35,6 +39,27 @@ export const CheckoutPage = () => {
   const [promoError, setPromoError] = useState<string | null>(null);
 
   const discountedTotal = Math.max(0, totalPrice - (appliedPromo?.discountAmount ?? 0));
+
+  const [adresse, setAdresse] = useState<AdresseLivraison>(ADRESSE_VIDE);
+  const [frais, setFrais] = useState<EstimationLivraison | null>(null);
+
+  // Une demande de devis ne part pas en colis : le transport se chiffre avec le devis, pas
+  // dans le tunnel. Partout ailleurs, la marchandise doit aller quelque part.
+  const livraisonRequise = paymentMethod !== 'QUOTE_REQUEST';
+  const fraisPort = livraisonRequise ? (frais?.montant ?? 0) : 0;
+  const totalAPayer = discountedTotal + fraisPort;
+  // Tant que la destination n'est pas desservie, `frais` reste nul : le bouton doit rester
+  // bloque, sinon le client valide une commande que personne ne peut expedier.
+  const livraisonPrete = !livraisonRequise || (adresseComplete(adresse) && frais !== null);
+
+  // Le nom du titulaire du compte est le destinataire le plus probable ; il reste modifiable.
+  useEffect(() => {
+    if (!user) return;
+    // Un professionnel se fait livrer au nom de sa structure, un particulier au sien.
+    const nom = (user.companyName
+      || [user.firstName, user.lastName].filter(Boolean).join(' ')).trim();
+    if (nom) setAdresse(prec => (prec.recipient ? prec : { ...prec, recipient: nom }));
+  }, [user]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -67,6 +92,21 @@ export const CheckoutPage = () => {
     setPromoError(null);
   };
 
+  /**
+   * L'adresse, telle que le contrat de l'API l'attend.
+   *
+   * Rien n'est transmis pour une demande de devis : sans pays, le serveur ne facture aucun
+   * frais de port, ce qui est exactement le comportement d'avant cette page.
+   */
+  const champsLivraison = () => (livraisonRequise ? {
+    shippingRecipient: adresse.recipient.trim(),
+    shippingLine1: adresse.line1.trim(),
+    shippingLine2: adresse.line2.trim() || undefined,
+    shippingPostalCode: adresse.postalCode.trim(),
+    shippingCity: adresse.city.trim(),
+    shippingCountry: adresse.country,
+  } : {});
+
   const handleDirectCheckout = async () => {
     setIsProcessing(true);
     try {
@@ -83,7 +123,8 @@ export const CheckoutPage = () => {
         const request: CheckoutRequestDto = {
           items: items.map(item => ({ productId: item.id, quantity: item.cartQuantity })),
           paymentMethod: 'STRIPE_CARD',
-          promoCode
+          promoCode,
+          ...champsLivraison()
         };
         const response = await orderService.checkout(request);
         if (response.clientSecret) {
@@ -100,7 +141,8 @@ export const CheckoutPage = () => {
         await orderService.checkout({
           items: items.map(item => ({ productId: item.id, quantity: item.cartQuantity })),
           paymentMethod: paymentMethod,
-          promoCode
+          promoCode,
+          ...champsLivraison()
         });
         handleSuccess();
       }
@@ -124,7 +166,7 @@ export const CheckoutPage = () => {
           </button>
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <h1 className="text-xl font-bold text-brand-dark mb-6">Paiement par carte</h1>
-            <StripeEmbeddedCheckout clientSecret={stripeClientSecret} payLabel={`Payer ${discountedTotal.toFixed(0)} €`} />
+            <StripeEmbeddedCheckout clientSecret={stripeClientSecret} payLabel={`Payer ${totalAPayer.toFixed(2)} €`} />
           </div>
         </div>
       </div>
@@ -160,8 +202,17 @@ export const CheckoutPage = () => {
         <h1 className="text-3xl font-bold text-brand-dark mb-8">Finalisation de la commande</h1>
 
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Left Column: Payment Methods */}
+          {/* Left Column: Shipping address, then payment methods */}
           <div className="space-y-6">
+            {livraisonRequise && (
+              <FormulaireLivraison
+                adresse={adresse}
+                onAdresseChange={setAdresse}
+                montantArticles={discountedTotal}
+                onFraisChange={setFrais}
+              />
+            )}
+
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
               <h2 className="text-xl font-semibold text-brand-dark mb-6">Mode de paiement</h2>
               
@@ -210,7 +261,7 @@ export const CheckoutPage = () => {
                     <button onClick={() => navigate('/cart')} className="px-6 py-3 border border-slate-300 text-slate-600 font-medium rounded-xl hover:bg-slate-50 transition-colors">
                       Annuler
                     </button>
-                    <button onClick={handleDirectCheckout} disabled={isProcessing} className="flex-1 flex justify-center items-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors disabled:opacity-50">
+                    <button onClick={handleDirectCheckout} disabled={isProcessing || !livraisonPrete} title={livraisonPrete ? undefined : 'Renseignez une adresse de livraison desservie pour continuer.'} className="flex-1 flex justify-center items-center px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-fonce transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                       {isProcessing ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : null}
                       {paymentMethod === 'QUOTE_REQUEST' ? 'Demander un devis' : paymentMethod === 'STRIPE_CARD' ? 'Payer par carte' : 'Confirmer la commande'}
                     </button>
@@ -277,10 +328,28 @@ export const CheckoutPage = () => {
                     <span>− {appliedPromo.discountAmount.toFixed(2)} €</span>
                   </div>
                 )}
+                {livraisonRequise && (
+                  <div className="flex justify-between items-center text-sm text-slate-600">
+                    <span>Livraison{frais ? ` — ${frais.zoneLibelle}` : ''}</span>
+                    {frais
+                      ? (frais.offerte
+                        ? <span className="font-semibold text-success">Offerte</span>
+                        : <span>{frais.montant.toFixed(2)} €</span>)
+                      : <span className="text-slate-400">À calculer</span>}
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-lg font-bold text-brand-dark">
                   <span>Total à payer</span>
-                  <span>{discountedTotal.toFixed(0)} €</span>
+                  <span>{totalAPayer.toFixed(2)} €</span>
                 </div>
+                {frais?.droitsALArrivee && (
+                  // Mention DAP : hors de France, les droits et taxes locales restent a la
+                  // charge du destinataire. Le dire ici, pas a la livraison.
+                  <p className="pt-2 text-xs leading-relaxed text-slate-500">
+                    Livraison DAP : les droits de douane et taxes locales sont à régler par le
+                    destinataire à l'arrivée, et ne sont pas inclus dans ce total.
+                  </p>
+                )}
               </div>
             </div>
           </div>

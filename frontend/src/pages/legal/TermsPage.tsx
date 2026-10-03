@@ -94,6 +94,24 @@ export function TermsPage() {
         de vérifier l'état du matériel à la réception et d'émettre toute réserve auprès du
         transporteur.
       </p>
+      <p>
+        Les zones desservies sont la <strong>France métropolitaine</strong> et une partie du
+        continent africain. Les frais de transport sont calculés selon la zone de destination
+        et affichés avant la validation de la commande. Une livraison peut être offerte au-delà
+        d'un montant de commande, indiqué au moment de commander. Toute destination non
+        desservie fait l'objet d'un devis de transport sur demande.
+      </p>
+      <p>
+        {/* La mention est annoncee dans le tunnel et imprimee sur les documents : la repeter
+            ici est ce qui la rend opposable. */}
+        Les expéditions à destination d'un pays situé <strong>hors de France</strong> sont
+        réalisées selon l'incoterm <strong>DAP (Delivered At Place)</strong> : les droits de
+        douane, taxes à l'importation et formalités douanières du pays de destination sont à
+        la charge exclusive du destinataire et sont acquittés par lui à l'arrivée. Ils ne sont
+        inclus ni dans le prix des produits ni dans les frais de transport facturés. Le refus
+        d'acquitter ces droits, qui entraînerait le retour ou l'abandon de la marchandise,
+        reste à la charge du client.
+      </p>
 
       <h3 id="retractation" className="scroll-mt-28">2.5 Droit de rétractation</h3>
       <p>
