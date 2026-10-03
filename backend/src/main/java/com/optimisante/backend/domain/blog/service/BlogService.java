@@ -1,5 +1,7 @@
 package com.optimisante.backend.domain.blog.service;
 
+import com.optimisante.backend.common.storage.DossierStockage;
+import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.config.tenant.TenantContext;
 import com.optimisante.backend.domain.blog.dto.BlogPostRequestDto;
 import com.optimisante.backend.domain.blog.dto.BlogPostResponseDto;
@@ -11,8 +13,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.text.Normalizer;
+import java.util.Locale;
+import java.util.Set;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -32,8 +37,16 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class BlogService {
 
+    /** Formats qu'un navigateur affiche sans extension ni greffon. */
+    private static final Set<String> TYPES_IMAGE =
+            Set.of("image/jpeg", "image/png", "image/webp", "image/avif");
+
+    /** Une affiche de congrès reste un visuel de page, pas un fichier d'impression. */
+    private static final long TAILLE_MAX = 10L * 1024 * 1024;
+
     private final BlogPostRepository blogPostRepository;
     private final TenantRepository tenantRepository;
+    private final StorageService storageService;
 
     // ─────────────────────────────── Lecture publique ───────────────────────────────
 
@@ -128,6 +141,36 @@ public class BlogService {
     @Transactional
     public void supprimer(UUID id) {
         blogPostRepository.delete(publicationDuTenant(id));
+    }
+
+    /**
+     * Téléverse une affiche et rend son adresse.
+     *
+     * <p>Détaché de la publication, et non rattaché à son identifiant : une annonce se crée
+     * avec son visuel en une seule fois, et exiger d'enregistrer d'abord pour pouvoir
+     * téléverser ensuite obligerait la rédaction à publier un brouillon sans image.</p>
+     *
+     * <p>La contrepartie est assumée : un fichier téléversé puis abandonné reste au stockage.
+     * C'est le prix d'un formulaire qui se remplit dans l'ordre où on pense, et il se mesure
+     * en quelques centaines de kilo-octets.</p>
+     */
+    public String televerserCouverture(MultipartFile fichier) {
+        if (fichier == null || fichier.isEmpty()) {
+            throw new IllegalArgumentException("Aucun fichier reçu.");
+        }
+        if (fichier.getSize() > TAILLE_MAX) {
+            throw new IllegalArgumentException(
+                    "L'image dépasse la limite autorisée de 10 Mo (fichier reçu : "
+                    + String.format(Locale.FRENCH, "%.1f", fichier.getSize() / (1024.0 * 1024.0))
+                    + " Mo).");
+        }
+        String type = fichier.getContentType();
+        if (type == null || !TYPES_IMAGE.contains(type.toLowerCase(Locale.ROOT))) {
+            throw new IllegalArgumentException(
+                    "Format d'image non accepté. Formats reconnus : JPEG, PNG, WebP, AVIF.");
+        }
+        String publicId = storageService.uploadMedia(fichier, DossierStockage.BLOG_COUVERTURES);
+        return storageService.generateMediaUrl(publicId, "image");
     }
 
     // ──────────────────────────────────── Interne ────────────────────────────────────

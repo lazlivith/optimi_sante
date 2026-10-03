@@ -81,4 +81,19 @@ export const adminBlogService = {
   supprimer: async (id: string): Promise<void> => {
     await axiosClient.delete(`/admin/blog/${id}`);
   },
+
+  /**
+   * Televerse une affiche et rend son adresse.
+   *
+   * Sans identifiant de publication : une annonce se cree avec son visuel en une seule fois,
+   * sans devoir enregistrer un brouillon sans image pour pouvoir televerser ensuite.
+   */
+  televerserCouverture: async (fichier: File): Promise<string> => {
+    const corps = new FormData();
+    corps.append('file', fichier);
+    const { data } = await axiosClient.post<{ url: string }>('/admin/blog/cover', corps, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data.url;
+  },
 };

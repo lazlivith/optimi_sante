@@ -8,8 +8,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -36,6 +38,18 @@ public class AdminBlogResource {
     @PostMapping
     public ResponseEntity<BlogPostResponseDto> creer(@Valid @RequestBody BlogPostRequestDto demande) {
         return ResponseEntity.ok(blogService.creer(demande));
+    }
+
+    /**
+     * Téléverse l'affiche d'une publication et rend son adresse.
+     *
+     * <p>Sans identifiant de publication : l'écran de rédaction s'en sert aussi bien pour une
+     * annonce qu'on vient de commencer à écrire que pour une annonce déjà enregistrée.</p>
+     */
+    @PostMapping(value = "/cover", consumes = "multipart/form-data")
+    public ResponseEntity<Map<String, String>> televerserCouverture(
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(Map.of("url", blogService.televerserCouverture(file)));
     }
 
     @PutMapping("/{id}")

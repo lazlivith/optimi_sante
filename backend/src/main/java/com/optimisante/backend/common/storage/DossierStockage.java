@@ -19,6 +19,7 @@ package com.optimisante.backend.common.storage;
  *   formations/          images · videos · brochures
  *   dossiers-candidats/  pieces · officiels · convocations · souscriptions
  *   documents-emis/      conventions · attestations · recus · devis · releves-reversement
+ *   blog/                couvertures
  *   partenariats/        demandes · modeles
  * </pre>
  */
@@ -50,6 +51,10 @@ public enum DossierStockage {
     DOCUMENTS_RECUS("documents-emis/recus", TypeRessource.DOCUMENT),
     DOCUMENTS_DEVIS("documents-emis/devis", TypeRessource.DOCUMENT),
     DOCUMENTS_RELEVES_REVERSEMENT("documents-emis/releves-reversement", TypeRessource.DOCUMENT),
+
+    // ── Blog et annonces d'événements ──────────────────────────────────────────────────
+    /** Affiches et visuels de couverture des publications du blog (V61). */
+    BLOG_COUVERTURES("blog/couvertures", TypeRessource.IMAGE),
 
     // ── Partenariats ───────────────────────────────────────────────────────────────────
     PARTENARIATS_DEMANDES("partenariats/demandes", TypeRessource.DOCUMENT),

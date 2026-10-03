@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Loader2, Newspaper, Plus, X, Pencil, Trash2, Eye, EyeOff, ExternalLink } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Loader2, Newspaper, Plus, X, Pencil, Trash2, Eye, EyeOff, ExternalLink, ImagePlus,
+} from 'lucide-react';
 import { adminBlogService, type BlogPost, type BlogPostPayload } from '../../api/blogService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -28,6 +30,8 @@ export function AdminBlogPage() {
   const [enEdition, setEnEdition] = useState<BlogPost | null>(null);
   const [form, setForm] = useState<BlogPostPayload>(FORMULAIRE_VIDE);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [envoiImage, setEnvoiImage] = useState(false);
+  const champFichier = useRef<HTMLInputElement>(null);
 
   const charger = async () => {
     setChargement(true);
@@ -61,6 +65,25 @@ export function AdminBlogPage() {
       published: publication.isPublished,
     });
     setModaleOuverte(true);
+  };
+
+  const televerserImage = async (fichier: File | undefined) => {
+    if (!fichier) return;
+    setEnvoiImage(true);
+    try {
+      const url = await adminBlogService.televerserCouverture(fichier);
+      setForm(prec => ({ ...prec, coverImageUrl: url }));
+    } catch (err: any) {
+      setToast({
+        message: err.response?.data?.message || "Le téléversement de l'image a échoué.",
+        type: 'error',
+      });
+    } finally {
+      setEnvoiImage(false);
+      // Sans cette remise a zero, re-choisir LE MEME fichier apres un echec ne declenche
+      // aucun evenement : la valeur du champ n'aurait pas change.
+      if (champFichier.current) champFichier.current.value = '';
+    }
   };
 
   const enregistrer = async (e: React.FormEvent) => {
@@ -223,7 +246,16 @@ export function AdminBlogPage() {
               </button>
             </div>
 
-            <form onSubmit={enregistrer} className="space-y-4">
+            <form
+              onSubmit={enregistrer}
+              // Un champ refuse par la validation du navigateur affiche sa bulle a sa propre
+              // hauteur. Dans une modale qui defile, ce champ peut etre hors du cadre : le
+              // clic sur « Creer » semble alors ne rien faire. On le ramene a l'ecran.
+              onInvalid={e => (e.target as HTMLElement).scrollIntoView({
+                block: 'center', behavior: 'smooth',
+              })}
+              className="space-y-4"
+            >
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Titre</label>
                 <input
@@ -264,16 +296,70 @@ export function AdminBlogPage() {
                 </p>
               </div>
 
+              {/* L'affiche se depose depuis l'ordinateur. Le champ etait auparavant une
+                  adresse en « type=url » : toute saisie qui n'etait pas une adresse complete
+                  faisait refuser le formulaire par le navigateur AVANT l'envoi, et le bouton
+                  « Creer » paraissait ne rien faire — aucun message, aucune requete. */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Image de couverture <span className="text-slate-400 font-normal">(adresse, facultatif)</span>
+                  Image de couverture <span className="text-slate-400 font-normal">(facultatif)</span>
                 </label>
+
                 <input
-                  type="url" value={form.coverImageUrl ?? ''}
-                  onChange={e => setForm({ ...form, coverImageUrl: e.target.value })}
-                  placeholder="https://…"
-                  className="w-full rounded-md border-slate-300 border p-2.5"
+                  ref={champFichier}
+                  type="file" accept="image/jpeg,image/png,image/webp,image/avif"
+                  className="sr-only" id="blog-couverture"
+                  onChange={e => televerserImage(e.target.files?.[0])}
                 />
+
+                {form.coverImageUrl ? (
+                  <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 p-3">
+                    <img
+                      src={form.coverImageUrl} alt="Aperçu de l'affiche"
+                      className="h-20 w-32 rounded-lg object-cover"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <label
+                        htmlFor="blog-couverture"
+                        className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        {envoiImage
+                          ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                          : <ImagePlus className="h-4 w-4" aria-hidden="true" />}
+                        Remplacer
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, coverImageUrl: null })}
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-danger hover:bg-danger/5"
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" /> Retirer
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="blog-couverture"
+                    className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 px-4 py-6 text-center transition-colors hover:border-brand hover:bg-brand-light/40"
+                  >
+                    {envoiImage ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin text-brand" aria-hidden="true" />
+                        <span className="text-sm text-slate-500">Téléversement…</span>
+                      </>
+                    ) : (
+                      <>
+                        <ImagePlus className="h-5 w-5 text-brand" aria-hidden="true" />
+                        <span className="text-sm font-semibold text-slate-700">
+                          Choisir une image
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          JPEG, PNG, WebP ou AVIF — 10 Mo maximum
+                        </span>
+                      </>
+                    )}
+                  </label>
+                )}
               </div>
 
               <fieldset className="border border-slate-200 rounded-xl p-4">
