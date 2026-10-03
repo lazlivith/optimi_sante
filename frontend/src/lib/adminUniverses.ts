@@ -47,6 +47,7 @@ export const ECOMMERCE_UNIVERSE: AdminUniverse = {
     { to: '/admin/catalog', label: 'Catalogue', icon: Package },
     { to: '/admin/suppliers', label: 'Fournisseurs', icon: Truck },
     { to: '/admin/promo-codes', label: 'Codes promo', icon: Tag },
+    { to: '/admin/shipping', label: 'Frais de livraison', icon: Truck },
     { to: '/admin/quotes', label: 'Devis B2B', icon: FileText },
   ],
 };

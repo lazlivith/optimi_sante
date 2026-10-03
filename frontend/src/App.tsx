@@ -54,6 +54,7 @@ const AdminTrainingsPage = lazy(() => import('./pages/admin/AdminTrainingsPage')
 const AdminFinancePage = lazy(() => import('./pages/admin/AdminFinancePage').then(m => ({ default: m.AdminFinancePage })));
 const AdminOrdersPage = lazy(() => import('./pages/admin/AdminOrdersPage').then(m => ({ default: m.AdminOrdersPage })));
 const AdminPromoCodesPage = lazy(() => import('./pages/admin/AdminPromoCodesPage').then(m => ({ default: m.AdminPromoCodesPage })));
+const AdminShippingPage = lazy(() => import('./pages/admin/AdminShippingPage').then(m => ({ default: m.AdminShippingPage })));
 const AdminEmailsPage = lazy(() => import('./pages/admin/AdminEmailsPage').then(m => ({ default: m.AdminEmailsPage })));
 const AdminPayoutsPage = lazy(() => import('./pages/admin/AdminPayoutsPage').then(m => ({ default: m.AdminPayoutsPage })));
 const BecomePartnerPage = lazy(() => import('./pages/partnership/BecomePartnerPage').then(m => ({ default: m.BecomePartnerPage })));
@@ -124,6 +125,7 @@ export function App() {
                 <Route path="suppliers" element={<AdminSuppliersPage />} />
                 <Route path="suppliers/:id" element={<AdminSupplierDetailPage />} />
                 <Route path="promo-codes" element={<AdminPromoCodesPage />} />
+                <Route path="shipping" element={<AdminShippingPage />} />
                 <Route path="quotes" element={<QuotesAdminPage />} />
               </Route>
 
