@@ -1,13 +1,11 @@
 package com.optimisante.backend.domain.orders.webhook;
 
-import com.optimisante.backend.domain.orders.service.MontantStripe;
-import com.optimisante.backend.domain.orders.service.OrderService;
+import com.optimisante.backend.domain.finance.Devise;
+import com.optimisante.backend.domain.finance.Montant;
 import com.stripe.model.Charge;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-
-import java.math.BigDecimal;
 
 /**
  * Traite un remboursement émis depuis Stripe.
@@ -27,7 +25,7 @@ import java.math.BigDecimal;
 @RequiredArgsConstructor
 public class StripeRefundHandler {
 
-    private final OrderService orderService;
+    private final DispatcherRemboursement dispatcherRemboursement;
 
     /**
      * Applique le remboursement à la commande correspondante.
@@ -37,21 +35,15 @@ public class StripeRefundHandler {
      * plus petite unité de la devise — Stripe ne transmet jamais autre chose.</p>
      */
     public void handle(Charge charge) {
-        String paymentIntentId = charge.getPaymentIntent();
+        Devise devise = Devise.de(charge.getCurrency());
+        Montant rendu = Montant.depuisPlusPetiteUnite(
+                charge.getAmountRefunded() == null ? 0L : charge.getAmountRefunded(), devise);
         boolean integral = Boolean.TRUE.equals(charge.getRefunded());
 
-        BigDecimal montantRembourse = depuisPlusPetiteUnite(
-                charge.getAmountRefunded(), charge.getCurrency());
+        log.info("Remboursement Stripe reçu : paiement {}, {}, intégral = {}",
+                charge.getPaymentIntent(), rendu, integral);
 
-        log.info("Remboursement Stripe reçu : paiement {}, {} {}, intégral = {}",
-                paymentIntentId, montantRembourse, charge.getCurrency(), integral);
-
-        orderService.constaterRemboursement(paymentIntentId, integral, montantRembourse);
-    }
-
-    /** L'opération inverse de {@link MontantStripe#versPlusPetiteUnite}. */
-    private static BigDecimal depuisPlusPetiteUnite(Long montant, String devise) {
-        if (montant == null) return BigDecimal.ZERO;
-        return BigDecimal.valueOf(montant).movePointLeft(MontantStripe.decimales(devise));
+        dispatcherRemboursement.dispatch(
+                new RemboursementConstate(charge.getPaymentIntent(), rendu, integral));
     }
 }

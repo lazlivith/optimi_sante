@@ -29,9 +29,9 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     // métier, uniquement du reporting) ne portant que sur les commandes réellement payées.
     @Query(value = """
             SELECT
-                COALESCE(SUM(o.total_amount), 0) AS totalRevenue,
-                COALESCE(SUM(o.total_amount) FILTER (WHERE o.created_at >= date_trunc('day', now())), 0) AS revenueToday,
-                COALESCE(SUM(o.total_amount) FILTER (WHERE o.created_at >= date_trunc('month', now())), 0) AS revenueThisMonth,
+                COALESCE(SUM(o.total_amount - o.refunded_amount), 0) AS totalRevenue,
+                COALESCE(SUM(o.total_amount - o.refunded_amount) FILTER (WHERE o.created_at >= date_trunc('day', now())), 0) AS revenueToday,
+                COALESCE(SUM(o.total_amount - o.refunded_amount) FILTER (WHERE o.created_at >= date_trunc('month', now())), 0) AS revenueThisMonth,
                 COUNT(*) AS ordersCount,
                 COUNT(*) FILTER (WHERE o.created_at >= date_trunc('day', now())) AS ordersToday
             FROM orders o

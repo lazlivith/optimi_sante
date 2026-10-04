@@ -24,9 +24,9 @@ public interface AnalyticsRepository extends JpaRepository<Order, UUID> {
     // ------------------------------------------------------------------ KPI overview
     @Query(value = """
             SELECT
-              (SELECT COALESCE(SUM(total_amount),0) FROM orders
+              (SELECT COALESCE(SUM(total_amount - refunded_amount),0) FROM orders
                  WHERE tenant_id = :t AND payment_status = 'PAID') AS revenueTotal,
-              (SELECT COALESCE(SUM(total_amount),0) FROM orders
+              (SELECT COALESCE(SUM(total_amount - refunded_amount),0) FROM orders
                  WHERE tenant_id = :t AND payment_status = 'PAID'
                    AND created_at >= date_trunc('month', now())) AS revenueMonth,
               (SELECT COUNT(*) FROM orders
@@ -61,7 +61,7 @@ public interface AnalyticsRepository extends JpaRepository<Order, UUID> {
     // ------------------------------------------------------------------ revenue timeseries
     @Query(value = """
             SELECT d::date AS day,
-                   COALESCE(SUM(o.total_amount) FILTER (WHERE o.payment_status = 'PAID'), 0)::numeric AS revenue,
+                   COALESCE(SUM(o.total_amount - o.refunded_amount) FILTER (WHERE o.payment_status = 'PAID'), 0)::numeric AS revenue,
                    COUNT(o.id) FILTER (WHERE o.payment_status = 'PAID') AS orders
             FROM generate_series(
                      date_trunc('day', now()) - ((:days - 1) || ' days')::interval,
@@ -167,7 +167,7 @@ public interface AnalyticsRepository extends JpaRepository<Order, UUID> {
                      WHEN 'CLIENT_B2C' THEN 'B2C'
                      ELSE 'Autre'
                    END AS label,
-                   COALESCE(SUM(o.total_amount), 0)::numeric AS value,
+                   COALESCE(SUM(o.total_amount - o.refunded_amount), 0)::numeric AS value,
                    COUNT(o.id)::numeric AS secondary
             FROM orders o
             JOIN users u ON u.id = o.user_id

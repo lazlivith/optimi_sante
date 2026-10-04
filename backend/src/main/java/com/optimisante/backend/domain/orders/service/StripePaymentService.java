@@ -1,5 +1,7 @@
 package com.optimisante.backend.domain.orders.service;
 
+import com.optimisante.backend.domain.finance.Devise;
+import com.optimisante.backend.domain.finance.Montant;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Customer;
@@ -29,14 +31,17 @@ public class StripePaymentService {
      * contraire. Elle est désormais lue ici, et nulle part ailleurs.</p>
      */
     @Value("${stripe.currency}")
-    private String devise;
+    private String codeDevise;
+
+    /** La devise, résolue une fois au démarrage, avec ses règles d'arrondi. */
+    private Devise devise;
 
     @PostConstruct
     public void init() {
         Stripe.apiKey = stripeApiKey;
         // Au démarrage, et non à la première vente : une devise mal orthographiée doit arrêter
         // le serveur, pas faire échouer le paiement d'un client.
-        this.devise = MontantStripe.normaliser(devise);
+        this.devise = Devise.de(codeDevise);
     }
 
     public Session createCheckoutSession(UUID orderId, BigDecimal amount, String userEmail, String successUrl, String cancelUrl) throws StripeException {
@@ -64,8 +69,8 @@ public class StripePaymentService {
                                 .setQuantity(1L)
                                 .setPriceData(
                                         SessionCreateParams.LineItem.PriceData.builder()
-                                                .setCurrency(devise)
-                                                .setUnitAmount(MontantStripe.versPlusPetiteUnite(amount, devise))
+                                                .setCurrency(devise.codeStripe())
+                                                .setUnitAmount(Montant.de(amount, devise).versPlusPetiteUnite())
                                                 .setProductData(
                                                         SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                                                 .setName(productName)
@@ -154,8 +159,8 @@ public class StripePaymentService {
                                 .setQuantity(1L)
                                 .setPriceData(
                                         SessionCreateParams.LineItem.PriceData.builder()
-                                                .setCurrency(devise)
-                                                .setUnitAmount(MontantStripe.versPlusPetiteUnite(amount, devise))
+                                                .setCurrency(devise.codeStripe())
+                                                .setUnitAmount(Montant.de(amount, devise).versPlusPetiteUnite())
                                                 .setProductData(
                                                         SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                                                 .setName(productName)

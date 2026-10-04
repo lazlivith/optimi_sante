@@ -3,7 +3,7 @@ import {
   LayoutDashboard, TrendingUp, ShoppingBag, Package, Tag, FileText,
   GraduationCap, BookOpen, Building2, Mail, Banknote, Users,
   BarChart3, FileSpreadsheet, ScrollText, ShieldCheck, BellRing, Bot, Newspaper,
-  type LucideIcon,
+  type LucideIcon, Coins,
 } from 'lucide-react';
 
 /**
@@ -109,6 +109,9 @@ export const GOUVERNANCE_UNIVERSE: AdminUniverse = {
     // ni du negoce ni de la mobilite. Son controleur est garde par @PlatformAdmin, et le
     // menu doit dire la meme chose que le serveur.
     { to: '/admin/blog', label: 'Blog & événements', icon: Newspaper },
+    // Un taux de change decide du prix affiche sur TOUTE la plateforme — catalogue,
+    // formations, options de service. Il ne releve donc d'aucun des deux metiers.
+    { to: '/admin/devises', label: 'Devises & taux', icon: Coins },
   ],
 };
 

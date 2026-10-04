@@ -96,6 +96,17 @@ public class Order {
     @Column(name = "stripe_payment_intent_id", length = 255)
     private String stripePaymentIntentId;
 
+    /**
+     * Montant cumulé rendu au client sur cette commande.
+     *
+     * <p>Porté par la commande et non par un statut : un remboursement partiel ne fait pas
+     * d'une commande une commande non honorée, mais il doit sortir sa part du chiffre
+     * d'affaires. Les agrégats financiers déduisent donc cette colonne (V65).</p>
+     */
+    @Builder.Default
+    @Column(name = "refunded_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal refundedAmount = BigDecimal.ZERO;
+
     @Column(name = "stripe_checkout_session_id", length = 255)
     private String stripeCheckoutSessionId;
 

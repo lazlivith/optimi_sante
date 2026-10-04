@@ -23,6 +23,15 @@ public interface EnrollmentPaymentRepository extends JpaRepository<EnrollmentPay
     Optional<EnrollmentPayment> findByStripeCheckoutSessionId(String stripeCheckoutSessionId);
 
     /**
+     * L'encaissement réglé par ce paiement Stripe.
+     *
+     * <p>Seul chemin dont dispose le webhook de remboursement : l'événement {@code
+     * charge.refunded} porte l'identifiant du paiement, pas celui du dossier. L'unicité est
+     * tenue par un index (V65).</p>
+     */
+    Optional<EnrollmentPayment> findByStripePaymentIntentId(String stripePaymentIntentId);
+
+    /**
      * Encaissements de formation d un partenaire, réglés et pas encore reversés :
      * l assiette du prochain virement.
      *

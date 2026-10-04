@@ -332,63 +332,70 @@ public class OrderService {
     }
 
     /**
-     * Constate un remboursement émis depuis Stripe.
+     * Constate un remboursement émis depuis Stripe sur une commande de la boutique.
      *
-     * <p>La commande cesse d'être comptée comme payée, et sort donc du chiffre d'affaires, qui
-     * n'agrège que les lignes au statut {@code PAID}. Sans cela, la plateforme annonçait un
-     * revenu pour de l'argent rendu.</p>
+     * <p><b>Le montant rendu se cumule sur la commande, le statut dit si elle est honorée.</b>
+     * Les mêler obligerait à choisir entre les deux : un remboursement partiel de dix euros ne
+     * fait pas d'une commande une commande non honorée, mais il doit sortir dix euros du
+     * chiffre d'affaires. Les agrégats financiers déduisent donc {@code refunded_amount}, et le
+     * statut ne passe à {@code REFUNDED} qu'au remboursement intégral.</p>
      *
-     * <p><b>Le stock n'est volontairement pas réapprovisionné.</b> Un remboursement ne dit pas
-     * que la marchandise est revenue : elle peut être en transit, abîmée, ou jamais renvoyée.
-     * Remettre automatiquement les articles en vente afficherait un stock dont personne ne
-     * dispose, et la rupture se découvrirait à l'expédition suivante. Le retour physique se
-     * constate à la réception, par l'administration.</p>
+     * <p><b>Naturellement idempotent.</b> Stripe transmet le cumul remboursé, pas le dernier
+     * versement : rejouer un événement réécrit la même valeur.</p>
      *
-     * <p><b>Un remboursement partiel ne change pas le statut.</b> La plateforme ne sait pas
-     * représenter un montant partiellement rendu ; faire sortir toute la commande du chiffre
-     * d'affaires pour dix euros rendus serait plus faux que de ne rien faire. Le cas est
-     * journalisé en avertissement, avec le numéro de commande, pour être traité à la main.</p>
+     * <p><b>Le stock n'est pas réapprovisionné, et c'est la règle voulue.</b> Le stock ne bouge
+     * qu'à la confirmation du paiement : un paiement qui échoue ne l'a donc jamais entamé, et
+     * les réservations prises au panier expirent d'elles-mêmes. Un remboursement, lui, porte sur
+     * une commande dont le paiement a réussi — la marchandise est partie. Le retour physique se
+     * constate à la réception, par l'administration, pas par un webhook.</p>
      *
-     * @param paymentIntentId identifiant du paiement chez Stripe, seul lien dont dispose l'événement
-     * @param integral        vrai si la totalité du paiement a été rendue
-     * @param montantRembourse montant rendu, pour la trace
+     * @return {@code true} si une commande correspond à ce paiement
      */
     @Transactional
-    public void constaterRemboursement(String paymentIntentId, boolean integral,
-                                       BigDecimal montantRembourse) {
+    public boolean constaterRemboursement(
+            com.optimisante.backend.domain.orders.webhook.RemboursementConstate remboursement) {
+
+        String paymentIntentId = remboursement.paymentIntentId();
         if (paymentIntentId == null || paymentIntentId.isBlank()) {
             log.warn("Remboursement Stripe sans identifiant de paiement : ignoré.");
-            return;
+            return false;
         }
 
         Order order = orderRepository.findByStripePaymentIntentId(paymentIntentId).orElse(null);
         if (order == null) {
-            // Ni une erreur ni un silence : le paiement peut relever d'un autre parcours — frais
-            // de dossier d'une formation, candidature — dont le remboursement n'est pas encore
-            // traité ici. L'avertissement nomme le paiement pour qu'il soit repris à la main.
-            log.warn("Remboursement Stripe {} : aucune commande ne correspond. "
-                    + "S'il s'agit d'un autre parcours de paiement, le traitement reste manuel.",
-                    paymentIntentId);
-            return;
+            return false;
         }
 
-        if (!integral) {
-            log.warn("Remboursement PARTIEL de {} sur la commande {} : statut inchangé, "
-                    + "à traiter manuellement.", montantRembourse, order.getOrderNumber());
-            return;
+        BigDecimal rendu = remboursement.montantRembourse().valeur();
+        // Garde-fou : la contrainte de base refuse un montant rendu superieur au total, et une
+        // erreur de contrainte dans un webhook ferait rejouer Stripe sans fin.
+        if (rendu.compareTo(order.getTotalAmount()) > 0) {
+            log.error("Remboursement de {} supérieur au total de la commande {} ({}) : "
+                    + "plafonné au total.", rendu, order.getOrderNumber(), order.getTotalAmount());
+            rendu = order.getTotalAmount();
         }
 
-        if (order.getPaymentStatus() == PaymentStatus.REFUNDED) {
-            log.info("Commande {} déjà remboursée. Idempotence respectée.", order.getOrderNumber());
-            return;
+        order.setRefundedAmount(rendu);
+
+        if (remboursement.integral()) {
+            if (order.getPaymentStatus() == PaymentStatus.REFUNDED) {
+                log.info("Commande {} déjà remboursée. Idempotence respectée.",
+                        order.getOrderNumber());
+                return true;
+            }
+            PaymentStatus precedent = order.getPaymentStatus();
+            order.setPaymentStatus(PaymentStatus.REFUNDED);
+            log.info("Commande {} remboursée intégralement ({}) : statut {} → REFUNDED.",
+                    order.getOrderNumber(), remboursement.montantRembourse(), precedent);
+        } else {
+            log.info("Commande {} remboursée partiellement : {} sur {}. "
+                    + "Le statut reste {}, et le chiffre d'affaires est corrigé d'autant.",
+                    order.getOrderNumber(), remboursement.montantRembourse(),
+                    order.getTotalAmount(), order.getPaymentStatus());
         }
 
-        PaymentStatus precedent = order.getPaymentStatus();
-        order.setPaymentStatus(PaymentStatus.REFUNDED);
         orderRepository.save(order);
-        log.info("Commande {} remboursée intégralement ({}) : statut {} → REFUNDED. "
-                + "Le stock n'est pas réapprovisionné, le retour se constate à la réception.",
-                order.getOrderNumber(), montantRembourse, precedent);
+        return true;
     }
 
     /**

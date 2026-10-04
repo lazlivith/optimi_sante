@@ -64,6 +64,7 @@ const ServiceDetailPage = lazy(() => import('./pages/services/ServiceDetailPage'
 const BlogPage = lazy(() => import('./pages/BlogPage').then(m => ({ default: m.BlogPage })));
 const BlogPostPage = lazy(() => import('./pages/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
 const AdminBlogPage = lazy(() => import('./pages/admin/AdminBlogPage').then(m => ({ default: m.AdminBlogPage })));
+const AdminDevisesPage = lazy(() => import('./pages/admin/AdminDevisesPage').then(m => ({ default: m.AdminDevisesPage })));
 const LegalNoticePage = lazy(() => import('./pages/legal/LegalNoticePage').then(m => ({ default: m.LegalNoticePage })));
 const TermsPage = lazy(() => import('./pages/legal/TermsPage').then(m => ({ default: m.TermsPage })));
 const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
@@ -157,6 +158,7 @@ export function App() {
                 {/* Le blog parle au nom d'Optimi Sante sur sa page d'accueil : ni negoce
                     ni mobilite, d'ou sa place ici, comme cote serveur (@PlatformAdmin). */}
                 <Route path="blog" element={<AdminBlogPage />} />
+                <Route path="devises" element={<AdminDevisesPage />} />
               </Route>
             </Route>
           </Route>
