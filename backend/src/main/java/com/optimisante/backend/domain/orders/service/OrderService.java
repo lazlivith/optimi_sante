@@ -391,6 +391,36 @@ public class OrderService {
                 order.getOrderNumber(), montantRembourse, precedent);
     }
 
+    /**
+     * Confirme le paiement d'une commande, en retenant au passage son identifiant chez Stripe.
+     *
+     * <p><b>Pourquoi cet identifiant se capture ici et non à la création de la session.</b> Il
+     * l'était, et il arrivait toujours nul : une session de paiement n'a pas encore de
+     * {@code PaymentIntent} au moment où on la crée — Stripe ne l'attribue qu'une fois le
+     * client engagé dans le règlement. Onze commandes réglées par carte portaient donc leur
+     * identifiant de session, et aucune son identifiant de paiement.</p>
+     *
+     * <p>Ce n'était sans conséquence que tant que personne ne cherchait une commande par ce
+     * champ. Le webhook de remboursement le fait : c'est le seul lien que l'événement {@code
+     * charge.refunded} porte vers nos données. Sans cette capture, aucun remboursement n'aurait
+     * jamais trouvé sa commande.</p>
+     *
+     * @param paymentIntentId identifiant du paiement chez Stripe, tel que la session confirmée
+     *                        le porte ; {@code null} pour une confirmation manuelle
+     */
+    @Transactional
+    public void confirmOrderPayment(UUID orderId, String paymentIntentId) {
+        if (paymentIntentId != null && !paymentIntentId.isBlank()) {
+            orderRepository.findById(orderId).ifPresent(commande -> {
+                if (commande.getStripePaymentIntentId() == null) {
+                    commande.setStripePaymentIntentId(paymentIntentId);
+                    orderRepository.save(commande);
+                }
+            });
+        }
+        confirmOrderPayment(orderId);
+    }
+
     @Transactional
     public void confirmOrderPayment(UUID orderId) {
         Order order = orderRepository.findById(orderId)

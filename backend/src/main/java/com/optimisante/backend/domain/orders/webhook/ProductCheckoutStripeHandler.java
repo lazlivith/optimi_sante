@@ -30,6 +30,9 @@ public class ProductCheckoutStripeHandler implements StripePaymentHandler {
     @Override
     public void handle(UUID referenceId, Session session) {
         log.info("Paiement confirmé pour la commande {}", referenceId);
-        orderService.confirmOrderPayment(referenceId);
+        // L'identifiant de paiement est retenu ici, et non à la création de la session, où il
+        // est toujours nul : c'est le seul lien dont dispose ensuite un remboursement pour
+        // retrouver la commande.
+        orderService.confirmOrderPayment(referenceId, session.getPaymentIntent());
     }
 }

@@ -70,7 +70,7 @@ du point de vue du client.
 | `STRIPE_SECRET_KEY` | Stripe → Developers → API keys → **Live** → Secret key (`sk_live_…`) | Render, service `optimisante-backend` |
 | `STRIPE_WEBHOOK_SECRET` | Créé à l'étape A.3 (`whsec_…`) | Render, service `optimisante-backend` |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe → API keys → **Live** → Publishable key (`pk_live_…`) | Vercel, projet frontend |
-| `STRIPE_CURRENCY` | — | Voir l'avertissement A.6 : **cette variable n'est lue nulle part** |
+| `STRIPE_CURRENCY` | — | Facultative. Vaut `eur` par défaut ; validée au démarrage |
 
 > ### ⚠️ Le piège Vercel
 > `VITE_STRIPE_PUBLISHABLE_KEY` est **figée à la construction du paquet**, pas lue au démarrage.
@@ -91,9 +91,10 @@ signatures. Il en faut un nouveau.
 
 1. Stripe → **Developers → Webhooks**, en **mode Live** (l'interrupteur en haut à droite).
 2. **Add endpoint** → URL : `https://optimisante-backend.onrender.com/api/v1/payments/webhook`
-3. Événements à écouter : **`checkout.session.completed`** au minimum. C'est le seul que
-   `PaymentWebhookResource` traite aujourd'hui ; tout autre événement souscrit sera reçu et
-   ignoré, sans dommage.
+3. Événements à écouter : **`checkout.session.completed`** et **`charge.refunded`**. Ce sont
+   les deux que `PaymentWebhookResource` traite ; tout autre événement souscrit sera reçu et
+   ignoré, sans dommage. **Oublier `charge.refunded` rend le traitement des remboursements
+   inopérant** : le code est là, mais rien ne lui parvient.
 4. Copiez le **Signing secret** (`whsec_…`) affiché à la création et mettez-le dans
    `STRIPE_WEBHOOK_SECRET` sur Render.
 5. Redéployez le backend.
@@ -146,45 +147,63 @@ Un paiement réel de petit montant, suivi de bout en bout. C'est la seule vérif
    `charge.refunded` n'est pas écouté, donc la commande restera marquée payée. Voir A.6.
 5. Supprimez le produit de test.
 
-## A.6 — Trois défauts du code à connaître avant de basculer
+## A.6 — Quatre défauts, corrigés le 4 octobre 2026
 
-Ces trois points sont dans le code aujourd'hui. Aucun n'empêche de passer en production avec des
-paiements en euros par carte, mais vous devez savoir qu'ils existent.
+Ces quatre points ont été relevés en écrivant ce guide, puis corrigés et éprouvés. Ils sont
+conservés ici parce qu'ils expliquent ce qui a changé, et ce qu'il reste à surveiller.
 
-### 1. `STRIPE_CURRENCY` ne sert à rien
+### 1. `STRIPE_CURRENCY` ne servait à rien — corrigé
 
-`application.yml` déclare `stripe.currency` et le profil `prod` l'expose via `STRIPE_CURRENCY`,
-mais **aucune ligne de code ne lit cette propriété**. La devise est écrite en dur, deux fois,
-dans `StripePaymentService.java` (lignes 53 et 143) :
+La propriété existait et était exposée en production, mais la devise était écrite en dur dans
+`StripePaymentService`. La définir donnait l'illusion d'agir. Elle est désormais lue, et
+**validée au démarrage** : une devise mal orthographiée arrête le serveur plutôt que de faire
+échouer le paiement d'un client.
 
-```java
-.setCurrency("eur")
-```
+### 2. La conversion en centimes supposait deux décimales — corrigé
 
-Conséquence : définir `STRIPE_CURRENCY=xaf` sur Render ne changerait rien, et donnerait
-l'illusion du contraire. Soit on branche la propriété, soit on retire la configuration — laisser
-les deux est le genre d'écart qui coûte une demi-journée de recherche six mois plus tard.
+`montant.multiply(100)` est juste pour l'euro et faux pour le franc CFA, qui n'a pas de
+subdivision : 328 000 XAF seraient partis chez Stripe pour 32 800 000. La règle vit maintenant
+dans `MontantStripe`, avec ses tests. Elle **refuse** les devises à trois décimales plutôt que
+de les approximer. L'arrondi y remplace aussi une troncature qui offrait un centime par vente.
 
-### 2. La conversion en centimes suppose une devise à deux décimales
+> **Ce qui reste à votre charge.** Pour une devise sans décimales, l'arrondi à l'unité est
+> silencieux. C'est à l'appelant d'arrondir à un palier lisible — 328 000 XAF, pas 327 978,5 —
+> comme expliqué en B.0.1.
 
-Toujours dans `StripePaymentService.java` :
+### 3. Les remboursements ne redescendaient pas — corrigé
 
-```java
-.setUnitAmount(amount.multiply(new BigDecimal(100)).longValue())
-```
+Une commande remboursée restait marquée payée et pesait au chiffre d'affaires. L'événement
+`charge.refunded` est désormais traité : un remboursement **intégral** passe la commande à
+`REFUNDED`, qui la fait sortir des agrégats financiers.
 
-Correct pour l'euro. **Faux pour toute devise à zéro décimale**, dont le franc CFA (XAF) : Stripe
-attend alors le montant tel quel, et ce code facturerait **cent fois** le prix. Si un jour vous
-encaissez en XAF par Stripe, ce calcul doit devenir dépendant de la devise. Le mobile money passe
-par pawaPay et n'est pas concerné, mais la mise en garde vaut d'être écrite ici.
+Deux limites assumées, documentées dans le code :
 
-### 3. Les remboursements ne sont pas traités
+- **Le stock n'est pas réapprovisionné.** Un remboursement ne dit pas que la marchandise est
+  revenue. Le retour physique se constate à la réception.
+- **Un remboursement partiel ne change pas le statut.** Il est journalisé en avertissement, avec
+  le numéro de commande, et se traite à la main.
 
-`PaymentWebhookResource` ne traite que `checkout.session.completed`. Un remboursement émis depuis
-le tableau de bord Stripe ne redescend donc pas dans la plateforme : la commande reste payée, le
-reçu reste valide, le stock n'est pas réapprovisionné. Tant que les remboursements sont rares et
-traités à la main, c'est tenable ; il faut simplement le savoir et tenir un suivi hors
-plateforme. Ajouter l'écoute de `charge.refunded` est un chantier d'une demi-journée.
+### 4. Les webhooks abandonnaient les événements en cas d'écart de version — corrigé
+
+Le plus grave des quatre, et il n'a été trouvé qu'en envoyant de vrais événements signés. Les
+deux webhooks lisaient l'objet en mode strict : dès que la version d'API du compte Stripe diffère
+de celle de la bibliothèque Java, la lecture rend un résultat vide et **l'événement était
+abandonné**. Pour un remboursement, il passait inaperçu ; pour une confirmation, un paiement
+était encaissé sans que la commande soit confirmée. Les deux chemins retombent désormais sur la
+lecture permissive que Stripe documente pour ce cas.
+
+### 5. L'identifiant de paiement n'était jamais enregistré — corrigé
+
+Découvert en éprouvant le point 3, et il le rendait inopérant. La commande enregistrait
+`session.getPaymentIntent()` **à la création de la session**, où il est toujours nul : Stripe ne
+l'attribue qu'une fois le client engagé dans le règlement. Onze commandes réglées par carte
+portaient leur identifiant de session, et **aucune** son identifiant de paiement — or c'est le
+seul lien que l'événement `charge.refunded` porte vers nos données. Il est désormais capturé à
+la confirmation.
+
+> **Les commandes antérieures restent sans identifiant de paiement.** Un remboursement sur l'une
+> d'elles ne trouvera pas sa commande et sera journalisé en avertissement. Ce sont toutes des
+> données de test, purgées avant l'ouverture : le point se referme de lui-même.
 
 ---
 
