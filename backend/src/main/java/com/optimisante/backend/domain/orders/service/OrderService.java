@@ -30,6 +30,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.optimisante.backend.domain.finance.Devise;
+import com.optimisante.backend.domain.finance.Montant;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
@@ -52,6 +55,7 @@ public class OrderService {
     private final CompanyProfileRepository companyProfileRepository;
     private final com.optimisante.backend.domain.catalog.service.ServiceTva serviceTva;
     private final com.optimisante.backend.domain.orders.shipping.ServiceLivraison serviceLivraison;
+    private final com.optimisante.backend.domain.finance.ServiceDevises serviceDevises;
     private final StockReservationService stockReservationService;
     private final StockReservationRepository stockReservationRepository;
     private final StripePaymentService stripePaymentService;
@@ -194,6 +198,18 @@ public class OrderService {
 
         order.setTotalAmount(totalAmount);
 
+        // La devise choisie par le client. Le total reste en euros — devise de référence, dans
+        // laquelle la comptabilité est tenue — et le montant réellement facturé en découle par
+        // conversion. C'est le SERVEUR qui convertit : l'affichage du navigateur est une
+        // commodité, et un montant à encaisser ne se laisse pas dicter par le client.
+        Montant montantReference = Montant.euros(totalAmount);
+        Devise deviseChoisie = (livraison == null || livraison.devise() == null
+                || livraison.devise().isBlank())
+                ? Devise.REFERENCE : Devise.de(livraison.devise());
+        Montant montantAFacturer = serviceDevises.convertir(montantReference, deviseChoisie);
+        order.setPaymentCurrency(deviseChoisie.code());
+        order.setPaymentAmount(montantAFacturer.valeur());
+
         // L'ID de la commande n'existe qu'après un premier save() (GenerationType.UUID
         // n'assigne l'ID qu'à la persistance) — nécessaire pour la session Stripe ci-dessous.
         Order savedOrder = orderRepository.save(order);
@@ -223,7 +239,7 @@ public class OrderService {
                 String returnUrl = frontendBaseUrl + "/checkout/complete?session_id={CHECKOUT_SESSION_ID}";
 
                 Session session = stripePaymentService.createElementsCheckoutSessionForCustomer(
-                        savedOrder.getId(), totalAmount, customerId, returnUrl,
+                        savedOrder.getId(), montantAFacturer, customerId, returnUrl,
                         "Commande Optimi Santé #" + savedOrder.getOrderNumber(), null
                 );
                 savedOrder.setStripeCheckoutSessionId(session.getId());
@@ -291,7 +307,8 @@ public class OrderService {
                 dto.id(), dto.orderNumber(), dto.paymentMethod(), dto.paymentStatus(),
                 dto.status(), dto.isQuote(), dto.totalAmount(), dto.stripePaymentIntentId(),
                 dto.stripeCheckoutSessionId(), null, clientSecret, dto.documentS3Key(),
-                dto.promoCode(), dto.discountAmount(), dto.quoteDiscountRate(), dto.createdAt(), dto.items()
+                dto.promoCode(), dto.discountAmount(), dto.quoteDiscountRate(), dto.createdAt(),
+                dto.paymentCurrency(), dto.paymentAmount(), dto.items()
         );
     }
 
@@ -428,6 +445,26 @@ public class OrderService {
         confirmOrderPayment(orderId);
     }
 
+    /**
+     * Le règlement dans sa devise, quand elle n'est pas l'euro.
+     *
+     * <p>{@code null} pour une commande réglée en euros : le reçu reste alors exactement celui
+     * qu'il était, sans mention surnuméraire.</p>
+     */
+    private Encaissement.ReglementEnDevise reglementEnDevise(Order order) {
+        String devise = order.getPaymentCurrency();
+        if (devise == null || Devise.REFERENCE.code().equals(devise)
+                || order.getPaymentAmount() == null
+                || order.getTotalAmount().signum() == 0) {
+            return null;
+        }
+        // Le taux est recalculé depuis les deux montants figés sur la commande, et non relu de
+        // la grille : celle-ci a pu changer depuis, et un reçu doit dire ce qui s'est passé.
+        BigDecimal taux = order.getPaymentAmount()
+                .divide(order.getTotalAmount(), 6, java.math.RoundingMode.HALF_UP);
+        return new Encaissement.ReglementEnDevise(devise, order.getPaymentAmount(), taux);
+    }
+
     @Transactional
     public void confirmOrderPayment(UUID orderId) {
         Order order = orderRepository.findById(orderId)
@@ -489,7 +526,8 @@ public class OrderService {
                 order.getShippingZone() == null ? null : new Encaissement.Livraison(
                         order.getShippingCost(),
                         order.getShippingZone()
-                                != com.optimisante.backend.domain.orders.shipping.ZoneLivraison.FRANCE)
+                                != com.optimisante.backend.domain.orders.shipping.ZoneLivraison.FRANCE),
+                reglementEnDevise(order)
         )).ifPresent(recu -> {
             // La commande continue de porter la clé du document : c'est ce que lit « Mes
             // commandes » pour proposer « Ouvrir le PDF ».
@@ -620,6 +658,8 @@ public class OrderService {
                 order.getDiscountAmount(),
                 order.getQuoteDiscountRate(),
                 order.getCreatedAt(),
+                order.getPaymentCurrency(),
+                order.getPaymentAmount(),
                 itemDtos
         );
     }

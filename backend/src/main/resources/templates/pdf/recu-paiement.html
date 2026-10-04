@@ -127,6 +127,12 @@
             <td th:text="${aTva} ? 'Montant réglé (TTC)' : 'Montant réglé'">Montant réglé</td>
             <td class="valeur" th:text="${montantPaye}">0,00 €</td>
         </tr>
+        <!-- Ce que la personne reconnaitra sur son releve. Le detail ci-dessus reste en euros :
+             convertir chaque ligne donnerait un document dont les lignes ne font pas le total. -->
+        <tr th:if="${aDevise}" class="paye">
+            <td th:text="'Débité en ' + ${deviseReglement}">Débité</td>
+            <td class="valeur" th:text="${montantDevise}">0 XAF</td>
+        </tr>
     </table>
 
     <!-- Mention DAP. Le client la lit au moment de commander ; elle doit se retrouver sur
@@ -135,6 +141,13 @@
         Expédition livrée DAP (Delivered At Place) : les droits de douane, taxes et formalités
         d'importation du pays de destination sont à la charge du destinataire et ne sont pas
         inclus dans le montant ci-dessus.
+    </p>
+
+    <p class="mention" th:if="${aDevise}">
+        Règlement effectué en <span th:text="${deviseReglement}">XAF</span>, converti au taux de
+        1 EUR = <span th:text="${tauxDevise}">655,957</span>
+        <span th:text="${deviseReglement}">XAF</span> appliqué à la date de la commande. Le
+        détail ci-dessus est libellé en euros, devise de référence du catalogue.
     </p>
 
     <p class="mention">

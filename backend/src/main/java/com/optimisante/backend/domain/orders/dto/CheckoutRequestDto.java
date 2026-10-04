@@ -23,5 +23,10 @@ public record CheckoutRequestDto(
         String shippingLine2,
         String shippingPostalCode,
         String shippingCity,
-        String shippingCountry
+        String shippingCountry,
+        /**
+         * Devise choisie par le client, code ISO 4217. Absente : l'euro, devise de référence —
+         * ce qui laisse valables tous les appels existants.
+         */
+        String devise
 ) {}

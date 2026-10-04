@@ -207,6 +207,18 @@ public class PaymentReceiptIssuer {
         v.put("fraisLivraison", montant(livraison == null ? BigDecimal.ZERO : livraison.frais()));
         v.put("livraisonDap", livraison != null && livraison.dap());
 
+        // Le reglement dans sa devise, quand le client n'a pas paye en euros. Le detail reste
+        // en euros : convertir chaque ligne produirait un document dont les lignes ne font pas
+        // le total, chaque conversion s'arrondissant pour son compte.
+        var enDevise = e.reglementEnDevise();
+        v.put("aDevise", enDevise != null);
+        if (enDevise != null) {
+            v.put("deviseReglement", enDevise.devise());
+            v.put("montantDevise", montantDevise(enDevise.montant(), enDevise.devise()));
+            v.put("tauxDevise", enDevise.taux().stripTrailingZeros().toPlainString()
+                    .replace('.', ','));
+        }
+
         v.put("remise", montant(e.remise()));
         v.put("aRemise", e.remise().signum() > 0);
         v.put("montantPaye", montant(e.montantPaye()));
@@ -235,6 +247,19 @@ public class PaymentReceiptIssuer {
                 .map(ServiceTva.Ventilation::taxe)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)));
         return v;
+    }
+
+    /**
+     * Un montant dans une devise autre que l'euro.
+     *
+     * <p>Le nombre de décimales suit la devise : le franc CFA n'en a pas, et « 328 000,00 FCFA »
+     * annoncerait une subdivision qui n'existe pas.</p>
+     */
+    private static String montantDevise(BigDecimal valeur, String codeDevise) {
+        int decimales = com.optimisante.backend.domain.finance.Devise.de(codeDevise).decimales();
+        return (valeur == null ? BigDecimal.ZERO : valeur)
+                .setScale(decimales, java.math.RoundingMode.HALF_UP)
+                .toPlainString().replace('.', ',') + " " + codeDevise;
     }
 
     private static String montant(BigDecimal valeur) {

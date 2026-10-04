@@ -21,6 +21,12 @@ export interface CheckoutRequestDto {
   shippingCity?: string;
   /** Code ISO 3166-1 alpha-2 du pays de destination. */
   shippingCountry?: string;
+  /**
+   * Devise choisie par le client, code ISO 4217. Absente : l'euro.
+   * Le montant encaisse est recalcule par le serveur a partir du prix de reference : cette
+   * valeur dit en quelle monnaie facturer, pas combien.
+   */
+  devise?: string;
 }
 
 export interface QuoteRequestDto {
@@ -45,6 +51,10 @@ export interface OrderResponseDto {
   promoCode?: string;
   discountAmount?: number;
   createdAt: string;
+  /** Devise reellement debitee, et montant dans cette devise. `totalAmount`
+   *  reste en euros, devise de reference de la comptabilite. */
+  paymentCurrency?: string;
+  paymentAmount?: number;
 }
 
 export interface PromoValidationResult {

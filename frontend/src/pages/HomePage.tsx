@@ -170,6 +170,7 @@ function selectionnerVedettes(products: Product[]): Product[] {
 }
 
 function FeaturedSection({ products }: { products: Product[] }) {
+  const { prix } = useDevise();
   const vedettes = selectionnerVedettes(products);
   if (vedettes.length === 0) return null;
 
@@ -216,7 +217,7 @@ function FeaturedSection({ products }: { products: Product[] }) {
                   )}
                   {!item.isQuoteOnly && (
                     <span className="text-sm font-bold text-brand-dark/70">
-                      {item.finalPrice.toFixed(0)} €
+                      {prix(item.finalPrice)}
                     </span>
                   )}
                 </div>
@@ -250,6 +251,7 @@ function FeaturedSection({ products }: { products: Product[] }) {
 // ──────────────────────────────────────────────────
 import type { Category } from '../api/catalogService';
 import { visuelAFaire } from '../api/productMediaService';
+import { useDevise } from '../context/DeviseContext';
 
 /** Le catalogue importé contient encore des entités HTML dans les noms : « Diagnostic &amp; Secours ». */
 const nomLisible = (nom: string) => nom.replace(/&amp;/g, '&');
@@ -336,6 +338,7 @@ function CategoriesSection({ categories }: { categories: Category[] }) {
 // Essential Medical Equipment Section
 // ──────────────────────────────────────────────────
 function EssentialEquipmentSection({ products }: { products: Product[] }) {
+  const { prix } = useDevise();
   if (!products || products.length === 0) return null;
   
   // Get top 4 most expensive products
@@ -368,7 +371,7 @@ function EssentialEquipmentSection({ products }: { products: Product[] }) {
                 {item.name}
               </h3>
               <div className="mt-auto pt-2 border-t border-gray-50 flex items-center justify-between">
-                <span className="text-brand-dark font-bold text-lg">{item.finalPrice.toFixed(2)} €</span>
+                <span className="text-brand-dark font-bold text-lg">{prix(item.finalPrice)}</span>
               </div>
             </div>
           </Link>
@@ -382,6 +385,7 @@ function EssentialEquipmentSection({ products }: { products: Product[] }) {
 // Product Card
 // ──────────────────────────────────────────────────
 function ProductCardHome({ product }: { product: Product }) {
+  const { prix } = useDevise();
   const { addToCart } = useCart();
   const [liked, setLiked] = useState(false);
 
@@ -431,9 +435,9 @@ function ProductCardHome({ product }: { product: Product }) {
         ) : (
           <>
             {product.b2bDiscountRate > 0 && (
-              <span className="text-xs text-gray-400 line-through block">{product.basePrice.toFixed(0)} €</span>
+              <span className="text-xs text-gray-400 line-through block">{prix(product.basePrice)}</span>
             )}
-            <span className="text-sm font-bold text-red-600">{product.finalPrice.toFixed(0)} €</span>
+            <span className="text-sm font-bold text-red-600">{prix(product.finalPrice)}</span>
           </>
         )}
       </div>

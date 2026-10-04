@@ -66,6 +66,10 @@ public class SecurityConfig {
                         // que les conditions generales promettent, et un visiteur non connecte
                         // remplit son panier avant d'avoir un compte.
                         .requestMatchers(HttpMethod.GET, "/api/v1/shipping/**").permitAll()
+                        // Les devises et leurs taux : un visiteur doit voir un prix dans sa
+                        // monnaie avant d'avoir un compte. Ni le taux ni le palier ne sont
+                        // des secrets — le montant encaisse, lui, est recalcule au paiement.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/devises").permitAll()
                         .requestMatchers("/api/v1/payments/webhook").permitAll()
                         // Le blog s'adresse aux visiteurs, et sa banniere s'affiche sur la
                         // page d'accueil : en lecture seule, et seulement sur ce qui a ete mis

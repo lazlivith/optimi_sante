@@ -11,10 +11,12 @@ import {
   FormulaireLivraison, ADRESSE_VIDE, adresseComplete, type AdresseLivraison,
 } from '../components/checkout/FormulaireLivraison';
 import type { EstimationLivraison } from '../api/adminShippingService';
+import { useDevise } from '../context/DeviseContext';
 
 export const CheckoutPage = () => {
   usePageMeta('Paiement sécurisé');
   const { items, totalPrice, clearCart } = useCart();
+  const { devise, prix } = useDevise();
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
 
@@ -99,6 +101,9 @@ export const CheckoutPage = () => {
    * frais de port, ce qui est exactement le comportement d'avant cette page.
    */
   const champsLivraison = () => (livraisonRequise ? {
+    // La devise dit en quelle monnaie facturer, jamais combien : le montant encaisse est
+    // recalcule par le serveur a partir du prix de reference.
+    devise: devise.code,
     shippingRecipient: adresse.recipient.trim(),
     shippingLine1: adresse.line1.trim(),
     shippingLine2: adresse.line2.trim() || undefined,
@@ -166,7 +171,7 @@ export const CheckoutPage = () => {
           </button>
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <h1 className="text-xl font-bold text-brand-dark mb-6">Paiement par carte</h1>
-            <StripeEmbeddedCheckout clientSecret={stripeClientSecret} payLabel={`Payer ${totalAPayer.toFixed(2)} €`} />
+            <StripeEmbeddedCheckout clientSecret={stripeClientSecret} payLabel={`Payer ${prix(totalAPayer)}`} />
           </div>
         </div>
       </div>
@@ -283,7 +288,7 @@ export const CheckoutPage = () => {
                       <span className="font-medium text-slate-800">{item.name}</span>
                       <span className="text-slate-500">Qté: {item.cartQuantity}</span>
                     </div>
-                    <span className="font-semibold">{item.isQuoteOnly ? '--' : `${(item.finalPrice * item.cartQuantity).toFixed(0)} €`}</span>
+                    <span className="font-semibold">{item.isQuoteOnly ? '--' : prix(item.finalPrice * item.cartQuantity)}</span>
                   </div>
                 ))}
               </div>
@@ -325,7 +330,7 @@ export const CheckoutPage = () => {
                 {appliedPromo && (
                   <div className="flex justify-between items-center text-sm text-emerald-700">
                     <span>Remise ({appliedPromo.code})</span>
-                    <span>− {appliedPromo.discountAmount.toFixed(2)} €</span>
+                    <span>− {prix(appliedPromo.discountAmount)}</span>
                   </div>
                 )}
                 {livraisonRequise && (
@@ -334,13 +339,13 @@ export const CheckoutPage = () => {
                     {frais
                       ? (frais.offerte
                         ? <span className="font-semibold text-success">Offerte</span>
-                        : <span>{frais.montant.toFixed(2)} €</span>)
+                        : <span>{prix(frais.montant)}</span>)
                       : <span className="text-slate-400">À calculer</span>}
                   </div>
                 )}
                 <div className="flex justify-between items-center text-lg font-bold text-brand-dark">
                   <span>Total à payer</span>
-                  <span>{totalAPayer.toFixed(2)} €</span>
+                  <span>{prix(totalAPayer)}</span>
                 </div>
                 {frais?.droitsALArrivee && (
                   // Mention DAP : hors de France, les droits et taxes locales restent a la

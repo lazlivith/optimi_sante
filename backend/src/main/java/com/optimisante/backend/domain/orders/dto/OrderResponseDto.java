@@ -27,5 +27,14 @@ public record OrderResponseDto(
         /** Remise accordée par l'administration sur un devis, en pourcentage (V59). Nulle sinon. */
         BigDecimal quoteDiscountRate,
         OffsetDateTime createdAt,
+        /**
+         * Ce qui a réellement été débité, et dans quelle monnaie.
+         *
+         * <p>{@code totalAmount} reste en euros : c'est la devise de référence. Ces deux champs
+         * disent ce que le client a vu et payé, pour que son historique de commandes annonce
+         * le même montant que son relevé bancaire et que son reçu (V66).</p>
+         */
+        String paymentCurrency,
+        BigDecimal paymentAmount,
         List<OrderItemDto> items
 ) {}

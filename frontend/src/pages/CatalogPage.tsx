@@ -7,11 +7,13 @@ import { Search, Mail, Plus, SlidersHorizontal } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { PromoProductVisual } from '../components/catalog/PromoProductVisual';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { useDevise } from '../context/DeviseContext';
 
 /** Produits par requete. Vingt-quatre remplit six rangees de quatre sans laisser de trou. */
 const TAILLE_PAGE = 24;
 
 export function CatalogPage() {
+  const { prix } = useDevise();
   usePageMeta('Catalogue médical', "Découvrez notre catalogue de dispositifs médicaux certifiés CE : équipements, consommables et matériel professionnel pour cabinets et structures de soin.");
   // Le menu propose « Promotions » vers /catalog?promo=true depuis le depart, mais la page
   // ignorait ce parametre : l'entree menait au catalogue entier. Elle le lit desormais.
@@ -288,11 +290,11 @@ export function CatalogPage() {
                       <div className="flex flex-col">
                         {(product.b2bDiscountRate > 0 || product.isOnPromo) && (
                           <span className="text-xs text-slate-400 line-through">
-                            {product.basePrice.toFixed(0)} €
+                            {prix(product.basePrice)}
                           </span>
                         )}
                         <span className={`text-base sm:text-lg font-bold ${product.isOnPromo ? 'text-rose-600' : 'text-brand-dark'}`}>
-                          {product.isQuoteOnly ? 'Sur devis' : `${product.finalPrice.toFixed(0)} €`}
+                          {product.isQuoteOnly ? 'Sur devis' : prix(product.finalPrice)}
                         </span>
                       </div>
 

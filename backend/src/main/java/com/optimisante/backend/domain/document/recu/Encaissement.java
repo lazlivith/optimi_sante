@@ -32,6 +32,8 @@ import java.util.UUID;
  * @param orderId         commande concernée, le cas échéant
  * @param livraison       frais de port et régime douanier, {@code null} pour un règlement qui
  *                        n'expédie rien (les frais de dossier d'une formation)
+ * @param reglementEnDevise ce qui a réellement été débité, lorsque le client a payé dans une
+ *                        autre devise que l'euro ; {@code null} pour un règlement en euros
  */
 public record Encaissement(
         String reference,
@@ -44,7 +46,8 @@ public record Encaissement(
         UUID payeurUserId,
         UUID enrollmentId,
         UUID orderId,
-        Livraison livraison
+        Livraison livraison,
+        ReglementEnDevise reglementEnDevise
 ) {
 
     public Encaissement {
@@ -60,6 +63,24 @@ public record Encaissement(
         if (lignes == null) lignes = List.of();
         if (payeLe == null) payeLe = OffsetDateTime.now();
     }
+
+    /**
+     * Ce que le client a réellement vu débiter, quand il a payé dans une autre devise.
+     *
+     * <p><b>Pourquoi le détail du reçu reste en euros.</b> Convertir chaque ligne produirait un
+     * document dont les lignes ne s'additionnent pas : chaque conversion s'arrondit, et leur
+     * somme s'écarte du total réellement encaissé, qui est converti une seule fois. Sur une
+     * pièce comptable, des lignes qui ne font pas le total est un défaut plus grave qu'un
+     * détail libellé dans la devise de référence.</p>
+     *
+     * <p>Le document porte donc les deux : le montant débité dans sa devise — celui que la
+     * personne reconnaîtra sur son relevé — et le taux qui le relie au prix en euros.</p>
+     *
+     * @param devise code ISO 4217 de la devise réellement débitée
+     * @param montant montant débité dans cette devise
+     * @param taux    combien d'unités de cette devise valaient un euro au moment du règlement
+     */
+    public record ReglementEnDevise(String devise, BigDecimal montant, BigDecimal taux) {}
 
     /**
      * Le transport, tel que le document doit l'énoncer.

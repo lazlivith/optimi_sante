@@ -5,8 +5,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Box, Trash2, ArrowLeft, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { useDevise } from '../context/DeviseContext';
 
 export function CartPage() {
+  const { prix } = useDevise();
   usePageMeta('Mon panier');
   const { items, removeFromCart, clearCart, totalPrice, addToCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -121,7 +123,7 @@ export function CartPage() {
                 </div>
                 
                 <div className="w-24 text-right font-bold text-lg text-brand-dark">
-                  {item.isQuoteOnly ? '--' : `${(item.finalPrice * item.cartQuantity).toFixed(0)} €`}
+                  {item.isQuoteOnly ? '--' : prix(item.finalPrice * item.cartQuantity)}
                 </div>
                 
                 <button onClick={() => removeFromCart(item.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
@@ -137,7 +139,7 @@ export function CartPage() {
           <div className="flex justify-between items-center mb-8">
             <span className="font-bold text-lg text-brand-dark">Total</span>
             <span className="text-2xl font-bold text-brand-dark">
-              {hasQuoteOnlyItems ? 'Sur devis' : `${totalPrice.toFixed(0)} €`}
+              {hasQuoteOnlyItems ? 'Sur devis' : prix(totalPrice)}
             </span>
           </div>
 

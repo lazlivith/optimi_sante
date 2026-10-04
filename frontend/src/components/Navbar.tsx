@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { adminHomeFor, ALL_ADMIN_ROLES } from '../lib/adminUniverses';
+import { SelecteurDevise } from './SelecteurDevise';
 import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, Settings, Search, Briefcase, Database as DatabaseIcon, ShieldCheck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -126,6 +127,9 @@ export const Navbar = () => {
 
         {/* Right Zone */}
         <div className="flex items-center gap-1.5 lg:gap-2 shrink-0 ml-auto lg:ml-0">
+          {/* Devise : ne s'affiche que si plusieurs sont ouvertes a la vente. */}
+          <SelecteurDevise />
+
           {/* Cart */}
           <Link to="/cart" className="relative p-2.5 text-gray-600 hover:text-brand-dark transition-colors rounded-full hover:bg-gray-100">
             <ShoppingCart className="w-5 h-5" />

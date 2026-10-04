@@ -4,6 +4,7 @@ import { cheminProduit } from '../../api/catalogService';
 import type { Product } from '../../api/catalogService';
 import { PromoProductVisual } from './PromoProductVisual';
 import { useCart } from '../../context/CartContext';
+import { useDevise } from '../../context/DeviseContext';
 
 /**
  * Carte produit des pages de rayon.
@@ -26,6 +27,7 @@ import { useCart } from '../../context/CartContext';
 export function ProductCard(
   { product, actionEtendue = false }: { product: Product; actionEtendue?: boolean },
 ) {
+  const { prix } = useDevise();
   const { addToCart } = useCart();
   const remise = product.isOnPromo && product.basePrice > 0
     ? Math.round((1 - product.finalPrice / product.basePrice) * 100)
@@ -80,13 +82,13 @@ export function ProductCard(
           <div className="flex flex-col">
             {(product.isOnPromo || product.b2bDiscountRate > 0) && !product.isQuoteOnly && (
               <span className="text-xs text-slate-500 line-through">
-                {product.basePrice.toFixed(0)} €
+                {prix(product.basePrice)}
               </span>
             )}
             <span className={`text-lg font-bold ${
               product.isOnPromo ? 'text-brand-accent' : 'text-brand-dark'
             }`}>
-              {product.isQuoteOnly ? 'Sur devis' : `${product.finalPrice.toFixed(0)} €`}
+              {product.isQuoteOnly ? 'Sur devis' : prix(product.finalPrice)}
             </span>
           </div>
 

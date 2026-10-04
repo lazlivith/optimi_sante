@@ -5,6 +5,7 @@ import { cheminProduit } from '../../api/catalogService';
 import type { Product } from '../../api/catalogService';
 import { PromoProductVisual } from '../catalog/PromoProductVisual';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useDevise } from '../../context/DeviseContext';
 
 const DUREE_DIAPOSITIVE_MS = 6000;
 
@@ -185,6 +186,7 @@ function Diapositive({ produit, rang, total, actif }: {
   total: number;
   actif: boolean;
 }) {
+  const { prix } = useDevise();
   const remise = produit.basePrice > 0
     ? Math.round((1 - produit.finalPrice / produit.basePrice) * 100)
     : 0;
@@ -238,10 +240,10 @@ function Diapositive({ produit, rang, total, actif }: {
             {/* L'orange de la charte plafonne à 3,00:1 sur fond clair : c'est sa variante
                 assombrie qui porte le prix, à 5,13:1. */}
             <span className="text-base font-extrabold text-brand-accent sm:text-xl lg:text-4xl">
-              {produit.finalPrice.toFixed(0)} €
+              {prix(produit.finalPrice)}
             </span>
             <span className="text-xs text-slate-600/80 line-through sm:text-base lg:text-lg">
-              {produit.basePrice.toFixed(0)} €
+              {prix(produit.basePrice)}
             </span>
           </div>
 

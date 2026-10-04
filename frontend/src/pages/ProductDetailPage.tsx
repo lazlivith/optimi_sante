@@ -14,6 +14,7 @@ import { ProductImage } from '../components/common/ProductImage';
 import { lireFiche } from '../api/ficheProduit';
 import { orderService, type QuoteRequestDto } from '../api/orderService';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { useDevise } from '../context/DeviseContext';
 
 const nomLisible = (nom: string) => nom.replace(/&amp;/g, '&');
 
@@ -38,6 +39,7 @@ const nomLisible = (nom: string) => nom.replace(/&amp;/g, '&');
  * catégories.</p>
  */
 export function ProductDetailPage() {
+  const { prix } = useDevise();
   const { slug } = useParams<{ slug: string }>();
   const { addToCart } = useCart();
   // La quantité est retenue AVEC la fiche à laquelle elle appartient, et déduite au rendu.
@@ -214,7 +216,7 @@ export function ProductDetailPage() {
                   <p className="mt-1 text-sm text-slate-600">
                     {product.relatedTraining.durationDays} jour
                     {product.relatedTraining.durationDays > 1 ? 's' : ''} ·{' '}
-                    {product.relatedTraining.price.toFixed(0)} €
+                    {prix(product.relatedTraining.price)}
                   </p>
                 </div>
                 <ArrowRight className="mt-1 h-5 w-5 shrink-0 text-brand transition-transform group-hover:translate-x-1" aria-hidden="true" />
@@ -310,6 +312,7 @@ function PanneauAchat({ product, quantity, setQuantity, agir, ancre, grosVolume,
   grosVolume: boolean;
   demanderDevis: () => void;
 }) {
+  const { prix } = useDevise();
   const remise = product.isOnPromo && product.basePrice > product.finalPrice
     ? Math.round((1 - product.finalPrice / product.basePrice) * 100)
     : 0;
@@ -336,11 +339,11 @@ function PanneauAchat({ product, quantity, setQuantity, agir, ancre, grosVolume,
         ) : (
           <>
             <span className={`text-3xl font-extrabold ${remise > 0 ? 'text-brand-accent' : 'text-brand-dark'}`}>
-              {product.finalPrice.toFixed(0)} €
+              {prix(product.finalPrice)}
             </span>
             {(remise > 0 || product.b2bDiscountRate > 0) && (
               <span className="text-lg text-slate-500 line-through">
-                {product.basePrice.toFixed(0)} €
+                {prix(product.basePrice)}
               </span>
             )}
             {remise > 0 && (
@@ -444,6 +447,7 @@ function Disponibilite({ product }: { product: Product }) {
 }
 
 function LigneApparentee({ product }: { product: Product }) {
+  const { prix } = useDevise();
   return (
     <li>
       <Link to={cheminProduit(product.slug)} className="group flex items-center gap-3 py-3">
@@ -458,7 +462,7 @@ function LigneApparentee({ product }: { product: Product }) {
             {product.name}
           </p>
           <p className="mt-0.5 text-sm font-bold text-brand-dark">
-            {product.isQuoteOnly ? 'Sur devis' : `${product.finalPrice.toFixed(0)} €`}
+            {product.isQuoteOnly ? 'Sur devis' : prix(product.finalPrice)}
           </p>
         </div>
       </Link>
@@ -477,6 +481,7 @@ function BarreAchatCollante({ product, agir, ancre }: {
   agir: () => void;
   ancre: React.RefObject<HTMLDivElement | null>;
 }) {
+  const { prix } = useDevise();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -507,7 +512,7 @@ function BarreAchatCollante({ product, agir, ancre }: {
           <div className="min-w-0 flex-1">
             <p className="line-clamp-1 text-sm font-bold text-brand-dark">{product.name}</p>
             <p className="text-sm font-bold text-brand-dark">
-              {product.isQuoteOnly ? 'Tarif sur demande' : `${product.finalPrice.toFixed(0)} €`}
+              {product.isQuoteOnly ? 'Tarif sur demande' : prix(product.finalPrice)}
             </p>
           </div>
           <button

@@ -107,6 +107,21 @@ public class Order {
     @Column(name = "refunded_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal refundedAmount = BigDecimal.ZERO;
 
+    /**
+     * Devise dans laquelle la commande a été réglée.
+     *
+     * <p>{@code totalAmount} reste en euros — devise de référence, dans laquelle la comptabilité
+     * est tenue et les agrégats s'additionnent. Ces deux champs disent ce que le client a vu et
+     * payé : c'est ce qu'un reçu doit porter, parce que c'est ce qu'il reconnaîtra sur son
+     * relevé (V66).</p>
+     */
+    @Builder.Default
+    @Column(name = "payment_currency", nullable = false, length = 3)
+    private String paymentCurrency = "EUR";
+
+    @Column(name = "payment_amount", precision = 14, scale = 2)
+    private BigDecimal paymentAmount;
+
     @Column(name = "stripe_checkout_session_id", length = 255)
     private String stripeCheckoutSessionId;
 

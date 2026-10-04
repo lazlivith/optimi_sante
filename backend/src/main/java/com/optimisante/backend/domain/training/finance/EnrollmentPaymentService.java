@@ -89,6 +89,8 @@ public class EnrollmentPaymentService {
                 enrollment == null ? null : enrollment.getId(),
                 null,
                 // Des frais de dossier n'expedient rien : aucun pied de transport.
+                null,
+                // Les encaissements de formation sont libelles en euros.
                 null));
     }
 

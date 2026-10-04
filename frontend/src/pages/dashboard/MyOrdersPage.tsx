@@ -5,6 +5,21 @@ import { vaultService } from '../../api/vaultService';
 import { Package, Loader2, FileText } from 'lucide-react';
 import { DocumentButton } from '../../components/documents/DocumentButton';
 
+/**
+ * Un montant deja libelle dans sa devise.
+ *
+ * <p>Rien n'est converti ici : la commande porte ce qui a ete debite. Reconvertir afficherait
+ * un montant au taux d'aujourd'hui pour un reglement d'hier.</p>
+ */
+function montantDansDevise(montant: number, devise: string): string {
+  try {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: devise }).format(montant);
+  } catch {
+    return `${montant.toLocaleString('fr-FR')} ${devise}`;
+  }
+}
+
+
 export function MyOrdersPage() {
   const [orders, setOrders] = useState<OrderResponseDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,7 +100,9 @@ export function MyOrdersPage() {
                         {order.isQuote ? 'Demande de devis' : 'Commande'}
                       </td>
                       <td className="px-6 py-4 font-semibold text-slate-900">
-                        {order.totalAmount.toFixed(2)} €
+                        {order.paymentCurrency && order.paymentAmount != null
+                          ? montantDansDevise(order.paymentAmount, order.paymentCurrency)
+                          : `${order.totalAmount.toFixed(2)} €`}
                       </td>
                       <td className="px-6 py-4">
                         {getStatusBadge(order.paymentStatus)}

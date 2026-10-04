@@ -114,6 +114,23 @@ public class StripePaymentService {
      * réutilisation d'une carte enregistrée lors d'un achat précédent. À utiliser quand
      * l'utilisateur a déjà un compte (et donc potentiellement déjà un stripeCustomerId).
      */
+    /**
+     * Variante où le montant porte sa propre devise.
+     *
+     * <p>C'est le cas d'une commande réglée dans la devise choisie par le client : la devise
+     * vient alors de la commande, et non de la configuration globale, qui ne sait rien de ce
+     * que ce client a vu à l'écran.</p>
+     */
+    public Session createElementsCheckoutSessionForCustomer(UUID referenceId, Montant montant,
+                                                            String customerId, String returnUrl,
+                                                            String productName,
+                                                            Map<String, String> metadata)
+            throws StripeException {
+        return Session.create(baseElementsSessionBuilder(
+                referenceId, montant, returnUrl, productName, metadata)
+                .setCustomer(customerId).build());
+    }
+
     public Session createElementsCheckoutSessionForCustomer(UUID referenceId, BigDecimal amount, String customerId,
                                                               String returnUrl, String productName,
                                                               Map<String, String> metadata) throws StripeException {
@@ -139,6 +156,13 @@ public class StripePaymentService {
 
     private SessionCreateParams.Builder baseElementsSessionBuilder(UUID referenceId, BigDecimal amount, String returnUrl,
                                                                      String productName, Map<String, String> metadata) {
+        return baseElementsSessionBuilder(referenceId, Montant.de(amount, devise), returnUrl,
+                productName, metadata);
+    }
+
+    private SessionCreateParams.Builder baseElementsSessionBuilder(UUID referenceId, Montant montant,
+                                                                     String returnUrl, String productName,
+                                                                     Map<String, String> metadata) {
         SessionCreateParams.Builder builder = SessionCreateParams.builder()
                 // "CUSTOM" est le nom de l'énum stripe-java pour ce que la doc Stripe appelle
                 // désormais ui_mode "elements" (valeur réseau "custom" — API "Custom Checkout",
@@ -159,8 +183,8 @@ public class StripePaymentService {
                                 .setQuantity(1L)
                                 .setPriceData(
                                         SessionCreateParams.LineItem.PriceData.builder()
-                                                .setCurrency(devise.codeStripe())
-                                                .setUnitAmount(Montant.de(amount, devise).versPlusPetiteUnite())
+                                                .setCurrency(montant.devise().codeStripe())
+                                                .setUnitAmount(montant.versPlusPetiteUnite())
                                                 .setProductData(
                                                         SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                                                 .setName(productName)
