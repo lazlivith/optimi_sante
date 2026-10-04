@@ -14,6 +14,14 @@ import java.util.UUID;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, UUID> {
     Page<Order> findByUserId(UUID userId, Pageable pageable);
+
+    /**
+     * La commande réglée par ce paiement Stripe.
+     *
+     * <p>Seul chemin dont dispose le webhook de remboursement : l'événement {@code
+     * charge.refunded} porte l'identifiant du paiement, pas le nôtre.</p>
+     */
+    java.util.Optional<Order> findByStripePaymentIntentId(String stripePaymentIntentId);
     java.util.List<Order> findByUserId(UUID userId);
     Page<Order> findByIsQuoteTrueOrderByCreatedAtDesc(Pageable pageable);
 

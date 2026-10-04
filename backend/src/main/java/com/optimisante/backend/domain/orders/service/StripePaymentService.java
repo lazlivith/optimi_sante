@@ -20,9 +20,23 @@ public class StripePaymentService {
     @Value("${stripe.api-key}")
     private String stripeApiKey;
 
+    /**
+     * Devise de facturation.
+     *
+     * <p>Elle était écrite en dur à deux endroits de cette classe, alors que la propriété
+     * {@code stripe.currency} existait dans la configuration et était exposée en production
+     * sous {@code STRIPE_CURRENCY} : la définir n'avait aucun effet, et donnait l'illusion du
+     * contraire. Elle est désormais lue ici, et nulle part ailleurs.</p>
+     */
+    @Value("${stripe.currency}")
+    private String devise;
+
     @PostConstruct
     public void init() {
         Stripe.apiKey = stripeApiKey;
+        // Au démarrage, et non à la première vente : une devise mal orthographiée doit arrêter
+        // le serveur, pas faire échouer le paiement d'un client.
+        this.devise = MontantStripe.normaliser(devise);
     }
 
     public Session createCheckoutSession(UUID orderId, BigDecimal amount, String userEmail, String successUrl, String cancelUrl) throws StripeException {
@@ -50,8 +64,8 @@ public class StripePaymentService {
                                 .setQuantity(1L)
                                 .setPriceData(
                                         SessionCreateParams.LineItem.PriceData.builder()
-                                                .setCurrency("eur")
-                                                .setUnitAmount(amount.multiply(new BigDecimal(100)).longValue()) // Conversion en centimes
+                                                .setCurrency(devise)
+                                                .setUnitAmount(MontantStripe.versPlusPetiteUnite(amount, devise))
                                                 .setProductData(
                                                         SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                                                 .setName(productName)
@@ -140,8 +154,8 @@ public class StripePaymentService {
                                 .setQuantity(1L)
                                 .setPriceData(
                                         SessionCreateParams.LineItem.PriceData.builder()
-                                                .setCurrency("eur")
-                                                .setUnitAmount(amount.multiply(new BigDecimal(100)).longValue())
+                                                .setCurrency(devise)
+                                                .setUnitAmount(MontantStripe.versPlusPetiteUnite(amount, devise))
                                                 .setProductData(
                                                         SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                                                 .setName(productName)

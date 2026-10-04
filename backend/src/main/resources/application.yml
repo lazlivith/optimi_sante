@@ -171,7 +171,9 @@ app:
 stripe:
   api-key: ${STRIPE_SECRET_KEY:sk_test_PLACEHOLDER}
   webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_PLACEHOLDER}
-  currency: eur
+  # Même nom de variable qu'en production : une devise se change de la même façon dans les
+  # deux environnements, sinon la recette ne reproduit pas ce qui tourne en ligne.
+  currency: ${STRIPE_CURRENCY:eur}
 
 ---
 spring:

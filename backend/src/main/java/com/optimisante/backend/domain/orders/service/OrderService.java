@@ -331,6 +331,66 @@ public class OrderService {
                 .map(this::mapToResponseDto);
     }
 
+    /**
+     * Constate un remboursement émis depuis Stripe.
+     *
+     * <p>La commande cesse d'être comptée comme payée, et sort donc du chiffre d'affaires, qui
+     * n'agrège que les lignes au statut {@code PAID}. Sans cela, la plateforme annonçait un
+     * revenu pour de l'argent rendu.</p>
+     *
+     * <p><b>Le stock n'est volontairement pas réapprovisionné.</b> Un remboursement ne dit pas
+     * que la marchandise est revenue : elle peut être en transit, abîmée, ou jamais renvoyée.
+     * Remettre automatiquement les articles en vente afficherait un stock dont personne ne
+     * dispose, et la rupture se découvrirait à l'expédition suivante. Le retour physique se
+     * constate à la réception, par l'administration.</p>
+     *
+     * <p><b>Un remboursement partiel ne change pas le statut.</b> La plateforme ne sait pas
+     * représenter un montant partiellement rendu ; faire sortir toute la commande du chiffre
+     * d'affaires pour dix euros rendus serait plus faux que de ne rien faire. Le cas est
+     * journalisé en avertissement, avec le numéro de commande, pour être traité à la main.</p>
+     *
+     * @param paymentIntentId identifiant du paiement chez Stripe, seul lien dont dispose l'événement
+     * @param integral        vrai si la totalité du paiement a été rendue
+     * @param montantRembourse montant rendu, pour la trace
+     */
+    @Transactional
+    public void constaterRemboursement(String paymentIntentId, boolean integral,
+                                       BigDecimal montantRembourse) {
+        if (paymentIntentId == null || paymentIntentId.isBlank()) {
+            log.warn("Remboursement Stripe sans identifiant de paiement : ignoré.");
+            return;
+        }
+
+        Order order = orderRepository.findByStripePaymentIntentId(paymentIntentId).orElse(null);
+        if (order == null) {
+            // Ni une erreur ni un silence : le paiement peut relever d'un autre parcours — frais
+            // de dossier d'une formation, candidature — dont le remboursement n'est pas encore
+            // traité ici. L'avertissement nomme le paiement pour qu'il soit repris à la main.
+            log.warn("Remboursement Stripe {} : aucune commande ne correspond. "
+                    + "S'il s'agit d'un autre parcours de paiement, le traitement reste manuel.",
+                    paymentIntentId);
+            return;
+        }
+
+        if (!integral) {
+            log.warn("Remboursement PARTIEL de {} sur la commande {} : statut inchangé, "
+                    + "à traiter manuellement.", montantRembourse, order.getOrderNumber());
+            return;
+        }
+
+        if (order.getPaymentStatus() == PaymentStatus.REFUNDED) {
+            log.info("Commande {} déjà remboursée. Idempotence respectée.", order.getOrderNumber());
+            return;
+        }
+
+        PaymentStatus precedent = order.getPaymentStatus();
+        order.setPaymentStatus(PaymentStatus.REFUNDED);
+        orderRepository.save(order);
+        log.info("Commande {} remboursée intégralement ({}) : statut {} → REFUNDED. "
+                + "Le stock n'est pas réapprovisionné, le retour se constate à la réception.",
+                order.getOrderNumber(), montantRembourse, precedent);
+    }
+
     @Transactional
     public void confirmOrderPayment(UUID orderId) {
         Order order = orderRepository.findById(orderId)
