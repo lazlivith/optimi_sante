@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Save, Coins, Lock } from 'lucide-react';
+import { Loader2, Save, Coins, Lock, Plus } from 'lucide-react';
 import { adminDevisesService, type DeviseTaux } from '../../api/adminDevisesService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -22,6 +22,8 @@ export function AdminDevisesPage() {
   const [chargement, setChargement] = useState(true);
   const [enCours, setEnCours] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [nouveau, setNouveau] = useState({ code: '', taux: '', palier: '' });
+  const [ajout, setAjout] = useState(false);
 
   const charger = async () => {
     setChargement(true);
@@ -70,6 +72,49 @@ export function AdminDevisesPage() {
     return arrondi.toLocaleString('fr-FR', {
       minimumFractionDigits: ligne.decimales, maximumFractionDigits: ligne.decimales,
     });
+  };
+
+  /**
+   * Ajoute une devise que la grille ne contient pas encore.
+   *
+   * Le serveur crée la ligne si elle n'existe pas : ouvrir une nouvelle zone monétaire ne
+   * demande donc pas de migration de base, ce qui serait absurde pour une donnée que
+   * l'administration tient elle-même.
+   */
+  const ajouter = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = nouveau.code.trim().toUpperCase();
+    if (!/^[A-Z]{3}$/.test(code)) {
+      setToast({ message: 'Le code doit être un code ISO 4217 à trois lettres.', type: 'error' });
+      return;
+    }
+    if (grille.some(d => d.devise === code)) {
+      setToast({ message: `La devise ${code} figure déjà dans la grille.`, type: 'error' });
+      return;
+    }
+    const taux = parseFloat(nouveau.taux);
+    const palier = parseFloat(nouveau.palier);
+    if (!(taux > 0) || !(palier > 0)) {
+      setToast({ message: 'Le taux et le palier doivent être strictement positifs.', type: 'error' });
+      return;
+    }
+
+    setAjout(true);
+    try {
+      // Fermee a la creation : ouvrir une devise fait voir ses prix aux clients ET facturer
+      // dans cette monnaie. Cela se decide apres verification, pas dans le meme geste.
+      await adminDevisesService.enregistrer(code, { taux, palierArrondi: palier, actif: false });
+      setNouveau({ code: '', taux: '', palier: '' });
+      await charger();
+      setToast({
+        message: `${code} ajoutée, fermée à la vente. Ouvrez-la quand l'encaissement est vérifié.`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      setToast({ message: err.response?.data?.message || "Ajout impossible.", type: 'error' });
+    } finally {
+      setAjout(false);
+    }
   };
 
   const champ = 'w-full rounded-md border border-slate-300 p-2.5 disabled:bg-slate-50 '
@@ -193,6 +238,62 @@ export function AdminDevisesPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {!chargement && (
+        <form
+          onSubmit={ajouter}
+          className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-5"
+        >
+          <h2 className="mb-1 flex items-center gap-2 font-bold text-brand-dark">
+            <Plus className="h-4 w-4 text-brand" aria-hidden="true" /> Ajouter une devise
+          </h2>
+          <p className="mb-4 text-sm text-slate-500">
+            Elle sera créée fermée à la vente : ouvrir une devise fait voir ses prix aux clients
+            et facturer dans cette monnaie.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-4">
+            <div>
+              <label htmlFor="dev-code" className="mb-1 block text-xs font-medium text-slate-600">
+                Code ISO 4217
+              </label>
+              <input
+                id="dev-code" className={champ} maxLength={3} placeholder="XOF"
+                value={nouveau.code}
+                onChange={e => setNouveau({ ...nouveau, code: e.target.value.toUpperCase() })}
+              />
+            </div>
+            <div>
+              <label htmlFor="dev-taux" className="mb-1 block text-xs font-medium text-slate-600">
+                1 EUR vaut
+              </label>
+              <input
+                id="dev-taux" type="number" step="0.000001" min="0" className={champ}
+                value={nouveau.taux}
+                onChange={e => setNouveau({ ...nouveau, taux: e.target.value })}
+              />
+            </div>
+            <div>
+              <label htmlFor="dev-palier" className="mb-1 block text-xs font-medium text-slate-600">
+                Arrondir au multiple de
+              </label>
+              <input
+                id="dev-palier" type="number" step="0.01" min="0" className={champ}
+                value={nouveau.palier}
+                onChange={e => setNouveau({ ...nouveau, palier: e.target.value })}
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                type="submit" disabled={ajout}
+                className="inline-flex items-center gap-2 rounded-xl border border-brand px-4 py-2.5 font-bold text-brand transition-colors hover:bg-brand-light disabled:opacity-60"
+              >
+                {ajout ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                Ajouter
+              </button>
+            </div>
+          </div>
+        </form>
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
