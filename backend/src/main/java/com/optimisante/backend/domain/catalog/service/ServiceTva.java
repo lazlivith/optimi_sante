@@ -29,8 +29,35 @@ import java.util.Map;
  * une déclaration fiscale faite par un script. Tant que la table des taux par famille n'est
  * pas saisie, tout relève du taux normal — ce qui est déjà le cas aujourd'hui dans les faits.</p>
  */
+/*
+ * Note d'exploitation : la ventilation ne s'IMPRIME que si `app.tva.active` vaut vrai.
+ * Voir ServiceTva#publiable. Tant que la grille des taux n'est pas etablie par le comptable,
+ * annoncer « dont TVA 20 % » sur un article qui releve peut-etre du taux reduit serait une
+ * mention fausse sur une piece comptable — pire que pas de mention du tout.
+ */
 @Service
 public class ServiceTva {
+
+    /**
+     * La ventilation de la taxe s'imprime-t-elle sur les documents ?
+     *
+     * <p><b>Fermé par défaut, et c'est le point.</b> Le calcul est juste — les prix étant
+     * annoncés TTC, la taxe est extraite et le total à payer ne change pas — mais le
+     * <i>taux</i> appliqué à chaque article vient d'une grille que seul le comptable peut
+     * établir. Tant qu'elle n'existe pas, tout article retombe sur 20 %. Annoncer « dont
+     * TVA 20 % » sur un fauteuil roulant qui relève peut-être du taux réduit de 5,5 % serait
+     * une mention fausse sur une pièce comptable — plus grave que l'absence de mention.</p>
+     *
+     * <p>L'interrupteur s'ouvre par {@code TVA_ACTIVE=true}, une fois la grille saisie.</p>
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.tva.active:false}")
+    private boolean publiable;
+
+    /** Vrai lorsque la grille des taux est établie et que les documents peuvent l'annoncer. */
+    public boolean estPubliable() {
+        return publiable;
+    }
+
 
     /** Taux normal français. Sert de dernier recours quand rien n'est renseigné. */
     public static final BigDecimal TAUX_NORMAL = new BigDecimal("20.00");

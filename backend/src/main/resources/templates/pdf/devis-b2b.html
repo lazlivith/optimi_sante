@@ -87,11 +87,11 @@
         <!-- La TVA etait ecrite en dur a 0 % « Export/Exonere », et le meme montant
              figurait en HT et en TTC. Les prix etant annonces TTC, la taxe est desormais
              EXTRAITE et ventilee par taux : le total a payer ne change pas. -->
-        <tr>
+        <tr th:if="${aTva}">
             <td>Total HT :</td>
             <td style="text-align: right;" th:text="${#numbers.formatDecimal(totalHt, 1, 'WHITESPACE', 2, 'POINT')} + ' €'">100.00 €</td>
         </tr>
-        <tr th:each="base : ${ventilationTva}">
+        <tr th:if="${aTva}" th:each="base : ${ventilationTva}">
             <td th:text="'TVA ' + ${base.taux} + ' % (base ' + ${#numbers.formatDecimal(base.ht, 1, 'WHITESPACE', 2, 'POINT')} + ' €) :'">TVA</td>
             <td style="text-align: right;" th:text="${#numbers.formatDecimal(base.taxe, 1, 'WHITESPACE', 2, 'POINT')} + ' €'">0.00 €</td>
         </tr>

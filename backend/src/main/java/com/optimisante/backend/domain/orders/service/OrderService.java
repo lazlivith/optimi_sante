@@ -281,6 +281,7 @@ public class OrderService {
                         .map(i -> new com.optimisante.backend.domain.catalog.service.ServiceTva
                                 .LigneTaxable(i.getSubtotal(), i.getVatRate()))
                         .toList());
+                quoteData.put("aTva", serviceTva.estPubliable() && !ventilation.isEmpty());
                 quoteData.put("ventilationTva", ventilation.stream().map(x -> java.util.Map.of(
                         "taux", x.taux().stripTrailingZeros().toPlainString(),
                         "ht", x.ht().toPlainString(),

@@ -235,7 +235,7 @@ public class PaymentReceiptIssuer {
         List<ServiceTva.Ventilation> ventilation = taxables.isEmpty()
                 ? List.of() : serviceTva.ventiler(taxables);
 
-        v.put("aTva", !ventilation.isEmpty());
+        v.put("aTva", serviceTva.estPubliable() && !ventilation.isEmpty());
         v.put("ventilationTva", ventilation.stream().map(x -> Map.of(
                 "taux", x.taux().stripTrailingZeros().toPlainString().replace('.', ','),
                 "ht", montant(x.ht()),
