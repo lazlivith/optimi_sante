@@ -75,9 +75,30 @@ public record CompanyIdentity(
 
     /** Vrai dès qu'une mention obligatoire manque — ce que vérifie le garde au démarrage. */
     public boolean estIncomplete() {
-        return ou(denomination).equals(MANQUANT)
-                || ou(siret).equals(MANQUANT)
-                || ou(adresse).equals(MANQUANT)
-                || ou(tvaIntracom).equals(MANQUANT);
+        return !mentionsAInstruire().isEmpty();
+    }
+
+    /**
+     * Les mentions obligatoires qui ne sont pas réellement renseignées, nommées une à une.
+     *
+     * <p>Les nommer plutôt que rendre un simple booléen : un message qui dit « l'identité est
+     * incomplète » envoie chercher dans douze variables ; un message qui dit « LEGAL_SIRET
+     * contient "IMMATRICULATION EN COURS" » se corrige en trente secondes.</p>
+     */
+    public java.util.List<String> mentionsAInstruire() {
+        var manquantes = new java.util.ArrayList<String>();
+        verifier(manquantes, "LEGAL_DENOMINATION", denomination);
+        verifier(manquantes, "LEGAL_SIRET", siret);
+        verifier(manquantes, "LEGAL_ADRESSE", adresse);
+        verifier(manquantes, "LEGAL_TVA_INTRACOM", tvaIntracom);
+        return manquantes;
+    }
+
+    private static void verifier(java.util.List<String> manquantes, String variable, String valeur) {
+        if (valeur == null || valeur.isBlank()) {
+            manquantes.add(variable + " : non renseignée");
+        } else if (ValeurDAttente.enEst(valeur)) {
+            manquantes.add(variable + " : « " + valeur.trim() + " », qui est une valeur d'attente");
+        }
     }
 }
