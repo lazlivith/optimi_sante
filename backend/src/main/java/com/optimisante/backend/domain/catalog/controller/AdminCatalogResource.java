@@ -117,6 +117,19 @@ public class AdminCatalogResource {
         return ResponseEntity.ok(adminCatalogService.setCategoryMargin(id, rate));
     }
 
+    /**
+     * Taux de TVA d'une catégorie (V68).
+     *
+     * <p>Sans paramètre, le taux redevient « non examiné » et le produit retombe sur le taux
+     * normal — la règle légale par défaut pour le matériel médical.</p>
+     */
+    @PatchMapping("/categories/{id}/vat")
+    public ResponseEntity<AdminCategoryDto> setCategoryVatRate(
+            @PathVariable UUID id,
+            @RequestParam(required = false) java.math.BigDecimal rate) {
+        return ResponseEntity.ok(adminCatalogService.setCategoryVatRate(id, rate));
+    }
+
     @GetMapping("/categories")
     public ResponseEntity<List<AdminCategoryDto>> listCategories() {
         return ResponseEntity.ok(adminCatalogService.listCategoriesWithCounts());

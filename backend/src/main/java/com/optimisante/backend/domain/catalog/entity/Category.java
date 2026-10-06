@@ -46,6 +46,17 @@ public class Category {
     @Column(name = "vat_rate", precision = 4, scale = 2)
     private java.math.BigDecimal vatRate;
 
+    /**
+     * Le comptable a signalé ce taux comme à confirmer sur la liste officielle (V68).
+     *
+     * <p>La catégorie porte alors le taux <b>prudent</b> en attendant. Prudent dans un sens
+     * précis : les prix étant annoncés TTC, extraire 20 % là où 5,5 % s'applique fait reverser
+     * à l'État plus que dû — on y perd de la marge ; l'inverse est un manquement déclaratif.</p>
+     */
+    @Builder.Default
+    @Column(name = "vat_rate_a_verifier", nullable = false)
+    private Boolean vatRateAVerifier = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Category parent;

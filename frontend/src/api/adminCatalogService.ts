@@ -61,6 +61,14 @@ export interface AdminCategoryDto {
   slug: string;
   /** Marge appliquée au prix d'achat lors d'un import ; nulle = celle du fournisseur s'applique. */
   marginRate: number | null;
+  /**
+   * Taux de TVA de la famille, en pourcentage.
+   * `null` ne veut pas dire zero : il veut dire NON EXAMINE, et le produit retombe alors sur
+   * le taux normal de 20 % — la regle legale du materiel medical, pas un defaut technique.
+   */
+  vatRate: number | null;
+  /** Le comptable a signale ce taux comme a confirmer sur la liste officielle. */
+  vatRateAVerifier: boolean;
   /** Nombre de produits vivants (supprimes exclus, desactives inclus). */
   productCount: number;
 }
@@ -130,6 +138,13 @@ export const adminCatalogService = {
   },
 
   /** Fixe la marge d'une catégorie (sans taux : la marge est retirée). */
+  /** Fixe le taux de TVA d'une famille. Ne change aucun prix : les prix sont annonces TTC. */
+  setCategoryVatRate: async (id: string, rate: number | null): Promise<AdminCategoryDto> => {
+    const { data } = await axiosClient.patch<AdminCategoryDto>(
+      `/admin/catalog/categories/${id}/vat${rate === null ? '' : `?rate=${rate}`}`);
+    return data;
+  },
+
   setCategoryMargin: async (id: string, rate: number | null): Promise<AdminCategoryDto> => {
     const { data } = await axiosClient.patch<AdminCategoryDto>(
       `/admin/catalog/categories/${id}/margin${rate === null ? '' : `?rate=${rate}`}`);

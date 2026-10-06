@@ -99,8 +99,10 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
                    p.category_id AS categoryId, p.training_id AS trainingId, p.promo_price AS promoPrice,
                    p.promo_starts_at AS promoStartsAt, p.promo_ends_at AS promoEndsAt,
                      p.video_url AS videoUrl, p.video_provider AS videoProvider,
-                     p.is_video_promoted AS isVideoPromoted
+                     p.is_video_promoted AS isVideoPromoted,
+                     p.vat_rate AS vatRate, c.vat_rate AS vatRateCategorie
             FROM products p
+            LEFT JOIN categories c ON c.id = p.category_id
             WHERE p.deleted_at IS NULL
               AND (CAST(:search AS text) IS NULL
                    OR lower(p.name) LIKE lower(concat('%', CAST(:search AS text), '%'))
@@ -157,8 +159,10 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
                    p.category_id AS categoryId, p.training_id AS trainingId, p.promo_price AS promoPrice,
                    p.promo_starts_at AS promoStartsAt, p.promo_ends_at AS promoEndsAt,
                      p.video_url AS videoUrl, p.video_provider AS videoProvider,
-                     p.is_video_promoted AS isVideoPromoted
+                     p.is_video_promoted AS isVideoPromoted,
+                     p.vat_rate AS vatRate, c.vat_rate AS vatRateCategorie
             FROM products p
+            LEFT JOIN categories c ON c.id = p.category_id
             WHERE p.id = :id AND p.deleted_at IS NULL
             """,
             nativeQuery = true)

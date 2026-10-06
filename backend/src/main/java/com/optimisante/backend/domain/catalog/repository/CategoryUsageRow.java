@@ -20,4 +20,10 @@ public interface CategoryUsageRow {
 
     /** Marge appliquée aux imports de cette catégorie, en pourcentage (V59). Nulle si non fixée. */
     java.math.BigDecimal getMarginRate();
+
+    /** Taux de TVA de la famille, en pourcentage (V68). Nul = non examiné, donc 20 % par défaut. */
+    java.math.BigDecimal getVatRate();
+
+    /** Le comptable a signalé ce taux comme à confirmer sur la liste officielle (V68). */
+    boolean getVatRateAVerifier();
 }

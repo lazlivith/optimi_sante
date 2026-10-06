@@ -25,6 +25,18 @@ public interface AdminProductRow {
     UUID getCategoryId();
     UUID getTrainingId();
     BigDecimal getPromoPrice();
+
+    /**
+     * Taux propre au produit, en pourcentage. Nul : celui de sa catégorie s'applique.
+     *
+     * <p>La liste d'administration passe par cette projection et non par l'entité : sans ces
+     * deux colonnes, la colonne TVA de l'écran restait vide quelles que soient les valeurs en
+     * base — un défaut invisible tant qu'aucun taux n'était posé (V68).</p>
+     */
+    BigDecimal getVatRate();
+
+    /** Taux de la catégorie du produit. Nul : le taux normal s'applique. */
+    BigDecimal getVatRateCategorie();
     /**
      * Dates de promotion, en {@link Instant} et non en {@code OffsetDateTime}.
      *

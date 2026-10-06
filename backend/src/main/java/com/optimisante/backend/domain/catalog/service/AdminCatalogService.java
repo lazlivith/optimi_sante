@@ -176,6 +176,52 @@ public class AdminCatalogService {
                 .orElseThrow(() -> new IllegalStateException("Catégorie introuvable après enregistrement."));
     }
 
+    /**
+     * Fixe le taux de TVA d'une famille de produits.
+     *
+     * <p><b>Ne modifie aucun prix.</b> Les prix sont annoncés TTC : le taux sert à extraire la
+     * taxe qu'ils contiennent déjà, pas à l'ajouter. Changer ce taux change donc la part
+     * reversée à l'État et la part qui reste à l'entreprise — jamais ce que le client paie.</p>
+     *
+     * <p>Ne modifie pas non plus les commandes passées : le taux est figé sur chaque ligne à
+     * l'encaissement. Une pièce comptable déjà émise ne se réécrit pas.</p>
+     *
+     * <p>Enregistrer un taux lève le marqueur « à vérifier » : poser une valeur, c'est trancher.</p>
+     *
+     * @param rate taux en pourcentage, ou {@code null} pour revenir à « non examiné »
+     */
+    @Transactional
+    public AdminCategoryDto setCategoryVatRate(UUID categoryId, java.math.BigDecimal rate) {
+        if (rate != null && !TAUX_ADMIS.contains(rate.stripTrailingZeros())) {
+            throw new IllegalArgumentException(
+                    "Taux de TVA non reconnu : " + rate + " %. Taux français en vigueur : "
+                    + "0, 2,1, 5,5, 10 et 20 %.");
+        }
+        UUID tenantId = requireTenantId();
+        Category categorie = categoryRepository.findById(categoryId)
+                .filter(c -> c.getTenant().getId().equals(tenantId))
+                .orElseThrow(() -> new IllegalArgumentException("Catégorie introuvable."));
+        categorie.setVatRate(rate);
+        if (rate != null) {
+            categorie.setVatRateAVerifier(false);
+        }
+        categoryRepository.save(categorie);
+        return listCategoriesWithCounts().stream()
+                .filter(c -> c.id().equals(categoryId)).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Catégorie introuvable après enregistrement."));
+    }
+
+    /**
+     * Les seuls taux que la base accepte (contrainte CHECK de V62).
+     *
+     * <p>Les refuser ici plutôt qu'en base donne un message qu'on peut lire : une violation de
+     * contrainte remonterait au navigateur sous une forme que personne ne sait corriger.</p>
+     */
+    private static final java.util.Set<java.math.BigDecimal> TAUX_ADMIS = java.util.Set.of(
+            new java.math.BigDecimal("0"), new java.math.BigDecimal("2.1"),
+            new java.math.BigDecimal("5.5"), new java.math.BigDecimal("1E+1"),
+            new java.math.BigDecimal("2E+1"));
+
     private String generateUniqueSlug(UUID tenantId, String name) {
         String base = slugify(name);
         String slug = base;
@@ -260,6 +306,12 @@ public class AdminCatalogService {
                 .promoStartsAt(enOffset(row.getPromoStartsAt()))
                 .promoEndsAt(enOffset(row.getPromoEndsAt()))
                 .trainingId(row.getTrainingId())
+                .vatRate(row.getVatRate())
+                // Meme cascade que ServiceTva#tauxDe, appliquee aux colonnes de la projection :
+                // produit, puis categorie, puis taux normal.
+                .vatRateApplique(row.getVatRate() != null ? row.getVatRate()
+                        : row.getVatRateCategorie() != null ? row.getVatRateCategorie()
+                        : com.optimisante.backend.domain.catalog.service.ServiceTva.TAUX_NORMAL)
                 .build();
     }
 
@@ -274,7 +326,8 @@ public class AdminCatalogService {
     public java.util.List<AdminCategoryDto> listCategoriesWithCounts() {
         return categoryRepository.findAllWithProductCount(requireTenantId()).stream()
                 .map(row -> new AdminCategoryDto(
-                        row.getId(), row.getName(), row.getSlug(), row.getMarginRate(), row.getProductCount()))
+                        row.getId(), row.getName(), row.getSlug(), row.getMarginRate(),
+                        row.getVatRate(), row.getVatRateAVerifier(), row.getProductCount()))
                 .toList();
     }
 

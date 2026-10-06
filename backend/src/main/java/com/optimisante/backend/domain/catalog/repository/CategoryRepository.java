@@ -43,11 +43,13 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
      * un {@code WHERE} elle annulerait l'effet du {@code LEFT JOIN}.</p>
      */
     @Query(value = """
-            SELECT c.id, c.name, c.slug, c.margin_rate AS marginRate, count(p.id) AS productCount
+            SELECT c.id, c.name, c.slug, c.margin_rate AS marginRate,
+                   c.vat_rate AS vatRate, c.vat_rate_a_verifier AS vatRateAVerifier,
+                   count(p.id) AS productCount
             FROM categories c
             LEFT JOIN products p ON p.category_id = c.id AND p.deleted_at IS NULL
             WHERE c.tenant_id = :tenantId
-            GROUP BY c.id, c.name, c.slug, c.margin_rate
+            GROUP BY c.id, c.name, c.slug, c.margin_rate, c.vat_rate, c.vat_rate_a_verifier
             ORDER BY c.name ASC
             """, nativeQuery = true)
     List<CategoryUsageRow> findAllWithProductCount(@Param("tenantId") UUID tenantId);
