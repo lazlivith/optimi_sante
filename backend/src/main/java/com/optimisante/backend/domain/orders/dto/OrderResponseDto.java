@@ -36,5 +36,7 @@ public record OrderResponseDto(
          */
         String paymentCurrency,
         BigDecimal paymentAmount,
+        /** Montant cumulé rendu au client. Zéro pour une commande non remboursée (V65). */
+        BigDecimal refundedAmount,
         List<OrderItemDto> items
 ) {}

@@ -120,7 +120,8 @@ public class AdminOrderResource {
                         updatedOrder.stripeCheckoutSessionId(), updatedOrder.paymentUrl(), updatedOrder.clientSecret(), publicId,
                         updatedOrder.promoCode(), updatedOrder.discountAmount(), updatedOrder.quoteDiscountRate(),
                         updatedOrder.createdAt(), updatedOrder.paymentCurrency(),
-                        updatedOrder.paymentAmount(), updatedOrder.items()
+                        updatedOrder.paymentAmount(), updatedOrder.refundedAmount(),
+                        updatedOrder.items()
                 );
 
                 log.info("PDF generated and uploaded for order {}: publicId={}", id, publicId);

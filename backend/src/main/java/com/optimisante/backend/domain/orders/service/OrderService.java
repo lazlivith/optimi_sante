@@ -308,7 +308,7 @@ public class OrderService {
                 dto.status(), dto.isQuote(), dto.totalAmount(), dto.stripePaymentIntentId(),
                 dto.stripeCheckoutSessionId(), null, clientSecret, dto.documentS3Key(),
                 dto.promoCode(), dto.discountAmount(), dto.quoteDiscountRate(), dto.createdAt(),
-                dto.paymentCurrency(), dto.paymentAmount(), dto.items()
+                dto.paymentCurrency(), dto.paymentAmount(), dto.refundedAmount(), dto.items()
         );
     }
 
@@ -660,6 +660,7 @@ public class OrderService {
                 order.getCreatedAt(),
                 order.getPaymentCurrency(),
                 order.getPaymentAmount(),
+                order.getRefundedAmount(),
                 itemDtos
         );
     }

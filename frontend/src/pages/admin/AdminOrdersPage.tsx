@@ -85,7 +85,20 @@ export function AdminOrdersPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-slate-600">{PAYMENT_METHOD_LABELS[order.paymentMethod] || order.paymentMethod}</td>
-                    <td className="px-6 py-4 font-semibold text-slate-900">{order.totalAmount.toFixed(2)} €</td>
+                    <td className="px-6 py-4 font-semibold text-slate-900">
+                      {order.totalAmount.toFixed(2)} €
+                      {/* Un remboursement partiel ne change pas le statut : sans cette ligne,
+                          rien a l'ecran ne distinguerait une commande dont la moitie a ete
+                          rendue d'une commande intacte, alors que le chiffre d'affaires, lui,
+                          en tient deja compte. */}
+                      {order.refundedAmount != null && order.refundedAmount > 0
+                        && order.paymentStatus !== 'REFUNDED' && (
+                        <span className="mt-0.5 block text-xs font-medium text-slate-500">
+                          Remboursé {order.refundedAmount.toFixed(2)} € — net{' '}
+                          {(order.totalAmount - order.refundedAmount).toFixed(2)} €
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={order.paymentStatus} />
                     </td>

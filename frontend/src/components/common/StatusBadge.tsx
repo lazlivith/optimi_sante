@@ -61,6 +61,7 @@ const STATUS_REGISTRY: Record<string, StatusConfig> = {
   PENDING_APPROVAL: { label: 'En validation', tone: 'blue' },
   QUOTE_SENT: { label: 'Devis envoyé', tone: 'amber' },
   QUOTE_REJECTED: { label: 'Devis rejeté', tone: 'rose' },
+  REFUNDED: { label: 'Remboursé', tone: 'slate' },
   // Emails
   SENT: { label: 'Envoyé', tone: 'emerald' },
   FAILED: { label: 'Échec', tone: 'rose' },

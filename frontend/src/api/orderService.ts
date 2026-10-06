@@ -55,6 +55,8 @@ export interface OrderResponseDto {
    *  reste en euros, devise de reference de la comptabilite. */
   paymentCurrency?: string;
   paymentAmount?: number;
+  /** Montant cumule rendu au client. Zero si rien n'a ete rembourse. */
+  refundedAmount?: number;
 }
 
 export interface PromoValidationResult {
