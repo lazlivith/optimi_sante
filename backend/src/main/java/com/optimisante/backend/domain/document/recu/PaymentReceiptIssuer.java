@@ -232,8 +232,12 @@ public class PaymentReceiptIssuer {
                 .filter(l -> l.tauxTva() != null)
                 .map(l -> new ServiceTva.LigneTaxable(l.total(), l.tauxTva()))
                 .toList();
+        // La remise est repartie sur les lignes avant de ventiler : sans cela, le total hors
+        // taxes et la taxe annonces depassaient le montant reellement regle, de tout le
+        // montant de la remise.
         List<ServiceTva.Ventilation> ventilation = taxables.isEmpty()
-                ? List.of() : serviceTva.ventiler(taxables);
+                ? List.of()
+                : serviceTva.ventiler(serviceTva.repartirRemise(taxables, e.remise()));
 
         v.put("aTva", serviceTva.estPubliable() && !ventilation.isEmpty());
         v.put("ventilationTva", ventilation.stream().map(x -> Map.of(

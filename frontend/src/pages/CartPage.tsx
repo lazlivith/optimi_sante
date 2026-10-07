@@ -6,6 +6,7 @@ import { Loader2, Box, Trash2, ArrowLeft, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { useDevise } from '../context/DeviseContext';
+import { DetailTva } from '../components/catalog/DetailTva';
 
 export function CartPage() {
   const { prix } = useDevise();
@@ -136,12 +137,20 @@ export function CartPage() {
 
         {/* Summary (Right side - 1 column width) */}
         <div className="lg:col-span-1 bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm sticky top-28">
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex justify-between items-center mb-3">
             <span className="font-bold text-lg text-brand-dark">Total</span>
             <span className="text-2xl font-bold text-brand-dark">
               {hasQuoteOnlyItems ? 'Sur devis' : prix(totalPrice)}
             </span>
           </div>
+
+          {/* Apres le total : la taxe est DEJA dans les prix annonces, et la placer avant
+              laisserait croire qu'elle s'y ajoute. */}
+          {!hasQuoteOnlyItems && (
+            <div className="mb-8">
+              <DetailTva items={items} />
+            </div>
+          )}
 
           {hasQuoteOnlyItems || user?.role === 'CLIENT_B2B' ? (
              <div className="space-y-3">

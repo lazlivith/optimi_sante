@@ -277,10 +277,14 @@ public class OrderService {
                 // ecrite en dur, avec le meme montant partout : un devis a un etablissement
                 // francais y declarait donc une taxe nulle qui ne lui est pas applicable. Les
                 // prix etant TTC, la taxe est extraite et ventilee par taux.
-                var ventilation = serviceTva.ventiler(savedOrder.getItems().stream()
-                        .map(i -> new com.optimisante.backend.domain.catalog.service.ServiceTva
-                                .LigneTaxable(i.getSubtotal(), i.getVatRate()))
-                        .toList());
+                // Meme repartition que sur le recu : une remise non repartie ferait annoncer
+                // un hors-taxes superieur au total du devis.
+                var ventilation = serviceTva.ventiler(serviceTva.repartirRemise(
+                        savedOrder.getItems().stream()
+                                .map(i -> new com.optimisante.backend.domain.catalog.service
+                                        .ServiceTva.LigneTaxable(i.getSubtotal(), i.getVatRate()))
+                                .toList(),
+                        savedOrder.getDiscountAmount()));
                 quoteData.put("aTva", serviceTva.estPubliable() && !ventilation.isEmpty());
                 quoteData.put("ventilationTva", ventilation.stream().map(x -> java.util.Map.of(
                         "taux", x.taux().stripTrailingZeros().toPlainString(),

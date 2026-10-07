@@ -12,6 +12,7 @@ import {
 } from '../components/checkout/FormulaireLivraison';
 import type { EstimationLivraison } from '../api/adminShippingService';
 import { useDevise } from '../context/DeviseContext';
+import { DetailTva } from '../components/catalog/DetailTva';
 
 export const CheckoutPage = () => {
   usePageMeta('Paiement sécurisé');
@@ -347,6 +348,11 @@ export const CheckoutPage = () => {
                   <span>Total à payer</span>
                   <span>{prix(totalAPayer)}</span>
                 </div>
+
+                {/* Apres le total, et non avant : la taxe est DEJA dans les prix annonces.
+                    La placer parmi les lignes qui s'additionnent laisserait croire qu'elle
+                    s'ajoute au montant a regler. */}
+                <DetailTva items={items} remise={appliedPromo?.discountAmount} />
                 {frais?.droitsALArrivee && (
                   // Mention DAP : hors de France, les droits et taxes locales restent a la
                   // charge du destinataire. Le dire ici, pas a la livraison.

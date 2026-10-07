@@ -133,6 +133,39 @@ public class ServiceTva {
     }
 
     /** Un montant TTC et son taux, tels qu'une ligne de commande les porte. */
+    /**
+     * Répartit une remise globale sur les lignes, à proportion de leur poids.
+     *
+     * <p><b>Pourquoi ce n'est pas un détail.</b> Une remise de 50 € sur un panier mêlant du
+     * 5,5 % et du 20 % ne réduit pas une seule des deux bases : elle les réduit toutes deux,
+     * chacune à hauteur de ce qu'elle pèse. Sans cela, le total hors taxes et la taxe annoncés
+     * sur un reçu dépassent le montant réellement réglé — l'écart saute aux yeux sur une pièce
+     * comptable, et il grandit avec la remise.</p>
+     *
+     * @param remise remise déjà accordée, en montant TTC ; nulle ou négative : rien ne change
+     */
+    public List<LigneTaxable> repartirRemise(List<LigneTaxable> lignes, BigDecimal remise) {
+        if (lignes == null || lignes.isEmpty() || remise == null || remise.signum() <= 0) {
+            return lignes == null ? List.of() : lignes;
+        }
+        BigDecimal total = lignes.stream()
+                .map(l -> l.montantTtc() == null ? BigDecimal.ZERO : l.montantTtc())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (total.signum() <= 0) {
+            return lignes;
+        }
+        // Une remise superieure au panier ne doit pas rendre des bases negatives : elle est
+        // plafonnee. Le cas ne devrait pas se produire, mais il ne doit pas produire un recu
+        // annoncant une taxe negative.
+        BigDecimal part = BigDecimal.ONE.subtract(
+                remise.min(total).divide(total, 10, RoundingMode.HALF_UP));
+        return lignes.stream()
+                .map(l -> new LigneTaxable(
+                        (l.montantTtc() == null ? BigDecimal.ZERO : l.montantTtc())
+                                .multiply(part).setScale(2, RoundingMode.HALF_UP), l.taux()))
+                .toList();
+    }
+
     public record LigneTaxable(BigDecimal montantTtc, BigDecimal taux) {}
 
     /** Les deux parts d'un montant TTC. Leur somme vaut exactement le montant d'origine. */
