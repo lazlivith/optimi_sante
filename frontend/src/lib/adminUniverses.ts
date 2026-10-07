@@ -3,7 +3,7 @@ import {
   LayoutDashboard, TrendingUp, ShoppingBag, Package, Tag, FileText,
   GraduationCap, BookOpen, Building2, Mail, Banknote, Users,
   BarChart3, FileSpreadsheet, ScrollText, ShieldCheck, BellRing, Bot, Newspaper,
-  type LucideIcon, Coins,
+  type LucideIcon, Coins, Receipt,
 } from 'lucide-react';
 
 /**
@@ -48,6 +48,9 @@ export const ECOMMERCE_UNIVERSE: AdminUniverse = {
     { to: '/admin/suppliers', label: 'Fournisseurs', icon: Truck },
     { to: '/admin/promo-codes', label: 'Codes promo', icon: Tag },
     { to: '/admin/shipping', label: 'Frais de livraison', icon: Truck },
+    // La TVA du catalogue et ses prix sont des decisions commerciales : elles relevent du
+    // negoce, et non de la gouvernance, qui porte ce qui engage la plateforme entiere.
+    { to: '/admin/fiscalite', label: 'Fiscalité & prix', icon: Receipt },
     { to: '/admin/quotes', label: 'Devis B2B', icon: FileText },
   ],
 };

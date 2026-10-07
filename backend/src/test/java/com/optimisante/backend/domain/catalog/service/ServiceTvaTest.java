@@ -19,7 +19,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ServiceTvaTest {
 
-    private final ServiceTva service = new ServiceTva();
+    /*
+     * Sans service de parametres : ces tests portent sur le CALCUL du taux et sur la
+     * ventilation, qui n'interrogent jamais l'interrupteur d'affichage. Lui passer un faux
+     * objet laisserait croire qu'il entre dans ce qui est eprouve ici.
+     */
+    private final ServiceTva service = new ServiceTva(null);
 
     @Test
     @DisplayName("la taxe est extraite du prix TTC, qui ne bouge pas")

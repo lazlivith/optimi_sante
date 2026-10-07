@@ -36,26 +36,28 @@ import java.util.Map;
  * mention fausse sur une piece comptable — pire que pas de mention du tout.
  */
 @Service
+@lombok.RequiredArgsConstructor
 public class ServiceTva {
+
+    private final com.optimisante.backend.domain.parametres.ServiceParametres serviceParametres;
 
     /**
      * La ventilation de la taxe s'imprime-t-elle sur les documents ?
      *
-     * <p><b>Fermé par défaut, et c'est le point.</b> Le calcul est juste — les prix étant
+     * <p><b>Fermée par défaut, et c'est le point.</b> Le calcul est juste — les prix étant
      * annoncés TTC, la taxe est extraite et le total à payer ne change pas — mais le
      * <i>taux</i> appliqué à chaque article vient d'une grille que seul le comptable peut
-     * établir. Tant qu'elle n'existe pas, tout article retombe sur 20 %. Annoncer « dont
-     * TVA 20 % » sur un fauteuil roulant qui relève peut-être du taux réduit de 5,5 % serait
-     * une mention fausse sur une pièce comptable — plus grave que l'absence de mention.</p>
+     * établir. Annoncer « dont TVA 20 % » sur un fauteuil roulant qui relève peut-être du
+     * taux réduit serait une mention fausse sur une pièce comptable — plus grave que
+     * l'absence de mention.</p>
      *
-     * <p>L'interrupteur s'ouvre par {@code TVA_ACTIVE=true}, une fois la grille saisie.</p>
+     * <p>L'interrupteur était une variable d'environnement ; il vit désormais en base et se
+     * lève depuis l'administration, parce que la personne qui décide de l'ouvrir — celle qui
+     * reçoit la réponse du comptable — n'est pas celle qui a les accès de l'hébergeur.</p>
      */
-    @org.springframework.beans.factory.annotation.Value("${app.tva.active:false}")
-    private boolean publiable;
-
-    /** Vrai lorsque la grille des taux est établie et que les documents peuvent l'annoncer. */
     public boolean estPubliable() {
-        return publiable;
+        return serviceParametres.estActif(
+                com.optimisante.backend.domain.parametres.ServiceParametres.TVA_ACTIVE, false);
     }
 
 

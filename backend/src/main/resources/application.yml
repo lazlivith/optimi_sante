@@ -87,11 +87,6 @@ app:
   # Une valeur absente s'affiche « à compléter » sur le document, et empêche le démarrage
   # en production — cf. CompanyIdentityGuard. Mieux vaut un serveur arrêté qu'une pièce
   # portant une immatriculation inventée.
-  # Ferme tant que la grille des taux n'est pas etablie : un taux par defaut imprime sur un
-  # recu est une mention fausse sur une piece comptable. Voir ServiceTva#publiable.
-  tva:
-    active: ${TVA_ACTIVE:false}
-
   legal:
     denomination:    ${LEGAL_DENOMINATION:}
     forme-juridique: ${LEGAL_FORME_JURIDIQUE:}
@@ -235,11 +230,6 @@ spring:
 #   — un repli vide sur ce qui se désactive proprement (IA, rapports, statistiques d'e-mails).
 # ---------------------------------------------------------------------------------------------
 app:
-  # Ferme tant que la grille des taux n'est pas etablie : un taux par defaut imprime sur un
-  # recu est une mention fausse sur une piece comptable. Voir ServiceTva#publiable.
-  tva:
-    active: ${TVA_ACTIVE:false}
-
   legal:
     denomination:    ${LEGAL_DENOMINATION:}
     forme-juridique: ${LEGAL_FORME_JURIDIQUE:}

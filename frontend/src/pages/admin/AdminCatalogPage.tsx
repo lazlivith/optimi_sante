@@ -7,7 +7,6 @@ import { visuelAFaire } from '../../api/productMediaService';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
-import { TvaCategoriesPanel } from '../../components/catalog/TvaCategoriesPanel';
 
 const EMPTY_FORM: AdminProductRequestDto = {
   sku: '', name: '', description: '', basePrice: 0, stockQuantity: 0, stockThreshold: 5, isQuoteOnly: false,
@@ -195,23 +194,6 @@ export function AdminCatalogPage() {
           </button>
         }
       />
-
-      {/* La grille de TVA, repliee par defaut : elle se consulte quand on la cherche, et ne
-          doit pas s'interposer entre l'administrateur et sa liste de produits. */}
-      <details className="mb-4 group">
-        <summary className="cursor-pointer list-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-brand-dark transition-colors hover:bg-slate-50">
-          <span className="inline-flex items-center gap-2">
-            <span className="text-slate-400 transition-transform group-open:rotate-90" aria-hidden="true">›</span>
-            TVA par catégorie
-            <span className="font-normal text-slate-500">
-              — grille établie par le comptable, octobre 2026
-            </span>
-          </span>
-        </summary>
-        <div className="mt-3">
-          <TvaCategoriesPanel onErreur={(message) => setToast({ message, type: 'error' })} />
-        </div>
-      </details>
 
       {/* Barre de filtres. Tout est applique par le serveur : filtrer dans le navigateur
           n'aurait porte que sur la page affichee, donnant l'illusion d'un catalogue vide
