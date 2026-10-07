@@ -18,6 +18,14 @@ import java.math.RoundingMode;
  *
  * <p><b>Le fichier garde le dernier mot.</b> Un fournisseur qui fournit déjà un prix de vente
  * conseillé (colonne {@code prix_vente}) l'impose : la marge ne sert qu'à combler son absence.</p>
+ *
+ * <p><b>La taxe vient après la marge, et c'était le trou.</b> Les tarifs fournisseurs sont
+ * libellés <b>hors taxes</b> — « PU HT » sur les grilles revendeur — alors que le catalogue
+ * affiche des prix <b>toutes taxes comprises</b> (CGV § 2.2). S'arrêter à la marge mettait donc
+ * en boutique un prix inférieur d'un cinquième à ce qu'il devait être, sur chaque produit
+ * importé. La marge s'applique au prix d'achat hors taxes, puis la taxe de la famille s'ajoute
+ * au résultat : c'est l'ordre comptable, et c'est aussi le seul qui préserve le taux de marge
+ * réellement voulu.</p>
  */
 public final class MargeCatalogue {
 
@@ -42,8 +50,15 @@ public final class MargeCatalogue {
      * @param margeCategorie  marge de la catégorie visée, ou {@code null}
      * @param margeFournisseur commission négociée avec le fournisseur, jamais nulle
      */
+    /**
+     * @param tauxTva taux de la famille, en pourcentage. Le prix d'achat étant hors taxes et le
+     *                catalogue toutes taxes comprises, il s'applique APRÈS la marge. Un prix de
+     *                vente fourni par le fournisseur n'y est pas soumis : il est pris tel quel,
+     *                parce qu'on ne sait pas s'il est déjà taxé.
+     */
     public static Calcul calculer(BigDecimal prixVenteFourni, BigDecimal prixAchat,
-                                  BigDecimal margeCategorie, BigDecimal margeFournisseur) {
+                                  BigDecimal margeCategorie, BigDecimal margeFournisseur,
+                                  BigDecimal tauxTva) {
         if (prixVenteFourni != null) {
             return new Calcul(arrondi(prixVenteFourni), BigDecimal.ZERO, Origine.PRIX_DE_VENTE_FOURNI);
         }
@@ -51,17 +66,27 @@ public final class MargeCatalogue {
             throw new IllegalArgumentException("Ni prix de vente ni prix d'achat.");
         }
         if (positif(margeCategorie)) {
-            return new Calcul(majorer(prixAchat, margeCategorie), margeCategorie, Origine.CATEGORIE);
+            return new Calcul(majorer(prixAchat, margeCategorie, tauxTva), margeCategorie, Origine.CATEGORIE);
         }
         if (positif(margeFournisseur)) {
-            return new Calcul(majorer(prixAchat, margeFournisseur), margeFournisseur, Origine.FOURNISSEUR);
+            return new Calcul(majorer(prixAchat, margeFournisseur, tauxTva), margeFournisseur, Origine.FOURNISSEUR);
         }
-        return new Calcul(arrondi(prixAchat), BigDecimal.ZERO, Origine.AUCUNE);
+        // Sans marge, le prix d'achat sert de prix de vente — mais il reste hors taxes, et le
+        // porter tel quel au catalogue annoncerait un prix que la caisse ne retrouverait pas.
+        return new Calcul(majorer(prixAchat, BigDecimal.ZERO, tauxTva), BigDecimal.ZERO, Origine.AUCUNE);
     }
 
-    private static BigDecimal majorer(BigDecimal prixAchat, BigDecimal taux) {
-        BigDecimal coefficient = BigDecimal.ONE.add(taux.divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP));
-        return arrondi(prixAchat.multiply(coefficient));
+    /** Marge d'abord, taxe ensuite : l'ordre comptable, et le seul qui préserve le taux voulu. */
+    private static BigDecimal majorer(BigDecimal prixAchat, BigDecimal marge, BigDecimal tauxTva) {
+        BigDecimal avecMarge = prixAchat.multiply(coefficient(marge));
+        return arrondi(avecMarge.multiply(coefficient(tauxTva)));
+    }
+
+    private static BigDecimal coefficient(BigDecimal taux) {
+        if (taux == null || taux.signum() <= 0) {
+            return BigDecimal.ONE;
+        }
+        return BigDecimal.ONE.add(taux.divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP));
     }
 
     /** Deux décimales, arrondi commercial : c'est le montant qui sera facturé, pas une estimation. */

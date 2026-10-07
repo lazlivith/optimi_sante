@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.OffsetDateTime;
@@ -39,6 +41,8 @@ public class CatalogImportService {
     private final EcrivainCatalogue ecrivain;
     private final TraitementImportCatalogue traitement;
     private final StorageService storageService;
+    private final com.optimisante.backend.domain.catalog.repository.ProductRepository productRepository;
+    private final com.optimisante.backend.domain.audit.service.AuditService auditService;
 
     /**
      * Sérialiseur construit ici : ce projet n'expose pas de bean {@code ObjectMapper} (même
@@ -131,6 +135,67 @@ public class CatalogImportService {
                     }
                 });
         return enregistre;
+    }
+
+    /**
+     * Rattache à ce fournisseur les références du fichier que le catalogue possède déjà sans
+     * en désigner un.
+     *
+     * <p><b>Pourquoi cette opération existe.</b> L'import refuse de toucher un produit qui
+     * n'appartient pas au fournisseur déposant — règle salutaire : sans elle, un fichier
+     * suffirait à écraser des fiches construites à la main. Mais les références historiques
+     * n'ont aucun fournisseur, et restent donc écartées à chaque dépôt, indéfiniment. Les
+     * rattacher est la façon honnête de lever le blocage : on déclare que ces produits viennent
+     * bien de ce fournisseur, une fois, explicitement — plutôt que d'affaiblir la règle.</p>
+     *
+     * <p><b>Ce que l'opération ne fait pas.</b> Elle ne touche ni prix, ni stock, ni libellé :
+     * elle pose une appartenance. Les produits sont ensuite mis à jour par un nouveau dépôt du
+     * même fichier, avec son aperçu — on ne confond pas « déclarer l'origine » et « écrire ».</p>
+     *
+     * <p>Sont exclus les produits déjà rattachés à un autre fournisseur : leur appartenance a
+     * été déclarée, et la changer en silence serait exactement ce que la règle empêche.</p>
+     *
+     * @return le nombre de produits rattachés
+     */
+    @Transactional
+    public int rattacher(UUID importId) {
+        CatalogImport imprt = importRepository.findById(importId)
+                .orElseThrow(() -> new IllegalArgumentException("Import introuvable."));
+
+        byte[] contenu = storageService.download(imprt.getStorageKey());
+        FichierCatalogue.Lecture lecture = FichierCatalogue.lire(contenu, imprt.getFileName());
+
+        List<String> skus = lecture.lignes().stream()
+                .filter(l -> l.erreur() == null)
+                .map(FichierCatalogue.Ligne::sku)
+                .filter(sku -> sku != null && !sku.isBlank())
+                // En minuscules : la requete compare sur lower(sku), comme la recherche des
+                // existants. Sans cela, une reference ecrite en majuscules dans le fichier ne
+                // retrouverait pas son produit.
+                .map(sku -> sku.trim().toLowerCase(java.util.Locale.ROOT))
+                .distinct()
+                .toList();
+        if (skus.isEmpty()) {
+            return 0;
+        }
+
+        UUID tenantId = imprt.getTenant().getId();
+        UUID supplierId = imprt.getSupplier().getId();
+        int rattaches = 0;
+        // Par paquets, comme la recherche des existants : une clause IN de plusieurs milliers
+        // de valeurs est refusée par certains pilotes.
+        for (int debut = 0; debut < skus.size(); debut += 500) {
+            rattaches += productRepository.rattacherAuFournisseur(
+                    tenantId, supplierId, skus.subList(debut, Math.min(debut + 500, skus.size())));
+        }
+
+        auditService.record("CATALOGUE_RATTACHEMENT", "FOURNISSEUR", supplierId.toString(),
+                rattaches + " produit(s) rattaché(s) au fournisseur "
+                + imprt.getSupplier().getCode() + " depuis le fichier " + imprt.getFileName(),
+                null);
+        log.info("Rattachement : {} produits désormais rattachés au fournisseur {}.",
+                rattaches, imprt.getSupplier().getCode());
+        return rattaches;
     }
 
     @Transactional

@@ -140,6 +140,19 @@ public class SupplierResource {
         return ResponseEntity.ok(vue(importService.confirmer(importId)));
     }
 
+    /**
+     * Rattache à ce fournisseur les références du fichier que le catalogue possède déjà sans en
+     * désigner un.
+     *
+     * <p>Opération distincte de l'import, et c'est voulu : elle déclare une appartenance, elle
+     * n'écrit aucun prix. Les produits sont ensuite mis à jour en redéposant le même fichier,
+     * avec son aperçu.</p>
+     */
+    @PostMapping("/imports/{importId}/rattacher")
+    public ResponseEntity<Map<String, Integer>> rattacher(@PathVariable UUID importId) {
+        return ResponseEntity.ok(Map.of("rattaches", importService.rattacher(importId)));
+    }
+
     @PostMapping("/imports/{importId}/cancel")
     @EcommerceAdmin
     public ResponseEntity<ImportView> annuler(@PathVariable UUID importId) {

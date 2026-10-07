@@ -128,8 +128,15 @@ public class EcrivainCatalogue {
                                     boolean aDejaImage, Bareme bareme) {
         Category categorie = ligne.categorie() == null ? null
                 : bareme.categoriesParNom().get(ligne.categorie().trim().toLowerCase(Locale.ROOT));
+        // Le taux de la famille visée, ou le taux normal quand elle n'en porte pas — la règle
+        // légale du matériel médical. Sans lui, le prix importé resterait hors taxes alors que
+        // le catalogue affiche du TTC.
+        BigDecimal tauxTva = categorie != null && categorie.getVatRate() != null
+                ? categorie.getVatRate()
+                : com.optimisante.backend.domain.catalog.service.ServiceTva.TAUX_NORMAL;
         MargeCatalogue.Calcul prix = MargeCatalogue.calculer(ligne.prix(), ligne.prixAchat(),
-                categorie == null ? null : categorie.getMarginRate(), bareme.margeFournisseur());
+                categorie == null ? null : categorie.getMarginRate(), bareme.margeFournisseur(),
+                tauxTva);
         return new Decision(ligne, action, produitId, aDejaImage, null, prix,
                 categorie == null ? null : categorie.getId());
     }

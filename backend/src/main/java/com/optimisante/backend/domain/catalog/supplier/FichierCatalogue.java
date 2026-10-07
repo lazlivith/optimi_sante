@@ -31,16 +31,28 @@ public final class FichierCatalogue {
 
     /** Noms de colonnes acceptés, par champ. Le premier de chaque liste est celui du modèle. */
     private static final Map<String, List<String>> COLONNES = Map.of(
-            "sku", List.of("sku", "reference", "ref", "code", "code_produit"),
-            "nom", List.of("nom", "name", "libelle", "designation", "intitule"),
+            "sku", List.of("sku", "reference", "ref", "code", "code_produit",
+                    // Intitules des fichiers du distributeur : « Réf. » et « REFERENCE LCM ».
+                    "reference_lcm", "ref_lcm"),
+            "nom", List.of("nom", "name", "libelle", "designation", "intitule",
+                    "designation_lcm"),
             "description", List.of("description", "desc", "details"),
             // Deux prix distincts : ce que le fournisseur facture, et ce que la boutique affiche.
             // « prix » seul reste un prix de vente, pour ne pas changer le sens des fichiers déjà déposés.
             "prix_achat", List.of("prix_achat_ht", "prix_achat", "prix_achat_ttc", "prix_d_achat", "prix_d_achat_ht",
-                    "achat", "cout", "cout_achat", "prix_fournisseur", "purchase_price", "cost"),
+                    "achat", "cout", "cout_achat", "prix_fournisseur", "purchase_price", "cost",
+                    // « PU HT » des tarifs revendeur : c'est ce que le distributeur NOUS facture,
+                    // donc un prix d'achat. Le lire comme un prix de vente mettrait en boutique le
+                    // tarif de gros, sans marge ni taxe.
+                    "pu_ht", "pu_ht_revendeur", "tarif_revendeur", "prix_revendeur"),
             "prix", List.of("prix", "prix_ht", "prix_ttc", "price", "tarif", "prix_vente", "prix_public"),
             "stock", List.of("stock", "quantite", "qty", "quantity", "stock_quantity"),
             "categorie", List.of("categorie", "famille", "category", "rayon"),
+            // Le fabricant, quand le fichier le distingue du distributeur.
+            "marque", List.of("marque", "fournisseur", "fabricant", "brand"),
+            // « Observations » porte « ARRET » dans les fichiers de modifications : c'est ainsi
+            // que le fournisseur signale un produit retire de sa gamme.
+            "observations", List.of("observations", "observation", "statut", "etat", "remarque"),
             "images", List.of("image_urls", "image_url", "images", "image", "photo", "lien_photo", "photos"));
 
     private FichierCatalogue() {
@@ -72,17 +84,20 @@ public final class FichierCatalogue {
         if (cellules.isEmpty()) {
             throw new IllegalArgumentException("Le fichier est vide.");
         }
-        Map<String, Integer> index = reconnaitreColonnes(cellules.get(0));
-        if (!index.containsKey("sku") || !index.containsKey("nom")) {
+
+        int ligneEnTete = trouverEnTete(cellules);
+        if (ligneEnTete < 0) {
             throw new IllegalArgumentException("Colonnes « sku » et « nom » introuvables dans l'en-tête. "
                     + "Téléchargez le modèle pour retrouver les colonnes attendues.");
         }
-        if (cellules.size() - 1 > LIGNES_MAX) {
+        Map<String, Integer> index = reconnaitreColonnes(cellules.get(ligneEnTete));
+
+        if (cellules.size() - ligneEnTete - 1 > LIGNES_MAX) {
             throw new IllegalArgumentException("Le fichier dépasse " + LIGNES_MAX + " lignes.");
         }
 
         List<Ligne> lignes = new ArrayList<>();
-        for (int i = 1; i < cellules.size(); i++) {
+        for (int i = ligneEnTete + 1; i < cellules.size(); i++) {
             List<String> ligne = cellules.get(i);
             if (ligne.stream().allMatch(c -> c == null || c.isBlank())) {
                 continue; // ligne vide en fin de fichier : ce n'est pas une erreur
@@ -90,6 +105,33 @@ public final class FichierCatalogue {
             lignes.add(construire(i + 1, ligne, index));
         }
         return new Lecture(lignes, new ArrayList<>(index.keySet()));
+    }
+
+    /**
+     * La ligne qui porte l'en-tête, cherchée parmi les premières.
+     *
+     * <p><b>Un fichier fournisseur commence rarement par ses colonnes.</b> Les tarifs du
+     * distributeur ouvrent sur un bandeau — « TARIFICATION FÉVRIER 2026 », « MISE À JOUR AU
+     * 02/10/2026 » — et l'en-tête se trouve en troisième ligne ; d'autres grilles le placent en
+     * quatrième ou en cinquième. Prendre la première ligne pour l'en-tête faisait refuser ces
+     * fichiers avec un message qui accusait le fournisseur de mal nommer ses colonnes, alors
+     * qu'elles étaient bien là, deux lignes plus bas.</p>
+     *
+     * <p>La recherche s'arrête à la quinzième ligne : au-delà, ce n'est plus un bandeau mais un
+     * fichier d'une autre nature, et deviner reviendrait à prendre une ligne de données pour un
+     * en-tête.</p>
+     *
+     * @return l'indice de la ligne d'en-tête, ou -1 si aucune ne porte les colonnes requises
+     */
+    private static int trouverEnTete(List<List<String>> cellules) {
+        int limite = Math.min(cellules.size(), 15);
+        for (int i = 0; i < limite; i++) {
+            Map<String, Integer> index = reconnaitreColonnes(cellules.get(i));
+            if (index.containsKey("sku") && index.containsKey("nom")) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private static Ligne construire(int numero, List<String> ligne, Map<String, Integer> index) {

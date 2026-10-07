@@ -169,6 +169,29 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
     Optional<AdminProductRow> findByIdForAdmin(@Param("id") UUID id);
 
     /**
+     * Déclare que ces références appartiennent à ce fournisseur.
+     *
+     * <p><b>La condition {@code supplier_id IS NULL} est le cœur de la requête.</b> Un produit
+     * déjà rattaché à un autre fournisseur n'est pas repris : son appartenance a été déclarée,
+     * et la changer en silence serait exactement ce que la règle de protection empêche. Seules
+     * les références historiques, qui n'en ont jamais eu, sont concernées.</p>
+     *
+     * <p>Aucun prix, aucun stock, aucun libellé n'est touché : cette requête pose une
+     * appartenance, elle n'importe rien.</p>
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = """
+            UPDATE products SET supplier_id = CAST(:supplierId AS uuid)
+            WHERE tenant_id = :tenantId
+              AND deleted_at IS NULL
+              AND supplier_id IS NULL
+              AND lower(sku) IN (:skus)
+            """, nativeQuery = true)
+    int rattacherAuFournisseur(@Param("tenantId") UUID tenantId,
+                               @Param("supplierId") UUID supplierId,
+                               @Param("skus") List<String> skus);
+
+    /**
      * Formations déjà rattachées à un produit.
      *
      * <p>Requête native : {@code Product} porte {@code @SQLRestriction}, et un produit
