@@ -157,6 +157,7 @@ public class SupplierResource {
      * avec son aperçu.</p>
      */
     @PostMapping("/imports/{importId}/rattacher")
+    @EcommerceAdmin
     public ResponseEntity<Map<String, Integer>> rattacher(@PathVariable UUID importId) {
         return ResponseEntity.ok(Map.of("rattaches", importService.rattacher(importId)));
     }

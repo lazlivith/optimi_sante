@@ -81,6 +81,14 @@ export const adminSupplierService = {
    * Lance l'écriture. `remplacerVisuels` reprend les photos du fournisseur sur les produits
    * qui en ont déjà une ; sans lui, l'import ne remplit que les manques.
    */
+  /**
+   * Déclare que les références de ce fichier déjà présentes au catalogue, et sans fournisseur,
+   * appartiennent à celui-ci. N'écrit aucun prix : c'est une appartenance, pas un import.
+   */
+  rattacher: async (importId: string) =>
+    (await axiosClient.post<{ rattaches: number }>(
+      `${base}/imports/${importId}/rattacher`)).data,
+
   confirmer: async (importId: string, remplacerVisuels = false) =>
     (await axiosClient.post<CatalogImport>(
       `${base}/imports/${importId}/confirm`, null,

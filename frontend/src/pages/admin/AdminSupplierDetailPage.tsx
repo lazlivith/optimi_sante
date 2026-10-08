@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Loader2, Upload, XCircle,
+  AlertTriangle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Link2, Loader2, Upload, XCircle,
 } from 'lucide-react';
 import {
   adminSupplierService, IMPORT_STATUS_LABELS, type CatalogImport, type Supplier,
@@ -92,6 +92,34 @@ export function AdminSupplierDetailPage() {
       setToast({ message: "L'import est lancé. Vous pouvez quitter cette page.", type: 'success' });
     } catch (err: any) {
       setToast({ message: err.response?.data?.message || 'Import impossible.', type: 'error' });
+    } finally {
+      setAction(false);
+    }
+  };
+
+  /**
+   * Rattache au fournisseur les références que le catalogue possède déjà sans en désigner un.
+   *
+   * <p>Sans cette étape, un catalogue historique reste intouchable : l'import refuse d'écraser
+   * un produit qui n'appartient à personne — règle salutaire, sans laquelle un fichier suffirait
+   * à réécrire des fiches construites à la main. Le rattachement lève le verrou une fois, en le
+   * déclarant.</p>
+   */
+  const rattacher = async () => {
+    if (!enCours) return;
+    setAction(true);
+    try {
+      const { rattaches } = await adminSupplierService.rattacher(enCours.id);
+      // Le fichier est ré-analysé : les lignes écartées faute de fournisseur deviennent des
+      // mises à jour, et le résumé doit le montrer avant qu'on confirme quoi que ce soit.
+      setToast({
+        message: rattaches === 0
+          ? 'Aucune référence à rattacher : elles appartiennent déjà à un fournisseur.'
+          : `${rattaches} référence(s) rattachée(s). Redéposez le fichier pour voir le nouvel aperçu.`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      setToast({ message: err.response?.data?.message || 'Rattachement impossible.', type: 'error' });
     } finally {
       setAction(false);
     }
@@ -293,6 +321,13 @@ export function AdminSupplierDetailPage() {
                 >
                   {action ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="w-4 h-4" aria-hidden="true" />}
                   Écrire {enCours.toCreate + enCours.toUpdate} produit(s) au catalogue
+                </button>
+                <button
+                  type="button" onClick={rattacher} disabled={action}
+                  title="Déclare que les références de ce fichier déjà au catalogue, et sans fournisseur, sont les siennes. Aucun prix n'est écrit."
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  <Link2 className="w-4 h-4" aria-hidden="true" /> Rattacher les références existantes
                 </button>
                 <button
                   type="button" onClick={abandonner} disabled={action}
