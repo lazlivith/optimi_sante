@@ -37,6 +37,19 @@ public interface StorageService {
      */
     String uploadMedia(byte[] bytes, String fileName, DossierStockage dossier);
 
+    /**
+     * Même chose, rangée dans un sous-dossier du dossier visé.
+     *
+     * <p><b>Pourquoi ce niveau de plus.</b> Un import fournisseur dépose plusieurs milliers de
+     * visuels d'un coup. Versés en vrac dans {@code catalogue/produits}, ils s'y mêlent aux
+     * photos téléversées à la main : plus moyen de voir ce qu'un fournisseur a apporté, ni de
+     * reprendre son lot sans toucher au reste. Le sous-dossier porte le code du fournisseur.</p>
+     *
+     * @param sousDossier un seul segment en minuscules, chiffres et tirets ; nul ou vide pour
+     *                    déposer directement dans le dossier
+     */
+    String uploadMedia(byte[] bytes, String fileName, DossierStockage dossier, String sousDossier);
+
     /** Lien signé d'un document. */
     String generatePresignedOrSignedUrl(String publicId, int expirationMinutes);
 
@@ -45,6 +58,20 @@ public interface StorageService {
 
     /** Adresse publique d'une image ou d'une vidéo ({@code "image"} ou {@code "video"}). */
     String generateMediaUrl(String publicId, String resourceType);
+
+    /**
+     * Même chose, en nommant le format du fichier.
+     *
+     * <p><b>Pourquoi le format ne peut pas être omis.</b> Une adresse sans extension laisse
+     * l'hébergeur choisir ce qu'il sert ; sur notre compte il ne le fait que pour le WebP, et
+     * répond 401 pour un JPEG. Le visuel existe, il est facturé, et aucune page ne l'affiche.
+     * Le format est connu au dépôt : l'omettre revient à perdre l'information au moment précis
+     * où on l'a.</p>
+     *
+     * @param format extension sans point ({@code jpg}, {@code png}, {@code webp}) ; nulle ou
+     *               vide pour laisser l'hébergeur décider
+     */
+    String generateMediaUrl(String publicId, String resourceType, String format);
 
     /** Supprime une image ou une vidéo. */
     void deleteFile(String publicId);

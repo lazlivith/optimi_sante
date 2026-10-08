@@ -46,6 +46,8 @@ export interface CatalogImport {
   createdCount: number;
   updatedCount: number;
   imageCount: number;
+  /** Vrai si cet import a remplacé les visuels des produits qui en avaient déjà un. */
+  replaceImages: boolean;
   /** D'où vient le prix de vente des lignes retenues (marge catégorie, fournisseur, aucune). */
   marginSummary: string | null;
   motifs: string[];
@@ -75,8 +77,14 @@ export const adminSupplierService = {
   },
   historique: async (id: string) => (await axiosClient.get<CatalogImport[]>(`${base}/${id}/imports`)).data,
   suivre: async (importId: string) => (await axiosClient.get<CatalogImport>(`${base}/imports/${importId}`)).data,
-  confirmer: async (importId: string) =>
-    (await axiosClient.post<CatalogImport>(`${base}/imports/${importId}/confirm`)).data,
+  /**
+   * Lance l'écriture. `remplacerVisuels` reprend les photos du fournisseur sur les produits
+   * qui en ont déjà une ; sans lui, l'import ne remplit que les manques.
+   */
+  confirmer: async (importId: string, remplacerVisuels = false) =>
+    (await axiosClient.post<CatalogImport>(
+      `${base}/imports/${importId}/confirm`, null,
+      { params: { remplacerVisuels } })).data,
   annuler: async (importId: string) =>
     (await axiosClient.post<CatalogImport>(`${base}/imports/${importId}/cancel`)).data,
 

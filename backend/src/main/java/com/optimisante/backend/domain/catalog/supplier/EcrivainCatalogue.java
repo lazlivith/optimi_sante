@@ -2,7 +2,9 @@ package com.optimisante.backend.domain.catalog.supplier;
 
 import com.optimisante.backend.domain.catalog.entity.Category;
 import com.optimisante.backend.domain.catalog.entity.Product;
+import com.optimisante.backend.domain.catalog.entity.ProductGalleryImage;
 import com.optimisante.backend.domain.catalog.repository.CategoryRepository;
+import com.optimisante.backend.domain.catalog.repository.ProductGalleryImageRepository;
 import com.optimisante.backend.domain.catalog.repository.ProductRepository;
 import com.optimisante.backend.domain.identity.repository.TenantRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,7 @@ public class EcrivainCatalogue {
     private final CategoryRepository categoryRepository;
     private final TenantRepository tenantRepository;
     private final SupplierRepository supplierRepository;
+    private final ProductGalleryImageRepository galerieRepository;
 
     public enum Action {
         CREER, METTRE_A_JOUR, IGNORER
@@ -51,6 +54,26 @@ public class EcrivainCatalogue {
     }
 
     public record Resultat(int crees, int misAJour, int ignores, int images, List<String> motifs) {
+    }
+
+    /**
+     * Un visuel deja depose sur l'espace de stockage.
+     *
+     * @param cle identifiant du fichier chez l'hebergeur, conserve pour pouvoir le supprimer
+     *            plus tard : sans lui, retirer un visuel le ferait disparaitre de la galerie
+     *            mais le laisserait facture dans l'espace de stockage
+     */
+    public record Visuel(String url, String cle) {
+    }
+
+    /**
+     * Ce qu'un import apporte en images a un produit.
+     *
+     * @param principal nouvelle vignette, ou nul quand le produit en a deja une : l'import
+     *                  complete, il ne remplace pas un choix fait a la main
+     * @param galerie   visuels secondaires a ajouter ; vide si la galerie est deja garnie
+     */
+    public record VisuelsProduit(Visuel principal, List<Visuel> galerie) {
     }
 
     /** Ce qu'il faut pour décider : marges des catégories et commission du fournisseur. */
@@ -158,7 +181,8 @@ public class EcrivainCatalogue {
      *                être récupérée pour la ligne
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Resultat ecrire(UUID tenantId, UUID supplierId, List<Decision> lot, Map<String, String> visuels) {
+    public Resultat ecrire(UUID tenantId, UUID supplierId, List<Decision> lot,
+                           Map<String, VisuelsProduit> visuels) {
         var tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new IllegalStateException("Tenant introuvable."));
         // Référence paresseuse : le fournisseur n'a pas besoin d'être chargé pour être rattaché.
@@ -178,7 +202,8 @@ public class EcrivainCatalogue {
                 continue;
             }
             Category categorie = categorie(tenantId, ligne.categorie(), ligne, motifs);
-            String visuel = visuels.get(ligne.sku());
+            VisuelsProduit apport = visuels.get(ligne.sku());
+            String visuel = apport == null || apport.principal() == null ? null : apport.principal().url();
             MargeCatalogue.Calcul prix = decision.prix();
             if (prix.origine() == MargeCatalogue.Origine.AUCUNE && ligne.prixAchat() != null) {
                 motifs.add("Ligne " + ligne.numero() + " (" + ligne.sku() + ") : aucune marge définie "
@@ -199,7 +224,9 @@ public class EcrivainCatalogue {
                         .imageUrl(visuel)
                         .supplier(fournisseur)
                         .build();
-                productRepository.save(produit);
+                // L'identifiant vient de l'entite RENDUE par save : celle du builder ne le porte
+                // pas encore, et la galerie partait alors sans produit.
+                garnirGalerie(productRepository.save(produit).getId(), apport);
                 crees++;
             } else {
                 Product produit = productRepository.findById(decision.produitId()).orElse(null);
@@ -228,13 +255,39 @@ public class EcrivainCatalogue {
                     produit.setImageUrl(visuel);
                 }
                 productRepository.save(produit);
+                garnirGalerie(produit.getId(), apport);
                 misAJour++;
             }
             if (visuel != null) {
                 images++;
             }
+            if (apport != null) {
+                images += apport.galerie().size();
+            }
         }
         return new Resultat(crees, misAJour, ignores, images, motifs);
+    }
+
+    /**
+     * Ajoute les visuels secondaires d'un produit.
+     *
+     * <p>N'est appele qu'avec une galerie que l'import a jugee vide : rien n'est donc ecrase, et
+     * l'index unique {@code (product_id, image_url)} ne peut pas etre heurte — chaque depot
+     * produit une adresse neuve.</p>
+     */
+    private void garnirGalerie(UUID produitId, VisuelsProduit apport) {
+        if (apport == null || apport.galerie().isEmpty()) {
+            return;
+        }
+        int rang = 0;
+        for (Visuel visuel : apport.galerie()) {
+            galerieRepository.save(ProductGalleryImage.builder()
+                    .productId(produitId)
+                    .imageUrl(visuel.url())
+                    .publicId(visuel.cle())
+                    .displayOrder(rang++)
+                    .build());
+        }
     }
 
     /** Catégorie nommée dans le fichier. Inconnue : le produit passe sans, et la ligne le signale. */

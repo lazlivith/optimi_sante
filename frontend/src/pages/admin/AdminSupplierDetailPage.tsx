@@ -25,6 +25,11 @@ export function AdminSupplierDetailPage() {
   const [fournisseur, setFournisseur] = useState<Supplier | null>(null);
   const [imports, setImports] = useState<CatalogImport[]>([]);
   const [enCours, setEnCours] = useState<CatalogImport | null>(null);
+  /**
+   * Décoché à chaque fichier déposé : remplacer les visuels se décide pour CET import, et
+   * une case restée cochée de l'import précédent écraserait des photos sans qu'on l'ait voulu.
+   */
+  const [remplacerVisuels, setRemplacerVisuels] = useState(false);
   const [chargement, setChargement] = useState(true);
   const [envoi, setEnvoi] = useState(false);
   const [action, setAction] = useState(false);
@@ -69,6 +74,7 @@ export function AdminSupplierDetailPage() {
     setEnvoi(true);
     try {
       setEnCours(await adminSupplierService.analyser(id, fichier));
+      setRemplacerVisuels(false);
       setToast({ message: 'Fichier analysé : vérifiez le résumé avant de confirmer.', type: 'success' });
       if (champFichier.current) champFichier.current.value = '';
     } catch (err: any) {
@@ -82,7 +88,7 @@ export function AdminSupplierDetailPage() {
     if (!enCours) return;
     setAction(true);
     try {
-      setEnCours(await adminSupplierService.confirmer(enCours.id));
+      setEnCours(await adminSupplierService.confirmer(enCours.id, remplacerVisuels));
       setToast({ message: "L'import est lancé. Vous pouvez quitter cette page.", type: 'success' });
     } catch (err: any) {
       setToast({ message: err.response?.data?.message || 'Import impossible.', type: 'error' });
@@ -264,7 +270,23 @@ export function AdminSupplierDetailPage() {
             )}
 
             {enCours.status === 'PRET' && (
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="space-y-3">
+                <label className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 cursor-pointer">
+                  <input
+                    type="checkbox" checked={remplacerVisuels}
+                    onChange={(e) => setRemplacerVisuels(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand"
+                  />
+                  <span className="text-sm text-slate-700">
+                    <span className="font-semibold">Remplacer les visuels existants</span>
+                    <span className="block text-xs text-slate-600 mt-0.5">
+                      Sans cette case, l'import ne complète que les produits sans photo. Cochée, il reprend
+                      les photos du fournisseur sur tous les produits du fichier&nbsp;: les visuels choisis
+                      à la main seront perdus.
+                    </span>
+                  </span>
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   type="button" onClick={confirmer} disabled={action || enCours.toCreate + enCours.toUpdate === 0}
                   className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-fonce disabled:opacity-60"
@@ -278,6 +300,7 @@ export function AdminSupplierDetailPage() {
                 >
                   <XCircle className="w-4 h-4" aria-hidden="true" /> Abandonner ce fichier
                 </button>
+                </div>
               </div>
             )}
           </div>

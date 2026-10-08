@@ -134,10 +134,18 @@ public class SupplierResource {
         return ResponseEntity.ok(vue(importService.parId(importId)));
     }
 
+    /**
+     * Lance l'ecriture d'un import analyse.
+     *
+     * @param remplacerVisuels vrai pour remplacer les vignettes des produits qui en ont deja
+     *                         une. Absent vaut faux : l'import complete les manques sans
+     *                         toucher aux visuels choisis a la main.
+     */
     @PostMapping("/imports/{importId}/confirm")
     @EcommerceAdmin
-    public ResponseEntity<ImportView> confirmer(@PathVariable UUID importId) {
-        return ResponseEntity.ok(vue(importService.confirmer(importId)));
+    public ResponseEntity<ImportView> confirmer(@PathVariable UUID importId,
+                                                @RequestParam(defaultValue = "false") boolean remplacerVisuels) {
+        return ResponseEntity.ok(vue(importService.confirmer(importId, remplacerVisuels)));
     }
 
     /**
@@ -182,7 +190,7 @@ public class SupplierResource {
         return new ImportView(i.getId(), i.getSupplier().getId(), i.getFileName(), i.getStatus().name(),
                 i.getTotalRows(), i.getToCreate(), i.getToUpdate(), i.getIgnoredRows(), i.getErrorRows(),
                 i.getProcessedRows(), i.getCreatedCount(), i.getUpdatedCount(), i.getImageCount(),
-                motifs, tronque, margeResume, i.getFailureReason(),
+                Boolean.TRUE.equals(i.getReplaceImages()), motifs, tronque, margeResume, i.getFailureReason(),
                 i.getCreatedAt(), i.getConfirmedAt(), i.getFinishedAt());
     }
 

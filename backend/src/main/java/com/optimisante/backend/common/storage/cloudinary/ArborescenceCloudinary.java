@@ -26,6 +26,42 @@ final class ArborescenceCloudinary {
         return prefixe + "/" + dossier.chemin();
     }
 
+    /**
+     * Dossier complet suivi d'un sous-dossier, ex.
+     * {@code optimisante/dev/catalogue/produits/lcm}.
+     *
+     * <p>Le sous-dossier est assaini avant d'être ajouté : il vient du code d'un fournisseur,
+     * donc d'une saisie, et un segment porteur de « / » ou de « .. » écrirait ailleurs dans
+     * l'arborescence.</p>
+     */
+    String dossier(DossierStockage dossier, String sousDossier) {
+        if (sousDossier == null || sousDossier.isBlank()) {
+            return dossier(dossier);
+        }
+        String assaini = assainir(sousDossier);
+        return assaini.isEmpty() ? dossier(dossier) : dossier(dossier) + "/" + assaini;
+    }
+
+    /**
+     * Ramène un libellé libre à un segment de dossier sûr.
+     *
+     * <p><b>Assaini plutôt que refusé.</b> La racine et l'environnement viennent de la
+     * configuration : une valeur fautive est une erreur de déploiement, et la refuser au
+     * démarrage est juste. Un sous-dossier vient du code d'un fournisseur, donc d'une saisie :
+     * refuser « LCM Médical » interromprait un import de sept mille lignes pour un espace et un
+     * accent. Les signes hors de l'alphabet sont donc remplacés, pas rejetés.</p>
+     *
+     * @return le segment, ou une chaîne vide si rien d'utilisable n'en reste
+     */
+    private static String assainir(String libelle) {
+        String sansAccent = java.text.Normalizer.normalize(libelle, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        String v = sansAccent.toLowerCase(java.util.Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-+|-+$", "");
+        return v.length() > 40 ? v.substring(0, 40).replaceAll("-+$", "") : v;
+    }
+
     String prefixe() {
         return prefixe;
     }

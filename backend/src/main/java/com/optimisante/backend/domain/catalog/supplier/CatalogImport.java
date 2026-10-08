@@ -102,6 +102,18 @@ public class CatalogImport {
     @Builder.Default
     private Integer updatedCount = 0;
 
+    /**
+     * Vrai si cet import remplace les vignettes des produits qui en ont deja une.
+     *
+     * <p>Faux par defaut : un fournisseur redepose son catalogue chaque mois, et l'ecraser
+     * ferait perdre sans trace le visuel choisi a la main. Le remplacement se coche import
+     * par import, et reste inscrit ici — c'est la seule trace, une fois l'ancienne image
+     * remplacee.</p>
+     */
+    @Column(name = "replace_images", nullable = false)
+    @Builder.Default
+    private Boolean replaceImages = false;
+
     @Column(name = "image_count", nullable = false)
     @Builder.Default
     private Integer imageCount = 0;

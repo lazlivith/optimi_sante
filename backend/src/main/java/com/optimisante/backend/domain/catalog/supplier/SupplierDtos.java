@@ -44,6 +44,8 @@ public final class SupplierDtos {
     public record ImportView(
             UUID id, UUID supplierId, String fileName, String status, int totalRows, int toCreate, int toUpdate,
             int ignoredRows, int errorRows, int processedRows, int createdCount, int updatedCount, int imageCount,
+            /** Vrai si cet import a remplace les visuels deja en place. */
+            boolean replaceImages,
             List<String> motifs, boolean motifsTronques,
             /** D'où vient le prix de vente des lignes retenues (marge catégorie, fournisseur, aucune). */
             String marginSummary,

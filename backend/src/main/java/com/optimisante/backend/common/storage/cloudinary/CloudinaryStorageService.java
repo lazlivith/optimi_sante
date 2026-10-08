@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -202,13 +203,18 @@ public class CloudinaryStorageService implements StorageService {
 
     @Override
     public String uploadMedia(byte[] bytes, String fileName, DossierStockage dossier) {
-        return televerserMedia(bytes, fileName, dossier);
+        return televerserMedia(bytes, fileName, dossier, null);
+    }
+
+    @Override
+    public String uploadMedia(byte[] bytes, String fileName, DossierStockage dossier, String sousDossier) {
+        return televerserMedia(bytes, fileName, dossier, sousDossier);
     }
 
     @Override
     public String uploadMedia(org.springframework.web.multipart.MultipartFile file, DossierStockage dossier) {
         try {
-            return televerserMedia(file.getBytes(), file.getOriginalFilename(), dossier);
+            return televerserMedia(file.getBytes(), file.getOriginalFilename(), dossier, null);
         } catch (IOException e) {
             log.error("Failed to read MultipartFile: {}", e.getMessage(), e);
             throw new RuntimeException("Could not read file for upload", e);
@@ -216,7 +222,8 @@ public class CloudinaryStorageService implements StorageService {
     }
 
     /** Chemin commun des deux dépôts de média : le fichier téléversé et l'image déjà en mémoire. */
-    private String televerserMedia(byte[] contenu, String fileName, DossierStockage dossier) {
+    private String televerserMedia(byte[] contenu, String fileName, DossierStockage dossier,
+                                   String sousDossier) {
         if (dossier.type() == DossierStockage.TypeRessource.DOCUMENT) {
             // Un document déposé en média serait public : il doit passer par uploadFile.
             throw new IllegalArgumentException("Le dossier " + dossier + " n'accepte pas de média.");
@@ -227,7 +234,7 @@ public class CloudinaryStorageService implements StorageService {
             String publicId = UUID.randomUUID() + (fileName == null || fileName.isBlank() ? ""
                     : "_" + sansExtension(fileName).replaceAll("[^A-Za-z0-9_-]", "-"));
             Map<String, Object> uploadParams = ObjectUtils.asMap(
-                    "folder", arborescence.dossier(dossier),
+                    "folder", arborescence.dossier(dossier, sousDossier),
                     "public_id", publicId,
                     "resource_type", resourceType, // "image" ou "video" : nécessaire pour un rendu
                                                     // inline (<img>/<video>) et les transformations,
@@ -247,10 +254,16 @@ public class CloudinaryStorageService implements StorageService {
 
     @Override
     public String generateMediaUrl(String publicId, String resourceType) {
-        return cloudinary.url()
-                .resourceType(resourceType)
-                .type("upload")
-                .generate(publicId);
+        return generateMediaUrl(publicId, resourceType, null);
+    }
+
+    @Override
+    public String generateMediaUrl(String publicId, String resourceType, String format) {
+        var url = cloudinary.url().resourceType(resourceType).type("upload");
+        if (format != null && !format.isBlank()) {
+            url = url.format(format.toLowerCase(Locale.ROOT).replace(".", ""));
+        }
+        return url.generate(publicId);
     }
 
     @Override

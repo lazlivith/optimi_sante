@@ -107,7 +107,7 @@ public class CatalogImportService {
 
     /** Confirme l'écriture. Le traitement se poursuit en arrière-plan, l'appel rend la main aussitôt. */
     @Transactional
-    public CatalogImport confirmer(UUID importId) {
+    public CatalogImport confirmer(UUID importId, boolean remplacerVisuels) {
         CatalogImport imprt = importRepository.findByIdForUpdate(importId)
                 .orElseThrow(() -> new IllegalArgumentException("Import introuvable."));
         if (imprt.getStatus() != CatalogImport.Statut.PRET) {
@@ -117,6 +117,7 @@ public class CatalogImportService {
         if (imprt.getToCreate() + imprt.getToUpdate() == 0) {
             throw new IllegalStateException("Aucune ligne à écrire : corrigez le fichier et redéposez-le.");
         }
+        imprt.setReplaceImages(remplacerVisuels);
         imprt.setStatus(CatalogImport.Statut.IMPORT);
         imprt.setConfirmedAt(OffsetDateTime.now());
         CatalogImport enregistre = importRepository.save(imprt);
