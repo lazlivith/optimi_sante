@@ -197,6 +197,17 @@ public final class EvcContenu {
         @Builder.Default
         private Boolean actif = true;
 
+        /**
+         * Vrai pour une offre qui sert seulement à rattacher une demande.
+         *
+         * <p>Distincte de {@code actif}, et ce n'est pas un doublon : « inactif » veut dire
+         * « retiré de la vente », et un administrateur l'activerait de bonne foi — faisant
+         * apparaître une carte « Sur devis » sans prestation derrière.</p>
+         */
+        @Column(nullable = false)
+        @Builder.Default
+        private Boolean technique = false;
+
         @Column(nullable = false)
         @Builder.Default
         private Integer ordre = 0;

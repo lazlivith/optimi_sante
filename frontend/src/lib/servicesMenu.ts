@@ -49,6 +49,12 @@ export const GROUPES_SERVICES: GroupeServices[] = [
         icon: Home,
       },
       {
+        to: '/exercer-en-france',
+        titre: 'Exercer en France avec un diplôme hors UE',
+        texte: 'EVC, attestation provisoire et commission d’autorisation d’exercice.',
+        icon: Stamp,
+      },
+      {
         to: '/services/parcours',
         titre: 'Le parcours, étape par étape',
         texte: 'De la candidature à l’entrée en établissement partenaire.',

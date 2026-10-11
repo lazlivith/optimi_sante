@@ -16,7 +16,8 @@ import java.util.UUID;
 public interface DepotOffres extends JpaRepository<EvcContenu.Offre, UUID> {
     List<EvcContenu.Offre> findByTenantIdOrderByOrdreAsc(UUID tenantId);
 
-    List<EvcContenu.Offre> findByTenantIdAndActifTrueOrderByOrdreAsc(UUID tenantId);
+    /** Ce que « Nos accompagnements » affiche : actives, et non techniques. */
+    List<EvcContenu.Offre> findByTenantIdAndActifTrueAndTechniqueFalseOrderByOrdreAsc(UUID tenantId);
 
     Optional<EvcContenu.Offre> findByTenantIdAndCle(UUID tenantId, String cle);
 }

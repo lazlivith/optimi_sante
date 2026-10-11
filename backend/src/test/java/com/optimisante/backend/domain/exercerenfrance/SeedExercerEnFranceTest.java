@@ -46,7 +46,8 @@ class SeedExercerEnFranceTest {
         assertThat(periodes.count()).isEqualTo(3);
         assertThat(liens.count()).isEqualTo(6);
         assertThat(specialites.count()).isEqualTo(33);
-        assertThat(offres.count()).isEqualTo(3);
+        // Trois offres affichables, plus « alerte_aep », technique et jamais publiée.
+        assertThat(offres.count()).isEqualTo(4);
         assertThat(publications.count()).isEqualTo(1);
     }
 
@@ -57,6 +58,7 @@ class SeedExercerEnFranceTest {
         long avantSpecialites = specialites.count();
         long avantVersions = publications.count();
 
+        seed.run(null);
         assertThat(seed.garnir()).as("aucun élément posé").isZero();
         assertThat(seed.publierSiAucuneVersion()).as("aucune version ajoutée").isFalse();
 
@@ -104,16 +106,32 @@ class SeedExercerEnFranceTest {
     }
 
     @Test
-    @DisplayName("un élément supprimé est reposé : le seed comble, il n'écrase pas")
-    void unElementSupprimeRevient() {
-        // La contrepartie de « ne jamais modifier » : ce qui manque est recréé. C'est voulu —
-        // une section supprimée par erreur revient au déploiement suivant, et l'administration
-        // dispose d'un interrupteur « visible » pour la masquer sans la détruire.
+    @DisplayName("une suppression faite par l'administration est DÉFINITIVE")
+    void unElementSupprimeNeRevientPas() {
+        // Le seed ne repasse qu'une fois : le marqueur « seed_applique_le » est posé au
+        // premier passage réussi. Sans lui, ce qui manque était recréé à chaque démarrage —
+        // une section retirée revenait au déploiement suivant, et il aurait fallu la
+        // supprimer après chaque mise en ligne.
+        assertThat(seed.dejaApplique())
+                .as("le contexte de test a déjà exécuté le seed une fois").isTrue();
+
         var lien = liens.findByCle("fellowship").orElseThrow();
+        String libelle = lien.getLibelle();
+        String url = lien.getUrl();
         liens.delete(lien);
 
-        assertThat(seed.garnir()).isEqualTo(1);
-        assertThat(liens.findByCle("fellowship")).isPresent();
+        // run() est ce que fait réellement un démarrage : il consulte le marqueur.
+        seed.run(null);
+
+        assertThat(liens.findByCle("fellowship"))
+                .as("le lien supprimé ne revient pas").isEmpty();
+
+        // Reposé pour les autres tests, qui comptent six liens. Reconstruit plutôt que
+        // ré-enregistré : l'entité supprimée est détachée, et la sauver produirait une mise
+        // à jour d'une ligne qui n'existe plus.
+        liens.save(com.optimisante.backend.domain.exercerenfrance.entity.EvcContenu.Lien.builder()
+                .cle("fellowship").libelle(libelle).url(url)
+                .verifieLe(java.time.OffsetDateTime.now()).build());
     }
 
     @Test

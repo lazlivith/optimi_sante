@@ -61,6 +61,9 @@ const AdminPayoutsPage = lazy(() => import('./pages/admin/AdminPayoutsPage').the
 const BecomePartnerPage = lazy(() => import('./pages/partnership/BecomePartnerPage').then(m => ({ default: m.BecomePartnerPage })));
 const ServicesPage = lazy(() => import('./pages/ServicesPage').then(m => ({ default: m.ServicesPage })));
 const QuiSommesNousPage = lazy(() => import('./pages/QuiSommesNousPage').then(m => ({ default: m.QuiSommesNousPage })));
+// Chargée à la demande, comme toutes les pages : son contenu ne sert qu'aux praticiens
+// diplômés hors UE, et le reste du site n'a pas à en porter le poids.
+const ExercerEnFrancePage = lazy(() => import('./pages/ExercerEnFrancePage').then(m => ({ default: m.ExercerEnFrancePage })));
 const ServiceDetailPage = lazy(() => import('./pages/services/ServiceDetailPage').then(m => ({ default: m.ServiceDetailPage })));
 const BlogPage = lazy(() => import('./pages/BlogPage').then(m => ({ default: m.BlogPage })));
 const BlogPostPage = lazy(() => import('./pages/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
@@ -222,6 +225,7 @@ export function App() {
                       question : ce que nous faisons pour vous. Un visiteur qui demande qui
                       nous sommes a sa reponse ici, des la premiere phrase. */}
                   <Route path="/qui-sommes-nous" element={<QuiSommesNousPage />} />
+                  <Route path="/exercer-en-france" element={<ExercerEnFrancePage />} />
                   {/* Page de presentation, consultable avant tout engagement. */}
                   <Route path="/services" element={<ServicesPage />} />
                   {/* Une page par prestation : le menu y mene directement, au lieu de

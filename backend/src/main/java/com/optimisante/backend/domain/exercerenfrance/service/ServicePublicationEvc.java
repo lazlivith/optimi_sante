@@ -186,7 +186,7 @@ public class ServicePublicationEvc {
                 .map(x -> new SpecialiteVue(x.getGroupe(), x.getLibelle()))
                 .toList();
 
-        List<OffreVue> o = offres.findByTenantIdAndActifTrueOrderByOrdreAsc(tenant).stream()
+        List<OffreVue> o = offres.findByTenantIdAndActifTrueAndTechniqueFalseOrderByOrdreAsc(tenant).stream()
                 .map(x -> new OffreVue(x.getCle(), x.getSurTitre(), x.getTitre(),
                         decouper(x.getPoints()), x.getPrix(), x.getDevise(), x.getLibelleBouton()))
                 .toList();

@@ -28,6 +28,16 @@ public class EvcReglage {
     /** Date de la dernière publication connue du calendrier des commissions, par le CNG. */
     public static final String CALENDRIER_ACTUALISE_LE = "calendrier_actualise_le";
 
+    /**
+     * Date du premier passage réussi du contenu initial.
+     *
+     * <p>Tant qu'elle est absente, le seed pose ce qui manque ; une fois posée, il ne fait
+     * plus rien. C'est ce qui rend une suppression DÉFINITIVE : sans ce marqueur, un élément
+     * retiré par l'administration revenait au déploiement suivant, et la seule façon de s'en
+     * débarrasser aurait été de le supprimer après chaque mise en ligne.</p>
+     */
+    public static final String SEED_APPLIQUE_LE = "seed_applique_le";
+
     @Id
     @Column(length = 60)
     private String cle;

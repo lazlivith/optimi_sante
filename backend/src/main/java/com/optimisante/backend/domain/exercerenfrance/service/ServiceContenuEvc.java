@@ -231,6 +231,7 @@ public class ServiceContenuEvc {
         if (dto.devise() != null) o.setDevise(dto.devise());
         o.setLibelleBouton(dto.libelleBouton());
         if (dto.actif() != null) o.setActif(dto.actif());
+        if (dto.technique() != null) o.setTechnique(dto.technique());
         if (dto.ordre() != null) o.setOrdre(dto.ordre());
         offres.save(o);
         audit.record("EVC_OFFRE", "EvcOffre", o.getCle(),

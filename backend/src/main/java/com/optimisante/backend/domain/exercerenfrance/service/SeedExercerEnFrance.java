@@ -2,6 +2,7 @@ package com.optimisante.backend.domain.exercerenfrance.service;
 
 import com.optimisante.backend.config.tenant.TenantParDefaut;
 import com.optimisante.backend.domain.exercerenfrance.entity.EvcContenu;
+import com.optimisante.backend.domain.exercerenfrance.entity.EvcReglage;
 import com.optimisante.backend.domain.exercerenfrance.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,7 @@ public class SeedExercerEnFrance implements ApplicationRunner {
     private final DepotSpecialites specialites;
     private final DepotOffres offres;
     private final DepotPublications publications;
+    private final DepotReglages reglages;
     private final TenantParDefaut tenantParDefaut;
     private final ServicePublicationEvc publication;
 
@@ -61,10 +63,44 @@ public class SeedExercerEnFrance implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        if (dejaApplique()) {
+            log.info("« Exercer en France » : contenu initial déjà posé le {}, rien à faire.",
+                    marqueur());
+            return;
+        }
         int poses = garnir();
         boolean publiee = publierSiAucuneVersion();
+        marquerApplique();
         log.info("« Exercer en France » : {} élément(s) posé(s), publication initiale {}.",
                 poses, publiee ? "effectuée" : "déjà faite");
+    }
+
+    @Transactional(readOnly = true)
+    public boolean dejaApplique() {
+        return reglages.findById(EvcReglage.SEED_APPLIQUE_LE).isPresent();
+    }
+
+    private String marqueur() {
+        return reglages.findById(EvcReglage.SEED_APPLIQUE_LE)
+                .map(EvcReglage::getValeur).orElse("?");
+    }
+
+    /**
+     * Inscrit que le contenu initial a été posé.
+     *
+     * <p><b>C'est ce marqueur qui rend une suppression définitive.</b> Sans lui, le seed
+     * comblait les trous à chaque démarrage : une section retirée par l'administration
+     * revenait au déploiement suivant, et il aurait fallu la supprimer après chaque mise en
+     * ligne. Pour retirer un élément de la page sans le détruire, l'administration dispose
+     * de l'interrupteur « visible ».</p>
+     */
+    @Transactional
+    public void marquerApplique() {
+        reglages.save(EvcReglage.builder()
+                .cle(EvcReglage.SEED_APPLIQUE_LE)
+                .valeur(LocalDate.now().toString())
+                .modifieLe(OffsetDateTime.now())
+                .build());
     }
 
     @Transactional
@@ -116,7 +152,7 @@ public class SeedExercerEnFrance implements ApplicationRunner {
                 CV, activité en France le cas échéant, lettre de recommandation, DU ou FMC suivis. \
                 Chirurgiens-dentistes : bilan d'activité, AFGSU, formation à la radioprotection.
 
-                Composition réglementaire : articles R. 4111-13-8-3 (médecins, sages-femmes, \
+                > Composition réglementaire : articles R. 4111-13-8-3 (médecins, sages-femmes, \
                 chirurgiens-dentistes) et R. 4221-13-4-3 (pharmaciens) du code de la santé publique.""")
 
              + section("cae", "ÉTAPE 3", "Commission d'autorisation d'exercice", 4, """
@@ -195,7 +231,12 @@ public class SeedExercerEnFrance implements ApplicationRunner {
                 Visa et titre de séjour
                 Assurance et logement
                 Mise en relation avec des établissements d'accueil
-                Démarches auprès de l'Ordre""");
+                Démarches auprès de l'Ordre""")
+
+             // Porte d'entrée, et non prestation : jamais affichée dans « Nos
+             // accompagnements ». Elle existe pour que les demandes d'alerte portent une clé,
+             // et qu'on retrouve qui prévenir le jour où le CNG publie ses dates.
+             + offreTechnique("alerte_aep", "Alerte d'ouverture AEP", "Être alerté à l'ouverture");
     }
 
     /**
@@ -294,6 +335,21 @@ public class SeedExercerEnFrance implements ApplicationRunner {
             poses++;
         }
         return poses;
+    }
+
+    /** Clé de l'offre rattachée aux demandes d'alerte d'ouverture d'une période AEP. */
+    public static final String ALERTE_AEP = "alerte_aep";
+
+    private int offreTechnique(String cle, String titre, String bouton) {
+        var tenant = tenantParDefaut.identifiant();
+        if (offres.findByTenantIdAndCle(tenant, cle).isPresent()) {
+            return 0;
+        }
+        offres.save(EvcContenu.Offre.builder()
+                .tenantId(tenant).cle(cle).titre(titre).libelleBouton(bouton)
+                .prix((BigDecimal) null).devise("EUR")
+                .actif(true).technique(true).ordre(99).build());
+        return 1;
     }
 
     private int offre(String cle, String surTitre, String titre, String bouton, int ordre, String points) {

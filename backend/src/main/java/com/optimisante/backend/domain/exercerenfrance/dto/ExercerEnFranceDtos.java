@@ -117,7 +117,7 @@ public final class ExercerEnFranceDtos {
                                @DecimalMin(value = "0.0", message = "Un prix ne peut pas être négatif.")
                                BigDecimal prix, @Size(max = 3) String devise,
                                @NotBlank @Size(max = 80) String libelleBouton,
-                               Boolean actif, Integer ordre) {
+                               Boolean actif, Boolean technique, Integer ordre) {
     }
 
     /** Les quatre chiffres du tableau de bord, et les trois rappels. */
