@@ -1,3 +1,4 @@
+import { hrefSur } from '../../lib/adresseWeb';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Loader2, CalendarClock, Send, XCircle, CheckCircle2, Video, Info,
@@ -116,7 +117,7 @@ export function AdminInterviewPanel({ enrollmentId }: { enrollmentId: string }) 
                     {/* Le lien est montré en entier : c'est ce que l'administration vérifie
                         avant de transmettre — un lien tronqué ne se contrôle pas. */}
                     <a
-                      href={e.meetingLink}
+                      href={hrefSur(e.meetingLink)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="block text-brand underline mt-1 break-all"

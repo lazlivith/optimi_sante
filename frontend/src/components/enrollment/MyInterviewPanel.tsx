@@ -1,3 +1,4 @@
+import { hrefSur } from '../../lib/adresseWeb';
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, CalendarCheck, CalendarClock, Video, Info, CheckCircle2, ExternalLink } from 'lucide-react';
 import {
@@ -115,7 +116,7 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
                 Lien de la réunion en ligne
               </p>
               <a
-                href={entretien.meetingLink}
+                href={hrefSur(entretien.meetingLink)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-brand underline break-all mt-1 inline-block"
@@ -126,7 +127,7 @@ export function MyInterviewPanel({ enrollmentId }: { enrollmentId: string }) {
 
             <div className="flex flex-wrap gap-2 mt-4">
               <a
-                href={entretien.meetingLink}
+                href={hrefSur(entretien.meetingLink)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-brand-fonce transition-colors"

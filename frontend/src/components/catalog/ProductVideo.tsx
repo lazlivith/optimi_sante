@@ -1,3 +1,4 @@
+import { adresseSure } from '../../lib/adresseWeb';
 import { useState } from 'react';
 import { Play, Video as VideoIcon } from 'lucide-react';
 
@@ -74,7 +75,7 @@ export function ProductVideo({
       >
         <source src={videoUrl} />
         Votre navigateur ne sait pas lire cette vidéo.{' '}
-        <a href={videoUrl}>La télécharger</a>.
+        {adresseSure(videoUrl) && <a href={videoUrl}>La télécharger</a>}
       </video>
     );
   }
@@ -82,7 +83,18 @@ export function ProductVideo({
   const integration = adresseIntegration(videoUrl, videoProvider);
 
   if (!integration) {
-    // Adresse non reconnue : plutôt qu'un cadre vide, on propose le lien d'origine.
+    // Adresse non reconnue : plutôt qu'un cadre vide, on propose le lien d'origine — mais
+    // SEULEMENT si c'est une adresse web. Une adresse « javascript: » enregistrée avant que
+    // le serveur ne les refuse s'exécuterait ici, sur une page publique, dans la session de
+    // chaque visiteur. Sans href, l'élément cesse d'être un lien.
+    if (!adresseSure(videoUrl)) {
+      return (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 text-sm text-slate-500">
+          <VideoIcon className="h-7 w-7" />
+          Vidéo indisponible
+        </div>
+      );
+    }
     return (
       <a
         href={videoUrl}

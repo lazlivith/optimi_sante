@@ -1,3 +1,4 @@
+import { hrefSur } from '../../lib/adresseWeb';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Loader2, X, Upload, Trash2, Video, Link2, Star, StarOff, Images, ImageOff, Check,
@@ -240,7 +241,7 @@ export function ProductMediaDialog({
                       <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                         {media.videoProvider}
                       </p>
-                      <a href={media.videoUrl} target="_blank" rel="noopener noreferrer"
+                      <a href={hrefSur(media.videoUrl)} target="_blank" rel="noopener noreferrer"
                         className="mt-1 block break-all text-sm text-brand underline-offset-2 hover:underline">
                         {media.videoUrl}
                       </a>
