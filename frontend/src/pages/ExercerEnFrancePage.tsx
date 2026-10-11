@@ -5,6 +5,7 @@ import {
   exercerEnFranceService,
   type OffreEvc, type PageExercerEnFrance, type PeriodeEvc, type SectionEvc,
 } from '../api/exercerEnFranceService';
+import { badgeDePeriode, OFFRE_ALERTE_AEP } from '../lib/exercerEnFrance';
 
 /**
  * « Exercer en France » : ce qu'un praticien diplômé hors UE doit comprendre avant de se
@@ -292,15 +293,8 @@ function SectionAep({ section, periodes, specialites, lienRenouvellement }: {
   );
 }
 
-/** Ce que chaque état d'une période dit au visiteur, et la couleur qui le porte. */
-const ETATS = {
-  ouvert:  { libelle: 'Ouvert',  classe: 'bg-success/10 text-success border-success/30' },
-  ferme:   { libelle: 'Fermé',   classe: 'bg-slate-100 text-slate-600 border-slate-200' },
-  a_venir: { libelle: 'À venir', classe: 'bg-warning/10 text-warning border-warning/30' },
-} as const;
-
 function CartePeriode({ periode }: { periode: PeriodeEvc }) {
-  const etat = ETATS[periode.statut] ?? ETATS.a_venir;
+  const etat = badgeDePeriode(periode.statut);
   const aVenir = periode.statut === 'a_venir';
   return (
     <div className={`rounded-xl border p-5 ${aVenir ? 'border-warning/40' : 'border-slate-200'}`}>
@@ -324,7 +318,7 @@ function CartePeriode({ periode }: { periode: PeriodeEvc }) {
         // Même formulaire que les accompagnements, rattaché à l'offre technique « alerte_aep » :
         // c'est elle qui permettra de retrouver qui prévenir quand le CNG publiera ses dates.
         <a href="#accompagnements"
-           data-offre="alerte_aep"
+           data-offre={OFFRE_ALERTE_AEP}
            className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-accent underline-offset-4 hover:underline">
           Être alerté à l'ouverture <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
         </a>
