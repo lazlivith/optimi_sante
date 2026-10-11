@@ -91,10 +91,11 @@ class ServiceAnonymisationTest {
             OffsetDateTime limiteContrats = invocation.getArgument(1);
             List<AccompanimentRequest> echues = new ArrayList<>();
             for (AccompanimentRequest d : toutes) {
-                boolean prospectEchu = !Enums.Statut.PAYE.code().equals(d.getStatut())
+                boolean engagee = Enums.Statut.PAYE.code().equals(d.getStatut())
+                        || "en_cours".equals(d.getStatut()) || "termine".equals(d.getStatut());
+                boolean prospectEchu = d.getPrestationFinLe() == null && !engagee
                         && d.getDerniereActiviteLe().isBefore(limiteProspects);
-                boolean contratEchu = Enums.Statut.PAYE.code().equals(d.getStatut())
-                        && d.getPrestationFinLe() != null
+                boolean contratEchu = d.getPrestationFinLe() != null
                         && d.getPrestationFinLe().isBefore(limiteContrats);
                 if (d.getAnonymiseLe() == null && (prospectEchu || contratEchu)) {
                     echues.add(d);
@@ -145,13 +146,32 @@ class ServiceAnonymisationTest {
     }
 
     @Test
+    @DisplayName("une prestation ACHEVÉE garde le régime long, bien qu'elle ne soit plus « payée »")
+    void leStatutAvanceMaisLeRegimeReste() {
+        // Le défaut que ce test empêche : le régime long se reconnaissait au statut « payé ».
+        // Or une demande réglée avance vers « en cours » puis « terminé » — elle quitte donc
+        // ce statut. Fondée sur lui, la règle la faisait retomber parmi les prospects, et une
+        // pièce contractuelle aurait été effacée 24 mois après la dernière activité au lieu de
+        // 5 ans après la fin de prestation.
+        OffsetDateTime maintenant = OffsetDateTime.now();
+        AccompanimentRequest achevee = demande("Achevee", "termine",
+                maintenant.minusMonths(30), maintenant.minusMonths(30));
+        alimenter(List.of(achevee));
+
+        assertThat(service.executer())
+                .as("30 mois : au-delà des 24 des prospects, dans les 60 des contrats")
+                .isZero();
+        assertThat(achevee.getAnonymiseLe()).isNull();
+    }
+
+    @Test
     @DisplayName("une demande payée SANS date de fin de prestation n'est jamais effacée")
     void leContratSansFinResteOuvert() {
         // Le délai court à partir de la fin de la prestation. Tant qu'elle n'est pas
         // renseignée, il n'a pas commencé : conserver vaut mieux qu'effacer une pièce
         // qu'un litige pourrait réclamer.
         OffsetDateTime maintenant = OffsetDateTime.now();
-        AccompanimentRequest sansFin = demande("EnCours", Enums.Statut.PAYE.code(),
+        AccompanimentRequest sansFin = demande("EnCours", "en_cours",
                 maintenant.minusMonths(80), null);
         alimenter(List.of(sansFin));
 

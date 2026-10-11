@@ -54,6 +54,7 @@ public class ServicePublicationEvc {
     private final DepotSpecialites specialites;
     private final DepotOffres offres;
     private final DepotPublications publications;
+    private final DepotReglages reglages;
     private final TenantParDefaut tenantParDefaut;
     private final AuditService auditService;
 
@@ -68,7 +69,7 @@ public class ServicePublicationEvc {
         return publications.findFirstByOrderByVersionDesc()
                 .map(this::relire)
                 .orElseGet(() -> new PagePublique(List.of(), List.of(), List.of(), List.of(),
-                        List.of(), null, null));
+                        List.of(), null, null, null));
     }
 
     /** L'état courant du brouillon, tel qu'il serait publié. Sert l'aperçu de l'administration. */
@@ -152,7 +153,8 @@ public class ServicePublicationEvc {
             // inaccessible : mieux vaut une page vide qu'une erreur 500 pour un visiteur.
             log.error("Instantané de la version {} illisible : {}",
                     publication.getVersion(), e.getMessage());
-            return new PagePublique(List.of(), List.of(), List.of(), List.of(), List.of(), null, null);
+            return new PagePublique(List.of(), List.of(), List.of(), List.of(), List.of(),
+                    null, null, null);
         }
     }
 
@@ -189,7 +191,11 @@ public class ServicePublicationEvc {
                         decouper(x.getPoints()), x.getPrix(), x.getDevise(), x.getLibelleBouton()))
                 .toList();
 
-        return new PagePublique(s, p, l, sp, o, publieLe, version);
+        return new PagePublique(s, p, l, sp, o, publieLe, version,
+                reglages.findById(com.optimisante.backend.domain.exercerenfrance.entity.EvcReglage
+                        .CALENDRIER_ACTUALISE_LE)
+                        .map(com.optimisante.backend.domain.exercerenfrance.entity.EvcReglage::enDate)
+                        .orElse(null));
     }
 
     /**
@@ -209,7 +215,7 @@ public class ServicePublicationEvc {
                         StatutPeriode.calculer(x.dateDebut(), x.dateFin()).name().toLowerCase()))
                 .toList();
         return new PagePublique(page.sections(), fraiches, page.liens(), page.specialites(),
-                page.offres(), page.misAJourLe(), page.version());
+                page.offres(), page.misAJourLe(), page.version(), page.calendrierActualiseLe());
     }
 
     /** Les puces d'une offre, une par ligne. */

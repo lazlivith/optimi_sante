@@ -40,6 +40,7 @@ public class ServiceDemandesAccompagnement {
     private final DepotEvenements evenements;
     private final TenantParDefaut tenantParDefaut;
     private final AuditService auditService;
+    private final com.optimisante.backend.domain.parametres.ParametrePlateformeRepository parametres;
 
     /** Levée quand un dépôt est écarté : le visiteur voit un message neutre, pas la raison. */
     public static class DepotRefuse extends RuntimeException {
@@ -147,11 +148,17 @@ public class ServiceDemandesAccompagnement {
         Enums.Statut nouveau = Enums.Statut.depuis(dto.statut());
 
         d.setStatut(nouveau.code());
-        // Le passage à « payé » ouvre le régime de conservation long : la demande devient une
-        // pièce contractuelle. Sans date de fin de prestation, elle ne sera jamais anonymisée
-        // — c'est voulu : mieux vaut conserver que d'effacer une pièce encore utile.
         if (dto.prestationFinLe() != null) {
             d.setPrestationFinLe(dto.prestationFinLe());
+        } else if (nouveau == Enums.Statut.TERMINE && d.getPrestationFinLe() == null) {
+            // Renseignée d'office à la clôture, et c'est ce qui FAIT COURIR le délai de
+            // conservation : sans elle, la demande n'est jamais anonymisée. « Conserver par
+            // précaution » est aussi un manquement que d'effacer trop tôt, et compter sur un
+            // administrateur pour y penser garantissait l'oubli.
+            //
+            // La valeur reste modifiable : une prestation peut s'être achevée avant qu'on ne
+            // pense à fermer le dossier.
+            d.setPrestationFinLe(OffsetDateTime.now());
         }
         toucher(d);
 
@@ -182,15 +189,30 @@ public class ServiceDemandesAccompagnement {
 
     @Transactional(readOnly = true)
     public Indicateurs indicateurs(long liensNonVerifies, long periodesSansDates,
+                                   boolean calendrierAVerifier,
                                    OffsetDateTime dernierePublication, Integer version) {
         UUID tenant = tenantParDefaut.identifiant();
+        OffsetDateTime debutDuMois = OffsetDateTime.now().withDayOfMonth(1).toLocalDate()
+                .atStartOfDay(java.time.ZoneId.systemDefault()).toOffsetDateTime();
         return new Indicateurs(
                 demandes.countByTenantIdAndStatut(tenant, Enums.Statut.NOUVEAU.code()),
-                demandes.countByTenantIdAndCreeLeAfter(tenant,
-                        OffsetDateTime.now().withDayOfMonth(1).toLocalDate()
-                                .atStartOfDay(java.time.ZoneId.systemDefault()).toOffsetDateTime()),
+                demandes.countByTenantIdAndCreeLeAfter(tenant, debutDuMois),
                 demandes.countByTenantIdAndStatut(tenant, Enums.Statut.PAYE.code()),
-                dernierePublication, version, liensNonVerifies, periodesSansDates);
+                dernierePublication, version, liensNonVerifies, periodesSansDates,
+                calendrierAVerifier,
+                demandes.compterPrestationsSansFin(tenant,
+                        OffsetDateTime.now().minusMonths(moisAlertePrestationSansFin())));
+    }
+
+    /** Seuil du rappel « prestation sans date de fin », paramétrable comme les durées RGPD. */
+    private int moisAlertePrestationSansFin() {
+        try {
+            return parametres.findByTenantIdAndCle(tenantParDefaut.identifiant(),
+                            "rgpd.accompagnement.mois_alerte_prestation_sans_fin")
+                    .map(p -> Integer.parseInt(p.getValeur().trim())).orElse(12);
+        } catch (Exception e) {
+            return 12;
+        }
     }
 
     // ── Rouages ──────────────────────────────────────────────────────────────────────────

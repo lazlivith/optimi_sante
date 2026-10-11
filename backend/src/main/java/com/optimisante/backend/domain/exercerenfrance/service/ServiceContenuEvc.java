@@ -5,6 +5,7 @@ import com.optimisante.backend.config.tenant.TenantParDefaut;
 import com.optimisante.backend.domain.audit.service.AuditService;
 import com.optimisante.backend.domain.exercerenfrance.dto.ExercerEnFranceDtos.*;
 import com.optimisante.backend.domain.exercerenfrance.entity.EvcContenu;
+import com.optimisante.backend.domain.exercerenfrance.entity.EvcReglage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ public class ServiceContenuEvc {
     private final DepotLiens liens;
     private final DepotSpecialites specialites;
     private final DepotOffres offres;
+    private final DepotReglages reglages;
     private final TenantParDefaut tenantParDefaut;
     private final AuditService audit;
 
@@ -235,6 +237,38 @@ public class ServiceContenuEvc {
                 (id == null ? "Offre créée" : "Offre modifiée")
                         + (dto.prix() == null ? " (sur devis)" : " — prix " + dto.prix()), null);
         return o;
+    }
+
+    // ── Réglages éditoriaux ─────────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public java.time.LocalDate calendrierActualiseLe() {
+        return reglages.findById(EvcReglage.CALENDRIER_ACTUALISE_LE)
+                .map(EvcReglage::enDate).orElse(null);
+    }
+
+    @Transactional
+    public void definirCalendrierActualiseLe(java.time.LocalDate date) {
+        EvcReglage r = reglages.findById(EvcReglage.CALENDRIER_ACTUALISE_LE)
+                .orElseGet(() -> EvcReglage.builder().cle(EvcReglage.CALENDRIER_ACTUALISE_LE).build());
+        r.setValeur(date == null ? null : date.toString());
+        r.setModifieLe(OffsetDateTime.now());
+        reglages.save(r);
+        audit.record("EVC_REGLAGE", "EvcReglage", EvcReglage.CALENDRIER_ACTUALISE_LE,
+                "Calendrier des commissions actualisé au " + date, null);
+    }
+
+    /**
+     * Le calendrier des commissions a-t-il vieilli ?
+     *
+     * <p>Une date absente compte comme vieille : ne rien savoir de la dernière publication
+     * n'est pas plus rassurant que de la savoir ancienne.</p>
+     */
+    @Transactional(readOnly = true)
+    public boolean calendrierAVerifier() {
+        java.time.LocalDate date = calendrierActualiseLe();
+        return date == null
+                || date.isBefore(java.time.LocalDate.now().minusDays(JOURS_AVANT_REVERIFICATION));
     }
 
     private EvcContenu.Section charger(UUID id) {

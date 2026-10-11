@@ -206,6 +206,14 @@ public class AdminExercerEnFranceResource {
         return ResponseEntity.ok(publication.restaurer(version, utilisateur(auth)));
     }
 
+    /** Date de la dernière publication connue du calendrier des commissions. */
+    @PutMapping("/reglages/calendrier-actualise-le")
+    @MobilityAdmin
+    public ResponseEntity<Void> definirCalendrier(@RequestParam java.time.LocalDate date) {
+        contenu.definirCalendrierActualiseLe(date);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/indicateurs")
     @MobilityAdmin
     public ResponseEntity<Indicateurs> indicateurs() {
@@ -213,6 +221,7 @@ public class AdminExercerEnFranceResource {
         VersionVue derniere = versions.isEmpty() ? null : versions.get(0);
         return ResponseEntity.ok(demandes.indicateurs(
                 contenu.liensNonVerifies(), contenu.periodesSansDates(),
+                contenu.calendrierAVerifier(),
                 derniere == null ? null : derniere.publieLe(),
                 derniere == null ? null : derniere.version()));
     }

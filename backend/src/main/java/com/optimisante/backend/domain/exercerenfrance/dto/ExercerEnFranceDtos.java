@@ -25,9 +25,17 @@ public final class ExercerEnFranceDtos {
      * depuis un téléphone en connexion lente font six occasions d'afficher un écran à moitié
      * construit.</p>
      */
+    /**
+     * @param calendrierActualiseLe dernière publication du calendrier des commissions que NOUS
+     *                              avons constatée. La page l'annonce comme un constat, et non
+     *                              comme une publication d'Optimi Santé : le calendrier est
+     *                              celui du CNG, et le dater nous-mêmes laisserait croire que
+     *                              nous l'éditons.
+     */
     public record PagePublique(List<SectionVue> sections, List<PeriodeVue> periodes,
                                List<LienVue> liens, List<SpecialiteVue> specialites,
-                               List<OffreVue> offres, OffsetDateTime misAJourLe, Integer version) {
+                               List<OffreVue> offres, OffsetDateTime misAJourLe, Integer version,
+                               LocalDate calendrierActualiseLe) {
     }
 
     public record SectionVue(String cle, String surTitre, String titre, String contenu) {
@@ -113,9 +121,19 @@ public final class ExercerEnFranceDtos {
     }
 
     /** Les quatre chiffres du tableau de bord, et les trois rappels. */
+    /**
+     * Les quatre chiffres du tableau de bord, et les quatre rappels.
+     *
+     * @param calendrierAVerifier    le calendrier des commissions n'a pas été actualisé depuis
+     *                               plus de 90 jours, ou sa date est inconnue
+     * @param prestationsSansFin     demandes engagées depuis plus d'un an dont la fin de
+     *                               prestation n'est pas renseignée : leur délai de
+     *                               conservation n'a jamais commencé
+     */
     public record Indicateurs(long demandesATraiter, long demandesCeMois, long demandesPayees,
                               OffsetDateTime dernierePublication, Integer version,
-                              long liensNonVerifies, long periodesSansDates) {
+                              long liensNonVerifies, long periodesSansDates,
+                              boolean calendrierAVerifier, long prestationsSansFin) {
     }
 
     public record VersionVue(Integer version, OffsetDateTime publieLe, String publiePar,
