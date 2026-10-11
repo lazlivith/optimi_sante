@@ -20,6 +20,21 @@ spring:
       # le plus gros fichier seul.
       max-request-size: 120MB
 
+app:
+  # Tenant auquel sont rattachees les demandes deposees depuis les pages publiques.
+  #
+  # Lu ICI, dans la configuration du deploiement, et jamais dans la requete : une route
+  # ouverte aux visiteurs non connectes n'a pas de session, et les deux seules autres
+  # sources — l'en-tete X-Tenant-Id et le corps — sont fournies par l'appelant. S'y fier
+  # reviendrait a le laisser choisir chez qui sa demande atterrit.
+  #
+  # Pose dans le document SANS profil : une valeur definie sous « dev » ne s'applique pas
+  # en production, et l'application y refuserait de demarrer.
+  #
+  # Cf. TenantParDefaut, qui verifie au demarrage que ce code designe un tenant existant.
+  tenant:
+    code-par-defaut: ${TENANT_CODE_PAR_DEFAUT:FR_MAIN}
+
 ---
 spring:
   config:
@@ -81,8 +96,8 @@ spring:
             enable: true
         transport:
           protocol: smtp
-
 app:
+
   # Identité légale imprimée au pied de chaque document (devis, reçus, conventions).
   # Une valeur absente s'affiche « à compléter » sur le document, et empêche le démarrage
   # en production — cf. CompanyIdentityGuard. Mieux vaut un serveur arrêté qu'une pièce

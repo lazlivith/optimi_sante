@@ -90,6 +90,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/ai/chat", "/api/v1/ai/chat/stream").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/ai/tools/catalog/search").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/ai/tools/trainings").permitAll()
+                        // « Exercer en France » : la page s'adresse a des praticiens qui n'ont
+                        // pas de compte, et qui n'en auront peut-etre jamais. Les deux routes
+                        // sont nommees UNE A UNE, par methode : /api/v1/public/** ouvrirait
+                        // d'avance tout ce que quelqu'un placerait un jour sous ce prefixe.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/public/exercer-en-france").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/public/demandes-accompagnement").permitAll()
                         .anyRequest().authenticated()
                 );
 
