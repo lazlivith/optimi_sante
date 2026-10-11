@@ -68,6 +68,16 @@ public class SeedExercerEnFrance implements ApplicationRunner {
                     marqueur());
             return;
         }
+        // Base DÉJÀ GARNIE, mais sans marqueur : c'est une base remplie avant que le marqueur
+        // n'existe. Y repasser reposerait ce que l'administration avait supprimé entre-temps —
+        // exactement ce que le marqueur est censé empêcher, et la seule occasion où il ne le
+        // pourrait pas. On se contente donc de l'inscrire.
+        if (dejaGarnie()) {
+            marquerApplique();
+            log.info("« Exercer en France » : contenu déjà présent, marqueur posé sans rien "
+                     + "ajouter ni republier.");
+            return;
+        }
         int poses = garnir();
         boolean publiee = publierSiAucuneVersion();
         marquerApplique();
@@ -78,6 +88,18 @@ public class SeedExercerEnFrance implements ApplicationRunner {
     @Transactional(readOnly = true)
     public boolean dejaApplique() {
         return reglages.findById(EvcReglage.SEED_APPLIQUE_LE).isPresent();
+    }
+
+    /**
+     * La page a-t-elle déjà un contenu ?
+     *
+     * <p>Les sections suffisent à trancher : elles sont la matière de la page, et aucun
+     * contenu n'a de sens sans elles. Compter toutes les tables rendrait la réponse
+     * dépendante d'un détail — une spécialité supprimée ferait conclure à une base vierge.</p>
+     */
+    @Transactional(readOnly = true)
+    public boolean dejaGarnie() {
+        return sections.count() > 0;
     }
 
     private String marqueur() {

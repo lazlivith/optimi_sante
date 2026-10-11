@@ -1,7 +1,7 @@
 /**
  * Garde-fou de la charte graphique.
  *
- * Quatre contrôles, exécutés au build (voir `prebuild` et `postbuild` dans package.json) :
+ * Cinq contrôles, exécutés au build (voir `prebuild` et `postbuild` dans package.json) :
  *
  *   1. CONTRASTE — chaque paire texte/fond du thème doit rester au-dessus de 4,5:1. Les valeurs
  *      sont lues dans `src/index.css`, jamais recopiées ici : un contrôle portant sur une copie
@@ -23,7 +23,7 @@
  * Sans dépendance : ce garde-fou doit survivre à une réinstallation des paquets.
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -208,12 +208,47 @@ function verifierPoids() {
   }
 }
 
+// ── 5. Contenu rédigé par l'administration ───────────────────────────────────────────
+
+/**
+ * Aucun texte venu de la base ne doit être interprété comme du HTML.
+ *
+ * Les textes de la page « Exercer en France » — et ceux du blog — sont écrits dans
+ * l'administration et rendus au visiteur. Confiés à `dangerouslySetInnerHTML`, un
+ * `<img src=x onerror=…>` collé dans un champ s'exécuterait chez chaque visiteur, dans
+ * notre domaine. React échappe par défaut ; cette vérification empêche qu'on lui retire
+ * cette protection sans s'en apercevoir.
+ *
+ * Elle échoue sur TOUTE occurrence, y compris sur du contenu réputé sûr : juger au cas par
+ * cas, c'est accepter le premier cas, puis les suivants.
+ */
+function verifierContenuNonInterprete() {
+  console.log('\nCONTENU RÉDIGÉ, JAMAIS INTERPRÉTÉ');
+  // L'USAGE, et non la mention : `dangerouslySetInnerHTML={{…}}` est toujours suivi d'un
+  // « = ». Chercher le simple mot signalait BlogPostPage, dont le commentaire dit justement
+  // de ne pas s'en servir. Un garde-fou qui crie à tort est désarmé dans la semaine.
+  const usage = /dangerouslySetInnerHTML\s*=/;
+  const coupables = fichiersSource(join(RACINE, 'src'))
+    .filter((f) => usage.test(readFileSync(f, 'utf8')))
+    .map((f) => f.replace(RACINE, '').replaceAll(sep, '/'));
+
+  if (coupables.length === 0) {
+    ok('aucun rendu de HTML brut : ce que l’administration écrit reste du texte');
+    return;
+  }
+  echec(`${coupables.length} fichier(s) rendent du HTML brut :`);
+  coupables.forEach((f) => console.error(`           ${f}`));
+}
+
 // ── Exécution ────────────────────────────────────────────────────────────────────────
 
 const seulementPoids = process.argv.includes('--poids');
 console.log(seulementPoids ? 'Vérification du poids servi' : 'Vérification de la charte graphique');
 
-if (!seulementPoids) { verifierContrastes(); verifierCliquet(); verifierValeursBrutes(); }
+if (!seulementPoids) {
+  verifierContrastes(); verifierCliquet(); verifierValeursBrutes();
+  verifierContenuNonInterprete();
+}
 verifierPoids();
 
 if (echecs > 0) {

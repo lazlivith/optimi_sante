@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.exercerenfrance;
 
 import com.optimisante.backend.ConfigurationBaseDeTest;
+import com.optimisante.backend.domain.exercerenfrance.entity.EvcReglage;
 import com.optimisante.backend.domain.exercerenfrance.repository.*;
 import com.optimisante.backend.domain.exercerenfrance.service.SeedExercerEnFrance;
 import org.junit.jupiter.api.DisplayName;
@@ -38,6 +39,7 @@ class SeedExercerEnFranceTest {
     @Autowired private DepotSpecialites specialites;
     @Autowired private DepotOffres offres;
     @Autowired private DepotPublications publications;
+    @Autowired private DepotReglages reglages;
 
     @Test
     @DisplayName("le premier passage a posé tout le contenu")
@@ -129,6 +131,37 @@ class SeedExercerEnFranceTest {
         // Reposé pour les autres tests, qui comptent six liens. Reconstruit plutôt que
         // ré-enregistré : l'entité supprimée est détachée, et la sauver produirait une mise
         // à jour d'une ligne qui n'existe plus.
+        liens.save(com.optimisante.backend.domain.exercerenfrance.entity.EvcContenu.Lien.builder()
+                .cle("fellowship").libelle(libelle).url(url)
+                .verifieLe(java.time.OffsetDateTime.now()).build());
+    }
+
+    @Test
+    @DisplayName("sur une base déjà garnie mais sans marqueur, le seed ne pose QUE le marqueur")
+    void baseGarnieAvantLeMarqueur() {
+        // Le cas de la montée de version : une base remplie avant que le marqueur n'existe.
+        // Sans ce garde-fou, le premier démarrage du nouveau code reposerait ce que
+        // l'administration avait supprimé entre-temps — précisément ce que le marqueur sert à
+        // empêcher, et la seule occasion où il ne le pourrait pas.
+        reglages.deleteById(EvcReglage.SEED_APPLIQUE_LE);
+        assertThat(seed.dejaApplique()).isFalse();
+        assertThat(seed.dejaGarnie()).as("la base porte déjà le contenu").isTrue();
+
+        var lien = liens.findByCle("fellowship").orElseThrow();
+        String libelle = lien.getLibelle();
+        String url = lien.getUrl();
+        liens.delete(lien);
+        long versionsAvant = publications.count();
+
+        seed.run(null);
+
+        assertThat(liens.findByCle("fellowship"))
+                .as("rien n'est reposé").isEmpty();
+        assertThat(publications.count())
+                .as("et rien n'est republié").isEqualTo(versionsAvant);
+        assertThat(seed.dejaApplique())
+                .as("le marqueur est posé, pour que la question ne se repose plus").isTrue();
+
         liens.save(com.optimisante.backend.domain.exercerenfrance.entity.EvcContenu.Lien.builder()
                 .cle("fellowship").libelle(libelle).url(url)
                 .verifieLe(java.time.OffsetDateTime.now()).build());

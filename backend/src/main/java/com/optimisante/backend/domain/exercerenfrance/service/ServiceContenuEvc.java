@@ -115,13 +115,15 @@ public class ServiceContenuEvc {
         if (dto.dateDebut() != null && dto.dateFin() != null && dto.dateFin().isBefore(dto.dateDebut())) {
             throw new IllegalArgumentException("La date de fin précède la date de début.");
         }
+        // La source officielle est rendue au visiteur comme les autres liens.
+        String source = AdresseDeLien.verifier(dto.sourceUrl());
         EvcContenu.Periode p = id == null ? new EvcContenu.Periode()
                 : periodes.findById(id).orElseThrow(() -> new IllegalArgumentException("Période introuvable."));
         p.setLibelle(dto.libelle());
         p.setDateDebut(dto.dateDebut());
         p.setDateFin(dto.dateFin());
         p.setSpecialitesNonOuvertes(dto.specialitesNonOuvertes());
-        p.setSourceUrl(dto.sourceUrl());
+        p.setSourceUrl(source);
         if (dto.visible() != null) p.setVisible(dto.visible());
         if (dto.ordre() != null) p.setOrdre(dto.ordre());
         periodes.save(p);
@@ -150,12 +152,15 @@ public class ServiceContenuEvc {
         l.setCle(dto.cle());
         l.setLibelle(dto.libelle());
         if (dto.url() != null) {
+            // Seuls http et https : une adresse « javascript: » s'exécuterait au clic, dans
+            // la session du visiteur et depuis notre domaine. Cf. AdresseDeLien.
+            String url = AdresseDeLien.verifier(dto.url());
             // Changer l'adresse périme la vérification : ce qui a été vu fonctionner, c'est
             // l'ancienne. La garder marquerait comme contrôlé un lien que personne n'a ouvert.
-            if (!dto.url().equals(l.getUrl())) {
+            if (!url.equals(l.getUrl())) {
                 l.setVerifieLe(null);
             }
-            l.setUrl(dto.url());
+            l.setUrl(url);
         }
         liens.save(l);
         audit.record("EVC_LIEN", "EvcLien", l.getCle(),
