@@ -143,7 +143,9 @@ public class ServiceDemandesAccompagnement {
     private void prevenir(AccompanimentRequest demande) {
         String offre = demande.getOffreCle() == null ? "un accompagnement" : demande.getOffreCle();
         try {
-            emailService.sendAccompagnementRecu(demande.getEmail(), demande.getNom(), offre);
+            emailService.sendAccompagnementRecu(demande.getEmail(), demande.getNom(), offre,
+                    reglage("accompagnement.delai_reponse", "sous 48 h ouvrées"),
+                    reglage("accompagnement.adresse_reponse", "contact@optimisante.com"));
         } catch (Exception e) {
             log.warn("Accusé de réception non envoyé pour la demande {} : {}",
                     demande.getId(), e.getMessage());
@@ -250,6 +252,28 @@ public class ServiceDemandesAccompagnement {
                 calendrierAVerifier,
                 demandes.compterPrestationsSansFin(tenant,
                         OffsetDateTime.now().minusMonths(moisAlertePrestationSansFin())));
+    }
+
+    /**
+     * Un réglage d'exploitation, ou sa valeur de repli.
+     *
+     * <p>Le délai de réponse et l'adresse de contact sont des engagements commerciaux, pas
+     * des constantes techniques : ils se révisent pendant les congés ou quand l'équipe
+     * grandit, et le changer ne doit pas demander un déploiement à quelqu'un qui n'a pas les
+     * accès.</p>
+     *
+     * <p>Un paramètre absent n'empêche pas l'envoi : il serait absurde de perdre un accusé
+     * de réception parce qu'une phrase n'est pas configurée.</p>
+     */
+    private String reglage(String cle, String defaut) {
+        try {
+            return parametres.findByTenantIdAndCle(tenantParDefaut.identifiant(), cle)
+                    .map(p -> p.getValeur())
+                    .filter(v -> !v.isBlank())
+                    .orElse(defaut);
+        } catch (Exception e) {
+            return defaut;
+        }
     }
 
     /** Seuil du rappel « prestation sans date de fin », paramétrable comme les durées RGPD. */

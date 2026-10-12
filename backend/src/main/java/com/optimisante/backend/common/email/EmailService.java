@@ -280,7 +280,8 @@ public class EmailService {
      *
      * <p>Aucune pièce jointe, aucun lien d'action : c'est un accusé, pas une relance.</p>
      */
-    public void sendAccompagnementRecu(String toEmail, String destinataire, String offre) {
+    public void sendAccompagnementRecu(String toEmail, String destinataire, String offre,
+                                       String delaiReponse, String adresseReponse) {
         String subject = "Optimi Santé — Votre demande d'accompagnement est enregistrée";
         String html = """
                 <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1a2e29;">
@@ -290,9 +291,12 @@ public class EmailService {
                     <div style="border: 1px solid #E2EBE5; border-top: none; padding: 32px; border-radius: 0 0 12px 12px;">
                         <p>Bonjour %s,</p>
                         <p>Nous avons bien reçu votre demande concernant <strong>%s</strong>.</p>
-                        <p>Un conseiller examine votre situation et vous répond sous
-                        <strong>48 heures ouvrées</strong>. Inutile de renvoyer le formulaire :
-                        votre demande est enregistrée.</p>
+                        <p>Un conseiller examine votre situation et vous répond
+                        <strong>%s</strong>. Inutile de renvoyer le formulaire : votre demande
+                        est enregistrée.</p>
+                        <p>Vous pouvez répondre directement à ce message : il arrive à
+                        <a href="mailto:%s" style="color: #154D44;">%s</a>, une adresse
+                        relevée par notre équipe.</p>
                         <p style="font-size: 13px; color: #5b6b66; margin-top: 24px;">
                         Optimi Santé n'est pas un organisme officiel. Les demandes d'autorisation
                         d'exercice se déposent auprès du Centre National de Gestion ou des Agences
@@ -302,9 +306,10 @@ public class EmailService {
                         <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
                     </div>
                 </div>
-                """.formatted(texte(destinataire), texte(offre));
+                """.formatted(texte(destinataire), texte(offre), texte(delaiReponse),
+                              texte(adresseReponse), texte(adresseReponse));
 
-        send(toEmail, subject, html, EmailType.ACCOMPAGNEMENT_RECU, null, null);
+        send(toEmail, subject, html, EmailType.ACCOMPAGNEMENT_RECU, null, null, adresseReponse);
     }
 
     /**
@@ -370,8 +375,14 @@ public class EmailService {
 
     private void send(String to, String subject, String html, EmailType type,
                       UUID recipientUserId, PieceJointe piece) {
+        send(to, subject, html, type, recipientUserId, piece, null);
+    }
+
+    /** @param repondreA adresse de réponse surveillée, ou nul pour n'en poser aucune */
+    private void send(String to, String subject, String html, EmailType type,
+                      UUID recipientUserId, PieceJointe piece, String repondreA) {
         try {
-            deliver(to, subject, html, piece);
+            deliver(to, subject, html, piece, repondreA);
             log.info("Email envoyé à {}", to);
             trace(to, subject, type, EmailStatus.SENT, null, recipientUserId);
             return;
@@ -387,7 +398,7 @@ public class EmailService {
 
         try {
             Thread.sleep(PAUSE_AVANT_SECONDE_TENTATIVE_MS);
-            deliver(to, subject, html, piece);
+            deliver(to, subject, html, piece, repondreA);
             log.info("Email envoyé à {} à la seconde tentative", to);
             trace(to, subject, type, EmailStatus.SENT, null, recipientUserId);
         } catch (InterruptedException interruption) {
@@ -448,9 +459,23 @@ public class EmailService {
      * fonctionnent déjà, sans nécessité.</p>
      */
     private void deliver(String to, String subject, String html, PieceJointe piece) throws Exception {
+        deliver(to, subject, html, piece, null);
+    }
+
+    /**
+     * @param repondreA adresse à laquelle le destinataire doit pouvoir répondre, ou nul
+     */
+    private void deliver(String to, String subject, String html, PieceJointe piece,
+                         String repondreA) throws Exception {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, piece != null, "UTF-8");
         helper.setFrom(fromAddress);
+        // L'expéditeur technique n'est pas forcément une boîte relevée. Celui qui vient de
+        // confier son parcours RÉPOND — il ajoute une pièce, corrige une date, pose une
+        // question — et cette réponse doit arriver quelque part.
+        if (repondreA != null && !repondreA.isBlank()) {
+            helper.setReplyTo(repondreA.trim());
+        }
         helper.setTo(to);
         helper.setSubject(subject);
         helper.setText(html, true);
