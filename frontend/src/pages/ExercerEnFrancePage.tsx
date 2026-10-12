@@ -6,6 +6,7 @@ import {
   type OffreEvc, type PageExercerEnFrance, type PeriodeEvc, type SectionEvc,
 } from '../api/exercerEnFranceService';
 import { badgeDePeriode, OFFRE_ALERTE_AEP } from '../lib/exercerEnFrance';
+import { ModaleDemande } from '../components/exercerenfrance/ModaleDemande';
 
 /**
  * « Exercer en France » : ce qu'un praticien diplômé hors UE doit comprendre avant de se
@@ -21,6 +22,13 @@ import { badgeDePeriode, OFFRE_ALERTE_AEP } from '../lib/exercerEnFrance';
  */
 export function ExercerEnFrancePage() {
   const [page, setPage] = useState<PageExercerEnFrance | null>(null);
+  /**
+   * L'offre pour laquelle la fenêtre est ouverte, nulle quand elle est fermée.
+   *
+   * <p>Portée par la PAGE et non par chaque bouton : tous ouvrent la même fenêtre, et la
+   * dupliquer sous chaque carte en afficherait autant que d'offres.</p>
+   */
+  const [demandePour, setDemandePour] = useState<{ cle: string; titre: string } | null>(null);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(false);
 
@@ -72,12 +80,13 @@ export function ExercerEnFrancePage() {
   return (
     <div className="bg-white">
       <FilDAriane />
-      <Banniere sections={sections} />
+      <Banniere sections={sections} ouvrirDemande={setDemandePour} />
       <BandeauNonOfficiel section={sections.get('bandeau_non_officiel')} lien={lien('site_cng')} />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-16 sm:space-y-20 py-12 sm:py-16">
         <SectionEvcEpreuves section={sections.get('evc')} lienSession={lien('session_evc')} />
         <SectionAep
+          ouvrirDemande={setDemandePour}
           section={sections.get('aep')}
           periodes={page.periodes}
           specialites={page.specialites}
@@ -94,10 +103,20 @@ export function ExercerEnFrancePage() {
           lienFellowship={lien('fellowship')}
           lienRefugies={lien('refugies')}
         />
-        <SectionAccompagnements section={sections.get('accompagnements')} offres={page.offres} />
+        <SectionAccompagnements section={sections.get('accompagnements')}
+                                offres={page.offres} ouvrirDemande={setDemandePour} />
       </div>
 
-      <BandeauRendezVous />
+      <BandeauRendezVous ouvrirDemande={setDemandePour} />
+      {demandePour && (
+        <ModaleDemande
+          offreCle={demandePour.cle}
+          offreTitre={demandePour.titre}
+          specialites={page.specialites.map(s => s.libelle)}
+          onFermer={() => setDemandePour(null)}
+        />
+      )}
+
       {page.misAJourLe && (
         <p className="max-w-6xl mx-auto px-4 sm:px-6 pb-10 text-xs text-slate-500">
           Informations mises à jour le{' '}
@@ -108,6 +127,12 @@ export function ExercerEnFrancePage() {
     </div>
   );
 }
+
+/** Ouvre la fenêtre de demande pour une offre donnée. */
+type OuvrirDemande = (offre: { cle: string; titre: string }) => void;
+
+/** Ce que les boutons généraux — bannière, bandeau final — rattachent à la demande. */
+const ACCOMPAGNEMENT_GENERAL = { cle: '', titre: "Votre projet d'exercice en France" };
 
 /* ── Repères ──────────────────────────────────────────────────────────────────────────── */
 
@@ -134,7 +159,9 @@ const PARCOURS = [
   { titre: "Inscription à l'Ordre", texte: "Exercice à l'hôpital ou en libéral" },
 ];
 
-function Banniere({ sections }: { sections: Map<string, SectionEvc> }) {
+function Banniere({ sections, ouvrirDemande }: {
+  sections: Map<string, SectionEvc>; ouvrirDemande: OuvrirDemande;
+}) {
   return (
     <header className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
       <div className="bg-brand-cream rounded-2xl px-6 sm:px-10 py-10 sm:py-14 grid lg:grid-cols-2 gap-10 items-start">
@@ -150,10 +177,10 @@ function Banniere({ sections }: { sections: Map<string, SectionEvc> }) {
             de l'autorisation d'exercice et préparez votre dossier avec Optimi Santé.
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-4">
-            <a href="#accompagnements"
+            <button type="button" onClick={() => ouvrirDemande(ACCOMPAGNEMENT_GENERAL)}
                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-fonce">
               Être accompagné <ArrowRight className="w-4 h-4" aria-hidden="true" />
-            </a>
+            </button>
             <a href="#evc" className="text-sm font-semibold text-brand underline-offset-4 hover:underline">
               Comprendre le parcours
             </a>
@@ -238,8 +265,9 @@ function SectionEvcEpreuves({ section, lienSession }:
   );
 }
 
-function SectionAep({ section, periodes, specialites, lienRenouvellement }: {
+function SectionAep({ section, periodes, specialites, lienRenouvellement, ouvrirDemande }: {
   section?: SectionEvc;
+  ouvrirDemande: OuvrirDemande;
   periodes: PeriodeEvc[];
   specialites: { groupe: string; libelle: string }[];
   lienRenouvellement: { url: string; libelle: string } | null;
@@ -255,7 +283,9 @@ function SectionAep({ section, periodes, specialites, lienRenouvellement }: {
       <p className="mt-4 max-w-4xl text-slate-700 leading-relaxed">{intro?.texte}</p>
 
       <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {periodes.map(p => <CartePeriode key={p.libelle} periode={p} />)}
+        {periodes.map(p => (
+          <CartePeriode key={p.libelle} periode={p} ouvrirDemande={ouvrirDemande} />
+        ))}
       </div>
 
       {encadres.length > 0 && (
@@ -293,7 +323,9 @@ function SectionAep({ section, periodes, specialites, lienRenouvellement }: {
   );
 }
 
-function CartePeriode({ periode }: { periode: PeriodeEvc }) {
+function CartePeriode({ periode, ouvrirDemande }: {
+  periode: PeriodeEvc; ouvrirDemande: OuvrirDemande;
+}) {
   const etat = badgeDePeriode(periode.statut);
   const aVenir = periode.statut === 'a_venir';
   return (
@@ -317,11 +349,11 @@ function CartePeriode({ periode }: { periode: PeriodeEvc }) {
       {aVenir && (
         // Même formulaire que les accompagnements, rattaché à l'offre technique « alerte_aep » :
         // c'est elle qui permettra de retrouver qui prévenir quand le CNG publiera ses dates.
-        <a href="#accompagnements"
-           data-offre={OFFRE_ALERTE_AEP}
+        <button type="button"
+           onClick={() => ouvrirDemande({ cle: OFFRE_ALERTE_AEP, titre: periode.libelle })}
            className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-accent underline-offset-4 hover:underline">
           Être alerté à l'ouverture <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-        </a>
+        </button>
       )}
     </div>
   );
@@ -437,7 +469,9 @@ function SectionAutresVoies({ section, lienFellowship, lienRefugies }: {
 
 const FONDS_OFFRES = ['bg-brand-light', 'bg-brand-cream', 'bg-brand-light'];
 
-function SectionAccompagnements({ section, offres }: { section?: SectionEvc; offres: OffreEvc[] }) {
+function SectionAccompagnements({ section, offres, ouvrirDemande }: {
+  section?: SectionEvc; offres: OffreEvc[]; ouvrirDemande: OuvrirDemande;
+}) {
   if (!section) return null;
   return (
     <section id="accompagnements" aria-labelledby="titre-accompagnements" className="scroll-mt-24">
@@ -459,10 +493,11 @@ function SectionAccompagnements({ section, offres }: { section?: SectionEvc; off
             <p className="mt-5 text-lg font-extrabold text-brand-accent">
               {offre.prix == null ? 'Sur devis' : prixLisible(offre.prix, offre.devise)}
             </p>
-            <a href="#accompagnements" data-offre={offre.cle}
+            <button type="button"
+               onClick={() => ouvrirDemande({ cle: offre.cle, titre: offre.titre })}
                className="mt-3 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-fonce">
               {offre.libelleBouton} <ArrowRight className="w-4 h-4" aria-hidden="true" />
-            </a>
+            </button>
           </div>
         ))}
       </div>
@@ -471,7 +506,7 @@ function SectionAccompagnements({ section, offres }: { section?: SectionEvc; off
   );
 }
 
-function BandeauRendezVous() {
+function BandeauRendezVous({ ouvrirDemande }: { ouvrirDemande: OuvrirDemande }) {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-12">
       <div className="bg-brand-cream rounded-2xl px-6 sm:px-10 py-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
@@ -483,10 +518,10 @@ function BandeauRendezVous() {
             Un conseiller Optimi Santé fait le point sur votre situation en 30 minutes.
           </p>
         </div>
-        <a href="#accompagnements"
+        <button type="button" onClick={() => ouvrirDemande(ACCOMPAGNEMENT_GENERAL)}
            className="shrink-0 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-fonce">
           Prendre rendez-vous <ArrowRight className="w-4 h-4" aria-hidden="true" />
-        </a>
+        </button>
       </div>
     </div>
   );

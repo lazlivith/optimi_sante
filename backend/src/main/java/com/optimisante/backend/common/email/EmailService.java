@@ -272,6 +272,78 @@ public class EmailService {
     }
 
     /**
+     * Accusé de réception d'une demande d'accompagnement « Exercer en France ».
+     *
+     * <p><b>Pourquoi il part même sans prix.</b> Les trois offres sont « sur devis » : le
+     * praticien ne sait pas ce qu'il vient d'engager. Un message qui dit ce qui a été reçu,
+     * et sous quel délai on répond, évite la question qu'il poserait sinon par trois canaux.</p>
+     *
+     * <p>Aucune pièce jointe, aucun lien d'action : c'est un accusé, pas une relance.</p>
+     */
+    public void sendAccompagnementRecu(String toEmail, String destinataire, String offre) {
+        String subject = "Optimi Santé — Votre demande d'accompagnement est enregistrée";
+        String html = """
+                <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1a2e29;">
+                    <div style="background-color: #154D44; padding: 24px; border-radius: 12px 12px 0 0;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">Optimi Santé</h1>
+                    </div>
+                    <div style="border: 1px solid #E2EBE5; border-top: none; padding: 32px; border-radius: 0 0 12px 12px;">
+                        <p>Bonjour %s,</p>
+                        <p>Nous avons bien reçu votre demande concernant <strong>%s</strong>.</p>
+                        <p>Un conseiller examine votre situation et vous répond sous
+                        <strong>48 heures ouvrées</strong>. Inutile de renvoyer le formulaire :
+                        votre demande est enregistrée.</p>
+                        <p style="font-size: 13px; color: #5b6b66; margin-top: 24px;">
+                        Optimi Santé n'est pas un organisme officiel. Les demandes d'autorisation
+                        d'exercice se déposent auprès du Centre National de Gestion ou des Agences
+                        Régionales de Santé. Nous vous aidons à comprendre les règles et à préparer
+                        un dossier complet, sans garantie sur l'issue des épreuves ni des décisions
+                        administratives.</p>
+                        <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
+                    </div>
+                </div>
+                """.formatted(texte(destinataire), texte(offre));
+
+        send(toEmail, subject, html, EmailType.ACCOMPAGNEMENT_RECU, null, null);
+    }
+
+    /**
+     * Alerte interne : une demande vient d'arriver.
+     *
+     * <p><b>Sans le message du praticien, et c'est délibéré.</b> Ce texte parle de sa
+     * situation ; il a sa place dans la fiche, derrière une authentification et soumis à la
+     * durée de conservation — pas dans une boîte aux lettres que personne n'anonymise. L'alerte
+     * dit qu'il y a quelque chose à traiter, et où le traiter.</p>
+     */
+    public void sendAccompagnementAlerteAdmin(String toEmail, String nom, String profession,
+                                              String pays, String offre, String lienFiche) {
+        String subject = "Optimi Santé — Nouvelle demande d'accompagnement";
+        String html = """
+                <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1a2e29;">
+                    <div style="background-color: #154D44; padding: 24px; border-radius: 12px 12px 0 0;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">Optimi Santé</h1>
+                    </div>
+                    <div style="border: 1px solid #E2EBE5; border-top: none; padding: 32px; border-radius: 0 0 12px 12px;">
+                        <p>Une demande d'accompagnement vient d'être déposée.</p>
+                        <table style="width: 100%%; background-color: #F6F7F5; border-radius: 8px; padding: 4px; margin: 24px 0;" cellpadding="8">
+                            <tr><td style="color: #5b6b66;">Praticien</td><td><strong>%s</strong></td></tr>
+                            <tr><td style="color: #5b6b66;">Profession</td><td>%s</td></tr>
+                            <tr><td style="color: #5b6b66;">Pays</td><td>%s</td></tr>
+                            <tr><td style="color: #5b6b66;">Prestation</td><td>%s</td></tr>
+                        </table>
+                        <p><a href="%s" style="color: #154D44;">Ouvrir la fiche dans l'administration</a></p>
+                        <p style="font-size: 13px; color: #5b6b66;">Le message du praticien et ses
+                        coordonnées figurent dans la fiche, et non dans ce message.</p>
+                        <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé</p>
+                    </div>
+                </div>
+                """.formatted(texte(nom), texte(profession), texte(pays), texte(offre),
+                              texte(lienFiche));
+
+        send(toEmail, subject, html, EmailType.ACCOMPAGNEMENT_ALERTE_ADMIN, null, null);
+    }
+
+    /**
      * Délai avant la seconde tentative, quand le relais a refusé pour cadence excessive.
      *
      * <p>Un peu plus d'une seconde : les relais qui limitent le débit raisonnent à la seconde.</p>

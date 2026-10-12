@@ -5,6 +5,7 @@ import com.optimisante.backend.config.tenant.TenantParDefaut;
 import com.optimisante.backend.domain.audit.service.AuditService;
 import com.optimisante.backend.domain.exercerenfrance.dto.ExercerEnFranceDtos.*;
 import com.optimisante.backend.domain.exercerenfrance.entity.*;
+import com.optimisante.backend.domain.identity.entity.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -41,6 +42,12 @@ public class ServiceDemandesAccompagnement {
     private final TenantParDefaut tenantParDefaut;
     private final AuditService auditService;
     private final com.optimisante.backend.domain.parametres.ParametrePlateformeRepository parametres;
+    private final com.optimisante.backend.common.email.EmailService emailService;
+    private final com.optimisante.backend.domain.identity.repository.UserRepository userRepository;
+
+    /** Adresse publique du site, pour composer le lien vers la fiche d'une demande. */
+    @org.springframework.beans.factory.annotation.Value("${app.mail.frontend-base-url}")
+    private String baseUrl;
 
     /** Levée quand un dépôt est écarté : le visiteur voit un message neutre, pas la raison. */
     public static class DepotRefuse extends RuntimeException {
@@ -87,6 +94,8 @@ public class ServiceDemandesAccompagnement {
         // L'audit dit QU'UNE demande est arrivée, et rien de qui l'a déposée.
         auditService.record("ACCOMPAGNEMENT_DEPOT", "AccompanimentRequest",
                 demande.getId().toString(), "Demande déposée depuis la page publique", null);
+
+        prevenir(demande);
         return demande;
     }
 
@@ -116,6 +125,45 @@ public class ServiceDemandesAccompagnement {
         if (dejaDeposees >= DEMANDES_MAX_PAR_JOUR) {
             throw new DepotRefuse("Vous avez déjà déposé plusieurs demandes aujourd'hui. "
                     + "Nous vous répondons au plus vite ; inutile de renvoyer le formulaire.");
+        }
+    }
+
+    /**
+     * Accuse réception au praticien, et alerte l'administration.
+     *
+     * <p><b>Rien de tout cela ne peut faire échouer le dépôt.</b> La demande est déjà
+     * enregistrée ; perdre un courriel est ennuyeux, perdre la demande d'un praticien qui a
+     * rempli le formulaire ne se rattrape pas. {@code EmailService} journalise ses échecs
+     * sans les propager, et ce qui l'entoure est tout de même protégé.</p>
+     *
+     * <p>L'alerte part vers les comptes ACTIFS qui peuvent réellement traiter la demande.
+     * Prévenir un compte désactivé reviendrait à ne prévenir personne, en donnant
+     * l'impression du contraire.</p>
+     */
+    private void prevenir(AccompanimentRequest demande) {
+        String offre = demande.getOffreCle() == null ? "un accompagnement" : demande.getOffreCle();
+        try {
+            emailService.sendAccompagnementRecu(demande.getEmail(), demande.getNom(), offre);
+        } catch (Exception e) {
+            log.warn("Accusé de réception non envoyé pour la demande {} : {}",
+                    demande.getId(), e.getMessage());
+        }
+        try {
+            List<String> destinataires = userRepository.emailsActifsParRoles(
+                    List.of(Role.SUPER_ADMIN, Role.ADMIN_MOBILITE));
+            String lien = baseUrl + "/admin/demandes-accompagnement/" + demande.getId();
+            for (String adresse : destinataires) {
+                emailService.sendAccompagnementAlerteAdmin(adresse, demande.getNom(),
+                        demande.getProfession(), demande.getPays(), offre, lien);
+            }
+            if (destinataires.isEmpty()) {
+                // Signalé plutôt que tu : une demande arrive, et personne n'en est averti.
+                log.warn("Demande {} déposée, mais aucun administrateur actif à prévenir.",
+                        demande.getId());
+            }
+        } catch (Exception e) {
+            log.warn("Alerte d'administration non envoyée pour la demande {} : {}",
+                    demande.getId(), e.getMessage());
         }
     }
 
