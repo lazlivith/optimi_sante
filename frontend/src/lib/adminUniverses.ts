@@ -3,7 +3,7 @@ import {
   LayoutDashboard, TrendingUp, ShoppingBag, Package, Tag, FileText,
   GraduationCap, BookOpen, Building2, Mail, Banknote, Users,
   BarChart3, FileSpreadsheet, ScrollText, ShieldCheck, BellRing, Bot, Newspaper,
-  type LucideIcon, Coins, Receipt,
+  type LucideIcon, Coins, Receipt, Stamp, Inbox,
 } from 'lucide-react';
 
 /**
@@ -25,6 +25,25 @@ export interface AdminNavItem {
   label: string;
   icon: LucideIcon;
   end?: boolean;
+  /**
+   * Date de fin du bandeau « NOUVEAU », au format ISO.
+   *
+   * <p>Une DATE et non un booléen : un badge posé à la main n'est jamais retiré. Celui-ci
+   * s'éteint seul, et le jour où il le fera est écrit dans le code plutôt que dans la
+   * mémoire de quelqu'un.</p>
+   */
+  nouveauJusquAu?: string;
+  /**
+   * Nom du compteur à afficher en pastille, quand il est non nul.
+   *
+   * <p>Le nombre lui-même vient du serveur : l'écrire ici le figerait au déploiement.</p>
+   */
+  compteur?: 'demandesAccompagnement';
+}
+
+/** Le badge « NOUVEAU » est-il encore d'actualité ? */
+export function estNouveau(item: AdminNavItem, aujourdHui = new Date()): boolean {
+  return item.nouveauJusquAu != null && aujourdHui < new Date(item.nouveauJusquAu + 'T23:59:59');
 }
 
 export interface AdminUniverse {
@@ -66,6 +85,19 @@ export const MOBILITE_UNIVERSE: AdminUniverse = {
     { to: '/admin/partnership-requests', label: 'Partenariats', icon: Building2 },
     // Renommé pour lever l'ambiguïté avec le chiffre d'affaires du négoce.
     { to: '/admin/payouts', label: 'Reversements CHU', icon: Banknote },
+    {
+      to: '/admin/exercer-en-france',
+      label: 'Exercer en France',
+      icon: Stamp,
+      // Le badge s'éteint seul : un « NOUVEAU » posé à la main reste des années.
+      nouveauJusquAu: '2026-11-15',
+    },
+    {
+      to: '/admin/demandes-accompagnement',
+      label: "Demandes d'accompagnement",
+      icon: Inbox,
+      compteur: 'demandesAccompagnement',
+    },
   ],
 };
 

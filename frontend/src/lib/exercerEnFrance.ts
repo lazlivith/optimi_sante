@@ -100,3 +100,36 @@ export function verifierDemande(champs: ChampsDemande): Record<string, string> {
 
 /** Clé de l'offre technique rattachée aux demandes d'alerte d'ouverture d'une période AEP. */
 export const OFFRE_ALERTE_AEP = 'alerte_aep';
+
+/**
+ * Les sept statuts d'une demande, du premier contact à la fin.
+ *
+ * <p><b>Le ton n'est pas décoratif.</b> Il dit d'un coup d'œil ce qui attend une action
+ * (ambre), ce qui avance (bleu), ce qui est acquis (vert) et ce qui est clos (ardoise ou
+ * rose). Sur une liste de vingt-cinq lignes, c'est la seule chose qu'on lit vraiment.</p>
+ */
+export const STATUTS_DEMANDE = {
+  nouveau:      { libelle: 'Nouveau',      ton: 'amber'   },
+  qualifie:     { libelle: 'Qualifié',     ton: 'blue'    },
+  devis_envoye: { libelle: 'Devis envoyé', ton: 'blue'    },
+  paye:         { libelle: 'Payé',         ton: 'emerald' },
+  en_cours:     { libelle: 'En cours',     ton: 'purple'  },
+  termine:      { libelle: 'Terminé',      ton: 'slate'   },
+  perdu:        { libelle: 'Perdu',        ton: 'rose'    },
+} as const;
+
+export type StatutDemande = keyof typeof STATUTS_DEMANDE;
+
+/** Les quatre étapes du parcours déclarées au dépôt. */
+export const ETAPES_DEMANDE: Record<string, string> = {
+  avant_evc: 'Avant les EVC',
+  laureat: 'Lauréat',
+  affecte: 'Affecté',
+  autre: 'Autre',
+};
+
+/** Un statut inconnu reste lisible plutôt que de laisser une case vide. */
+export function libelleStatut(code: string | null | undefined): string {
+  if (!code) return '—';
+  return STATUTS_DEMANDE[code as StatutDemande]?.libelle ?? code;
+}

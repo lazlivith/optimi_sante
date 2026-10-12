@@ -148,6 +148,22 @@ public final class ExercerEnFranceDtos {
                              List<EvenementVue> fil) {
     }
 
+    /**
+     * Une demande telle qu'elle apparaît dans la LISTE.
+     *
+     * <p><b>Pourquoi la liste ne renvoie pas l'entité.</b> Elle porte le message du praticien
+     * et les notes internes — ce que l'équipe écrit entre elle sur un dossier. Un écran qui
+     * affiche vingt-cinq lignes n'a besoin ni de l'un ni de l'autre, et tout ce qui part vers
+     * le navigateur est lisible par qui ouvre les outils de développement. Le détail, lui, est
+     * demandé dossier par dossier, et c'est à ce moment-là que ces champs sont justifiés.</p>
+     */
+    public record DemandeResume(UUID id, String nom, String email, String telephoneWhatsapp,
+                                String pays, String profession, String specialite, String etape,
+                                String offreCle, String statut, UUID assigneA,
+                                OffsetDateTime creeLe, OffsetDateTime derniereActiviteLe,
+                                boolean anonymisee) {
+    }
+
     public record EvenementVue(String type, String ancienStatut, String nouveauStatut,
                                String contenu, UUID auteurId, OffsetDateTime creeLe) {
     }

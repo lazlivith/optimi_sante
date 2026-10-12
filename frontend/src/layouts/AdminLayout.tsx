@@ -3,7 +3,8 @@ import { LogoOptimi } from '../components/marque/LogoOptimi';
 import { useAuth } from '../context/AuthContext';
 import { PageTransition } from '../components/common/PageTransition';
 import { Store, LogOut, ShieldCheck } from 'lucide-react';
-import { universesFor } from '../lib/adminUniverses';
+import { estNouveau, universesFor } from '../lib/adminUniverses';
+import { useCompteursAdmin } from '../hooks/useCompteursAdmin';
 import { NotificationBell } from '../components/common/NotificationBell';
 import { useTiroirNavigation } from '../hooks/useTiroirNavigation';
 import { BoutonMenu, FermerTiroir, VoileTiroir, classesTiroir } from '../components/common/TiroirNavigation';
@@ -24,6 +25,7 @@ export function AdminLayout() {
   // La navigation découle du rôle, elle n'est pas figée : un admin métier ne voit que son
   // univers, le super admin voit les trois, groupés et intitulés.
   const universes = universesFor(user?.role);
+  const compteurs = useCompteursAdmin(universes);
   const isMultiUniverse = universes.length > 1;
 
   return (
@@ -67,23 +69,42 @@ export function AdminLayout() {
                 </p>
               )}
               <div className="space-y-1">
-                {universe.items.map(({ to, label, icon: Icon, end }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={end}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-brand text-white'
-                          : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                      }`
-                    }
-                  >
-                    <Icon className="w-4 h-4" />
-                    {label}
-                  </NavLink>
-                ))}
+                {universe.items.map((item) => {
+                  const { to, label, icon: Icon, end } = item;
+                  const compteur = item.compteur ? compteurs[item.compteur] : 0;
+                  return (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      end={end}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'bg-brand text-white'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                        }`
+                      }
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="flex-1 min-w-0">{label}</span>
+                      {estNouveau(item) && (
+                        <span className="shrink-0 rounded-full bg-brand-accent px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                          Nouveau
+                        </span>
+                      )}
+                      {/* Une pastille à zéro ne dit rien : elle s'efface plutôt que
+                          d'annoncer qu'il n'y a rien à faire. */}
+                      {compteur > 0 && (
+                        <span
+                          aria-label={`${compteur} à traiter`}
+                          className="shrink-0 rounded-full bg-warning px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums"
+                        >
+                          {compteur > 99 ? '99+' : compteur}
+                        </span>
+                      )}
+                    </NavLink>
+                  );
+                })}
               </div>
             </div>
           ))}

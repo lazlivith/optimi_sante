@@ -3,6 +3,7 @@ package com.optimisante.backend.domain.exercerenfrance.web;
 import com.optimisante.backend.config.security.MobilityAdmin;
 import com.optimisante.backend.domain.exercerenfrance.dto.ExercerEnFranceDtos.*;
 import com.optimisante.backend.domain.exercerenfrance.entity.AccompanimentRequest;
+import com.optimisante.backend.domain.exercerenfrance.service.CelluleCsv;
 import com.optimisante.backend.domain.exercerenfrance.service.ServiceDemandesAccompagnement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,9 +13,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -32,11 +37,38 @@ public class AdminDemandesAccompagnementResource {
 
     @GetMapping
     @MobilityAdmin
-    public ResponseEntity<Page<AccompanimentRequest>> lister(
+    public ResponseEntity<Page<DemandeResume>> lister(
+            @RequestParam(required = false) String statut,
+            @RequestParam(required = false) String offreCle,
+            @RequestParam(required = false) String profession,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate depuis,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate jusqua,
+            @RequestParam(required = false) String recherche,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int taille) {
-        return ResponseEntity.ok(service.lister(
-                PageRequest.of(page, Math.min(taille, 100), Sort.by(Sort.Direction.DESC, "creeLe"))));
+        var trouvees = service.lister(filtres(statut, offreCle, profession, depuis, jusqua,
+                        recherche),
+                PageRequest.of(page, Math.min(taille, 100), Sort.by(Sort.Direction.DESC, "creeLe")));
+        return ResponseEntity.ok(trouvees.map(AdminDemandesAccompagnementResource::resume));
+    }
+
+    /**
+     * Assemble les critères.
+     *
+     * <p>Les dates arrivent en JOURS et désignent des journées entières : « jusqu'au 12 »
+     * inclut le 12 au soir. Les prendre à minuit amputerait le dernier jour, et c'est
+     * toujours celui qu'on cherche.</p>
+     */
+    private static ServiceDemandesAccompagnement.Filtres filtres(
+            String statut, String offreCle, String profession,
+            LocalDate depuis, LocalDate jusqua, String recherche) {
+        ZoneId paris = ZoneId.of("Europe/Paris");
+        return new ServiceDemandesAccompagnement.Filtres(statut, offreCle, profession,
+                depuis == null ? null : depuis.atStartOfDay(paris).toOffsetDateTime(),
+                jusqua == null ? null : jusqua.plusDays(1).atStartOfDay(paris).toOffsetDateTime(),
+                recherche);
     }
 
     @GetMapping("/{id}")
@@ -73,55 +105,112 @@ public class AdminDemandesAccompagnementResource {
     }
 
     /**
-     * Export CSV de la page courante.
+     * Export complet des demandes retenues par les filtres.
      *
      * <p><b>Point-virgule et BOM.</b> Excel en configuration française découpe sur le
-     * point-virgule et lit l'UTF-8 seulement s'il est annoncé : sans ces deux détails, le
-     * fichier s'ouvre en une seule colonne avec les accents cassés, et c'est le premier
-     * retour qu'on reçoit.</p>
+     * point-virgule et ne lit l'UTF-8 que s'il est annoncé : sans ces deux détails, le
+     * fichier s'ouvre en une seule colonne, accents cassés.</p>
+     *
+     * <p><b>Chaque export est inscrit au journal d'audit.</b> Il fait sortir des données
+     * personnelles vers un fichier que plus rien ne protège : si l'une d'elles réapparaît
+     * ailleurs, la seule question qui compte est de savoir qui l'a sortie, et quand.</p>
      */
     @GetMapping(value = "/export.csv", produces = "text/csv")
     @MobilityAdmin
-    public ResponseEntity<byte[]> exporter(@RequestParam(defaultValue = "0") int page,
-                                           @RequestParam(defaultValue = "500") int taille) {
-        StringBuilder csv = new StringBuilder("﻿");
-        csv.append("Date;Nom;Email;Téléphone;Pays;Profession;Spécialité;Étape;Offre;Statut\n");
-        service.lister(PageRequest.of(page, Math.min(taille, 2000),
-                        Sort.by(Sort.Direction.DESC, "creeLe")))
-                .forEach(d -> csv.append(cellule(String.valueOf(d.getCreeLe()))).append(';')
-                        .append(cellule(d.getNom())).append(';')
-                        .append(cellule(d.getEmail())).append(';')
-                        .append(cellule(d.getTelephoneWhatsapp())).append(';')
-                        .append(cellule(d.getPays())).append(';')
-                        .append(cellule(d.getProfession())).append(';')
-                        .append(cellule(d.getSpecialite())).append(';')
-                        .append(cellule(d.getEtape())).append(';')
-                        .append(cellule(d.getOffreCle())).append(';')
-                        .append(cellule(d.getStatut())).append('\n'));
+    public ResponseEntity<byte[]> exporter(
+            @RequestParam(required = false) String statut,
+            @RequestParam(required = false) String offreCle,
+            @RequestParam(required = false) String profession,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate depuis,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate jusqua,
+            @RequestParam(required = false) String recherche) {
 
-        return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=\"demandes-accompagnement.csv\"")
-                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
-                .body(csv.toString().getBytes(StandardCharsets.UTF_8));
+        var criteres = filtres(statut, offreCle, profession, depuis, jusqua, recherche);
+        var lignes = service.lister(criteres,
+                PageRequest.of(0, EXPORT_MAX, Sort.by(Sort.Direction.DESC, "creeLe")));
+
+        StringBuilder csv = new StringBuilder(CelluleCsv.BOM);
+        ligne(csv, "Date", "Nom", "E-mail", "Téléphone", "Pays", "Profession",
+                "Spécialité", "Étape", "Offre", "Statut");
+        lignes.forEach(d -> ligne(csv,
+                String.valueOf(d.getCreeLe()), d.getNom(), d.getEmail(),
+                d.getTelephoneWhatsapp(), d.getPays(), d.getProfession(), d.getSpecialite(),
+                d.getEtape(), d.getOffreCle(), d.getStatut()));
+
+        service.tracerExport("demandes", criteres, (int) lignes.getNumberOfElements());
+        return fichier(csv.toString(), "demandes-accompagnement.csv");
     }
 
     /**
-     * Neutralise une cellule.
+     * Les contacts à prévenir quand le CNG publiera ses dates.
      *
-     * <p>Le guillemet doublé protège le découpage ; le guillemet simple en tête protège le
-     * tableur : une valeur commençant par {@code =}, {@code +}, {@code -} ou {@code @} est
-     * interprétée comme une FORMULE à l'ouverture. Un nom saisi sur la page publique
-     * s'exécuterait alors sur le poste de l'administrateur.</p>
+     * <p><b>Volontairement plus pauvre que l'export complet.</b> Ce fichier sert à écrire à
+     * des gens, pas à les étudier : il porte de quoi les joindre et les orienter, rien de
+     * plus. Y verser leur message ou leur statut commercial ferait sortir des données dont
+     * cet usage n'a pas besoin — et un export minimal est aussi un export qu'on peut
+     * partager sans y réfléchir à deux fois.</p>
      */
-    private static String cellule(String valeur) {
-        if (valeur == null) {
-            return "";
+    @GetMapping(value = "/export-alertes.csv", produces = "text/csv")
+    @MobilityAdmin
+    public ResponseEntity<byte[]> exporterAlertes() {
+        var criteres = new ServiceDemandesAccompagnement.Filtres(
+                null, OFFRE_ALERTE_AEP, null, null, null, null);
+        var lignes = service.lister(criteres,
+                PageRequest.of(0, EXPORT_MAX, Sort.by(Sort.Direction.DESC, "creeLe")));
+
+        StringBuilder csv = new StringBuilder(CelluleCsv.BOM);
+        ligne(csv, "Nom", "E-mail", "WhatsApp", "Profession", "Spécialité", "Demandé le");
+        // Le numéro passe par numeroTelephone() : ce fichier existe pour qu'on COLLE ces
+        // numéros dans WhatsApp, et l'apostrophe de protection s'y afficherait.
+        lignes.forEach(d -> csv
+                .append(CelluleCsv.neutraliser(d.getNom())).append(CelluleCsv.SEPARATEUR)
+                .append(CelluleCsv.neutraliser(d.getEmail())).append(CelluleCsv.SEPARATEUR)
+                .append(CelluleCsv.numeroTelephone(d.getTelephoneWhatsapp())).append(CelluleCsv.SEPARATEUR)
+                .append(CelluleCsv.neutraliser(d.getProfession())).append(CelluleCsv.SEPARATEUR)
+                .append(CelluleCsv.neutraliser(d.getSpecialite())).append(CelluleCsv.SEPARATEUR)
+                .append(CelluleCsv.neutraliser(String.valueOf(d.getCreeLe()))).append('\n'));
+
+        service.tracerExport("alertes-aep", criteres, (int) lignes.getNumberOfElements());
+        return fichier(csv.toString(), "contacts-a-prevenir.csv");
+    }
+
+    /** Clé de l'offre technique rattachée aux demandes d'alerte d'ouverture. */
+    private static final String OFFRE_ALERTE_AEP = "alerte_aep";
+
+    /**
+     * Plafond d'un export.
+     *
+     * <p>Assez large pour n'amputer aucun usage réel, assez borné pour qu'une erreur de
+     * filtre ne compose pas un fichier de plusieurs dizaines de milliers de lignes en
+     * mémoire — sur une instance qui en a peu.</p>
+     */
+    private static final int EXPORT_MAX = 2000;
+
+    /** Ce qu'une ligne de liste a le droit d'emporter : ni le message, ni les notes. */
+    private static DemandeResume resume(AccompanimentRequest d) {
+        return new DemandeResume(d.getId(), d.getNom(), d.getEmail(), d.getTelephoneWhatsapp(),
+                d.getPays(), d.getProfession(), d.getSpecialite(), d.getEtape(), d.getOffreCle(),
+                d.getStatut(), d.getAssigneA(), d.getCreeLe(), d.getDerniereActiviteLe(),
+                d.estAnonymisee());
+    }
+
+    private static void ligne(StringBuilder csv, String... valeurs) {
+        for (int i = 0; i < valeurs.length; i++) {
+            if (i > 0) {
+                csv.append(CelluleCsv.SEPARATEUR);
+            }
+            csv.append(CelluleCsv.neutraliser(valeurs[i]));
         }
-        String v = valeur.replace("\"", "\"\"").replace("\n", " ").replace("\r", " ");
-        if (!v.isEmpty() && "=+-@\t".indexOf(v.charAt(0)) >= 0) {
-            v = "'" + v;
-        }
-        return "\"" + v + "\"";
+        csv.append('\n');
+    }
+
+    private static ResponseEntity<byte[]> fichier(String csv, String nom) {
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"" + nom + "\"")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(csv.getBytes(StandardCharsets.UTF_8));
     }
 
     private static UUID utilisateur(Authentication auth) {

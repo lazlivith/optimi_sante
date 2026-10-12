@@ -43,11 +43,14 @@ pas dans une boîte aux lettres que personne n'anonymise. L'alerte dit qu'il y a
 | Paramètre | Valeur initiale |
 |---|---|
 | `accompagnement.delai_reponse` | `sous 48 h ouvrées` |
-| `accompagnement.adresse_reponse` | `contact@optimisante.com` |
+| `accompagnement.adresse_reponse` | `infos@optimisante.com` |
 
 Posés par la migration V75 dans `parametres_plateforme`. Le délai est un engagement
 commercial, pas une constante technique : il se révise pendant les congés ou quand l'équipe
 grandit.
 
-L'adresse de réponse est posée en `Reply-To` **et** écrite dans le texte. ⚠️ `contact@optimisante.com`
-est une valeur de départ **à confirmer** : il faut que cette boîte soit réellement relevée.
+L'adresse de réponse est posée en `Reply-To` **et** écrite dans le texte.
+`infos@optimisante.com` est la boîte de contact et du DPO déjà annoncée sur le site.
+
+Les boîtes réelles du domaine sont `infos@`, `comptabilite@`, `Tbrittany@` et
+`Tandoche@optimisante.com`. Toute autre adresse écrite dans un message partirait dans le vide.

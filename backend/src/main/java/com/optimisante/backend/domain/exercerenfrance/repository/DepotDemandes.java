@@ -13,7 +13,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface DepotDemandes extends JpaRepository<AccompanimentRequest, UUID> {
+public interface DepotDemandes extends JpaRepository<AccompanimentRequest, UUID>,
+        org.springframework.data.jpa.repository.JpaSpecificationExecutor<AccompanimentRequest> {
 
     Page<AccompanimentRequest> findByTenantId(UUID tenantId, Pageable pageable);
 

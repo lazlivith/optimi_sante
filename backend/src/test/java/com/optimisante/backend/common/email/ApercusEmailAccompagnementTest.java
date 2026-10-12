@@ -43,7 +43,7 @@ class ApercusEmailAccompagnementTest {
 
         service.sendAccompagnementRecu(
                 "samba.nkounkou@exemple.cg", "Dr Samba Nkounkou", "Préparation EVC",
-                "sous 48 h ouvrées", "contact@optimisante.com");
+                "sous 48 h ouvrées", "infos@optimisante.com");
 
         service.sendAccompagnementAlerteAdmin(
                 "mobilite@optimisante.com", "Dr Samba Nkounkou", "Médecin", "Congo",
@@ -76,7 +76,7 @@ class ApercusEmailAccompagnementTest {
                 .contains("sous 48 h");
         assertThat(accuse)
                 .as("l'adresse de réponse est surveillée, et visible")
-                .contains("contact@optimisante.com");
+                .contains("infos@optimisante.com");
         assertThat(accuse)
                 .as("la mention « pas un organisme officiel » est le premier message reçu")
                 .contains("pas un organisme officiel");

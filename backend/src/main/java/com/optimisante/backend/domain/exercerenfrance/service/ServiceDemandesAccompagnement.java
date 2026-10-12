@@ -10,10 +10,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -145,7 +147,7 @@ public class ServiceDemandesAccompagnement {
         try {
             emailService.sendAccompagnementRecu(demande.getEmail(), demande.getNom(), offre,
                     reglage("accompagnement.delai_reponse", "sous 48 h ouvrées"),
-                    reglage("accompagnement.adresse_reponse", "contact@optimisante.com"));
+                    reglage("accompagnement.adresse_reponse", "infos@optimisante.com"));
         } catch (Exception e) {
             log.warn("Accusé de réception non envoyé pour la demande {} : {}",
                     demande.getId(), e.getMessage());
@@ -171,9 +173,91 @@ public class ServiceDemandesAccompagnement {
 
     // ── Suivi par l'administration ───────────────────────────────────────────────────────
 
+    /** Les critères que l'écran propose. Tous facultatifs. */
+    public record Filtres(String statut, String offreCle, String profession,
+                          OffsetDateTime depuis, OffsetDateTime jusqua, String recherche) {
+
+        /** Un filtre vide vaut « pas de filtre » : une chaîne blanche ne doit rien exclure. */
+        static String vide(String v) {
+            return v == null || v.isBlank() ? null : v.trim();
+        }
+
+        Filtres nettoyes() {
+            return new Filtres(vide(statut), vide(offreCle), vide(profession),
+                    depuis, jusqua, vide(recherche));
+        }
+
+        /** Ce que le journal d'audit retient : les critères, jamais les résultats. */
+        String resume() {
+            StringBuilder b = new StringBuilder();
+            if (statut != null) b.append("statut=").append(statut).append(' ');
+            if (offreCle != null) b.append("offre=").append(offreCle).append(' ');
+            if (profession != null) b.append("profession=").append(profession).append(' ');
+            if (depuis != null) b.append("depuis=").append(depuis.toLocalDate()).append(' ');
+            if (jusqua != null) b.append("jusqua=").append(jusqua.toLocalDate()).append(' ');
+            // La RECHERCHE est volontairement omise : on y tape un nom ou une adresse, et
+            // l'audit ne doit porter aucune donnée personnelle.
+            if (recherche != null) b.append("recherche=(texte) ");
+            return b.isEmpty() ? "aucun filtre" : b.toString().trim();
+        }
+    }
+
+    /**
+     * Les demandes, filtrées comme l'écran le propose.
+     *
+     * <p><b>Construite critère par critère, et non en une requête à trous.</b> La forme
+     * habituelle — {@code (:statut IS NULL OR d.statut = :statut)} — paraît économique :
+     * une requête pour seize combinaisons. Mais PostgreSQL ne sait pas typer un paramètre
+     * qui n'apparaît que dans un {@code IS NULL}, et la requête échoue dès qu'un filtre est
+     * vide — c'est-à-dire dans le cas le plus courant, celui où l'on ouvre simplement la
+     * liste. Ici, un critère absent n'ajoute rien à la requête, donc rien à typer.</p>
+     */
     @Transactional(readOnly = true)
-    public Page<AccompanimentRequest> lister(Pageable pageable) {
-        return demandes.findByTenantId(tenantParDefaut.identifiant(), pageable);
+    public Page<AccompanimentRequest> lister(Filtres filtres, Pageable pageable) {
+        Filtres f = filtres.nettoyes();
+        UUID tenant = tenantParDefaut.identifiant();
+
+        Specification<AccompanimentRequest> criteres = (racine, requete, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicats = new ArrayList<>();
+            predicats.add(cb.equal(racine.get("tenantId"), tenant));
+            if (f.statut() != null) predicats.add(cb.equal(racine.get("statut"), f.statut()));
+            if (f.offreCle() != null) predicats.add(cb.equal(racine.get("offreCle"), f.offreCle()));
+            if (f.profession() != null) predicats.add(cb.equal(racine.get("profession"), f.profession()));
+            if (f.depuis() != null) {
+                predicats.add(cb.greaterThanOrEqualTo(racine.get("creeLe"), f.depuis()));
+            }
+            if (f.jusqua() != null) {
+                predicats.add(cb.lessThan(racine.get("creeLe"), f.jusqua()));
+            }
+            if (f.recherche() != null) {
+                // Le nom OU l'adresse : c'est l'un des deux qu'on a sous les yeux quand on
+                // cherche quelqu'un. La casse est ignorée.
+                String motif = "%" + f.recherche().toLowerCase() + "%";
+                predicats.add(cb.or(
+                        cb.like(cb.lower(racine.get("nom")), motif),
+                        cb.like(cb.lower(racine.get("email")), motif)));
+            }
+            return cb.and(predicats.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+        return demandes.findAll(criteres, pageable);
+    }
+
+    /**
+     * Inscrit un export au journal d'audit.
+     *
+     * <p><b>Pourquoi tracer un export.</b> Il fait SORTIR de la plateforme des données
+     * personnelles — nom, adresse, téléphone, situation administrative — vers un fichier que
+     * plus rien ne protège ni n'efface. Si l'un d'eux se retrouve ailleurs, la seule question
+     * qui compte est : qui l'a sorti, et quand. Sans trace, elle reste sans réponse.</p>
+     *
+     * <p>Les critères sont consignés, <b>jamais les données</b> : le journal d'audit ne
+     * s'anonymise pas, et y verser ce que l'export contient reviendrait à les conserver
+     * indéfiniment — précisément ce que la durée de conservation interdit.</p>
+     */
+    @Transactional
+    public void tracerExport(String genre, Filtres filtres, int lignes) {
+        auditService.record("ACCOMPAGNEMENT_EXPORT", "AccompanimentRequest", genre,
+                lignes + " ligne(s) exportée(s) — " + filtres.nettoyes().resume(), null);
     }
 
     @Transactional(readOnly = true)
