@@ -12,6 +12,7 @@ import com.optimisante.backend.domain.training.repository.InterviewScheduleRepos
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
+import com.optimisante.backend.common.security.AdresseWeb;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,6 +80,10 @@ public class InterviewSchedulingService {
             throw new IllegalArgumentException(
                     "Indiquez le lien de la réunion en ligne (Teams, Meet, Zoom…).");
         }
+        // Ce lien est rendu dans un <a href> au médecin, et il est saisi par un partenaire
+        // extérieur à la maison : une adresse « javascript: » s'exécuterait dans sa session,
+        // depuis notre domaine. Seuls http et https. Cf. AdresseWeb.
+        lien = AdresseWeb.exiger(lien, "Lien de la réunion");
 
         // Un seul créneau n'est pas un choix : c'est une convocation déguisée, sans que le
         // médecin puisse dire qu'il n'est pas disponible.

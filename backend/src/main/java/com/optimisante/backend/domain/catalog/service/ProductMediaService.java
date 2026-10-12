@@ -9,6 +9,7 @@ import com.optimisante.backend.domain.catalog.repository.ProductGalleryImageRepo
 import com.optimisante.backend.domain.catalog.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.optimisante.backend.common.security.AdresseWeb;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -124,7 +125,10 @@ public class ProductMediaService {
                         "Hébergeur vidéo non reconnu. Valeurs acceptées : "
                         + String.join(", ", new TreeSet<>(HEBERGEURS)) + ".");
             }
-            url = lien.getVideoUrl().trim();
+            // L'hébergeur était vérifié, l'ADRESSE ne l'était pas : « YOUTUBE » +
+            // « javascript:alert(1) » passait. Quand l'adresse n'est pas reconnue comme une
+            // intégration, la fiche produit — publique — la rend dans un <a href>.
+            url = AdresseWeb.exiger(lien.getVideoUrl(), "Lien de la vidéo");
             hebergeur = demande;
         }
 
