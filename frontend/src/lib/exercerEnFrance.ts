@@ -1,3 +1,5 @@
+import { adresseSure } from './adresseWeb';
+
 /**
  * Les règles de « Exercer en France » qui ne dépendent d'aucun composant.
  *
@@ -46,12 +48,12 @@ export const MESSAGE_ADRESSE =
  */
 export function verifierAdresseDeLien(url: string | null | undefined): string | null {
   const brut = (url ?? '').trim();
+  // Vide ou « à compléter » : ce n'est pas une faute ici, c'est un lien que la page masque.
+  // Cette règle-là est propre à cette page.
   if (brut === '' || brut === 'A_COMPLETER') return null;
-  // eslint-disable-next-line no-control-regex
-  const compacte = brut.replace(/[\s\u0000-\u001F\u007F  -‏﻿]/g, '')
-    .toLowerCase();
-  return compacte.startsWith('http://') || compacte.startsWith('https://')
-    ? null : MESSAGE_ADRESSE;
+  // Le contrôle de protocole, lui, ne l'est pas : il protège contre la même chose partout,
+  // et une seule implémentation évite que les deux divergent.
+  return adresseSure(brut) ? null : MESSAGE_ADRESSE;
 }
 
 /** Ce qu'un praticien saisit pour demander un accompagnement. */

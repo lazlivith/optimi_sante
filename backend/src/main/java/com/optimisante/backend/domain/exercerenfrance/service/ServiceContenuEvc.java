@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.exercerenfrance.service;
 
 import com.optimisante.backend.domain.exercerenfrance.repository.*;
+import com.optimisante.backend.common.security.AdresseWeb;
 import com.optimisante.backend.config.tenant.TenantParDefaut;
 import com.optimisante.backend.domain.audit.service.AuditService;
 import com.optimisante.backend.domain.exercerenfrance.dto.ExercerEnFranceDtos.*;
@@ -116,7 +117,7 @@ public class ServiceContenuEvc {
             throw new IllegalArgumentException("La date de fin précède la date de début.");
         }
         // La source officielle est rendue au visiteur comme les autres liens.
-        String source = AdresseDeLien.verifier(dto.sourceUrl());
+        String source = adresseDeLien(dto.sourceUrl());
         EvcContenu.Periode p = id == null ? new EvcContenu.Periode()
                 : periodes.findById(id).orElseThrow(() -> new IllegalArgumentException("Période introuvable."));
         p.setLibelle(dto.libelle());
@@ -152,9 +153,7 @@ public class ServiceContenuEvc {
         l.setCle(dto.cle());
         l.setLibelle(dto.libelle());
         if (dto.url() != null) {
-            // Seuls http et https : une adresse « javascript: » s'exécuterait au clic, dans
-            // la session du visiteur et depuis notre domaine. Cf. AdresseDeLien.
-            String url = AdresseDeLien.verifier(dto.url());
+            String url = adresseDeLien(dto.url());
             // Changer l'adresse périme la vérification : ce qui a été vu fonctionner, c'est
             // l'ancienne. La garder marquerait comme contrôlé un lien que personne n'a ouvert.
             if (!url.equals(l.getUrl())) {
@@ -275,6 +274,25 @@ public class ServiceContenuEvc {
         java.time.LocalDate date = calendrierActualiseLe();
         return date == null
                 || date.isBefore(java.time.LocalDate.now().minusDays(JOURS_AVANT_REVERIFICATION));
+    }
+
+    /**
+     * L'adresse d'un lien officiel, vérifiée.
+     *
+     * <p>Deux règles, et une seule est propre à cette page. Le contrôle de protocole est
+     * commun à toute la plateforme — {@link AdresseWeb} — car il protège contre la même
+     * chose partout : une adresse « javascript: » rendue dans un lien s'exécute au clic,
+     * dans la session du visiteur et depuis notre domaine.</p>
+     *
+     * <p>La seconde est locale : ici, une adresse vide n'est pas une faute mais un lien
+     * « à compléter », que la page masque. Ailleurs, elle n'aurait aucun sens.</p>
+     */
+    private static String adresseDeLien(String saisie) {
+        String brut = saisie == null ? "" : saisie.trim();
+        if (brut.isEmpty() || EvcContenu.Lien.A_COMPLETER.equals(brut)) {
+            return EvcContenu.Lien.A_COMPLETER;
+        }
+        return AdresseWeb.exiger(brut, "Adresse du lien");
     }
 
     private EvcContenu.Section charger(UUID id) {
