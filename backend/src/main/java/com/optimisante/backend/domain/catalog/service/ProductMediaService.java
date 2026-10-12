@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.catalog.service;
 
 import com.optimisante.backend.common.storage.DossierStockage;
+import com.optimisante.backend.common.storage.FormatImage;
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.domain.catalog.dto.ProductMediaDtos.*;
 import com.optimisante.backend.domain.catalog.entity.ProductGalleryImage;
@@ -79,8 +80,8 @@ public class ProductMediaService {
         verifierImage(fichier);
 
         String publicId = storageService.uploadMedia(fichier, DossierStockage.CATALOGUE_PRODUITS);
-        productRepository.setMainImageForAdmin(
-                productId, storageService.generateMediaUrl(publicId, "image"));
+        productRepository.setMainImageForAdmin(productId, storageService.generateMediaUrl(
+                publicId, "image", FormatImage.depuisTypeMime(fichier.getContentType())));
 
         log.info("Vignette remplacée pour le produit {} ({})", productId, produit.getSku());
         return view(productId);
@@ -207,7 +208,8 @@ public class ProductMediaService {
             String publicId = storageService.uploadMedia(fichier, DossierStockage.CATALOGUE_GALERIE);
             ProductGalleryImage visuel = galleryRepository.save(ProductGalleryImage.builder()
                     .productId(productId)
-                    .imageUrl(storageService.generateMediaUrl(publicId, "image"))
+                    .imageUrl(storageService.generateMediaUrl(publicId, "image",
+                            FormatImage.depuisTypeMime(fichier.getContentType())))
                     .publicId(publicId)
                     .displayOrder(rang++)
                     .build());

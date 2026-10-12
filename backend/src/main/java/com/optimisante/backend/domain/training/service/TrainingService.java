@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.training.service;
 
 import com.optimisante.backend.common.storage.DossierStockage;
+import com.optimisante.backend.common.storage.FormatImage;
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.domain.document.service.DocumentLinkService;
 import com.optimisante.backend.config.tenant.TenantContext;
@@ -263,7 +264,17 @@ public class TrainingService {
     public PartnerTrainingResponseDto uploadTrainingImage(UUID trainingId, MultipartFile file, UUID partnerUserId) {
         Training training = requireOwnedTraining(trainingId, partnerUserId);
         String publicId = storageService.uploadMedia(file, DossierStockage.FORMATIONS_IMAGES);
-        training.setImageS3Key(publicId);
+        // Le FORMAT est conservé avec la clé, et non à côté.
+        //
+        // Notre compte Cloudinary ne sert une adresse sans extension que pour le WebP : une
+        // image de formation en JPEG ou PNG s'affichait cassée. Or l'adresse est fabriquée
+        // bien plus tard, à la lecture, où seule cette colonne subsiste — le format a
+        // disparu. L'y porter évite une migration pour une seule information.
+        //
+        // Sans danger ICI, et seulement ici : cette colonne ne sert jamais à supprimer le
+        // fichier chez l'hébergeur. Le jour où elle servirait, il faudrait retirer
+        // l'extension avant l'appel, ou stocker le format dans une colonne à lui.
+        training.setImageS3Key(publicId + "." + FormatImage.depuisTypeMime(file.getContentType()));
         return toPartnerResponseDto(trainingRepository.save(training));
     }
 
@@ -271,7 +282,9 @@ public class TrainingService {
     public PartnerTrainingResponseDto uploadTrainingVideo(UUID trainingId, MultipartFile file, UUID partnerUserId) {
         Training training = requireOwnedTraining(trainingId, partnerUserId);
         String publicId = storageService.uploadMedia(file, DossierStockage.FORMATIONS_VIDEOS);
-        training.setVideoS3Key(publicId);
+        // Même raison que pour l'image : l'extension voyage avec la clé, faute de quoi
+        // l'adresse servie n'en porte aucune. Cf. uploadTrainingImage.
+        training.setVideoS3Key(publicId + "." + FormatImage.depuisNomFichier(file.getOriginalFilename()));
         return toPartnerResponseDto(trainingRepository.save(training));
     }
 

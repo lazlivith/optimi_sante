@@ -1,6 +1,7 @@
 package com.optimisante.backend.domain.blog.service;
 
 import com.optimisante.backend.common.storage.DossierStockage;
+import com.optimisante.backend.common.storage.FormatImage;
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.config.tenant.TenantContext;
 import com.optimisante.backend.domain.blog.dto.BlogPostRequestDto;
@@ -170,7 +171,10 @@ public class BlogService {
                     "Format d'image non accepté. Formats reconnus : JPEG, PNG, WebP, AVIF.");
         }
         String publicId = storageService.uploadMedia(fichier, DossierStockage.BLOG_COUVERTURES);
-        return storageService.generateMediaUrl(publicId, "image");
+        // Le format doit figurer dans l'adresse : sans lui, notre compte répond 401 pour
+        // tout ce qui n'est pas du WebP, et la couverture s'affiche cassée. Cf. FormatImage.
+        return storageService.generateMediaUrl(publicId, "image",
+                FormatImage.depuisTypeMime(type));
     }
 
     // ──────────────────────────────────── Interne ────────────────────────────────────
