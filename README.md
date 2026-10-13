@@ -88,6 +88,17 @@ curl -s -X POST http://localhost:8080/api/v1/auth/login \
 curl -s -H "Authorization: Bearer <jeton>" http://localhost:8080/<route>
 ```
 
+### À faire lors de la mise en ligne
+
+- **Après le passage du seed en production, cliquer sur « Publier », puis vérifier
+  la page publique.** La page « Exercer en France » sert la version PUBLIÉE, et non
+  le contenu en base : tant que personne n'a publié, le seed est invisible pour le
+  visiteur — y compris les offres et leurs prix.
+- Compléter les CGV avec la mention de TVA définitive, une fois le régime arrêté
+  (prestations de conseil vendues à des praticiens établis hors UE). La rédaction
+  actuelle renvoie à la facture, ce qui reste vrai dans les deux cas.
+- Purger les données de test (ventes, inscriptions, demandes d'accompagnement).
+
 ### Deux règles qui ne se négocient pas
 
 - **Une migration appliquée en production ne se modifie plus jamais.** Un

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Loader2, Link2, CalendarClock, Hourglass, Rocket, History, RotateCcw, Lock, Eye,
 } from 'lucide-react';
@@ -164,19 +165,19 @@ export function AdminExercerEnFrancePage() {
       actif: indicateurs.liensNonVerifies > 0,
       icone: Link2,
       texte: `${indicateurs.liensNonVerifies} lien(s) officiel(s) non vérifié(s) depuis plus de 90 jours`,
-      vers: 'liens' as Onglet,
+      vers: 'liens' as Onglet, lien: null,
     },
     {
       actif: indicateurs.periodesSansDates > 0,
       icone: CalendarClock,
       texte: `${indicateurs.periodesSansDates} période(s) sans dates`,
-      vers: 'periodes' as Onglet,
+      vers: 'periodes' as Onglet, lien: null,
     },
     {
       actif: indicateurs.calendrierAVerifier,
       icone: CalendarClock,
       texte: "Le calendrier des commissions n'a pas été constaté depuis plus de 90 jours",
-      vers: 'periodes' as Onglet,
+      vers: 'periodes' as Onglet, lien: null,
     },
     {
       actif: indicateurs.prestationsSansFin > 0,
@@ -184,6 +185,9 @@ export function AdminExercerEnFrancePage() {
       texte: `${indicateurs.prestationsSansFin} prestation(s) engagée(s) depuis plus de 12 mois `
              + 'sans date de fin : leur délai de conservation n\'a jamais commencé',
       vers: null,
+      // Ces dossiers se corrigent dans la fiche de chaque demande, pas ici : le rappel
+      // y conduit, au lieu de signaler un problème sans donner le moyen d'agir.
+      lien: '/admin/demandes-accompagnement?statut=en_cours',
     },
   ].filter(r => r.actif) : [];
 
@@ -241,6 +245,12 @@ export function AdminExercerEnFrancePage() {
                           className="text-sm font-semibold text-warning hover:underline shrink-0">
                     Voir
                   </button>
+                )}
+                {r.lien && (
+                  <Link to={r.lien}
+                        className="text-sm font-semibold text-warning hover:underline shrink-0">
+                    Voir
+                  </Link>
                 )}
               </div>
             </li>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Loader2, Inbox, Download, BellRing, Search, X, MessageCircle, Mail,
   ChevronLeft, ChevronRight, StickyNote, UserCheck,
@@ -55,13 +55,30 @@ function dateHeure(iso: string | null): string {
 export function AdminDemandesAccompagnementPage() {
   const { id: idUrl } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [parametresUrl] = useSearchParams();
 
   const [demandes, setDemandes] = useState<DemandeResume[]>([]);
   const [page, setPage] = useState(0);
   const [pages, setPages] = useState(0);
   const [total, setTotal] = useState(0);
   const [chargement, setChargement] = useState(true);
-  const [filtres, setFiltres] = useState<FiltresDemandes>(FILTRES_VIDES);
+  /**
+   * Les filtres lus dans l'adresse, une seule fois.
+   *
+   * <p>Un rappel du tableau de bord renvoie ici avec un filtre déjà posé — « les prestations
+   * sans date de fin ». Sans cette lecture, le lien conduirait à la liste entière et
+   * l'administrateur devrait refaire à la main ce que le rappel venait de désigner. Les
+   * modifications ultérieures de l'écran ne retouchent pas l'adresse : elle sert à ENTRER
+   * dans la page, pas à la décrire.</p>
+   */
+  const [filtres, setFiltres] = useState<FiltresDemandes>(() => {
+    const depuisUrl: FiltresDemandes = {};
+    (['statut', 'offreCle', 'profession'] as const).forEach(champ => {
+      const valeur = parametresUrl.get(champ);
+      if (valeur) depuisUrl[champ] = valeur;
+    });
+    return Object.keys(depuisUrl).length > 0 ? depuisUrl : FILTRES_VIDES;
+  });
   // La recherche est saisie ici et n'est appliquée qu'à la validation : relancer une requête
   // à chaque frappe ferait travailler le serveur pour des mots jamais terminés.
   const [saisieRecherche, setSaisieRecherche] = useState('');

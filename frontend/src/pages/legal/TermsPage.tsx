@@ -261,12 +261,19 @@ export function TermsPage() {
         conseil et d'accompagnement administratif.
       </p>
       <p>
-        Elles <strong>ne comprennent ni préparation pédagogique</strong> (notamment banque de
-        questions, examens blancs ou cours), <strong>ni traduction</strong>,{' '}
-        <strong>ni assurance</strong>, <strong>ni fourniture de logement</strong>. Optimi Santé
-        n'est pas un organisme officiel et ne délivre aucune autorisation d'exercice : les
-        décisions relèvent exclusivement des autorités compétentes, et aucun résultat ne peut
-        être garanti.
+        <strong>Au titre de cet accompagnement</strong>, et sauf souscription distincte d'une
+        autre prestation d'Optimi Santé, les tarifs annoncés ne comprennent{' '}
+        <strong>ni préparation pédagogique</strong> (notamment banque de questions, examens
+        blancs ou cours), <strong>ni traduction</strong>, <strong>ni assurance</strong>,{' '}
+        <strong>ni fourniture de logement</strong>. Ces exclusions portent sur le seul
+        accompagnement « Exercer en France » et sont sans effet sur les services organisés
+        autour des séjours de formation, qui font l'objet de l'article 3 et peuvent comprendre
+        de telles options.
+      </p>
+      <p>
+        Optimi Santé n'est pas un organisme officiel et ne délivre aucune autorisation
+        d'exercice : les décisions relèvent exclusivement des autorités compétentes, et aucun
+        résultat ne peut être garanti.
       </p>
       <p>
         Les prix de ces prestations sont affichés <strong>toutes taxes comprises</strong>, en
