@@ -118,6 +118,7 @@ class DemandesFiltresEtExportTest {
             "profession,  Sage-femme,    1",
             "recherche,   traoré,        1",
             "recherche,   a@exemple.cg,  1",
+            "recherche,   néphrolog,     2",
             "depuis,      2000-01-01,    2",
             "jusqua,      2099-12-31,    2",
     })
@@ -130,19 +131,20 @@ class DemandesFiltresEtExportTest {
     }
 
     @Test
-    @DisplayName("la recherche porte sur le nom et l'adresse, et sur rien d'autre")
+    @DisplayName("la recherche porte sur le nom, l'adresse et la spécialité — et rien d'autre")
     void perimetreDeLaRecherche() throws Exception {
         deposer("Dr Nkounkou", "a@exemple.cg", "Médecin", "preparation_evc");
 
-        assertThat(compte(Map.of("recherche", "nkounkou"))).isEqualTo(1);   // le nom
-        assertThat(compte(Map.of("recherche", "a@exemple"))).isEqualTo(1);  // l'adresse
+        assertThat(compte(Map.of("recherche", "nkounkou"))).isEqualTo(1);     // le nom
+        assertThat(compte(Map.of("recherche", "a@exemple"))).isEqualTo(1);    // l'adresse
+        assertThat(compte(Map.of("recherche", "néphrolog"))).isEqualTo(1);    // la spécialité
 
-        // La SPÉCIALITÉ n'est pas couverte, et ce test est là pour que personne ne le
-        // découvre devant un écran qui ne trouve rien. Le champ de saisie annonce donc
-        // « Nom ou e-mail », et non la spécialité. L'élargir se décide — et se paie d'un
-        // index de plus sur une colonne que seule l'administration interroge.
-        assertThat(compte(Map.of("recherche", "Néphrologie"))).isZero();
+        // Ce test fige un PÉRIMÈTRE, dans les deux sens : ce qui est couvert, et ce qui ne
+        // l'est pas. La profession a son propre filtre ; la verser aussi dans la recherche
+        // ferait qu'un mot tapé là rendrait tantôt des dossiers, tantôt des professions
+        // entières, sans que l'écran l'explique.
         assertThat(compte(Map.of("recherche", "Médecin"))).isZero();
+        assertThat(compte(Map.of("recherche", "preparation_evc"))).isZero();
     }
 
     @Test

@@ -9,8 +9,8 @@ import {
   type DemandeResume, type DemandeVue, type FiltresDemandes,
 } from '../../api/adminDemandesAccompagnementService';
 import {
-  STATUTS_DEMANDE, ETAPES_DEMANDE, libelleStatut, OFFRE_ALERTE_AEP,
-  type StatutDemande,
+  STATUTS_DEMANDE, ETAPES_DEMANDE, TYPES_EVENEMENT, libelleStatut, libelleOffre,
+  OFFRE_ALERTE_AEP, type StatutDemande,
 } from '../../lib/exercerEnFrance';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -223,7 +223,7 @@ export function AdminDemandesAccompagnementPage() {
                   type="search"
                   value={saisieRecherche}
                   onChange={e => setSaisieRecherche(e.target.value)}
-                  placeholder="Nom ou e-mail…"
+                  placeholder="Nom, e-mail ou spécialité…"
                   className="min-w-56 pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm font-normal text-slate-800"
                 />
               </div>
@@ -277,7 +277,65 @@ export function AdminDemandesAccompagnementPage() {
           />
         ) : (
           <>
-            <div className="overflow-x-auto">
+            {/*
+              Sous « sm », le tableau glissait sous un défilement horizontal : le STATUT et
+              les boutons de contact — les deux seules choses qu'on vient chercher ici —
+              se trouvaient hors de l'écran. Des cartes les ramènent sous les yeux.
+            */}
+            <ul className="divide-y divide-slate-100 sm:hidden">
+              {demandes.map(d => (
+                <li key={d.id}>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/admin/demandes-accompagnement/${d.id}`)}
+                    className="w-full text-left p-4 hover:bg-slate-50"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-slate-800 break-words">{d.nom}</div>
+                        <div className="text-xs text-slate-500 break-all">{d.email}</div>
+                      </div>
+                      <StatusBadge
+                        status={d.statut}
+                        label={libelleStatut(d.statut)}
+                        tone={STATUTS_DEMANDE[d.statut as StatutDemande]?.ton}
+                      />
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                      <span>{dateCourte(d.creeLe)}</span>
+                      {d.profession && <span>{d.profession}</span>}
+                      {d.offreCle === OFFRE_ALERTE_AEP ? (
+                        <span className="inline-flex items-center gap-1 font-semibold text-amber-800">
+                          <BellRing className="w-3 h-3" /> Alerte AEP
+                        </span>
+                      ) : (
+                        <span>{libelleOffre(d.offreCle)}</span>
+                      )}
+                    </div>
+                  </button>
+                  <div className="px-4 pb-3 flex gap-2">
+                    {lienWhatsapp(d.telephoneWhatsapp) && (
+                      <a
+                        href={lienWhatsapp(d.telephoneWhatsapp)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-success hover:bg-success/10"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                      </a>
+                    )}
+                    <a
+                      href={`mailto:${d.email}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100"
+                    >
+                      <Mail className="w-3.5 h-3.5" /> E-mail
+                    </a>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="overflow-x-auto hidden sm:block">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase text-[11px] font-bold tracking-wider">
                   <tr>
@@ -315,7 +373,7 @@ export function AdminDemandesAccompagnementPage() {
                             <BellRing className="w-3.5 h-3.5" /> Alerte AEP
                           </span>
                         ) : (
-                          <span className="text-slate-600">{d.offreCle || '—'}</span>
+                          <span className="text-slate-600">{libelleOffre(d.offreCle)}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -526,7 +584,7 @@ function FicheDemande({ demande, chargement, onFermer, onChange, onErreur, onSuc
               />
               <Champ
                 libelle="Demande"
-                valeur={demande.offreCle === OFFRE_ALERTE_AEP ? 'Alerte AEP' : demande.offreCle}
+                valeur={libelleOffre(demande.offreCle)}
               />
               <Champ libelle="Dernière activité" valeur={dateHeure(demande.derniereActiviteLe)} />
               <Champ libelle="Fin de prestation" valeur={dateCourte(demande.prestationFinLe)} />
@@ -616,7 +674,7 @@ function FicheDemande({ demande, chargement, onFermer, onChange, onErreur, onSuc
                       <div className="text-slate-700">
                         {e.ancienStatut && e.nouveauStatut
                           ? `Statut : ${libelleStatut(e.ancienStatut)} → ${libelleStatut(e.nouveauStatut)}`
-                          : e.contenu || e.type}
+                          : e.contenu || TYPES_EVENEMENT[e.type] || e.type}
                       </div>
                     </li>
                   ))}

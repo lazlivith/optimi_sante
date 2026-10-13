@@ -230,12 +230,19 @@ public class ServiceDemandesAccompagnement {
                 predicats.add(cb.lessThan(racine.get("creeLe"), f.jusqua()));
             }
             if (f.recherche() != null) {
-                // Le nom OU l'adresse : c'est l'un des deux qu'on a sous les yeux quand on
-                // cherche quelqu'un. La casse est ignorée.
+                // Le nom, l'adresse OU la spécialité. Les deux premiers sont ce qu'on a sous
+                // les yeux quand on cherche QUELQU'UN ; la troisième sert à l'autre usage
+                // réel de cet écran — rassembler d'un coup tous les néphrologues le jour où
+                // leur spécialité ouvre. La casse est ignorée.
+                //
+                // Pas d'index pour l'instant : les volumes sont faibles et un balayage coûte
+                // moins qu'un index à maintenir. Le jour où la liste ralentit, c'est ici que
+                // se pose un index trigram — l'extension pg_trgm est déjà installée.
                 String motif = "%" + f.recherche().toLowerCase() + "%";
                 predicats.add(cb.or(
                         cb.like(cb.lower(racine.get("nom")), motif),
-                        cb.like(cb.lower(racine.get("email")), motif)));
+                        cb.like(cb.lower(racine.get("email")), motif),
+                        cb.like(cb.lower(racine.get("specialite")), motif)));
             }
             return cb.and(predicats.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };

@@ -133,3 +133,27 @@ export function libelleStatut(code: string | null | undefined): string {
   if (!code) return '—';
   return STATUTS_DEMANDE[code as StatutDemande]?.libelle ?? code;
 }
+
+/**
+ * Le libellé d'une offre, à partir de sa clé.
+ *
+ * <p><b>Pourquoi déduire plutôt que recenser.</b> Les offres se créent et se renomment depuis
+ * l'administration : une table de correspondance écrite ici dirait faux dès la première offre
+ * ajoutée, et personne ne penserait à la mettre à jour. La clé porte déjà le libellé —
+ * {@code accompagnement_complet} se lit « Accompagnement complet » — et une clé inconnue reste
+ * donc lisible, au lieu de s'afficher telle quelle à l'écran.</p>
+ */
+export function libelleOffre(cle: string | null | undefined): string {
+  if (!cle) return '—';
+  if (cle === OFFRE_ALERTE_AEP) return 'Alerte AEP';
+  const mots = cle.replace(/_/g, ' ').trim();
+  return mots.charAt(0).toUpperCase() + mots.slice(1);
+}
+
+/** Ce qu'un événement du fil raconte, en français plutôt qu'en code. */
+export const TYPES_EVENEMENT: Record<string, string> = {
+  creation: 'Demande déposée',
+  statut: 'Changement de statut',
+  assignation: 'Dossier assigné',
+  note: 'Note interne',
+};
