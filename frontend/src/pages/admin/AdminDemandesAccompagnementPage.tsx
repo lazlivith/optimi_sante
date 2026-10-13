@@ -223,7 +223,7 @@ export function AdminDemandesAccompagnementPage() {
                   type="search"
                   value={saisieRecherche}
                   onChange={e => setSaisieRecherche(e.target.value)}
-                  placeholder="Nom, e-mail, spécialité…"
+                  placeholder="Nom ou e-mail…"
                   className="min-w-56 pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm font-normal text-slate-800"
                 />
               </div>

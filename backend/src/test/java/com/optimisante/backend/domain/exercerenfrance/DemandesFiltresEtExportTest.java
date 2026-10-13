@@ -4,6 +4,8 @@ import com.optimisante.backend.ConfigurationBaseDeTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,6 +17,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -76,40 +79,134 @@ class DemandesFiltresEtExportTest {
                 .andExpect(status().isCreated());
     }
 
+    /** Le nombre de demandes que la liste retourne pour ces paramètres. */
+    private int compte(Map<String, String> params) throws Exception {
+        var requete = get(ROUTE);
+        params.forEach(requete::param);
+        String corps = mvc.perform(requete)
+                // Le 200 est la moitié de l'assertion : la version JPQL rendait un 500 ici,
+                // PostgreSQL refusant un paramètre qu'il ne sait pas typer.
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return com.fasterxml.jackson.databind.json.JsonMapper.builder().build()
+                .readTree(corps).get("totalElements").asInt();
+    }
+
     @Test
-    @DisplayName("sans filtre, la liste rend tout ; avec un filtre, elle rend ce qu'il désigne")
-    void filtresAppliques() throws Exception {
+    @DisplayName("sans aucun filtre, la liste s'exécute et rend tout — le cas qui avait échoué")
+    void sansAucunFiltre() throws Exception {
         deposer("Dr Nkounkou", "a@exemple.cg", "Médecin", "preparation_evc");
         deposer("Dr Traoré", "b@exemple.cg", "Sage-femme", "alerte_aep");
 
-        // Aucun filtre : la requête doit S'EXÉCUTER — c'est précisément ce que la version
-        // JPQL ne faisait pas, faute de typage des paramètres nuls.
-        mvc.perform(get(ROUTE))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(2));
+        assertThat(compte(Map.of())).isEqualTo(2);
+    }
 
-        mvc.perform(get(ROUTE).param("profession", "Sage-femme"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].nom").value("Dr Traoré"));
+    /**
+     * Chaque filtre seul.
+     *
+     * <p><b>Pourquoi un par un, et pas seulement combinés.</b> Le défaut qu'on cherche ici est
+     * un défaut de TYPAGE : PostgreSQL refuse un paramètre qu'il ne peut pas typer parce qu'il
+     * n'est comparé qu'à {@code NULL}. Il ne se déclenche donc que sur le paramètre resté
+     * vide — c'est-à-dire sur tous les autres que celui qu'on essaie. Un seul test combinant
+     * tout les éprouverait tous renseignés, soit exactement le cas qui marche.</p>
+     */
+    @ParameterizedTest(name = "{0}={1} → {2} demande(s)")
+    @CsvSource({
+            "statut,      nouveau,       2",
+            "offreCle,    alerte_aep,    1",
+            "offreCle,    preparation_evc, 1",
+            "profession,  Sage-femme,    1",
+            "recherche,   traoré,        1",
+            "recherche,   a@exemple.cg,  1",
+            "depuis,      2000-01-01,    2",
+            "jusqua,      2099-12-31,    2",
+    })
+    @DisplayName("chaque filtre seul s'applique, et les autres restent sans effet")
+    void chaqueFiltreSeul(String champ, String valeur, int attendu) throws Exception {
+        deposer("Dr Nkounkou", "a@exemple.cg", "Médecin", "preparation_evc");
+        deposer("Dr Traoré", "b@exemple.cg", "Sage-femme", "alerte_aep");
 
-        mvc.perform(get(ROUTE).param("offreCle", "alerte_aep"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1));
+        assertThat(compte(Map.of(champ, valeur))).isEqualTo(attendu);
+    }
 
-        mvc.perform(get(ROUTE).param("statut", "nouveau"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(2));
+    @Test
+    @DisplayName("la recherche porte sur le nom et l'adresse, et sur rien d'autre")
+    void perimetreDeLaRecherche() throws Exception {
+        deposer("Dr Nkounkou", "a@exemple.cg", "Médecin", "preparation_evc");
 
-        // La recherche porte sur le nom, l'adresse et la spécialité.
-        mvc.perform(get(ROUTE).param("recherche", "traoré"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1));
+        assertThat(compte(Map.of("recherche", "nkounkou"))).isEqualTo(1);   // le nom
+        assertThat(compte(Map.of("recherche", "a@exemple"))).isEqualTo(1);  // l'adresse
 
-        // Plusieurs filtres se combinent, et non s'annulent.
-        mvc.perform(get(ROUTE).param("profession", "Médecin").param("offreCle", "alerte_aep"))
+        // La SPÉCIALITÉ n'est pas couverte, et ce test est là pour que personne ne le
+        // découvre devant un écran qui ne trouve rien. Le champ de saisie annonce donc
+        // « Nom ou e-mail », et non la spécialité. L'élargir se décide — et se paie d'un
+        // index de plus sur une colonne que seule l'administration interroge.
+        assertThat(compte(Map.of("recherche", "Néphrologie"))).isZero();
+        assertThat(compte(Map.of("recherche", "Médecin"))).isZero();
+    }
+
+    @Test
+    @DisplayName("un filtre qui ne désigne personne rend une liste vide, pas une erreur")
+    void filtreSansResultat() throws Exception {
+        deposer("Dr Nkounkou", "a@exemple.cg", "Médecin", "preparation_evc");
+
+        assertThat(compte(Map.of("profession", "Vétérinaire"))).isZero();
+        assertThat(compte(Map.of("statut", "perdu"))).isZero();
+        assertThat(compte(Map.of("recherche", "introuvable"))).isZero();
+    }
+
+    @Test
+    @DisplayName("tous les filtres ensemble se combinent, et ne s'annulent pas")
+    void tousLesFiltresCombines() throws Exception {
+        deposer("Dr Nkounkou", "a@exemple.cg", "Médecin", "preparation_evc");
+        deposer("Dr Traoré", "b@exemple.cg", "Sage-femme", "alerte_aep");
+
+        Map<String, String> tous = Map.of(
+                "statut", "nouveau",
+                "offreCle", "preparation_evc",
+                "profession", "Médecin",
+                "depuis", "2000-01-01",
+                "jusqua", "2099-12-31",
+                "recherche", "Nkounkou");
+
+        // Les six à la fois désignent le seul dossier qui les satisfait tous.
+        assertThat(compte(tous)).isEqualTo(1);
+
+        // Et un seul critère discordant suffit à ne plus rien désigner : la combinaison est
+        // bien un ET, et non un OU qui aurait l'air de marcher sur les cas simples.
+        Map<String, String> discordant = new java.util.HashMap<>(tous);
+        discordant.put("profession", "Sage-femme");
+        assertThat(compte(discordant)).isZero();
+    }
+
+    @Test
+    @DisplayName("le raccourci « Alertes AEP » ne rend que les demandes d'alerte")
+    void raccourciAlertesAep() throws Exception {
+        deposer("Dr Nkounkou", "a@exemple.cg", "Médecin", "preparation_evc");
+        deposer("Dr Traoré", "b@exemple.cg", "Sage-femme", "alerte_aep");
+
+        String corps = mvc.perform(get(ROUTE).param("offreCle", "alerte_aep"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(0));
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(corps).contains("Dr Traoré").doesNotContain("Dr Nkounkou");
+    }
+
+    @Test
+    @DisplayName("l'export complet s'exécute lui aussi sans aucun filtre")
+    void exportSansFiltre() throws Exception {
+        deposer("Dr Nkounkou", "a@exemple.cg", "Médecin", "preparation_evc");
+        deposer("Dr Traoré", "b@exemple.cg", "Sage-femme", "alerte_aep");
+
+        // L'export passe par la même requête que la liste : s'il existait un paramètre mal
+        // typé, il tomberait ici aussi — et personne ne s'en apercevrait avant un vrai export.
+        String csv = mvc.perform(get(ROUTE + "/export.csv"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse()
+                .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+        assertThat(csv).startsWith("﻿").contains("Dr Nkounkou").contains("Dr Traoré");
+        assertThat(csv.lines().count()).isEqualTo(3);   // l'en-tête et les deux demandes
     }
 
     @Test
