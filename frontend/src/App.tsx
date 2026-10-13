@@ -51,6 +51,7 @@ const AdminSuppliersPage = lazy(() => import('./pages/admin/AdminSuppliersPage')
 const AdminSupplierDetailPage = lazy(() => import('./pages/admin/AdminSupplierDetailPage').then(m => ({ default: m.AdminSupplierDetailPage })));
 const AdminPartnershipRequestsPage = lazy(() => import('./pages/admin/AdminPartnershipRequestsPage').then(m => ({ default: m.AdminPartnershipRequestsPage })));
 const AdminDemandesAccompagnementPage = lazy(() => import('./pages/admin/AdminDemandesAccompagnementPage').then(m => ({ default: m.AdminDemandesAccompagnementPage })));
+const AdminExercerEnFrancePage = lazy(() => import('./pages/admin/AdminExercerEnFrancePage').then(m => ({ default: m.AdminExercerEnFrancePage })));
 const AdminTrainingsPage = lazy(() => import('./pages/admin/AdminTrainingsPage').then(m => ({ default: m.AdminTrainingsPage })));
 const AdminFinancePage = lazy(() => import('./pages/admin/AdminFinancePage').then(m => ({ default: m.AdminFinancePage })));
 const AdminOrdersPage = lazy(() => import('./pages/admin/AdminOrdersPage').then(m => ({ default: m.AdminOrdersPage })));
@@ -144,6 +145,7 @@ export function App() {
                 <Route path="enrollments/:id" element={<AdminEnrollmentDetailPage />} />
                 <Route path="trainings" element={<AdminTrainingsPage />} />
                 <Route path="partnership-requests" element={<AdminPartnershipRequestsPage />} />
+                <Route path="exercer-en-france" element={<AdminExercerEnFrancePage />} />
                 <Route path="demandes-accompagnement" element={<AdminDemandesAccompagnementPage />} />
                 {/* L'e-mail d'alerte pointe ici : la fiche doit s'ouvrir directement. */}
                 <Route path="demandes-accompagnement/:id" element={<AdminDemandesAccompagnementPage />} />

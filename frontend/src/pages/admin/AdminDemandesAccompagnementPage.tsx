@@ -67,6 +67,9 @@ export function AdminDemandesAccompagnementPage() {
   const [saisieRecherche, setSaisieRecherche] = useState('');
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
+  // Le nombre d'alertes ne dépend pas des filtres de la liste : il est relevé à part.
+  const [nbAlertes, setNbAlertes] = useState<number | null>(null);
+
   const [fiche, setFiche] = useState<DemandeVue | null>(null);
   const [ficheEnCours, setFicheEnCours] = useState(false);
 
@@ -85,6 +88,13 @@ export function AdminDemandesAccompagnementPage() {
   }, [filtres, page]);
 
   useEffect(() => { charger(); }, [charger]);
+
+  useEffect(() => {
+    // Une page d'une seule ligne suffit : seul le total nous intéresse.
+    service.lister({ offreCle: OFFRE_ALERTE_AEP }, 0, 1)
+      .then(r => setNbAlertes(r.totalElements))
+      .catch(() => { /* un compteur absent ne doit pas empêcher d'exporter */ });
+  }, []);
 
   // L'identifiant vient de l'adresse : au premier affichage comme au clic sur une ligne,
   // c'est lui qui commande la fiche ouverte.
@@ -153,14 +163,18 @@ export function AdminDemandesAccompagnementPage() {
               onClick={() => exporter(false)}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              <Download className="w-4 h-4" /> Exporter la vue
+              <Download className="w-4 h-4" />
+              {/* Le même nombre que celui affiché sous la liste : ce bouton sort
+                  exactement ce qu'on a sous les yeux, filtres compris. */}
+              Exporter la vue{chargement ? '' : ` (${total})`}
             </button>
             <button
               type="button"
               onClick={() => exporter(true)}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-dark text-white text-sm font-medium hover:opacity-90"
             >
-              <BellRing className="w-4 h-4" /> Contacts à prévenir
+              <BellRing className="w-4 h-4" />
+              Contacts à prévenir{nbAlertes === null ? '' : ` (${nbAlertes})`}
             </button>
           </>
         }
