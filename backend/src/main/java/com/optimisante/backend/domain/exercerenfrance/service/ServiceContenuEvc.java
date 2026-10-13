@@ -232,6 +232,15 @@ public class ServiceContenuEvc {
         // Un prix absent reste absent : la page affiche « Sur devis ». Le forcer à zéro
         // annoncerait « gratuit », ce qui n'est pas la même chose.
         o.setPrix(dto.prix());
+        // Un prix de référence inférieur ou égal au prix réel n'annonce aucune économie :
+        // affiché barré, il ferait croire à une remise qui n'existe pas.
+        if (dto.prixBarre() != null && dto.prix() != null
+                && dto.prixBarre().compareTo(dto.prix()) <= 0) {
+            throw new IllegalArgumentException(
+                    "Le prix de référence doit être supérieur au prix affiché.");
+        }
+        o.setPrixBarre(dto.prixBarre());
+        o.setBadge(dto.badge() == null || dto.badge().isBlank() ? null : dto.badge().strip());
         if (dto.devise() != null) o.setDevise(dto.devise());
         o.setLibelleBouton(dto.libelleBouton());
         if (dto.actif() != null) o.setActif(dto.actif());

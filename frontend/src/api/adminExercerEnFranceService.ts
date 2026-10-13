@@ -47,6 +47,10 @@ export interface OffreAdmin {
   titre: string;
   points: string | null;
   prix: number | null;
+  /** Prix de référence affiché barré ; nul = aucune comparaison. */
+  prixBarre: number | null;
+  /** Mention mise en avant sur la carte (« Le plus complet ») ; nulle = aucun badge. */
+  badge: string | null;
   devise: string;
   libelleBouton: string;
   actif: boolean;

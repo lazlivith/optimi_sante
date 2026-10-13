@@ -188,7 +188,8 @@ public class ServicePublicationEvc {
 
         List<OffreVue> o = offres.findByTenantIdAndActifTrueAndTechniqueFalseOrderByOrdreAsc(tenant).stream()
                 .map(x -> new OffreVue(x.getCle(), x.getSurTitre(), x.getTitre(),
-                        decouper(x.getPoints()), x.getPrix(), x.getDevise(), x.getLibelleBouton()))
+                        decouper(x.getPoints()), x.getPrix(), x.getPrixBarre(), x.getBadge(),
+                        x.getDevise(), x.getLibelleBouton()))
                 .toList();
 
         return new PagePublique(s, p, l, sp, o, publieLe, version,

@@ -239,19 +239,40 @@ public class SeedExercerEnFrance implements ApplicationRunner {
 
              + professions() + medecine()
 
-             + offre("preparation_evc", "AVANT LES EVC", "Préparation EVC", "Je me prépare", 0, """
-                Banque de QCM par spécialité
-                Examens blancs chronométrés
-                Classes virtuelles avec des praticiens
-                Aide à l'inscription à la session""")
-             + offre("dossier_demarches", "APRÈS LA RÉUSSITE", "Dossier & démarches", "Faire relire mon dossier", 1, """
-                Vérification de la complétude
+             // CE QUE NOUS FAISONS, ET CE QUE NOUS NE FAISONS PAS. Optimi Santé informe,
+             // oriente, vérifie et suit. Elle n'assure NI préparation pédagogique (QCM,
+             // examens blancs, classes virtuelles), NI traduction, NI assurance, NI logement.
+             // Les premiers textes promettaient les quatre : un praticien qui paie pour une
+             // banque de QCM et reçoit une orientation a été trompé, et il l'a payé.
+             + offre("preparation_evc", "AVANT LES EVC", "Orientation EVC", "Être orienté", 0,
+                     prix("89"), null, null, """
+                Vérification de votre éligibilité
+                Explication de la procédure et du calendrier
+                Aide à l'inscription à la session
+                Orientation vers des ressources de préparation""")
+             + offre("dossier_demarches", "APRÈS LA RÉUSSITE", "Dossier & démarches", "Faire relire mon dossier", 1,
+                     prix("450"), null, null, """
+                Vérification de la complétude du dossier
                 Relecture des conditions d'encadrement
-                Traductions et pièces justificatives
+                Liste personnalisée des pièces à fournir
                 Suivi jusqu'à la commission""")
-             + offre("mobilite_installation", "ARRIVÉE EN FRANCE", "Mobilité & installation", "Préparer mon arrivée", 2, """
-                Visa et titre de séjour
-                Assurance et logement
+             + offre("mobilite_installation", "ARRIVÉE EN FRANCE", "Mobilité & installation", "Préparer mon arrivée", 2,
+                     prix("650"), null, null, """
+                Accompagnement des démarches de visa et de titre de séjour
+                Conseils pour le logement et l'assurance
+                Mise en relation avec des établissements d'accueil
+                Démarches auprès de l'Ordre""")
+
+             // Le pack reprend les points des deux offres qu'il réunit, sans en ajouter : ce
+             // qu'il vend est le prix, pas une prestation de plus.
+             + offre("pack_dossier_mobilite", "LE PARCOURS COMPLET", "Pack Dossier + Mobilité",
+                     "Choisir le pack", 3, prix("990"), prix("1100"), "Le plus complet", """
+                Vérification de la complétude du dossier
+                Relecture des conditions d'encadrement
+                Liste personnalisée des pièces à fournir
+                Suivi jusqu'à la commission
+                Accompagnement des démarches de visa et de titre de séjour
+                Conseils pour le logement et l'assurance
                 Mise en relation avec des établissements d'accueil
                 Démarches auprès de l'Ordre""")
 
@@ -374,7 +395,18 @@ public class SeedExercerEnFrance implements ApplicationRunner {
         return 1;
     }
 
-    private int offre(String cle, String surTitre, String titre, String bouton, int ordre, String points) {
+    /** Un montant en euros, écrit tel qu'il sera affiché. */
+    private static BigDecimal prix(String euros) {
+        return new BigDecimal(euros);
+    }
+
+    /**
+     * @param prix      montant TTC en euros ; nul = la page affiche « Sur devis »
+     * @param prixBarre prix de référence affiché barré ; nul = aucune comparaison
+     * @param badge     mention mise en avant sur la carte ; nulle = aucun badge
+     */
+    private int offre(String cle, String surTitre, String titre, String bouton, int ordre,
+                      BigDecimal prix, BigDecimal prixBarre, String badge, String points) {
         var tenant = tenantParDefaut.identifiant();
         if (offres.findByTenantIdAndCle(tenant, cle).isPresent()) {
             return 0;
@@ -382,9 +414,8 @@ public class SeedExercerEnFrance implements ApplicationRunner {
         offres.save(EvcContenu.Offre.builder()
                 .tenantId(tenant).cle(cle).surTitre(surTitre).titre(titre)
                 .points(points.strip())
-                // Prix nul : la page affiche « Sur devis ». Seul le super administrateur le
-                // fixera, et l'y poser d'office reviendrait à inventer un tarif.
-                .prix((BigDecimal) null).devise("EUR").libelleBouton(bouton)
+                .prix(prix).prixBarre(prixBarre).badge(badge)
+                .devise("EUR").libelleBouton(bouton)
                 .actif(true).ordre(ordre).build());
         return 1;
     }

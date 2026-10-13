@@ -49,7 +49,8 @@ class SeedExercerEnFranceTest {
         assertThat(liens.count()).isEqualTo(6);
         assertThat(specialites.count()).isEqualTo(33);
         // Trois offres affichables, plus « alerte_aep », technique et jamais publiée.
-        assertThat(offres.count()).isEqualTo(4);
+        // Quatre offres commerciales, plus l'offre technique « alerte_aep ».
+        assertThat(offres.count()).isEqualTo(5);
         assertThat(publications.count()).isEqualTo(1);
     }
 
@@ -181,11 +182,57 @@ class SeedExercerEnFranceTest {
     }
 
     @Test
-    @DisplayName("les trois offres partent sans prix, donc « Sur devis »")
-    void offresSansPrix() {
-        // lePrixSurvit() en fixe un sur preparation_evc ; les deux autres doivent rester nus.
-        assertThat(offres.findAll()).filteredOn(o -> !"preparation_evc".equals(o.getCle()))
-                .allSatisfy(o -> assertThat(o.getPrix()).isNull());
+    @DisplayName("les offres partent avec la grille validée, et ne promettent rien d'autre")
+    void grilleDePrix() {
+        // Les prix ne sont plus « sur devis » : une grille a été arrêtée, et elle est affichée.
+        // Les montants sont TTC, en euros.
+        assertThat(prix("preparation_evc")).isEqualByComparingTo("89");
+        assertThat(prix("dossier_demarches")).isEqualByComparingTo("450");
+        assertThat(prix("mobilite_installation")).isEqualByComparingTo("650");
+        assertThat(prix("pack_dossier_mobilite")).isEqualByComparingTo("990");
+
+        // Seul le pack annonce une comparaison, et elle doit être supérieure à son prix :
+        // sinon la page afficherait une économie qui n'existe pas.
+        var pack = offre("pack_dossier_mobilite");
+        assertThat(pack.getPrixBarre()).isEqualByComparingTo("1100");
+        assertThat(pack.getPrixBarre()).isGreaterThan(pack.getPrix());
+        assertThat(pack.getBadge()).isEqualTo("Le plus complet");
+
+        assertThat(offres.findAll()).filteredOn(o -> !Boolean.TRUE.equals(o.getTechnique()))
+                .filteredOn(o -> !"pack_dossier_mobilite".equals(o.getCle()))
+                .allSatisfy(o -> assertThat(o.getPrixBarre())
+                        .as("seul le pack affiche un prix barré (%s)", o.getCle()).isNull());
+
+        // L'offre technique n'est pas vendue : lui poser un prix la ferait apparaître comme
+        // une prestation.
+        assertThat(offre("alerte_aep").getPrix()).isNull();
+    }
+
+    @Test
+    @DisplayName("aucune offre ne promet ce qu'Optimi Santé ne fournit pas")
+    void aucunePromesseHorsPerimetre() {
+        // Optimi Santé informe, oriente, vérifie et suit. Elle n'assure ni préparation
+        // pédagogique, ni traduction, ni assurance, ni logement. Les premiers textes
+        // promettaient les quatre — un praticien qui paie pour une banque de QCM et reçoit
+        // une orientation a été trompé, et il l'a payé.
+        var interdits = java.util.List.of("qcm", "examen blanc", "examens blancs",
+                "classe virtuelle", "classes virtuelles", "traduction", "traductions");
+        assertThat(offres.findAll()).allSatisfy(o -> {
+            String texte = ((o.getTitre() == null ? "" : o.getTitre()) + " "
+                    + (o.getPoints() == null ? "" : o.getPoints())).toLowerCase();
+            interdits.forEach(mot -> assertThat(texte)
+                    .as("l'offre %s ne doit pas promettre « %s »", o.getCle(), mot)
+                    .doesNotContain(mot));
+        });
+    }
+
+    private com.optimisante.backend.domain.exercerenfrance.entity.EvcContenu.Offre offre(String cle) {
+        return offres.findAll().stream().filter(o -> cle.equals(o.getCle())).findFirst()
+                .orElseThrow(() -> new AssertionError("Offre « " + cle + " » absente du seed."));
+    }
+
+    private java.math.BigDecimal prix(String cle) {
+        return offre(cle).getPrix();
     }
 
     @Test

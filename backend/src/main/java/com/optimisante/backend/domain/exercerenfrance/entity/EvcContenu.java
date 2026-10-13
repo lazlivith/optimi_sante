@@ -186,6 +186,20 @@ public final class EvcContenu {
         @Column(precision = 12, scale = 2)
         private BigDecimal prix;
 
+        /**
+         * Prix de référence affiché barré, au-dessus du prix réel.
+         *
+         * <p>« 990 € au lieu de 1 100 € » est une affirmation chiffrée, pas une mise en
+         * forme : elle vit donc en base, modifiable par celui qui fixe les prix. Nulle pour
+         * toute offre qui n'est pas un pack — et alors aucune comparaison n'est affichée.</p>
+         */
+        @Column(name = "prix_barre", precision = 12, scale = 2)
+        private BigDecimal prixBarre;
+
+        /** Mention mise en avant sur la carte (« Le plus complet »). Nulle = aucun badge. */
+        @Column(length = 40)
+        private String badge;
+
         @Column(nullable = false, length = 3)
         @Builder.Default
         private String devise = "EUR";

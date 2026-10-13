@@ -53,8 +53,13 @@ public final class ExercerEnFranceDtos {
     }
 
     /** @param prix nul : la page affiche « Sur devis » */
+    /**
+     * @param prixBarre prix de référence affiché barré ; nul = aucune comparaison
+     * @param badge     mention mise en avant sur la carte ; nulle = aucun badge
+     */
     public record OffreVue(String cle, String surTitre, String titre, List<String> points,
-                           BigDecimal prix, String devise, String libelleBouton) {
+                           BigDecimal prix, BigDecimal prixBarre, String badge,
+                           String devise, String libelleBouton) {
     }
 
     // ── Ce qu'envoie un visiteur ─────────────────────────────────────────────────────────
@@ -116,6 +121,8 @@ public final class ExercerEnFranceDtos {
                                @NotBlank @Size(max = 255) String titre, String points,
                                @DecimalMin(value = "0.0", message = "Un prix ne peut pas être négatif.")
                                BigDecimal prix, @Size(max = 3) String devise,
+                               @DecimalMin(value = "0.0", message = "Un prix de référence ne peut pas être négatif.")
+                               BigDecimal prixBarre, @Size(max = 40) String badge,
                                @NotBlank @Size(max = 80) String libelleBouton,
                                Boolean actif, Boolean technique, Integer ordre) {
     }

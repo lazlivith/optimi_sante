@@ -254,6 +254,36 @@ export function TermsPage() {
         remboursement, sans préjudice des suites légales.
       </p>
 
+      <h3>3.8 Accompagnement « Exercer en France »</h3>
+      <p>
+        Optimi Santé <strong>informe, oriente, vérifie et suit</strong> le praticien dans ses
+        démarches d'accès à l'exercice en France. Ces prestations sont des prestations de
+        conseil et d'accompagnement administratif.
+      </p>
+      <p>
+        Elles <strong>ne comprennent ni préparation pédagogique</strong> (notamment banque de
+        questions, examens blancs ou cours), <strong>ni traduction</strong>,{' '}
+        <strong>ni assurance</strong>, <strong>ni fourniture de logement</strong>. Optimi Santé
+        n'est pas un organisme officiel et ne délivre aucune autorisation d'exercice : les
+        décisions relèvent exclusivement des autorités compétentes, et aucun résultat ne peut
+        être garanti.
+      </p>
+      <p>
+        Les prix de ces prestations sont affichés <strong>toutes taxes comprises</strong>, en
+        euros. L'équivalent indiqué en francs CFA est donné à titre indicatif, calculé à la
+        parité fixe de 655,957 FCFA pour un euro et arrondi : il ne constitue pas un prix de
+        vente, la facturation et le paiement s'effectuant en euros. Le régime de TVA applicable
+        est celui mentionné sur la facture.
+      </p>
+      <p>
+        Lorsque le praticien souscrit la prestation <strong>Orientation EVC</strong> puis, par
+        la suite, la prestation <strong>Dossier &amp; démarches</strong>, le montant déjà réglé
+        au titre de l'Orientation EVC est <strong>déduit</strong> du prix de cette seconde
+        prestation. Cette déduction est appliquée par Optimi Santé sur le devis établi pour la
+        seconde prestation ; elle n'est ni automatique ni cumulable avec une autre remise, et
+        ne donne lieu à aucun remboursement si la seconde prestation n'est pas souscrite.
+      </p>
+
       <h2 id="compte">4. Compte et sécurité</h2>
       <p>
         L'utilisateur est responsable de la confidentialité de ses identifiants et des actions

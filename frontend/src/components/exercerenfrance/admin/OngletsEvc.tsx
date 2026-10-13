@@ -644,6 +644,25 @@ export function OngletOffres({
                      onChange={e => setEdition({ ...edition, devise: e.target.value })} />
             </label>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="block text-xs font-semibold text-slate-500">
+              Prix de référence, affiché barré (facultatif)
+              <input type="number" className={CHAMP} value={edition.prixBarre ?? ''}
+                     onChange={e => setEdition({
+                       ...edition, prixBarre: e.target.value === '' ? null : Number(e.target.value),
+                     })} />
+            </label>
+            <label className="block text-xs font-semibold text-slate-500">
+              Badge (facultatif)
+              <input className={CHAMP} maxLength={40} placeholder="Le plus complet"
+                     value={edition.badge ?? ''}
+                     onChange={e => setEdition({ ...edition, badge: e.target.value })} />
+            </label>
+          </div>
+          <p className="text-xs text-slate-600">
+            Un prix de référence doit être supérieur au prix affiché : sinon il annoncerait une
+            économie qui n'existe pas, et le serveur le refuse.
+          </p>
           <label className="block text-xs font-semibold text-slate-500">
             Points (une ligne par point)
             <textarea className={CHAMP} rows={5} value={edition.points ?? ''}
@@ -683,10 +702,14 @@ export function OngletOffres({
                     <div className="font-medium text-slate-800">{o.titre}</div>
                     <div className="text-xs text-slate-500">
                       clé « {o.cle} »{o.technique && ' · technique'}
+                      {o.badge && ` · badge « ${o.badge} »`}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-slate-700 tabular-nums">
-                    {o.prix === null ? 'Sur devis' : `${o.prix} ${o.devise}`}
+                    {o.prixBarre != null && (
+                      <s className="text-xs text-slate-400 block">{o.prixBarre} {o.devise}</s>
+                    )}
+                    {o.prix === null ? 'Sur devis' : `${o.prix} ${o.devise} TTC`}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{o.actif ? 'Active' : 'Inactive'}</td>
                   {estSuperAdmin && (

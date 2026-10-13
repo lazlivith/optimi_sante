@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BADGES_PERIODE, MESSAGE_ADRESSE, badgeDePeriode, verifierAdresseDeLien, verifierDemande,
+  BADGES_PERIODE,
+  MESSAGE_ADRESSE,
+  PARITE_EURO_FCFA,
+  badgeDePeriode,
+  equivalentFcfa,
+  fcfaLisible,
+  verifierAdresseDeLien,
+  verifierDemande,
 } from './exercerEnFrance';
 
 describe('adresse d’un lien officiel', () => {
@@ -95,5 +102,38 @@ describe('badge d’une période', () => {
   it('distingue les trois états par la couleur autant que par le mot', () => {
     const classes = Object.values(BADGES_PERIODE).map((b) => b.classe);
     expect(new Set(classes).size).toBe(3);
+  });
+});
+
+describe('équivalent en francs CFA', () => {
+  it('convertit à la parité fixe et arrondit à 500 FCFA', () => {
+    // La parité est FIXE (accord de coopération monétaire) : ces valeurs ne bougeront pas
+    // avec les marchés, et un chiffre qui change ici est donc une régression, pas une
+    // variation de change.
+    expect(equivalentFcfa(89)).toBe(58500);    // 58 380,17 arrondi au demi-millier
+    expect(equivalentFcfa(450)).toBe(295000);  // 295 180,65
+    expect(equivalentFcfa(650)).toBe(426500);  // 426 372,05
+    expect(equivalentFcfa(990)).toBe(649500);  // 649 397,43
+  });
+
+  it('arrondit au plus proche, dans les deux sens', () => {
+    expect(equivalentFcfa(450)).toBeLessThan(450 * PARITE_EURO_FCFA);     // vers le bas
+    expect(equivalentFcfa(89)).toBeGreaterThan(89 * PARITE_EURO_FCFA);    // vers le haut
+  });
+
+  it('reste un multiple de 500, pour ne pas feindre une précision inexistante', () => {
+    [1, 7, 89, 123, 450, 650, 990, 1100, 5000].forEach(euros => {
+      expect(equivalentFcfa(euros) % 500).toBe(0);
+    });
+  });
+
+  it("s'écrit avec le séparateur de milliers français et une approximation assumée", () => {
+    // Le « ≈ » n'est pas décoratif : la facture est en euros, ce montant ne sera jamais
+    // encaissé tel quel.
+    expect(fcfaLisible(89)).toMatch(/^≈ 58\s500 FCFA$/);
+  });
+
+  it('ne rend pas zéro pour un prix nul : zéro euro vaut zéro franc', () => {
+    expect(equivalentFcfa(0)).toBe(0);
   });
 });

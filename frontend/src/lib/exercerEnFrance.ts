@@ -157,3 +157,33 @@ export const TYPES_EVENEMENT: Record<string, string> = {
   assignation: 'Dossier assigné',
   note: 'Note interne',
 };
+
+/**
+ * La parité fixe entre l'euro et le franc CFA.
+ *
+ * <p><b>Ce n'est pas un taux de change.</b> Le franc CFA d'Afrique centrale est arrimé à
+ * l'euro par une parité FIXE, inscrite dans l'accord de coopération monétaire : 1 € vaut
+ * 655,957 FCFA, et ce nombre ne varie pas avec les marchés. Le relever par une API serait
+ * donc à la fois inutile et fragile — une panne de l'API ferait disparaître un prix.</p>
+ */
+export const PARITE_EURO_FCFA = 655.957;
+
+/** Le pas d'arrondi de l'équivalent en francs CFA. */
+const ARRONDI_FCFA = 500;
+
+/**
+ * L'équivalent approximatif d'un prix en euros, en francs CFA.
+ *
+ * <p><b>Pourquoi arrondir à 500.</b> « 58 380 FCFA » annoncerait une précision que ce montant
+ * n'a pas : il ne sera jamais encaissé tel quel, puisque la facture est en euros. Un arrondi
+ * visible dit ce qu'il est — un ordre de grandeur, donné pour que le praticien situe la
+ * dépense dans sa propre monnaie.</p>
+ */
+export function equivalentFcfa(prixEuros: number): number {
+  return Math.round((prixEuros * PARITE_EURO_FCFA) / ARRONDI_FCFA) * ARRONDI_FCFA;
+}
+
+/** « ≈ 58 500 FCFA », avec l'espace insécable fine attendue en français. */
+export function fcfaLisible(prixEuros: number): string {
+  return `≈ ${equivalentFcfa(prixEuros).toLocaleString('fr-FR')} FCFA`;
+}

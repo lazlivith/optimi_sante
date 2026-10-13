@@ -5,7 +5,7 @@ import {
   exercerEnFranceService,
   type OffreEvc, type PageExercerEnFrance, type PeriodeEvc, type SectionEvc,
 } from '../api/exercerEnFranceService';
-import { badgeDePeriode, OFFRE_ALERTE_AEP } from '../lib/exercerEnFrance';
+import { badgeDePeriode, fcfaLisible, OFFRE_ALERTE_AEP } from '../lib/exercerEnFrance';
 import { ModaleDemande } from '../components/exercerenfrance/ModaleDemande';
 
 /**
@@ -476,9 +476,16 @@ function SectionAccompagnements({ section, offres, ouvrirDemande }: {
   return (
     <section id="accompagnements" aria-labelledby="titre-accompagnements" className="scroll-mt-24">
       <EnTeteSection section={section} id="titre-accompagnements" />
-      <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="mt-6 grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {offres.map((offre, i) => (
-          <div key={offre.cle} className={`${FONDS_OFFRES[i % FONDS_OFFRES.length]} rounded-xl p-5 sm:p-6 flex flex-col`}>
+          <div key={offre.cle}
+               className={`${FONDS_OFFRES[i % FONDS_OFFRES.length]} rounded-xl p-5 sm:p-6 flex flex-col relative ${
+                 offre.badge ? 'ring-2 ring-brand-accent' : ''}`}>
+            {offre.badge && (
+              <p className="absolute -top-2.5 left-5 px-2.5 py-0.5 rounded-full bg-brand-accent text-white text-[11px] font-bold uppercase tracking-wide">
+                {offre.badge}
+              </p>
+            )}
             {offre.surTitre && (
               <p className="text-[11px] font-bold tracking-widest text-slate-500 uppercase">{offre.surTitre}</p>
             )}
@@ -490,9 +497,21 @@ function SectionAccompagnements({ section, offres, ouvrirDemande }: {
                 </li>
               ))}
             </ul>
-            <p className="mt-5 text-lg font-extrabold text-brand-accent">
-              {offre.prix == null ? 'Sur devis' : prixLisible(offre.prix, offre.devise)}
-            </p>
+            <div className="mt-5">
+              {offre.prixBarre != null && (
+                <p className="text-sm text-slate-500">
+                  <s>{prixLisible(offre.prixBarre, offre.devise)}</s>
+                </p>
+              )}
+              <p className="text-lg font-extrabold text-brand-accent">
+                {offre.prix == null ? 'Sur devis' : `${prixLisible(offre.prix, offre.devise)} TTC`}
+              </p>
+              {/* L'équivalent en francs CFA situe la dépense dans la monnaie du praticien.
+                  Il est calculé à l'affichage, à parité FIXE : rien n'est stocké. */}
+              {offre.prix != null && offre.devise === 'EUR' && (
+                <p className="text-xs text-slate-500">{fcfaLisible(offre.prix)}</p>
+              )}
+            </div>
             <button type="button"
                onClick={() => ouvrirDemande({ cle: offre.cle, titre: offre.titre })}
                className="mt-3 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-fonce">
@@ -501,8 +520,32 @@ function SectionAccompagnements({ section, offres, ouvrirDemande }: {
           </div>
         ))}
       </div>
-      {section.contenu && <p className="mt-5 text-xs text-slate-500">{section.contenu}</p>}
+      <MentionDeduction offres={offres} />
+      {section.contenu && <p className="mt-3 text-xs text-slate-500">{section.contenu}</p>}
     </section>
+  );
+}
+
+/**
+ * Ce que l'Orientation EVC fait économiser si le praticien poursuit.
+ *
+ * <p><b>Le montant n'est pas écrit en dur.</b> Il est lu sur l'offre elle-même : un prix qui
+ * change en administration doit changer ici aussi, sinon la page promet une déduction que le
+ * devis ne pratiquera pas. La phrase disparaît si l'une des deux offres n'est plus là.</p>
+ *
+ * <p>La déduction est appliquée à la main sur le devis : rien ne l'automatise, et la page ne
+ * laisse donc pas entendre qu'elle serait décomptée toute seule au paiement.</p>
+ */
+function MentionDeduction({ offres }: { offres: OffreEvc[] }) {
+  const orientation = offres.find(o => o.cle === 'preparation_evc');
+  const dossier = offres.find(o => o.cle === 'dossier_demarches');
+  if (!orientation?.prix || !dossier) return null;
+  return (
+    <p className="mt-5 text-sm text-slate-700 rounded-xl bg-brand-light/60 px-4 py-3">
+      Les {prixLisible(orientation.prix, orientation.devise)} de
+      l'{orientation.titre} sont déduits du prix du {dossier.titre} si vous le choisissez
+      ensuite.
+    </p>
   );
 }
 
@@ -609,6 +652,17 @@ function dateLongue(iso: string): string {
   return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+/**
+ * Un prix, écrit comme on l'annonce.
+ *
+ * <p>Les centimes ne sont affichés que s'il y en a : « 89,00 € » sur un tarif rond donne
+ * l'air d'un relevé comptable là où la page annonce un prix.</p>
+ */
 function prixLisible(prix: number, devise: string): string {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: devise || 'EUR' }).format(prix);
+  const entier = Number.isInteger(prix);
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: devise || 'EUR',
+    minimumFractionDigits: entier ? 0 : 2,
+  }).format(prix);
 }

@@ -29,13 +29,19 @@ export interface SpecialiteEvc {
   libelle: string;
 }
 
-/** @param prix nul : la carte affiche « Sur devis ». */
+/**
+ * @param prix      nul : la carte affiche « Sur devis ». Les prix sont TTC.
+ * @param prixBarre prix de référence affiché barré ; nul = aucune comparaison
+ * @param badge     mention mise en avant sur la carte ; nulle = aucun badge
+ */
 export interface OffreEvc {
   cle: string;
   surTitre: string | null;
   titre: string;
   points: string[];
   prix: number | null;
+  prixBarre: number | null;
+  badge: string | null;
   devise: string;
   libelleBouton: string;
 }
