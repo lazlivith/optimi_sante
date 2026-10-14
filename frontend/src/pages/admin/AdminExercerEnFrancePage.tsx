@@ -144,14 +144,20 @@ export function AdminExercerEnFrancePage() {
   };
 
   const restaurer = async (v: VersionPubliee) => {
+    // Ce que cette confirmation annonçait était FAUX, et dangereusement : elle promettait
+    // le remplacement du BROUILLON. La restauration fait l'inverse — elle republie
+    // l'ancienne version en ligne, tout de suite, sans toucher au brouillon. La recette
+    // l'a montré en remettant en ligne des textes retirés pour raison juridique.
     if (!window.confirm(
       `Restaurer la version ${v.version}, publiée le ${dateHeure(v.publieLe)} ?\n\n`
-      + 'Le brouillon actuel sera remplacé par le contenu de cette version. '
-      + 'Les modifications non publiées seront perdues.',
+      + "ATTENTION : cette version sera REMISE EN LIGNE immédiatement, à la place de "
+      + "ce que le visiteur voit aujourd'hui. Votre brouillon n'est pas modifié.\n\n"
+      + "Une version ancienne porte les textes et les prix de son époque : vérifiez "
+      + "par l'Aperçu qu'elle ne remet pas en ligne un contenu retiré depuis.",
     )) return;
     try {
       const r = await api.restaurer(v.version);
-      succes(`Version ${v.version} restaurée (nouvelle version ${r.version}).`);
+      succes(`Version ${v.version} remise en ligne, sous le numéro ${r.version}.`);
       charger();
     } catch (e: any) {
       erreur(e.response?.status === 403
