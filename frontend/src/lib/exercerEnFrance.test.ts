@@ -44,7 +44,8 @@ describe('adresse d’un lien officiel', () => {
 
 describe('formulaire de demande', () => {
   const valide = {
-    nom: 'Dr Nkounkou', email: 'nkounkou@exemple.cg', consentementRgpd: true,
+    // Le pays est obligatoire depuis que le régime de TVA en dépend (CGV, article 3.9).
+    nom: 'Dr Nkounkou', email: 'nkounkou@exemple.cg', pays: 'Congo', consentementRgpd: true,
   };
 
   it('accepte une saisie complète', () => {
@@ -73,9 +74,16 @@ describe('formulaire de demande', () => {
     expect(erreurs.consentementRgpd).toContain('consentement');
   });
 
+  it('exige le pays, parce que le régime de TVA en dépend', () => {
+    // Hors Union européenne, la prestation est facturée hors taxe au même montant : sans
+    // le pays, la facture ne peut pas être établie correctement.
+    expect(verifierDemande({ ...valide, pays: '  ' })).toHaveProperty('pays');
+  });
+
   it('signale TOUS les champs fautifs d’un coup', () => {
     // Les rendre un par un fait recommencer le praticien autant de fois qu'il a d'erreurs.
-    expect(Object.keys(verifierDemande({}))).toHaveLength(3);
+    // Quatre désormais : nom, e-mail, pays, consentement.
+    expect(Object.keys(verifierDemande({}))).toHaveLength(4);
   });
 });
 

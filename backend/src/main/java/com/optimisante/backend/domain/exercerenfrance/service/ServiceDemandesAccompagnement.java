@@ -69,7 +69,10 @@ public class ServiceDemandesAccompagnement {
      */
     @Transactional
     public AccompanimentRequest deposer(DemandeRequest dto) {
-        verifierAbsenceDAbus(dto);
+        // Le plafond quotidien lève encore : il s'annonce au praticien, qui a besoin de
+        // savoir que son premier envoi est bien arrivé. Les deux filtres anti-robot, eux,
+        // ne lèvent plus — ils marquent.
+        boolean suspect = verifierAbsenceDAbus(dto);
 
         OffsetDateTime maintenant = OffsetDateTime.now();
         AccompanimentRequest demande = demandes.save(AccompanimentRequest.builder()
@@ -85,19 +88,25 @@ public class ServiceDemandesAccompagnement {
                 .message(dto.message())
                 .consentementRgpd(true)
                 .consentementLe(maintenant)
-                .statut(Enums.Statut.NOUVEAU.code())
+                .statut(suspect ? Enums.Statut.SUSPECT.code() : Enums.Statut.NOUVEAU.code())
                 .creeLe(maintenant)
                 .derniereActiviteLe(maintenant)
                 .build());
 
-        inscrireAuFil(demande, Enums.TypeEvenement.CREATION, null, Enums.Statut.NOUVEAU.code(),
-                null, null);
+        inscrireAuFil(demande, Enums.TypeEvenement.CREATION, null, demande.getStatut(),
+                suspect ? "Écartée par un filtre anti-robot : à relire avant de conclure." : null,
+                null);
 
         // L'audit dit QU'UNE demande est arrivée, et rien de qui l'a déposée.
         auditService.record("ACCOMPAGNEMENT_DEPOT", "AccompanimentRequest",
                 demande.getId().toString(), "Demande déposée depuis la page publique", null);
 
-        prevenir(demande);
+        // AUCUN e-mail pour une demande suspecte : ni accusé au déposant, ni alerte à
+        // l'équipe. Réveiller quelqu'un pour un robot est précisément ce qu'on évite — et un
+        // accusé envoyé à une adresse inventée part chez un tiers.
+        if (!suspect) {
+            prevenir(demande);
+        }
         return demande;
     }
 
@@ -113,14 +122,15 @@ public class ServiceDemandesAccompagnement {
      * petite et redémarre, un compteur mémoire repartirait à zéro et grossirait d'une entrée
      * par adresse croisée.</p>
      */
-    private void verifierAbsenceDAbus(DemandeRequest dto) {
+    private boolean verifierAbsenceDAbus(DemandeRequest dto) {
+        boolean suspect = false;
         if (dto.piege() != null && !dto.piege().isBlank()) {
-            log.debug("Dépôt écarté : champ piège rempli.");
-            throw new DepotRefuse("Votre demande n'a pas pu être enregistrée.");
+            log.debug("Dépôt marqué suspect : champ piège rempli.");
+            suspect = true;
         }
         if (dto.ouvertDepuisMs() != null && dto.ouvertDepuisMs() < DELAI_MINIMUM_MS) {
-            log.debug("Dépôt écarté : formulaire envoyé en {} ms.", dto.ouvertDepuisMs());
-            throw new DepotRefuse("Votre demande n'a pas pu être enregistrée.");
+            log.debug("Dépôt marqué suspect : formulaire envoyé en {} ms.", dto.ouvertDepuisMs());
+            suspect = true;
         }
         long dejaDeposees = demandes.countByEmailIgnoreCaseAndCreeLeAfter(
                 dto.email().trim().toLowerCase(), OffsetDateTime.now().minusDays(1));
@@ -128,6 +138,7 @@ public class ServiceDemandesAccompagnement {
             throw new DepotRefuse("Vous avez déjà déposé plusieurs demandes aujourd'hui. "
                     + "Nous vous répondons au plus vite ; inutile de renvoyer le formulaire.");
         }
+        return suspect;
     }
 
     /**

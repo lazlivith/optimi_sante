@@ -88,32 +88,97 @@ public class ServicePublicationEvc {
     }
 
     /**
-     * Remet en ligne une version passée.
+     * Recopie une version publiée DANS LE BROUILLON, sans rien publier.
      *
-     * <p><b>Elle n'efface pas l'historique, elle l'allonge.</b> L'ancien contenu est recopié
-     * dans une version NEUVE, qui dit de laquelle elle vient. Écraser la ligne existante
-     * rendrait indémontrable qui a remis quoi en ligne, et quand — exactement ce qu'un
-     * historique sert à établir.</p>
+     * <p><b>Pourquoi ce sens, et pas l'autre.</b> La première version remettait l'ancienne
+     * page EN LIGNE, d'un clic et sans relecture. La recette l'a montré : restaurer la
+     * version 1 a réaffiché des promesses commerciales retirées la veille pour raison
+     * juridique. Une remise en ligne immédiate ne laisse aucun moment pour s'apercevoir de
+     * ce qu'on republie.</p>
      *
-     * <p>Noter que cela ne touche pas le brouillon : l'administration retrouve ses tables
-     * telles qu'elle les avait laissées, et peut republier le brouillon courant ensuite.</p>
+     * <p>Désormais la version choisie revient dans le brouillon ; l'administrateur la relit
+     * par l'aperçu, puis publie s'il la veut. Le chemin est plus long d'un clic, et ce clic
+     * est tout l'intérêt.</p>
+     *
+     * <p><b>Ce qui n'est pas ressuscité.</b> Un contenu supprimé depuis ne revient pas :
+     * seules les entrées qui existent ENCORE, reconnues à leur clé, sont réécrites. Faire
+     * réapparaître une section effacée exprès serait une seconde surprise du même genre que
+     * celle qu'on corrige ici. Le compte rendu dit combien d'entrées ont été reprises.</p>
      */
     @Transactional
-    public VersionVue restaurer(int versionSource, UUID auteur) {
+    public RestaurationVue restaurer(int versionSource, UUID auteur) {
         EvcPublication source = publications.findByVersion(versionSource)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Aucune version « " + versionSource + " » n'a été publiée."));
-        int version = publications.findFirstByOrderByVersionDesc()
-                .map(p -> p.getVersion() + 1).orElse(1);
+        PagePublique ancienne = relire(source);
+        UUID tenant = tenantParDefaut.identifiant();
 
-        EvcPublication neuve = EvcPublication.builder()
-                .version(version).instantane(source.getInstantane())
-                .publieLe(OffsetDateTime.now()).publiePar(auteur).restaureDe(versionSource)
-                .build();
-        publications.save(neuve);
-        auditService.record("EVC_RESTAURATION", "EvcPublication", String.valueOf(version),
-                "Version " + versionSource + " remise en ligne sous le numéro " + version, null);
-        return new VersionVue(version, neuve.getPublieLe(), null, versionSource);
+        int nbSections = 0;
+        for (SectionVue v : ancienne.sections()) {
+            var e = sections.findByCle(v.cle()).orElse(null);
+            if (e == null) {
+                continue;   // La section a été supprimée depuis : on ne la ressuscite pas.
+            }
+            e.setSurTitre(v.surTitre());
+            e.setTitre(v.titre());
+            e.setContenu(v.contenu());
+            sections.save(e);
+            nbSections++;
+        }
+
+        int nbLiens = 0;
+        for (LienVue v : ancienne.liens()) {
+            var e = liens.findByCle(v.cle()).orElse(null);
+            if (e == null) {
+                continue;
+            }
+            e.setLibelle(v.libelle());
+            e.setUrl(v.url());
+            liens.save(e);
+            nbLiens++;
+        }
+
+        int nbOffres = 0;
+        for (OffreVue v : ancienne.offres()) {
+            var e = offres.findByTenantIdAndCle(tenant, v.cle()).orElse(null);
+            if (e == null) {
+                continue;
+            }
+            e.setSurTitre(v.surTitre());
+            e.setTitre(v.titre());
+            e.setPoints(v.points() == null ? null : String.join("\n", v.points()));
+            e.setPrix(v.prix());
+            e.setPrixBarre(v.prixBarre());
+            e.setBadge(v.badge());
+            e.setDevise(v.devise());
+            e.setLibelleBouton(v.libelleBouton());
+            offres.save(e);
+            nbOffres++;
+        }
+
+        int nbPeriodes = 0;
+        for (PeriodeVue v : ancienne.periodes()) {
+            // Les périodes n'ont pas de clé : le libellé en tient lieu.
+            var e = periodes.findAllByOrderByOrdreAsc().stream()
+                    .filter(x -> v.libelle().equals(x.getLibelle())).findFirst().orElse(null);
+            if (e == null) {
+                continue;
+            }
+            e.setDateDebut(v.dateDebut());
+            e.setDateFin(v.dateFin());
+            e.setSpecialitesNonOuvertes(v.specialitesNonOuvertes());
+            e.setSourceUrl(v.sourceUrl());
+            periodes.save(e);
+            nbPeriodes++;
+        }
+
+        auditService.record("EVC_RESTAURATION", "EvcPublication", String.valueOf(versionSource),
+                "Version " + versionSource + " recopiée dans le brouillon — "
+                        + nbSections + " section(s), " + nbPeriodes + " période(s), "
+                        + nbLiens + " lien(s), " + nbOffres + " offre(s). Rien n'a été publié.",
+                null);
+        log.info("Version {} recopiée dans le brouillon par {}", versionSource, auteur);
+        return new RestaurationVue(versionSource, nbSections, nbPeriodes, nbLiens, nbOffres);
     }
 
     @Transactional(readOnly = true)

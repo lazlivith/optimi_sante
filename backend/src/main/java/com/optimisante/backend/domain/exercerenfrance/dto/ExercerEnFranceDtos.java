@@ -80,6 +80,13 @@ public final class ExercerEnFranceDtos {
             @NotBlank(message = "L'adresse e-mail est obligatoire.")
             @Email(message = "L'adresse e-mail est mal formée.") @Size(max = 255) String email,
             @Size(max = 40) String telephoneWhatsapp,
+            /*
+              Le pays de résidence décide du RÉGIME DE TVA (CGV, article 3.9) : France et
+              Union européenne en TTC, hors Union européenne hors taxe. Il n'est donc plus
+              facultatif — une demande sans pays ne peut pas être facturée correctement, et
+              le réclamer après coup par e-mail fait perdre le client.
+            */
+            @NotBlank(message = "Le pays de résidence est nécessaire : il détermine le régime de TVA applicable.")
             @Size(max = 80) String pays,
             @Size(max = 80) String profession,
             @Size(max = 160) String specialite,
@@ -145,6 +152,17 @@ public final class ExercerEnFranceDtos {
 
     public record VersionVue(Integer version, OffsetDateTime publieLe, String publiePar,
                              Integer restaureDe) {
+    }
+
+    /**
+     * Ce qu'une restauration a repris, et rien de plus.
+     *
+     * <p>Elle ne crée aucune version : elle recopie dans le brouillon. Les nombres disent
+     * combien d'entrées ont été réécrites — une entrée supprimée depuis n'est pas
+     * ressuscitée, et l'écart se lit ici.</p>
+     */
+    public record RestaurationVue(int versionSource, int sections, int periodes,
+                                  int liens, int offres) {
     }
 
     public record DemandeVue(UUID id, String nom, String email, String telephoneWhatsapp, String pays,

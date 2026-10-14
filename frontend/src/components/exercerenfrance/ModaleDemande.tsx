@@ -165,8 +165,9 @@ export function ModaleDemande({ offreCle, offreTitre, specialites, onFermer }: P
                        onChange={(e) => modifier('telephoneWhatsapp', e.target.value)}
                        className={CLASSE_CHAMP} />
               </Champ>
-              <Champ id="pays" libelle="Pays de résidence">
-                <input id="pays" value={champs.pays} autoComplete="country-name"
+              <Champ id="pays" libelle="Pays de résidence" obligatoire erreur={erreurs.pays}>
+                <input id="pays" value={champs.pays} autoComplete="country-name" required
+                       aria-invalid={erreurs.pays ? true : undefined}
                        onChange={(e) => modifier('pays', e.target.value)} className={CLASSE_CHAMP} />
               </Champ>
             </div>

@@ -78,6 +78,21 @@ export interface IndicateursEvc {
   prestationsSansFin: number;
 }
 
+/**
+ * Ce qu'une restauration a repris — elle ne publie RIEN.
+ *
+ * <p>La version choisie est recopiée dans le brouillon ; l'administrateur la relit par
+ * l'aperçu, puis publie s'il la veut. Les nombres disent combien d'entrées ont été
+ * réécrites : une entrée supprimée depuis n'est pas ressuscitée.</p>
+ */
+export interface Restauration {
+  versionSource: number;
+  sections: number;
+  periodes: number;
+  liens: number;
+  offres: number;
+}
+
 export interface VersionPubliee {
   version: number;
   publieLe: string;
@@ -145,6 +160,6 @@ export const adminExercerEnFranceService = {
     (await axiosClient.post<VersionPubliee>(`${base}/publier`)).data,
   versions: async (): Promise<VersionPubliee[]> =>
     (await axiosClient.get<VersionPubliee[]>(`${base}/versions`)).data,
-  restaurer: async (version: number): Promise<VersionPubliee> =>
-    (await axiosClient.post<VersionPubliee>(`${base}/versions/${version}/restaurer`)).data,
+  restaurer: async (version: number): Promise<Restauration> =>
+    (await axiosClient.post<Restauration>(`${base}/versions/${version}/restaurer`)).data,
 };

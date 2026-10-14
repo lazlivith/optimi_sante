@@ -45,7 +45,19 @@ public final class Enums {
      */
     public enum Statut {
         NOUVEAU("nouveau"), QUALIFIE("qualifie"), DEVIS_ENVOYE("devis_envoye"),
-        PAYE("paye"), EN_COURS("en_cours"), TERMINE("termine"), PERDU("perdu");
+        PAYE("paye"), EN_COURS("en_cours"), TERMINE("termine"), PERDU("perdu"),
+
+        /**
+         * Déposée, mais écartée par un filtre anti-robot.
+         *
+         * <p>La demande est CONSERVÉE, et visible en administration : un filtre se trompe,
+         * et un praticien pressé peut remplir le formulaire plus vite que le délai minimum.
+         * L'effacer d'office perdrait un client en silence.</p>
+         *
+         * <p>Elle ne déclenche aucun e-mail — ni accusé au déposant, ni alerte à l'équipe :
+         * c'est l'intérêt même de ne pas réveiller l'équipe pour un robot.</p>
+         */
+        SUSPECT("suspect");
 
         private final String code;
 

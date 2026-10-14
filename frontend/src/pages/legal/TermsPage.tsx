@@ -280,7 +280,7 @@ export function TermsPage() {
         euros. L'équivalent indiqué en francs CFA est donné à titre indicatif, calculé à la
         parité fixe de 655,957 FCFA pour un euro et arrondi : il ne constitue pas un prix de
         vente, la facturation et le paiement s'effectuant en euros. Le régime de TVA applicable
-        est celui mentionné sur la facture.
+        est précisé à l'article 3.9.
       </p>
       <p>
         Lorsque le praticien souscrit la prestation <strong>Orientation EVC</strong> puis, par
@@ -289,6 +289,25 @@ export function TermsPage() {
         prestation. Cette déduction est appliquée par Optimi Santé sur le devis établi pour la
         seconde prestation ; elle n'est ni automatique ni cumulable avec une autre remise, et
         ne donne lieu à aucun remboursement si la seconde prestation n'est pas souscrite.
+      </p>
+
+      <h3>3.9 Taxe sur la valeur ajoutée</h3>
+      <p>Les prix sont indiqués en euros.</p>
+      <p>
+        Pour les clients résidant en France ou dans un autre État membre de l'Union
+        européenne, les prix s'entendent toutes taxes comprises, la TVA française au taux en
+        vigueur (20 %) étant incluse.
+      </p>
+      <p>
+        Pour les clients résidant hors de l'Union européenne, les prestations sont facturées
+        hors taxe, au même montant que le prix affiché, la TVA française n'étant pas
+        applicable. La facture porte la mention «&nbsp;TVA non applicable – article 259 B du
+        CGI&nbsp;».
+      </p>
+      <p>
+        Le pays de résidence pris en compte est celui déclaré par le client lors de sa
+        demande. Le client garantit l'exactitude de cette déclaration ; toute déclaration
+        inexacte pourra donner lieu à une facturation rectificative.
       </p>
 
       <h2 id="compte">4. Compte et sécurité</h2>

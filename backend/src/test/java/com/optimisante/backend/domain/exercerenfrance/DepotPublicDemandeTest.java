@@ -15,6 +15,7 @@ import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -151,27 +152,44 @@ class DepotPublicDemandeTest {
     }
 
     @Test
-    @DisplayName("le champ piège rempli écarte le dépôt, sans le dire")
+    @DisplayName("le champ piège rempli marque la demande « suspect », sans rien en dire")
     void champPiege() throws Exception {
         long avant = demandes.count();
-        mvc.perform(post(ROUTE).contentType(MediaType.APPLICATION_JSON)
+        String corps = mvc.perform(post(ROUTE).contentType(MediaType.APPLICATION_JSON)
                         .content(corps(adresse(), ",\"piege\":\"http://spam.example\"")))
-                // Accepté en apparence : annoncer « champ piège rempli » enseignerait
-                // comment passer la fois suivante.
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.id").doesNotExist());
-        assertThat(demandes.count()).isEqualTo(avant);
+                // STRICTEMENT la réponse d'un dépôt accepté. Le code précédent rendait 202
+                // là qu'un dépôt accepté rend 201 : un robot lit le code HTTP avant la
+                // phrase, et cet écart lui apprenait qu'il avait été repéré.
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        // La demande est CONSERVÉE : un filtre se trompe, et l'effacer d'office perdrait en
+        // silence le praticien qu'il a mal jugé.
+        assertThat(demandes.count()).isEqualTo(avant + 1);
+        assertThat(statutDe(corps)).isEqualTo("suspect");
     }
 
     @Test
-    @DisplayName("un formulaire envoyé en moins de trois secondes est écarté")
+    @DisplayName("un formulaire envoyé en moins de trois secondes est marqué, pas refusé")
     void tropRapide() throws Exception {
         long avant = demandes.count();
-        mvc.perform(post(ROUTE).contentType(MediaType.APPLICATION_JSON)
+        String corps = mvc.perform(post(ROUTE).contentType(MediaType.APPLICATION_JSON)
                         .content(corps(adresse(), ",\"ouvertDepuisMs\":800")))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.id").doesNotExist());
-        assertThat(demandes.count()).isEqualTo(avant);
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        // Ce filtre-là se trompe pour de bon : un praticien pressé, ou un gestionnaire de
+        // mots de passe qui remplit tout d'un coup, déclenche le délai minimum.
+        assertThat(demandes.count()).isEqualTo(avant + 1);
+        assertThat(statutDe(corps)).isEqualTo("suspect");
+    }
+
+    /** Le statut en base de la demande que cette réponse vient de créer. */
+    private String statutDe(String reponseJson) {
+        int i = reponseJson.indexOf("\"id\":\"") + 6;
+        UUID id = UUID.fromString(reponseJson.substring(i, reponseJson.indexOf('"', i)));
+        return demandes.findById(id).orElseThrow().getStatut();
     }
 
     @Test

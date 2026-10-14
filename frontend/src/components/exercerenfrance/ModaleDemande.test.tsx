@@ -25,6 +25,8 @@ function afficher(offreCle: string, offreTitre = 'Préparation EVC') {
 async function remplirLeMinimum(utilisateur: ReturnType<typeof userEvent.setup>) {
   await utilisateur.type(screen.getByLabelText(/Nom complet/), 'Dr Nkounkou');
   await utilisateur.type(screen.getByLabelText(/Adresse e-mail/), 'n@exemple.cg');
+  // Le pays est obligatoire : le régime de TVA en dépend (CGV, article 3.9).
+  await utilisateur.type(screen.getByLabelText(/Pays de résidence/), 'Congo');
   await utilisateur.click(screen.getByRole('checkbox'));
 }
 
@@ -56,6 +58,7 @@ describe('fenêtre de demande', () => {
     afficher('preparation_evc');
     await utilisateur.type(screen.getByLabelText(/Nom complet/), 'Dr Nkounkou');
     await utilisateur.type(screen.getByLabelText(/Adresse e-mail/), 'n@exemple.cg');
+    await utilisateur.type(screen.getByLabelText(/Pays de résidence/), 'Congo');
     await utilisateur.click(screen.getByRole('button', { name: /Envoyer ma demande/ }));
 
     expect(await screen.findByText(/consentement est nécessaire/)).toBeInTheDocument();
@@ -69,7 +72,8 @@ describe('fenêtre de demande', () => {
 
     // Trois alertes : nom, adresse, consentement. Les rendre une par une ferait recommencer
     // le praticien autant de fois qu'il a d'erreurs.
-    await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(3));
+    // Quatre champs fautifs désormais : nom, e-mail, pays, consentement.
+    await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(4));
   });
 
   it('transmet la clé de l’offre et le délai de remplissage', async () => {

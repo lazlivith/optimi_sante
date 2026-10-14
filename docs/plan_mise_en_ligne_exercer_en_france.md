@@ -5,7 +5,7 @@
 Rien de ce document n'a été exécuté. Chaque commande est à lancer par vous, dans
 l'ordre. La durée totale, hors vérifications, est d'environ 40 minutes.
 
-**Ce qui part en ligne** : les migrations V72 à V76, la page publique « Exercer en
+**Ce qui part en ligne** : les migrations V72 à V77, la page publique « Exercer en
 France », le formulaire de demande, les deux e-mails, l'écran « Demandes
 d'accompagnement » et l'écran d'administration de la page, plus l'article 3.8 des
 CGV.
@@ -68,39 +68,101 @@ dessus seul** : vous ne savez pas à quelle heure elle date.
 
 ## 1. Vérifier la configuration Render AVANT de déployer
 
-### 1.1 La variable `app.tenant`
+### 1.1 La variable `app.tenant`, pas à pas
 
 Le rattachement des demandes déposées par un visiteur non connecté vient de la
 configuration du serveur, jamais de la requête. Si cette valeur est absente ou
-fausse, **les demandes se rattacheront au mauvais tenant, ou le démarrage
-échouera**.
+fausse, les demandes se rattacheront au mauvais tenant.
 
-1. Render → service backend → **Environment**.
-2. Cherchez `APP_TENANT_CODE_PAR_DEFAUT` (Spring lit les variables en majuscules
-   avec tirets bas pour `app.tenant.code-par-defaut`).
-3. Si elle est absente, ajoutez-la avec la valeur **`FR_MAIN`**.
-4. Vérifiez que ce code existe réellement en base :
+**Étape 1 — vérifier ce qui existe en base.**
 
-   ```bash
-   psql "<EXTERNAL_DATABASE_URL>" -c "SELECT id, code FROM tenants;"
-   ```
+```bash
+psql "<EXTERNAL_DATABASE_URL>" -c "SELECT id, code, nom FROM tenants ORDER BY code;"
+```
 
-   Le code de la variable doit figurer dans cette liste, à l'identique, casse
-   comprise.
+Notez le `code` attendu. Il doit valoir **`FR_MAIN`**. S'il n'apparaît pas dans
+cette liste, **arrêtez-vous** : la variable ne peut pas désigner un tenant
+inexistant, et le backend refusera de démarrer.
 
-### 1.2 La mémoire de la JVM — à décider maintenant
+**Étape 2 — ouvrir la configuration Render.**
+
+1. <https://dashboard.render.com> → connectez-vous.
+2. Dans la liste des services, cliquez sur le service **backend** (celui de type
+   *Web Service*, pas la base de données).
+3. Dans le menu de gauche du service, cliquez sur **Environment**.
+4. Vous voyez la liste **Environment Variables**.
+
+**Étape 3 — vérifier ou créer la variable.**
+
+Cherchez une ligne dont la clé est **`APP_TENANT_CODE_PAR_DEFAUT`**.
+
+- **Si elle existe** : vérifiez que sa valeur est exactement `FR_MAIN`, sans
+  espace avant ni après, majuscules comprises. Cliquez sur la valeur pour la
+  révéler si elle est masquée.
+- **Si elle n'existe pas** : cliquez sur **Add Environment Variable**, puis
+  saisissez :
+
+  | Key | Value |
+  |---|---|
+  | `APP_TENANT_CODE_PAR_DEFAUT` | `FR_MAIN` |
+
+**Étape 4 — enregistrer.**
+
+Cliquez sur **Save Changes**. Render redéploie automatiquement le service. C'est
+normal, et c'est même souhaitable : vous voulez que la variable soit en place
+AVANT le déploiement du nouveau code.
+
+**Pourquoi ce nom de clé.** Spring lit la propriété `app.tenant.code-par-defaut`
+dans les variables d'environnement en remplaçant les points et les tirets par des
+tirets bas, et en passant tout en majuscules. `APP_TENANT_CODE_PAR_DEFAUT` est
+donc la même chose, vue depuis Render.
+
+**Étape 5 — vérifier après le déploiement.** Dans les journaux Render, au
+démarrage, le tenant retenu est tracé. Et après la mise en ligne, déposez une
+demande d'essai puis vérifiez :
+
+```bash
+psql "<EXTERNAL_DATABASE_URL>" -c   "SELECT a.nom, t.code FROM accompaniment_requests a JOIN tenants t ON t.id = a.tenant_id ORDER BY a.cree_le DESC LIMIT 3;"
+```
+
+La colonne `code` doit afficher `FR_MAIN`.
+
+### 1.2 La mémoire de la JVM, pas à pas
 
 Mesuré en local sur ce jar : **506 Mio au repos à froid**, **524 Mio au maximum
 pendant un parcours complet**. La JVM tourne avec `MaxRAMPercentage` à sa valeur
-par défaut de **25 %**.
+par défaut de **25 %** — sur une instance de 512 Mo, cela ne laisse que 128 Mo de
+tas, et un import de catalogue tombe en `OutOfMemoryError`.
 
-Sur une instance Render de 512 Mo, 25 % donne un tas de 128 Mo : l'application
-démarre mais tombera en `OutOfMemoryError` sur un import ou un export un peu
-gros. Deux possibilités, à choisir avant de déployer :
+Vous passez au palier supérieur à 512 Mo : réglez aussi le pourcentage, sans quoi
+l'instance plus grande ne servirait presque à rien.
 
-- **Instance 1 Go minimum**, et ajouter la variable d'environnement
-  `JAVA_TOOL_OPTIONS` = `-XX:MaxRAMPercentage=70`. C'est la recommandation.
-- Rester à 512 Mo en acceptant que les imports de catalogue échouent.
+**Où exactement :**
+
+1. <https://dashboard.render.com> → service **backend**.
+2. Menu de gauche → **Settings** → section **Instance Type** : choisissez le
+   palier retenu (**Standard**, 2 Go, est le premier palier confortable).
+3. Menu de gauche → **Environment** → **Add Environment Variable** :
+
+   | Key | Value |
+   |---|---|
+   | `JAVA_TOOL_OPTIONS` | `-XX:MaxRAMPercentage=70` |
+
+4. **Save Changes**.
+
+**Vérification après redémarrage.** Dans les journaux Render, au tout début du
+démarrage, la JVM affiche la ligne :
+
+```
+Picked up JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70
+```
+
+Si cette ligne n'apparaît pas, la variable n'est pas prise en compte : vérifiez
+son orthographe, elle est sensible à la casse.
+
+**Pourquoi 70 et non 100.** Une JVM a besoin de mémoire HORS du tas — métadonnées
+de classes, piles de threads, tampons réseau. Monter à 100 % ferait tuer le
+conteneur par le système avant que le ramasse-miettes n'ait une chance d'agir.
 
 ### 1.3 Les autres variables
 
@@ -160,7 +222,7 @@ git push origin main
 
 Render déclenche la construction automatiquement. Suivez les journaux.
 
-### 3.2 Les migrations V72 à V76
+### 3.2 Les migrations V72 à V77
 
 Elles s'appliquent **au démarrage**, avant que l'application n'accepte une
 requête. Dans les journaux Render, vous devez voir :
@@ -171,7 +233,8 @@ Migrating schema "public" to version "73 - exercer en france reglages"
 Migrating schema "public" to version "74 - offre technique"
 Migrating schema "public" to version "75 - accompagnement delai et contact"
 Migrating schema "public" to version "76 - offre prix barre et badge"
-Successfully applied 5 migrations
+Migrating schema "public" to version "77 - statut suspect"
+Successfully applied 6 migrations
 ```
 
 Puis `Started BackendApplication`.
@@ -267,18 +330,54 @@ navigation privée** (sans session administrateur) et vérifiez :
    séparées, numéros WhatsApp collables tels quels.
 6. **Vérifier les droits** avec un compte ADMIN_MOBILITE : le bouton de
    modification des prix est absent, et la restauration est refusée.
-7. **Supprimer vos demandes d'essai** depuis la base, avant d'oublier.
-8. **Surveiller la mémoire** sur Render pendant 24 h. Au-delà de 80 % de
+7. **Supprimer vos demandes d'essai**, avant d'oublier. Commencez TOUJOURS par la
+   lecture : une suppression se décide sur ce qu'on a vu, pas sur ce qu'on croit.
+
+   ```sql
+   -- 1. LECTURE SEULE : ce que la suppression emporterait.
+   SELECT id, nom, email, statut, offre_cle, cree_le
+   FROM accompaniment_requests
+   WHERE email IN ('<votre-adresse>', '<autre-adresse-d-essai>')
+   ORDER BY cree_le DESC;
+   ```
+
+   Relisez cette liste. **Si une seule ligne ne vous appartient pas, arrêtez-vous**
+   et dites-le-moi : ce serait une demande d'un vrai praticien.
+
+   ```sql
+   -- 2. Suppression, seulement après avoir relu la liste ci-dessus.
+   BEGIN;
+
+   DELETE FROM accompaniment_request_events
+    WHERE request_id IN (SELECT id FROM accompaniment_requests
+                          WHERE email IN ('<votre-adresse>', '<autre-adresse-d-essai>'));
+
+   DELETE FROM accompaniment_requests
+    WHERE email IN ('<votre-adresse>', '<autre-adresse-d-essai>');
+
+   -- Vérifiez le nombre de lignes annoncé. S'il ne correspond pas à votre liste :
+   --   ROLLBACK;
+   -- Sinon :
+   COMMIT;
+   ```
+
+   Les événements partent **avant** les demandes : ils les référencent, et
+   l'ordre inverse se heurterait à la clé étrangère.
+
+8. **Supprimer les demandes marquées « Suspect »** si elles sont manifestement
+   des robots — mais relisez-les d'abord dans l'écran « Demandes », filtre
+   « Suspect ». Un praticien pressé peut s'y trouver.
+9. **Surveiller la mémoire** sur Render pendant 24 h. Au-delà de 80 % de
    l'instance de façon durable, dites-le-moi.
 
 ---
 
 ## 6. Ce qu'il ne faut PAS faire
 
-- **Ne cliquez pas sur « Restaurer »** dans l'onglet Historique sans avoir lu
-  l'aperçu de la version visée. La restauration **remet cette version en ligne
-  immédiatement** — elle ne touche pas au brouillon. Une version ancienne porte
-  les textes de son époque, y compris ceux retirés depuis.
+- **« Restaurer » écrase votre brouillon** avec le contenu de la version choisie,
+  et ne publie rien. Relisez l'aperçu, puis publiez si cela vous convient. Une
+  version ancienne porte les textes et les prix de son époque, y compris ceux
+  retirés depuis : c'est l'aperçu qui vous le dira.
 - **Ne modifiez jamais une migration déjà appliquée en production.** Un conflit
   de somme de contrôle se répare sur la base locale, jamais en retouchant le
   fichier.
@@ -295,7 +394,7 @@ navigation privée** (sans session administrateur) et vérifiez :
    **Rollback**. Le code revient en arrière en quelques minutes.
 2. **Attention** : les migrations déjà appliquées, elles, ne reviennent pas. Si
    V72 à V76 sont passées, l'ancien code tourne sur un schéma plus récent. C'est
-   normalement sans effet — ces cinq migrations n'ajoutent que des tables et des
+   normalement sans effet — ces six migrations n'ajoutent que des tables et des
    colonnes, sans rien supprimer ni renommer — mais vérifiez le démarrage.
 3. Si l'ancien code refuse de démarrer à cause du schéma, passez au 7.3.
 

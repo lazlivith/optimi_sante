@@ -213,7 +213,24 @@ public class AdminDemandesAccompagnementResource {
                 .body(csv.getBytes(StandardCharsets.UTF_8));
     }
 
+    /**
+     * L'identifiant de l'auteur, ou rien.
+     *
+     * <p><b>Un principal illisible ne doit pas faire échouer l'acte.</b> Cette valeur sert à
+     * TRACER qui a publié ; elle ne conditionne aucun droit — ceux-là sont vérifiés par les
+     * annotations, avant d'arriver ici. La version précédente appelait {@code
+     * UUID.fromString} directement : toute authentification dont le principal n'est pas un
+     * UUID rendait « UUID string too large » et un 400, c'est-à-dire une publication refusée
+     * pour une raison qui n'a rien à voir avec la publication.</p>
+     */
     private static UUID utilisateur(Authentication auth) {
-        return auth == null ? null : UUID.fromString(auth.getPrincipal().toString());
+        if (auth == null || auth.getPrincipal() == null) {
+            return null;
+        }
+        try {
+            return UUID.fromString(auth.getPrincipal().toString());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }

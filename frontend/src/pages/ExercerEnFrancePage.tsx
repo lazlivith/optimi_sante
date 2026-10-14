@@ -504,7 +504,7 @@ function SectionAccompagnements({ section, offres, ouvrirDemande }: {
                 </p>
               )}
               <p className="text-lg font-extrabold text-brand-accent">
-                {offre.prix == null ? 'Sur devis' : `${prixLisible(offre.prix, offre.devise)} TTC`}
+                {offre.prix == null ? 'Sur devis' : prixLisible(offre.prix, offre.devise)}
               </p>
               {/* L'équivalent en francs CFA situe la dépense dans la monnaie du praticien.
                   Il est calculé à l'affichage, à parité FIXE : rien n'est stocké. */}
@@ -520,6 +520,15 @@ function SectionAccompagnements({ section, offres, ouvrirDemande }: {
           </div>
         ))}
       </div>
+      {/*
+        Le régime de TVA dépend du lieu de RÉSIDENCE, pas du prix : « 89 € TTC » serait faux
+        pour un praticien à Brazzaville, qui paie le même montant sans TVA française. Le prix
+        s'affiche donc nu, et la règle est énoncée une fois, sous les offres.
+      */}
+      <p className="mt-5 text-xs text-slate-500">
+        Prix TTC pour la France et l'Union européenne. Hors Union européenne : TVA non
+        applicable.
+      </p>
       <MentionDeduction offres={offres} />
       {section.contenu && <p className="mt-3 text-xs text-slate-500">{section.contenu}</p>}
     </section>

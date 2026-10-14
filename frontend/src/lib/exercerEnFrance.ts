@@ -61,6 +61,7 @@ export interface ChampsDemande {
   nom?: string;
   email?: string;
   telephoneWhatsapp?: string;
+  pays?: string;
   profession?: string;
   specialite?: string;
   consentementRgpd?: boolean;
@@ -81,6 +82,12 @@ export interface ChampsDemande {
  */
 export function verifierDemande(champs: ChampsDemande): Record<string, string> {
   const erreurs: Record<string, string> = {};
+  // Le pays décide du RÉGIME DE TVA (CGV, article 3.9) : TTC en France et dans
+  // l'Union européenne, hors taxe au-delà. Une demande sans pays ne peut pas être
+  // facturée correctement, et le réclamer après coup par e-mail fait perdre le client.
+  if (!champs.pays?.trim()) {
+    erreurs.pays = 'Indiquez votre pays de résidence : il détermine le régime de TVA.';
+  }
 
   if (!champs.nom?.trim()) {
     erreurs.nom = 'Indiquez votre nom complet.';
