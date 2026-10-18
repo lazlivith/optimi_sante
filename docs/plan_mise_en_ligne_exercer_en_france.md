@@ -140,8 +140,20 @@ l'instance plus grande ne servirait presque à rien.
 **Où exactement :**
 
 1. <https://dashboard.render.com> → service **backend**.
-2. Menu de gauche → **Settings** → section **Instance Type** : choisissez le
-   palier retenu (**Standard**, 2 Go, est le premier palier confortable).
+2. Menu de gauche → page **Compute** (selon la version de l'interface, cette
+   section peut s'appeler **Settings → Instance Type**) → **Edit** → choisissez
+   le plan, puis **Save**.
+
+   **Repérez le plan par ses CARACTÉRISTIQUES, pas par son nom** : celui qui
+   convient est **1 CPU / 2 Go de RAM** (identifiant `1c-2g`, anciennement
+   « Standard »). Les noms hérités subsistent à côté des identifiants, et c'est
+   une source de confusion.
+
+   Render déclenche automatiquement un déploiement : **sans downtime** pour un
+   service web ordinaire. L'exception est un service doté d'un **disque
+   persistant** — vérifiez l'absence de disque attaché avant, sinon prévoyez une
+   courte interruption.
+
 3. Menu de gauche → **Environment** → **Add Environment Variable** :
 
    | Key | Value |
