@@ -254,6 +254,62 @@ export function TermsPage() {
         remboursement, sans préjudice des suites légales.
       </p>
 
+      <h3>3.8 Accompagnement « Exercer en France »</h3>
+      <p>
+        Optimi Santé <strong>informe, oriente, vérifie et suit</strong> le praticien dans ses
+        démarches d'accès à l'exercice en France. Ces prestations sont des prestations de
+        conseil et d'accompagnement administratif.
+      </p>
+      <p>
+        <strong>Au titre de cet accompagnement</strong>, et sauf souscription distincte d'une
+        autre prestation d'Optimi Santé, les tarifs annoncés ne comprennent{' '}
+        <strong>ni préparation pédagogique</strong> (notamment banque de questions, examens
+        blancs ou cours), <strong>ni traduction</strong>, <strong>ni assurance</strong>,{' '}
+        <strong>ni fourniture de logement</strong>. Ces exclusions portent sur le seul
+        accompagnement « Exercer en France » et sont sans effet sur les services organisés
+        autour des séjours de formation, qui font l'objet de l'article 3 et peuvent comprendre
+        de telles options.
+      </p>
+      <p>
+        Optimi Santé n'est pas un organisme officiel et ne délivre aucune autorisation
+        d'exercice : les décisions relèvent exclusivement des autorités compétentes, et aucun
+        résultat ne peut être garanti.
+      </p>
+      <p>
+        Les prix de ces prestations sont affichés <strong>toutes taxes comprises</strong>, en
+        euros. L'équivalent indiqué en francs CFA est donné à titre indicatif, calculé à la
+        parité fixe de 655,957 FCFA pour un euro et arrondi : il ne constitue pas un prix de
+        vente, la facturation et le paiement s'effectuant en euros. Le régime de TVA applicable
+        est précisé à l'article 3.9.
+      </p>
+      <p>
+        Lorsque le praticien souscrit la prestation <strong>Orientation EVC</strong> puis, par
+        la suite, la prestation <strong>Dossier &amp; démarches</strong>, le montant déjà réglé
+        au titre de l'Orientation EVC est <strong>déduit</strong> du prix de cette seconde
+        prestation. Cette déduction est appliquée par Optimi Santé sur le devis établi pour la
+        seconde prestation ; elle n'est ni automatique ni cumulable avec une autre remise, et
+        ne donne lieu à aucun remboursement si la seconde prestation n'est pas souscrite.
+      </p>
+
+      <h3>3.9 Taxe sur la valeur ajoutée</h3>
+      <p>Les prix sont indiqués en euros.</p>
+      <p>
+        Pour les clients résidant en France ou dans un autre État membre de l'Union
+        européenne, les prix s'entendent toutes taxes comprises, la TVA française au taux en
+        vigueur (20 %) étant incluse.
+      </p>
+      <p>
+        Pour les clients résidant hors de l'Union européenne, les prestations sont facturées
+        hors taxe, au même montant que le prix affiché, la TVA française n'étant pas
+        applicable. La facture porte la mention «&nbsp;TVA non applicable – article 259 B du
+        CGI&nbsp;».
+      </p>
+      <p>
+        Le pays de résidence pris en compte est celui déclaré par le client lors de sa
+        demande. Le client garantit l'exactitude de cette déclaration ; toute déclaration
+        inexacte pourra donner lieu à une facturation rectificative.
+      </p>
+
       <h2 id="compte">4. Compte et sécurité</h2>
       <p>
         L'utilisateur est responsable de la confidentialité de ses identifiants et des actions

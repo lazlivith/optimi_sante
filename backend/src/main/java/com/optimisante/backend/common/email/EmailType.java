@@ -23,5 +23,9 @@ public enum EmailType {
     /** Notification transactionnelle poussée par le NotificationDispatcher (paiement, dossier...). */
     NOTIFICATION,
     /** Confirmation d'un règlement, le reçu joint au message. */
-    PAYMENT_CONFIRMATION
+    PAYMENT_CONFIRMATION,
+    /** Accusé de réception envoyé au praticien qui dépose une demande d'accompagnement. */
+    ACCOMPAGNEMENT_RECU,
+    /** Alerte interne : une demande d'accompagnement vient d'arriver. */
+    ACCOMPAGNEMENT_ALERTE_ADMIN
 }

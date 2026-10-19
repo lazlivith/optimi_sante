@@ -18,6 +18,19 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmail(String email);
     Page<User> findByRole(Role role, Pageable pageable);
 
+    /**
+     * Adresses des comptes ACTIFS portant l'un de ces rôles.
+     *
+     * <p>Sert à prévenir les personnes concernées par un évènement métier. Les comptes
+     * désactivés sont écartés : prévenir quelqu'un qui n'a plus accès à l'administration
+     * revient à ne prévenir personne, tout en donnant l'impression du contraire.</p>
+     */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT u.email FROM User u WHERE u.isActive = true AND u.role IN :roles")
+    java.util.List<String> emailsActifsParRoles(
+            @org.springframework.data.repository.query.Param("roles")
+            java.util.Collection<Role> roles);
+
     /** Identifiant de tenant sans charger l'entité User (association LAZY) — utilisé par les notifications. */
     @Query("SELECT u.tenant.id FROM User u WHERE u.id = :id")
     Optional<UUID> findTenantIdById(@Param("id") UUID id);
