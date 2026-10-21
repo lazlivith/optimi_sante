@@ -25,6 +25,18 @@ import static org.mockito.Mockito.*;
  */
 class ApercusEmailAccompagnementTest {
 
+    /*
+      CE QUE CET APERÇU NE PROUVE PAS, et ce qu'il a laissé passer.
+
+      Il appelle sendAccompagnementRecu en lui donnant un libellé à la main. Pendant des
+      semaines, le code de production lui passait la CLÉ TECHNIQUE — les praticiens lisaient
+      « votre demande concernant preparation_evc », et, pour une clé vide, « concernant . ».
+      L'aperçu, lui, restait vert et montrait un joli titre.
+
+      Il sert à REGARDER la mise en forme, rien de plus. Ce que le code envoie réellement est
+      éprouvé par OffreDansLesCourrielsTest, qui part de la route publique comme un visiteur.
+    */
+
     /** À la racine du module : un chemin qu'on retrouve sans le chercher. */
     private static final Path DOSSIER = Path.of("target", "apercus-email");
 
@@ -42,12 +54,12 @@ class ApercusEmailAccompagnementTest {
         injecter(service, "frontendBaseUrl", "https://optimisante.com");
 
         service.sendAccompagnementRecu(
-                "samba.nkounkou@exemple.cg", "Dr Samba Nkounkou", "Préparation EVC",
+                "samba.nkounkou@exemple.cg", "Dr Samba Nkounkou", "Orientation EVC",
                 "sous 48 h ouvrées", "infos@optimisante.com");
 
         service.sendAccompagnementAlerteAdmin(
                 "mobilite@optimisante.com", "Dr Samba Nkounkou", "Médecin", "Congo",
-                "Préparation EVC",
+                "Orientation EVC",
                 "https://optimisante.com/admin/demandes-accompagnement/" + UUID.randomUUID());
 
         ArgumentCaptor<jakarta.mail.internet.MimeMessage> capture =

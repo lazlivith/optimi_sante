@@ -41,6 +41,7 @@ public class ServiceDemandesAccompagnement {
 
     private final DepotDemandes demandes;
     private final DepotEvenements evenements;
+    private final com.optimisante.backend.domain.exercerenfrance.repository.DepotOffres offres;
     private final TenantParDefaut tenantParDefaut;
     private final AuditService auditService;
     private final com.optimisante.backend.domain.parametres.ParametrePlateformeRepository parametres;
@@ -84,7 +85,11 @@ public class ServiceDemandesAccompagnement {
                 .profession(dto.profession())
                 .specialite(dto.specialite())
                 .etape(Enums.Etape.depuis(dto.etape()).code())
-                .offreCle(dto.offreCle())
+                // Une chaîne VIDE n'est pas une offre : c'est une demande générale. Les
+                // distinguer par « null » et non par « "" » est ce qui manquait — un garde
+                // écrit « == null » laissait passer la chaîne vide, et l'accusé de réception
+                // partait avec un trou dans sa phrase.
+                .offreCle(videEnNul(dto.offreCle()))
                 .message(dto.message())
                 .consentementRgpd(true)
                 .consentementLe(maintenant)
@@ -153,8 +158,37 @@ public class ServiceDemandesAccompagnement {
      * Prévenir un compte désactivé reviendrait à ne prévenir personne, en donnant
      * l'impression du contraire.</p>
      */
+    /** {@code null} si la valeur est absente ou ne contient que des blancs. */
+    private static String videEnNul(String valeur) {
+        return valeur == null || valeur.isBlank() ? null : valeur.trim();
+    }
+
+    /**
+     * L'intitulé de l'offre, tel qu'un praticien l'a lu sur la page.
+     *
+     * <p><b>Jamais la clé technique.</b> Les deux courriels annonçaient « votre demande
+     * concernant preparation_evc » : du vocabulaire de base de données dans un message
+     * client. L'aperçu ne l'avait pas montré parce qu'il passait un libellé à la main, sans
+     * emprunter le chemin réel — un test qui ne suit pas le code ne prouve rien.</p>
+     *
+     * <p>Rend {@code null} pour une demande générale comme pour une clé inconnue : dans les
+     * deux cas, le message n'a rien de fiable à nommer, et mieux vaut une phrase complète
+     * sans nom qu'un nom inventé.</p>
+     */
+    private String libelleOffre(String cle) {
+        if (cle == null) {
+            return null;
+        }
+        return offres.findByTenantIdAndCle(tenantParDefaut.identifiant(), cle)
+                .map(o -> o.getTitre())
+                .orElseGet(() -> {
+                    log.warn("Demande rattachée à une offre inconnue : « {} ».", cle);
+                    return null;
+                });
+    }
+
     private void prevenir(AccompanimentRequest demande) {
-        String offre = demande.getOffreCle() == null ? "un accompagnement" : demande.getOffreCle();
+        String offre = libelleOffre(demande.getOffreCle());
         try {
             emailService.sendAccompagnementRecu(demande.getEmail(), demande.getNom(), offre,
                     reglage("accompagnement.delai_reponse", "sous 48 h ouvrées"),

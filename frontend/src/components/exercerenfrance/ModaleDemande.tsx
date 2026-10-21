@@ -18,8 +18,8 @@ const PROFESSIONS = [
 ];
 
 interface Props {
-  /** Clé de l'offre d'origine ; `alerte_aep` simplifie le formulaire. */
-  offreCle: string;
+  /** Clé de l'offre d'origine ; `alerte_aep` simplifie le formulaire. Nulle = demande générale. */
+  offreCle: string | null;
   /** Intitulé lisible de l'offre, repris en tête de la fenêtre. */
   offreTitre: string;
   /** Les spécialités publiées, pour la liste déroulante. */
@@ -45,7 +45,10 @@ export function ModaleDemande({ offreCle, offreTitre, specialites, onFermer }: P
 
   const [champs, setChamps] = useState<DemandeRequest>({
     nom: '', email: '', telephoneWhatsapp: '', pays: '', profession: '',
-    specialite: '', etape: 'autre', offreCle, message: '', consentementRgpd: false,
+    // Une clé absente ne part pas du tout : le serveur distingue « pas d'offre » de
+    // « offre vide », et seule la première est une demande générale légitime.
+    specialite: '', etape: 'autre', offreCle: offreCle || undefined,
+    message: '', consentementRgpd: false,
     piege: '',
   });
   const [erreurs, setErreurs] = useState<Record<string, string>>({});
