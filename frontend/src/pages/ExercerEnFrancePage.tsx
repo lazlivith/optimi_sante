@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, CalendarDays, ExternalLink, Info, Loader2 } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarDays, Info, Loader2 } from 'lucide-react';
 import {
   exercerEnFranceService,
   type OffreEvc, type PageExercerEnFrance, type PeriodeEvc, type SectionEvc,
@@ -52,7 +52,9 @@ export function ExercerEnFrancePage() {
     return parCle;
   }, [page]);
 
-  const lien = (cle: string) => page?.liens.find(l => l.cle === cle) ?? null;
+  // Le relevé des liens officiels a été retiré : la page ne renvoie plus vers aucun site
+  // extérieur. Les entrées restent en base — elles servent au suivi interne de nos sources —
+  // mais plus rien ne les rend cliquables pour un visiteur.
 
   if (chargement) {
     return (
@@ -81,27 +83,26 @@ export function ExercerEnFrancePage() {
     <div className="bg-white">
       <FilDAriane />
       <Banniere sections={sections} ouvrirDemande={setDemandePour} />
-      <BandeauNonOfficiel section={sections.get('bandeau_non_officiel')} lien={lien('site_cng')} />
+      <BandeauNonOfficiel section={sections.get('bandeau_non_officiel')} />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-16 sm:space-y-20 py-12 sm:py-16">
-        <SectionEvcEpreuves section={sections.get('evc')} lienSession={lien('session_evc')} />
+        <SectionEvcEpreuves section={sections.get('evc')}
+                            constateLe={page.calendrierActualiseLe} />
         <SectionAep
           ouvrirDemande={setDemandePour}
           section={sections.get('aep')}
           periodes={page.periodes}
           specialites={page.specialites}
-          lienRenouvellement={lien('formulaire_renouvellement_aep')}
+          constateLe={page.calendrierActualiseLe}
         />
         <SectionDossier section={sections.get('dossier')} />
         <SectionCae
           section={sections.get('cae')}
-          lienCalendrier={lien('calendrier_commissions')}
           calendrierActualiseLe={page.calendrierActualiseLe}
         />
         <SectionAutresVoies
           section={sections.get('autres_voies')}
-          lienFellowship={lien('fellowship')}
-          lienRefugies={lien('refugies')}
+          constateLe={page.calendrierActualiseLe}
         />
         <SectionAccompagnements section={sections.get('accompagnements')}
                                 offres={page.offres} ouvrirDemande={setDemandePour} />
@@ -220,7 +221,7 @@ function Banniere({ sections, ouvrirDemande }: {
   );
 }
 
-function BandeauNonOfficiel({ section, lien }: { section?: SectionEvc; lien: { url: string; libelle: string } | null }) {
+function BandeauNonOfficiel({ section }: { section?: SectionEvc }) {
   if (!section) return null;
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8">
@@ -229,7 +230,7 @@ function BandeauNonOfficiel({ section, lien }: { section?: SectionEvc; lien: { u
         <p className="text-sm text-slate-700 leading-relaxed">
           <span className="font-semibold text-brand-dark">{section.titre}.</span>{' '}
           {section.contenu}{' '}
-          {lien && <LienOfficiel {...lien} />}
+
         </p>
       </div>
     </div>
@@ -245,8 +246,8 @@ const PROFESSIONS_EVC = [
   { titre: 'Pharmaciens', texte: 'Dont biologistes médicaux', fond: 'bg-brand-cream' },
 ];
 
-function SectionEvcEpreuves({ section, lienSession }:
-    { section?: SectionEvc; lienSession: { url: string; libelle: string } | null }) {
+function SectionEvcEpreuves({ section, constateLe }:
+    { section?: SectionEvc; constateLe: string | null }) {
   if (!section) return null;
   return (
     <section id="evc" aria-labelledby="titre-evc" className="scroll-mt-24">
@@ -260,21 +261,17 @@ function SectionEvcEpreuves({ section, lienSession }:
           </div>
         ))}
       </div>
-      {lienSession && (
-        <div className="mt-6">
-          <LienOfficiel {...lienSession} bouton />
-        </div>
-      )}
+      <MentionSource constateLe={constateLe} />
     </section>
   );
 }
 
-function SectionAep({ section, periodes, specialites, lienRenouvellement, ouvrirDemande }: {
+function SectionAep({ section, periodes, specialites, constateLe, ouvrirDemande }: {
   section?: SectionEvc;
   ouvrirDemande: OuvrirDemande;
   periodes: PeriodeEvc[];
   specialites: { groupe: string; libelle: string }[];
-  lienRenouvellement: { url: string; libelle: string } | null;
+  constateLe: string | null;
 }) {
   if (!section) return null;
   const [intro, ...encadres] = decouperEnBlocs(section.contenu);
@@ -298,8 +295,9 @@ function SectionAep({ section, periodes, specialites, lienRenouvellement, ouvrir
             <div key={bloc.titre} className="rounded-xl border border-slate-200 p-5">
               <p className="text-sm font-semibold text-brand-dark">{bloc.titre}</p>
               <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">{bloc.texte}</p>
-              {bloc.titre.toLowerCase().includes('renouvellement') && lienRenouvellement && (
-                <p className="mt-2"><LienOfficiel {...lienRenouvellement} /></p>
+              {bloc.titre.toLowerCase().includes('renouvellement') && (
+                <MentionSource constateLe={constateLe}
+                               source="service public — demarche.numerique.gouv.fr" />
               )}
             </div>
           ))}
@@ -401,9 +399,8 @@ function SectionDossier({ section }: { section?: SectionEvc }) {
   );
 }
 
-function SectionCae({ section, lienCalendrier, calendrierActualiseLe }: {
+function SectionCae({ section, calendrierActualiseLe }: {
   section?: SectionEvc;
-  lienCalendrier: { url: string; libelle: string } | null;
   calendrierActualiseLe: string | null;
 }) {
   if (!section) return null;
@@ -433,21 +430,15 @@ function SectionCae({ section, lienCalendrier, calendrierActualiseLe }: {
             <time dateTime={calendrierActualiseLe}>{dateLongue(calendrierActualiseLe)}</time>.
           </p>
         )}
-        {lienCalendrier && (
-          <a href={lienCalendrier.url} target="_blank" rel="noopener noreferrer"
-             className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-brand-dark text-sm font-semibold hover:bg-slate-100">
-            {lienCalendrier.libelle} <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
-          </a>
-        )}
+
       </div>
     </section>
   );
 }
 
-function SectionAutresVoies({ section, lienFellowship, lienRefugies }: {
+function SectionAutresVoies({ section, constateLe }: {
   section?: SectionEvc;
-  lienFellowship: { url: string; libelle: string } | null;
-  lienRefugies: { url: string; libelle: string } | null;
+  constateLe: string | null;
 }) {
   if (!section) return null;
   const blocs = decouperEnBlocs(section.contenu).filter(b => b.titre);
@@ -456,13 +447,11 @@ function SectionAutresVoies({ section, lienFellowship, lienRefugies }: {
       <EnTeteSection section={section} id="titre-autres-voies" />
       <div className="mt-6 grid lg:grid-cols-2 gap-4">
         {blocs.map(bloc => {
-          const refugies = bloc.titre.toLowerCase().includes('réfugi');
-          const lien = refugies ? lienRefugies : lienFellowship;
           return (
             <div key={bloc.titre} className="rounded-xl border border-slate-200 p-5 sm:p-6">
               <p className="text-sm font-bold tracking-wide text-brand-dark uppercase">{bloc.titre}</p>
               <p className="mt-2 text-sm text-slate-600 leading-relaxed whitespace-pre-line">{bloc.texte}</p>
-              {lien && <p className="mt-3"><LienOfficiel {...lien} /></p>}
+              <MentionSource constateLe={constateLe} />
             </div>
           );
         })}
@@ -599,14 +588,29 @@ function EnTeteSection({ section, id }: { section: SectionEvc; id: string }) {
 }
 
 /** Un lien vers une source officielle : nouvel onglet, et jamais sans `noopener`. */
-function LienOfficiel({ url, libelle, bouton }: { url: string; libelle: string; bouton?: boolean }) {
-  const classes = bouton
-    ? 'inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-fonce'
-    : 'inline-flex items-center gap-1 text-sm font-semibold text-brand underline underline-offset-2';
+/**
+ * La source d'une information officielle, citée et NON cliquable.
+ *
+ * <p><b>Pourquoi plus aucun lien sortant.</b> Optimi Santé est une agence privée qui prend en
+ * charge le dossier du candidat jusqu'à son dépôt. Renvoyer le visiteur vers le site d'un
+ * organisme public au milieu d'une page commerciale entretient une confusion sur ce que nous
+ * sommes — et fait partir, vers un tiers, celui qu'on accompagne.</p>
+ *
+ * <p>L'information reste sourcée : citer d'où elle vient et QUAND elle a été constatée est ce
+ * qui la rend vérifiable. Un lien n'y ajoute rien, et il périme plus vite que le texte.</p>
+ *
+ * <p>Le composant ne rend RIEN sans date : « constaté le » suivi d'un blanc vaudrait moins
+ * que le silence.</p>
+ */
+function MentionSource({ constateLe, source = 'Centre national de gestion' }: {
+  constateLe: string | null; source?: string;
+}) {
+  if (!constateLe) return null;
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className={classes}>
-      {libelle} <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
-    </a>
+    <p className="mt-3 text-xs text-slate-500">
+      Source : {source} — constaté le{' '}
+      <time dateTime={constateLe}>{dateLongue(constateLe)}</time>.
+    </p>
   );
 }
 
