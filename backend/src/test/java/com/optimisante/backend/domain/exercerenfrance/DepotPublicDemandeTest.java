@@ -120,8 +120,13 @@ class DepotPublicDemandeTest {
     void consentementObligatoire() throws Exception {
         long avant = demandes.count();
         mvc.perform(post(ROUTE).contentType(MediaType.APPLICATION_JSON)
+                        // Tous les autres champs sont VALIDES : le refus doit porter sur le
+                        // consentement, et sur lui seul. La version précédente omettait aussi
+                        // le pays, et la réponse annonçait l'une OU l'autre violation selon
+                        // l'ordre de validation — un test qui passait par chance.
                         .content("""
-                                 {"nom":"Dr Test","email":"%s","consentementRgpd":false}
+                                 {"nom":"Dr Test","email":"%s","pays":"Congo",
+                                  "consentementRgpd":false}
                                  """.formatted(adresse())))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(
