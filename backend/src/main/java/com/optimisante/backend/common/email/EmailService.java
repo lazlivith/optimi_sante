@@ -280,7 +280,30 @@ public class EmailService {
      *
      * <p>Aucune pièce jointe, aucun lien d'action : c'est un accusé, pas une relance.</p>
      */
-    public void sendAccompagnementRecu(String toEmail, String destinataire, String offre,
+    /**
+     * La première phrase de l'accusé, construite ENTIÈRE.
+     *
+     * <p><b>Pourquoi pas un mot de repli dans un trou.</b> La version précédente insérait
+     * l'offre dans « votre demande concernant <b>%s</b> » et comptait sur un garde pour
+     * fournir un mot quand elle manquait. Ce garde testait {@code == null} et laissait passer
+     * la chaîne vide : un praticien a reçu « Nous avons bien reçu votre demande concernant
+     * <b>.</b> ». Une phrase à trou finit toujours par s'afficher avec son trou ; deux
+     * phrases distinctes, jamais.</p>
+     */
+    /** Ce que l'alerte affiche en face de « Prestation ». Une case vide n'informe personne. */
+    private static String prestationLisible(String offre) {
+        return offre == null || offre.isBlank() ? "Demande générale" : texte(offre);
+    }
+
+    private static String phraseReception(String offre) {
+        return offre == null || offre.isBlank()
+                ? "Nous avons bien reçu votre <strong>demande d'accompagnement</strong>."
+                : "Nous avons bien reçu votre demande concernant <strong>"
+                  + texte(offre) + "</strong>.";
+    }
+
+    public void sendAccompagnementRecu(String toEmail, String destinataire,
+                                       /* nullable */ String offre,
                                        String delaiReponse, String adresseReponse) {
         String subject = "Optimi Santé — Votre demande d'accompagnement est enregistrée";
         String html = """
@@ -290,7 +313,7 @@ public class EmailService {
                     </div>
                     <div style="border: 1px solid #E2EBE5; border-top: none; padding: 32px; border-radius: 0 0 12px 12px;">
                         <p>Bonjour %s,</p>
-                        <p>Nous avons bien reçu votre demande concernant <strong>%s</strong>.</p>
+                        <p>%s</p>
                         <p>Un conseiller examine votre situation et vous répond
                         <strong>%s</strong>. Inutile de renvoyer le formulaire : votre demande
                         est enregistrée.</p>
@@ -306,7 +329,7 @@ public class EmailService {
                         <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé — Faciliter la mobilité en formation pour les médecins d'Afrique</p>
                     </div>
                 </div>
-                """.formatted(texte(destinataire), texte(offre), texte(delaiReponse),
+                """.formatted(texte(destinataire), phraseReception(offre), texte(delaiReponse),
                               texte(adresseReponse), texte(adresseReponse));
 
         send(toEmail, subject, html, EmailType.ACCOMPAGNEMENT_RECU, null, null, adresseReponse);
@@ -342,7 +365,7 @@ public class EmailService {
                         <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé</p>
                     </div>
                 </div>
-                """.formatted(texte(nom), texte(profession), texte(pays), texte(offre),
+                """.formatted(texte(nom), texte(profession), texte(pays), prestationLisible(offre),
                               texte(lienFiche));
 
         send(toEmail, subject, html, EmailType.ACCOMPAGNEMENT_ALERTE_ADMIN, null, null);

@@ -28,7 +28,7 @@ export function ExercerEnFrancePage() {
    * <p>Portée par la PAGE et non par chaque bouton : tous ouvrent la même fenêtre, et la
    * dupliquer sous chaque carte en afficherait autant que d'offres.</p>
    */
-  const [demandePour, setDemandePour] = useState<{ cle: string; titre: string } | null>(null);
+  const [demandePour, setDemandePour] = useState<{ cle: string | null; titre: string } | null>(null);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(false);
 
@@ -129,10 +129,14 @@ export function ExercerEnFrancePage() {
 }
 
 /** Ouvre la fenêtre de demande pour une offre donnée. */
-type OuvrirDemande = (offre: { cle: string; titre: string }) => void;
+type OuvrirDemande = (offre: { cle: string | null; titre: string }) => void;
 
 /** Ce que les boutons généraux — bannière, bandeau final — rattachent à la demande. */
-const ACCOMPAGNEMENT_GENERAL = { cle: '', titre: "Votre projet d'exercice en France" };
+// « null » et non « '' » : deux valeurs pour une seule idée, c'est la seconde qui finit par
+// passer à travers un garde écrit pour la première. Un praticien a reçu « votre demande
+// concernant . » parce que le serveur testait « == null » sur une chaîne vide.
+const ACCOMPAGNEMENT_GENERAL: { cle: string | null; titre: string } =
+  { cle: null, titre: "Votre projet d'exercice en France" };
 
 /* ── Repères ──────────────────────────────────────────────────────────────────────────── */
 
