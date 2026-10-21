@@ -56,13 +56,12 @@ export function ProductCard(
             −{remise} %
           </span>
         )}
-        {product.isQuoteOnly && (
-          <span className="absolute right-3 top-3 rounded-full border border-brand-orange/40
-                           bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide
-                           text-brand-accent">
-            Sur devis
-          </span>
-        )}
+        {/*
+          « Sur devis » ne s'annonce qu'UNE fois, à la place du prix. La pastille posée sur
+          l'image le répétait trois centimètres plus haut : deux fois la même information,
+          dont l'une occupe le coin où le visiteur cherche la remise. Elle est retirée ; le
+          bouton « Demander un devis » dit déjà ce qu'il faut faire.
+        */}
       </Link>
 
       <div className="flex flex-1 flex-col px-4 pb-4">

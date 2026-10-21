@@ -139,7 +139,8 @@ class DepotPublicDemandeTest {
     void emailValide() throws Exception {
         mvc.perform(post(ROUTE).contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                 {"nom":"Dr Test","email":"pas-une-adresse","consentementRgpd":true}
+                                 {"nom":"Dr Test","email":"pas-une-adresse","pays":"Congo",
+                                  "consentementRgpd":true}
                                  """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(

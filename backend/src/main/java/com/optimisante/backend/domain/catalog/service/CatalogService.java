@@ -88,6 +88,14 @@ public class CatalogService {
      *                  {@code null} ou {@code false} laisse le catalogue entier.
      */
     public Page<ProductResponseDto> searchProducts(String search, UUID categoryId, BigDecimal minPrice, BigDecimal maxPrice, Boolean promoOnly, Pageable pageable) {
+        return searchProducts(search, categoryId, minPrice, maxPrice, promoOnly, null, pageable);
+    }
+
+    /**
+     * @param surDevis {@code true} ne remonte que les produits chiffrés sur devis,
+     *                 {@code false} que ceux vendus en ligne, {@code null} les deux.
+     */
+    public Page<ProductResponseDto> searchProducts(String search, UUID categoryId, BigDecimal minPrice, BigDecimal maxPrice, Boolean promoOnly, Boolean surDevis, Pageable pageable) {
         UUID tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             throw new IllegalStateException("Tenant context is required");
@@ -98,7 +106,8 @@ public class CatalogService {
                 .and(ProductSpecification.search(search))
                 .and(ProductSpecification.withCategoryId(categoryId))
                 .and(ProductSpecification.priceBetween(minPrice, maxPrice))
-                .and(ProductSpecification.onPromoOnly(promoOnly));
+                .and(ProductSpecification.onPromoOnly(promoOnly))
+                .and(ProductSpecification.surDevis(surDevis));
 
         Page<Product> products = productRepository.findAll(spec, pageable);
         

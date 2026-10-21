@@ -79,7 +79,10 @@ export const cheminProduit = (slug: string) => `/product/${encodeURIComponent(sl
 
 export const catalogService = {
   /** `promo: true` ne remonte que les produits dont la promotion est active maintenant. */
-  getProducts: async (params: { page?: number; size?: number; search?: string; categoryId?: string; promo?: boolean }) => {
+  getProducts: async (params: {
+    page?: number; size?: number; search?: string; categoryId?: string; promo?: boolean;
+    minPrice?: number; maxPrice?: number; surDevis?: boolean; tri?: string;
+  }) => {
     const { data } = await axiosClient.get<PaginatedResponse<Product>>('/catalog/products', { params });
     return data;
   },

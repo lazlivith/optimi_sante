@@ -58,6 +58,26 @@ public class ProductSpecification {
      * facture. Les deux doivent dire la meme chose, sans quoi la boutique afficherait une
      * promotion qui ne s'appliquerait pas au paiement.</p>
      */
+    /**
+     * Les produits vendus en ligne, ou ceux qui se chiffrent sur devis.
+     *
+     * <p>{@code null} ne filtre pas : c'est le cas le plus courant, et l'écrire explicitement
+     * évite d'avoir à passer une valeur par défaut depuis chaque appelant.</p>
+     */
+    public static Specification<Product> surDevis(Boolean surDevis) {
+        return (root, query, cb) -> {
+            if (surDevis == null) {
+                return cb.conjunction();
+            }
+            // isQuoteOnly peut être NUL sur une fiche ancienne : un produit sans mention
+            // explicite se vend en ligne, et doit donc sortir quand on demande « achat en
+            // ligne ». Comparer la colonne seule l'aurait écarté des DEUX réponses.
+            return surDevis
+                    ? cb.isTrue(root.get("isQuoteOnly"))
+                    : cb.or(cb.isFalse(root.get("isQuoteOnly")), cb.isNull(root.get("isQuoteOnly")));
+        };
+    }
+
     public static Specification<Product> onPromoOnly(Boolean promoOnly) {
         return (root, query, cb) -> {
             if (!Boolean.TRUE.equals(promoOnly)) return null;
