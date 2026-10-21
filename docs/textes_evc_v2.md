@@ -193,3 +193,145 @@ de texte gérés par l'administration :
 
 Les quatre premiers ne demandent **aucun développement** : l'éditeur de sections
 accepte déjà les blocs `##`. Vous pouvez les écrire ce soir si vous le souhaitez.
+
+---
+
+## 6. Textes des offres
+
+À saisir dans l'administration, onglet **Offres & tarifs** (écriture réservée au
+super administrateur). Un point par ligne.
+
+### 6.1 Orientation EVC — 89 € *(périmètre inchangé : un diagnostic, sans dépôt)*
+
+**Sur-titre** : `AVANT LES EVC` · **Bouton** : `Être orienté`
+
+| Aujourd'hui | Demain |
+|---|---|
+| Vérification de votre éligibilité<br>Explication de la procédure et du calendrier<br>Aide à l'inscription à la session<br>Orientation vers des ressources de préparation | Diagnostic de votre éligibilité, profession et spécialité comprises<br>Explication de la procédure et du calendrier qui vous concernent<br>Aide à l'inscription à la session<br>Orientation vers des ressources de préparation<br>**Ne comprend pas le dépôt de votre dossier**<br>**Les 89 € sont déduits si vous poursuivez avec « Dossier & démarches »** |
+
+> Deux points ajoutés, et le premier compte autant que le second : dire ce qu'une
+> offre **ne** comprend **pas** prévient le litige que la déduction, seule, ne
+> réglerait pas. Un praticien qui paie 89 € en croyant son dossier déposé a été
+> trompé, même remboursé ensuite.
+
+### 6.2 Dossier & démarches — 450 €
+
+| Aujourd'hui | Demain |
+|---|---|
+| Vérification de la complétude du dossier<br>Relecture des conditions d'encadrement<br>Liste personnalisée des pièces à fournir<br>Suivi jusqu'à la commission | Vérification de la complétude du dossier<br>Relecture des conditions d'encadrement<br>Liste personnalisée des pièces à fournir<br>**Dépôt de votre dossier en votre nom, sur mandat**<br>Suivi jusqu'à la commission |
+
+### 6.3 Mobilité & installation — 650 € *(inchangée)*
+
+Aucun changement : cette offre ne dépose aucun dossier.
+
+### 6.4 Pack Dossier + Mobilité — 990 €
+
+Les points des deux offres réunies, **dépôt sur mandat compris** :
+
+```
+Vérification de la complétude du dossier
+Relecture des conditions d'encadrement
+Liste personnalisée des pièces à fournir
+Dépôt de votre dossier en votre nom, sur mandat
+Suivi jusqu'à la commission
+Accompagnement des démarches de visa et de titre de séjour
+Conseils pour le logement et l'assurance
+Mise en relation avec des établissements d'accueil
+Démarches auprès de l'Ordre
+```
+
+### 6.5 Ce qu'aucune offre ne dit
+
+Ni « organisme officiel », ni « agréé », ni « mandaté par l'État », ni aucune
+garantie de résultat. La mention sous les offres reste.
+
+> **Attention au mot « mandat ».** Il désigne le mandat que **le candidat** nous
+> donne, jamais un mandat public. Le point est rédigé « en votre nom, sur
+> mandat » et non « mandatés », qui se lirait à contresens.
+
+---
+
+## 7. CGV, article 3.8 — proposition de réécriture
+
+**À valider avant tout codage.** Les exclusions relatives aux séjours de
+formation sont conservées ; l'article 3.9 (TVA) ne change pas.
+
+> ### 3.8 Accompagnement « Exercer en France »
+>
+> **Périmètre.** Optimi Santé accompagne le praticien dans la procédure
+> d'autorisation d'exercice en France. Selon la prestation souscrite,
+> l'accompagnement comprend la préparation du dossier, la vérification de sa
+> complétude et de sa conformité, et **le dépôt du dossier au nom du praticien,
+> sur son mandat exprès**. Le mandat est donné par écrit, pour un dépôt
+> déterminé ; il ne confère à Optimi Santé aucune autre représentation.
+>
+> **Obligations du praticien.** Le praticien fournit des pièces **exactes,
+> authentiques et complètes**, dans les délais qui lui sont indiqués. Il répond
+> aux demandes de compléments dans les mêmes délais. **Il valide le dossier avant
+> son dépôt** : aucun dépôt n'est effectué sans cette validation. La production
+> de documents inexacts ou falsifiés entraîne la fin immédiate de
+> l'accompagnement, sans remboursement, sans préjudice des suites légales.
+>
+> **Limites.** Optimi Santé est tenue d'une **obligation de moyens**. Elle n'est
+> pas un organisme officiel et ne délivre aucune autorisation d'exercice : les
+> décisions relèvent exclusivement des autorités compétentes. **Aucun résultat
+> n'est garanti**, ni quant à l'issue des épreuves, ni quant aux décisions
+> administratives, ni quant aux délais d'instruction. La responsabilité d'Optimi
+> Santé ne saurait être engagée lorsqu'un retard, un rejet ou une irrégularité
+> résulte d'une pièce fournie tardivement, incomplète ou inexacte, ni d'une
+> évolution des règles ou du calendrier décidée par l'autorité compétente.
+>
+> **Fin du mandat.** Le mandat prend fin **au dépôt du dossier**, ou par
+> résiliation de l'une ou l'autre partie notifiée par écrit. En cas de
+> résiliation avant le dépôt, les prestations déjà réalisées restent dues. Les
+> pièces transmises sont restituées ou supprimées à la demande du praticien, sous
+> réserve des obligations légales de conservation.
+>
+> **Ce que l'accompagnement ne comprend pas.** Au titre du seul accompagnement
+> « Exercer en France », et sauf souscription distincte d'une autre prestation,
+> les tarifs annoncés ne comprennent ni préparation pédagogique (notamment banque
+> de questions, examens blancs ou cours), ni traduction, ni assurance, ni
+> fourniture de logement. Ces exclusions sont sans effet sur les services
+> organisés autour des séjours de formation, qui font l'objet de l'article 3.
+>
+> **Prix.** Les prix sont affichés toutes taxes comprises, en euros. L'équivalent
+> indiqué en francs CFA est donné à titre indicatif, calculé à la parité fixe de
+> 655,957 FCFA pour un euro et arrondi : il ne constitue pas un prix de vente, la
+> facturation et le paiement s'effectuant en euros. Le régime de TVA applicable
+> est précisé à l'article 3.9.
+>
+> **Déduction.** Lorsque le praticien souscrit la prestation « Orientation EVC »
+> puis, par la suite, la prestation « Dossier & démarches », le montant déjà
+> réglé au titre de l'Orientation EVC est déduit du prix de cette seconde
+> prestation. Cette déduction est appliquée par Optimi Santé sur le devis établi
+> pour la seconde prestation ; elle n'est ni automatique ni cumulable avec une
+> autre remise, et ne donne lieu à aucun remboursement si la seconde prestation
+> n'est pas souscrite.
+
+### 7.1 Quatre ajouts qui viennent de moi
+
+Votre liste ne les mentionnait pas, et je les crois nécessaires :
+
+1. **« Le mandat est donné par écrit, pour un dépôt déterminé. »** Un mandat oral
+   et général est à la fois contestable et dangereux. Écrit et borné, il protège
+   les deux parties.
+2. **« Aucun dépôt n'est effectué sans cette validation. »** Votre liste faisait
+   de la validation une obligation du candidat ; en faire aussi **notre**
+   engagement est ce qui équilibre la clause.
+3. **Les délais d'instruction** parmi les choses non garanties. C'est le premier
+   motif de réclamation sur ce type de prestation.
+4. **L'évolution des règles décidée par l'autorité.** Un calendrier déplacé n'est
+   pas une faute d'Optimi Santé.
+
+### 7.2 Ce que je ne peux pas trancher
+
+**Le mandat écrit doit exister quelque part.** Les CGV peuvent l'exiger, mais
+aucune procuration n'est aujourd'hui produite ni archivée par la plateforme.
+Trois options :
+
+- une case cochée et horodatée au devis — faible valeur probante ;
+- **un document signé, téléversé dans le dossier** — ce que je recommande ;
+- un mandat papier conservé hors plateforme — simple, mais invisible du système.
+
+À décider avec votre conseil, et à rattacher au chantier facturation, qui
+produira déjà des devis signés.
