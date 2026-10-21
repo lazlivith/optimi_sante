@@ -1,11 +1,17 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, SlidersHorizontal, X } from 'lucide-react';
 import { catalogService } from '../api/catalogService';
 import type { Category } from '../api/catalogService';
 import { ProductCard } from '../components/catalog/ProductCard';
 import { visuelAFaire } from '../api/productMediaService';
+import {
+  lireFiltres, ecrireFiltres, etiquettes, auMoinsUnFiltre, FILTRES_VIDES, TRIS,
+  type FiltresRayon, type TriRayon,
+} from '../lib/filtresRayon';
+import { PanneauFiltres, EtiquettesFiltres } from '../components/catalog/PanneauFiltres';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 const TAILLE_PAGE = 24;
@@ -52,9 +58,31 @@ export function CategoryPage() {
   // page est retenu AVEC le rayon auquel il appartient, et déduit au rendu : le remettre à
   // zéro depuis un effet déclencherait un second rendu, le temps duquel la page 4 d'un rayon
   // qui n'existe plus serait demandée au serveur.
+  const [parametres, setParametres] = useSearchParams();
+  const filtres = lireFiltres(parametres);
+  const [panneauMobile, setPanneauMobile] = useState(false);
+
   const [position, setPosition] = useState<{ slug?: string; page: number }>({ slug, page: 0 });
-  const page = position.slug === slug ? position.page : 0;
-  const allerALaPage = (n: number) => setPosition({ slug, page: n });
+  const pageUrl = Number(parametres.get('page') ?? '1') - 1;
+  const page = position.slug === slug
+    ? position.page
+    : (Number.isFinite(pageUrl) && pageUrl > 0 ? pageUrl : 0);
+  const allerALaPage = (n: number) => {
+    setPosition({ slug, page: n });
+    setParametres(ecrireFiltres(filtres, n), { replace: false });
+  };
+
+  /**
+   * Poser un filtre ramène à la PREMIÈRE page.
+   *
+   * <p>Rester en page 4 après avoir restreint un rayon à douze produits afficherait une
+   * grille vide sur un rayon qui n'est pas vide — le visiteur conclut que son filtre n'a
+   * rien donné.</p>
+   */
+  const changerFiltres = (f: FiltresRayon) => {
+    setPosition({ slug, page: 0 });
+    setParametres(ecrireFiltres(f, 0), { replace: false });
+  };
 
   const { data: categories, isLoading: chargementRayons } = useQuery({
     queryKey: ['categories-boutique'],
@@ -78,9 +106,12 @@ export function CategoryPage() {
   });
 
   const { data: produits, isLoading: chargementProduits } = useQuery({
-    queryKey: ['rayon-produits', rayon?.id, page],
+    queryKey: ['rayon-produits', rayon?.id, page, filtres],
     queryFn: () => catalogService.getProducts({
       categoryId: rayon!.id, page, size: TAILLE_PAGE,
+      minPrice: filtres.prixMin, maxPrice: filtres.prixMax,
+      surDevis: filtres.surDevis, promo: filtres.promo,
+      tri: filtres.tri === 'pertinence' ? undefined : filtres.tri,
     }),
     enabled: Boolean(rayon),
     // Sans cela, changer de page vide la grille puis la remplit : la page saute de toute sa
@@ -124,6 +155,7 @@ export function CategoryPage() {
     (a, b) => Number(visuelAFaire(a.imageUrl)) - Number(visuelAFaire(b.imageUrl)),
   );
   const total = produits?.totalElements ?? rayon.productCount ?? 0;
+  const nombreFiltres = etiquettes(filtres).length;
   const dernierePage = Math.max(0, (produits?.totalPages ?? 1) - 1);
 
   const autresRayons = (categories ?? [])
@@ -134,7 +166,12 @@ export function CategoryPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <BandeauRayon rayon={rayon} titre={titre} total={total} />
+      <BandeauRayon
+        titre={titre}
+        total={total}
+        tri={filtres.tri}
+        changerTri={(t) => changerFiltres({ ...filtres, tri: t })}
+      />
 
       {enPromotion.length > 0 && (
         <section className="container mx-auto max-w-6xl px-6 py-10">
@@ -167,18 +204,72 @@ export function CategoryPage() {
       )}
 
       <section className="container mx-auto max-w-6xl px-6 pb-12">
-        <h2 className="mb-6 text-xl font-bold text-brand-dark lg:text-2xl">
-          Tous les produits du rayon
-        </h2>
+        <div className="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
+          {/* La colonne ne s'affiche qu'à partir de « lg » : au téléphone, les filtres
+              passent par un panneau plein écran, appelé par le bouton ci-dessous. */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-28 rounded-2xl border border-slate-200 bg-white p-5">
+              <PanneauFiltres
+                filtres={filtres}
+                modifier={changerFiltres}
+                promotionsDansLeRayon={enPromotion.length > 0}
+                nombreSousRayons={0}
+              />
+            </div>
+          </aside>
+
+          <div>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-bold text-brand-dark lg:text-2xl">
+            Tous les produits du rayon
+          </h2>
+          <button
+            type="button"
+            onClick={() => setPanneauMobile(true)}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200
+                       bg-white px-4 py-2 text-sm font-semibold text-brand-dark lg:hidden"
+          >
+            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+            Filtrer{nombreFiltres > 0 && ` (${nombreFiltres})`}
+          </button>
+        </div>
+
+        <EtiquettesFiltres
+          liste={etiquettes(filtres)}
+          retirer={(cle) => changerFiltres({ ...filtres, [cle]: undefined })}
+        />
 
         {chargementProduits && listeProduits.length === 0 ? (
           <GrilleSquelette />
         ) : listeProduits.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-white py-16 text-center">
-            <p className="font-semibold text-brand-dark">Ce rayon est vide pour le moment.</p>
-            <Link to="/catalog" className="mt-4 inline-block text-sm font-semibold text-brand hover:underline">
-              Parcourir le catalogue
-            </Link>
+            {auMoinsUnFiltre(filtres) ? (
+              <>
+                {/* Distinguer les deux cas : un rayon vide et un filtre trop serré
+                    appellent des gestes opposés — sortir du rayon, ou desserrer. */}
+                <p className="font-semibold text-brand-dark">
+                  Aucun produit ne correspond à ces filtres.
+                </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  Le rayon en contient {rayon.productCount ?? 0}.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => changerFiltres(FILTRES_VIDES)}
+                  className="mt-5 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white
+                             transition-colors hover:bg-brand-fonce"
+                >
+                  Réinitialiser les filtres
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold text-brand-dark">Ce rayon est vide pour le moment.</p>
+                <Link to="/catalog" className="mt-4 inline-block text-sm font-semibold text-brand hover:underline">
+                  Parcourir le catalogue
+                </Link>
+              </>
+            )}
           </div>
         ) : (
           <>
@@ -222,6 +313,51 @@ export function CategoryPage() {
             )}
           </>
         )}
+          </div>
+        </div>
+
+        {/* ── Panneau plein écran, au téléphone ──────────────────────────────────── */}
+        {/*
+          Rendu dans « body » par un PORTAIL, et non à sa place dans l'arbre.
+
+          « fixed inset-0 » se positionne par rapport au plus proche ancêtre qui crée un bloc
+          conteneur — une transformation, un filtre, un « will-change » suffisent. Posé dans
+          la section, le panneau s'ouvrait SOUS la barre de navigation et son bouton « Voir
+          les N produits » tombait hors de l'écran. Depuis « body », rien ne le contraint.
+        */}
+        {panneauMobile && createPortal(
+          <div className="fixed inset-0 z-[60] flex flex-col bg-white lg:hidden">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <h2 className="text-base font-bold text-brand-dark">Filtrer</h2>
+              <button
+                type="button"
+                onClick={() => setPanneauMobile(false)}
+                aria-label="Fermer les filtres"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              <PanneauFiltres
+                filtres={filtres}
+                modifier={changerFiltres}
+                promotionsDansLeRayon={enPromotion.length > 0}
+                nombreSousRayons={0}
+              />
+            </div>
+            <div className="border-t border-slate-200 p-5">
+              <button
+                type="button"
+                onClick={() => setPanneauMobile(false)}
+                className="w-full rounded-full bg-brand py-3 text-sm font-bold text-white"
+              >
+                Voir les {total} produit{total > 1 ? 's' : ''}
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
       </section>
 
       {autresRayons.length > 0 && (
@@ -246,44 +382,56 @@ export function CategoryPage() {
  * boutique.</p>
  */
 function BandeauRayon(
-  { rayon, titre, total }: { rayon: Category; titre: string; total: number },
+  { titre, total, tri, changerTri }: {
+    titre: string; total: number; tri: TriRayon; changerTri: (t: TriRayon) => void;
+  },
 ) {
   return (
     <header className="border-b border-slate-200 bg-brand-cream">
-      <div className="container mx-auto grid max-w-6xl items-center gap-6 px-6 py-8
-                      lg:grid-cols-[1.4fr_1fr]">
-        <div>
-          <nav aria-label="Fil d'Ariane" className="mb-4 text-sm text-slate-600">
-            <ol className="flex flex-wrap items-center gap-2">
-              <li><Link to="/" className="underline-offset-2 hover:underline">Accueil</Link></li>
-              <li aria-hidden="true" className="text-slate-400">›</li>
-              <li><Link to="/catalog" className="underline-offset-2 hover:underline">Catalogue</Link></li>
-              <li aria-hidden="true" className="text-slate-400">›</li>
-              {/* aria-current : la marche courante est annoncée comme telle, au lieu de
-                  passer pour un lien de plus. */}
-              <li aria-current="page" className="font-semibold text-brand-dark">{titre}</li>
-            </ol>
-          </nav>
+      <div className="container mx-auto max-w-6xl px-6 py-8">
+        <nav aria-label="Fil d'Ariane" className="mb-4 text-sm text-slate-600">
+          <ol className="flex flex-wrap items-center gap-2">
+            <li><Link to="/" className="underline-offset-2 hover:underline">Accueil</Link></li>
+            <li aria-hidden="true" className="text-slate-400">›</li>
+            <li><Link to="/catalog" className="underline-offset-2 hover:underline">Catalogue</Link></li>
+            <li aria-hidden="true" className="text-slate-400">›</li>
+            {/* aria-current : la marche courante est annoncée comme telle, au lieu de
+                passer pour un lien de plus. */}
+            <li aria-current="page" className="font-semibold text-brand-dark">{titre}</li>
+          </ol>
+        </nav>
 
-          <h1 className="text-3xl font-extrabold tracking-tight text-brand-dark lg:text-4xl">
-            {titre}
-          </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            {total} produit{total > 1 ? 's' : ''} disponible{total > 1 ? 's' : ''} dans ce rayon
-          </p>
-        </div>
+        {/*
+          Le titre, le compte et le tri sur UNE SEULE LIGNE.
 
-        {!visuelAFaire(rayon.imageUrl) && (
-          <div className="hidden h-40 items-center justify-center lg:flex">
-            {/* alt="" : la photo illustre le rayon que le titre vient de nommer. La décrire
-                ferait entendre deux fois la même chose. */}
-            <img
-              src={rayon.imageUrl ?? undefined}
-              alt=""
-              className="max-h-full max-w-full object-contain"
-            />
+          Le visuel qui occupait la moitié droite a été retiré : il montrait la photo du
+          rayon, souvent une illustration générique, et il repoussait le tri sous la grille
+          où personne ne le cherchait. Cette place revient à la commande qu'on vient utiliser.
+        */}
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-brand-dark lg:text-4xl">
+              {titre}
+            </h1>
+            <p className="mt-2 text-sm text-slate-600">
+              {total} produit{total > 1 ? 's' : ''} disponible{total > 1 ? 's' : ''} dans ce rayon
+            </p>
           </div>
-        )}
+
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            Trier par
+            <select
+              value={tri}
+              onChange={(e) => changerTri(e.target.value as TriRayon)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm
+                         font-medium text-brand-dark"
+            >
+              {TRIS.map((t) => (
+                <option key={t.valeur} value={t.valeur}>{t.libelle}</option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
     </header>
   );
