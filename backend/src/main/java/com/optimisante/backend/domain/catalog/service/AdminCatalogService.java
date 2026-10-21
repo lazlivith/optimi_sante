@@ -56,6 +56,7 @@ public class AdminCatalogService {
                 categoryId != null ? categoryId.toString() : null,
                 blankToNull(activeState),
                 lowStock,
+                com.optimisante.backend.domain.catalog.entity.VisuelProduit.MOTIFS,
                 needsVisual,
                 whitelistSort(sortBy),
                 pageable);
@@ -263,6 +264,7 @@ public class AdminCatalogService {
                 .isQuoteOnly(p.getIsQuoteOnly())
                 .isActive(p.getIsActive())
                 .imageUrl(p.getImageUrl())
+                .visuelFactice(com.optimisante.backend.domain.catalog.entity.VisuelProduit.estFactice(p.getImageUrl()))
                 .categoryId(p.getCategory() != null ? p.getCategory().getId() : null)
                 .categoryName(p.getCategory() != null ? p.getCategory().getName() : null)
                 .promoPrice(p.getPromoPrice())

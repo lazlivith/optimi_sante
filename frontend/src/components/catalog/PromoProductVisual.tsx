@@ -40,7 +40,13 @@ export function PromoProductVisual({
 
   const vignette = (
     <ProductImage
-      src={product.imageUrl}
+      /*
+        Une adresse FACTICE ne part pas à l'affichage : ProductImage rend alors son visuel
+        neutre, aux jetons de la charte. C'est tout ce qu'il fallait pour que la carte, la
+        fiche, les produits apparentés et le panier cessent de montrer la photo d'une
+        personne — ou celle d'un autre produit — à la place du produit demandé.
+      */
+      src={product.visuelFactice ? null : product.imageUrl}
       alt={product.name}
       className={className}
       iconClassName={iconClassName}

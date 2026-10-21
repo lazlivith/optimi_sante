@@ -32,6 +32,9 @@ export interface GalleryImage {
 export interface ProductMedia {
   productId: string;
   imageUrl: string | null;
+  /** Posé par le SERVEUR : ce visuel est-il un remplissage ? Voir VisuelProduit. */
+  visuelFactice?: boolean;
+
   videoUrl: string | null;
   videoProvider: VideoProvider | null;
   videoPromoted: boolean;
@@ -104,15 +107,12 @@ export const productMediaService = {
   },
 };
 
-/**
- * Le visuel de ce produit reste-t-il à faire ?
- *
- * Même règle que le filtre serveur — image absente, illustration générique, ou photo
- * d'illustration temporaire. Écrite ici pour que la liste puisse marquer les fiches
- * concernées sans rappeler l'API.
- */
-export const visuelAFaire = (imageUrl: string | null | undefined): boolean =>
-  !imageUrl
-  || imageUrl.trim() === ''
-  || imageUrl.includes('medical-placeholder')
-  || imageUrl.includes('unsplash');
+/*
+  La règle « ce visuel est-il un remplissage ? » a quitté ce fichier.
+
+  Elle y vivait en TypeScript, et en trois exemplaires dans les requêtes SQL. Les quatre
+  reconnaissaient « medical-placeholder » et « unsplash » ; aucune ne reconnaissait
+  « prod_fallback_ », apparu depuis — 48 produits portaient donc une image de repli que tout
+  le système tenait pour une vraie photo. Le serveur tranche maintenant, et l'expose sous
+  « visuelFactice ».
+*/

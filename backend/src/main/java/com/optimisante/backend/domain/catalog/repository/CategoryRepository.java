@@ -83,8 +83,7 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
                        AND p2.is_active = true
                        AND p2.image_url IS NOT NULL
                        AND p2.image_url <> ''
-                       AND p2.image_url NOT LIKE '%medical-placeholder%'
-                       AND p2.image_url NOT LIKE '%unsplash%'
+                       AND NOT (p2.image_url LIKE ANY (CAST(:motifsFactices AS text[])))
                      ORDER BY p2.created_at ASC, p2.id ASC
                      LIMIT 1) AS imageUrl
             FROM categories c
@@ -93,5 +92,6 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
             WHERE c.tenant_id = :tenantId
             GROUP BY c.id
             """, nativeQuery = true)
-    List<ShopCategoryRow> findShopPresentation(@Param("tenantId") UUID tenantId);
+    List<ShopCategoryRow> findShopPresentation(@Param("tenantId") UUID tenantId,
+                                               @Param("motifsFactices") String[] motifsFactices);
 }

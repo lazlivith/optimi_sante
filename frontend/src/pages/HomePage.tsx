@@ -165,7 +165,7 @@ const TEINTES_INCONTOURNABLES = [
  */
 function selectionnerVedettes(products: Product[]): Product[] {
   const presentables = products.filter(
-    (p) => p.category?.id && !visuelAFaire(p.imageUrl));
+    (p) => p.category?.id && !p.visuelFactice);
   return presentables.length >= 4 ? presentables.slice(0, 4) : products.slice(0, 4);
 }
 
@@ -250,7 +250,6 @@ function FeaturedSection({ products }: { products: Product[] }) {
 // Category Grid
 // ──────────────────────────────────────────────────
 import type { Category } from '../api/catalogService';
-import { visuelAFaire } from '../api/productMediaService';
 import { useDevise } from '../context/DeviseContext';
 
 /** Le catalogue importé contient encore des entités HTML dans les noms : « Diagnostic &amp; Secours ». */
@@ -280,7 +279,7 @@ function CategoriesSection({ categories }: { categories: Category[] }) {
     // coûté une section entière : tant que le serveur n'était pas redéployé, aucune
     // catégorie ne portait de compteur, `(undefined ?? 0) > 0` était faux partout, et la
     // section disparaissait de l'accueil sans rien signaler.
-    .filter((c) => c.productCount !== 0 && !visuelAFaire(c.imageUrl))
+    .filter((c) => c.productCount !== 0 && Boolean(c.imageUrl))
     .sort((a, b) => (b.productCount ?? 0) - (a.productCount ?? 0))
     .slice(0, RAYONS_AFFICHES);
 

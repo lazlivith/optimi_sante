@@ -3,6 +3,9 @@ import type { Page } from './adminOrderService';
 
 export interface AdminProductDto {
   id: string;
+  /** Posé par le SERVEUR : ce visuel est-il un remplissage ? Voir VisuelProduit. */
+  visuelFactice?: boolean;
+
   sku: string;
   name: string;
   slug: string;
@@ -47,6 +50,8 @@ export interface AdminProductRequestDto {
   isQuoteOnly?: boolean;
   categoryId?: string;
   imageUrl?: string;
+  /** Posé par le serveur : ce visuel est-il un remplissage ? */
+  visuelFactice?: boolean;
   promoPrice?: number | null;
   /** Taux de TVA en %. `null` ou absent : herite de la categorie, puis du taux normal. */
   vatRate?: number | null;

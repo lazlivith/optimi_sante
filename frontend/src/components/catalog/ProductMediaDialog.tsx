@@ -4,7 +4,7 @@ import {
   Loader2, X, Upload, Trash2, Video, Link2, Star, StarOff, Images, ImageOff, Check,
 } from 'lucide-react';
 import {
-  productMediaService, visuelAFaire, HEBERGEURS_VIDEO,
+  productMediaService, HEBERGEURS_VIDEO,
   TAILLE_MAX_IMAGE_MO, TAILLE_MAX_VIDEO_MO, VISUELS_MAX,
   type ProductMedia, type VideoProvider,
 } from '../../api/productMediaService';
@@ -114,7 +114,7 @@ export function ProductMediaDialog({
     }
   };
 
-  const aFaire = media ? visuelAFaire(media.imageUrl) : false;
+  const aFaire = media ? (media.visuelFactice ?? false) : false;
   const exemple = HEBERGEURS_VIDEO.find((h) => h.value === hebergeur)?.exemple ?? '';
   const placesGalerie = media ? VISUELS_MAX - media.gallery.length : 0;
 

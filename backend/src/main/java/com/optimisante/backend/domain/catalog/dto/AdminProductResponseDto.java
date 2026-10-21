@@ -21,6 +21,8 @@ public class AdminProductResponseDto {
     private Boolean isQuoteOnly;
     private Boolean isActive;
     private String imageUrl;
+    /** Posé par le serveur : ce visuel est-il un remplissage ? Voir VisuelProduit. */
+    private boolean visuelFactice;
     private UUID categoryId;
     private String categoryName;
     private BigDecimal promoPrice;

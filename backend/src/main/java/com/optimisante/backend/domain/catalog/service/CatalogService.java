@@ -48,7 +48,8 @@ public class CatalogService {
         
         // Une requête pour l'arborescence, une pour ce qu'elle contient. Compter les produits
         // et chercher une photo catégorie par catégorie en coûterait deux cent onze.
-        Map<UUID, ShopCategoryRow> presentation = categoryRepository.findShopPresentation(tenantId)
+        Map<UUID, ShopCategoryRow> presentation = categoryRepository.findShopPresentation(tenantId,
+                        com.optimisante.backend.domain.catalog.entity.VisuelProduit.MOTIFS)
                 .stream()
                 .collect(Collectors.toMap(ShopCategoryRow::getId, r -> r));
 
@@ -231,6 +232,8 @@ public class CatalogService {
                 product.getStockQuantity(),
                 product.getIsQuoteOnly(),
                 product.getImageUrl(),
+                com.optimisante.backend.domain.catalog.entity.VisuelProduit
+                        .estFactice(product.getImageUrl()),
                 categoryDto,
                 product.isPromoActive(),
                 product.isPromoActive() ? product.getPromoEndsAt() : null,

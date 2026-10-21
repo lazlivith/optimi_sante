@@ -453,7 +453,7 @@ function LigneApparentee({ product }: { product: Product }) {
       <Link to={cheminProduit(product.slug)} className="group flex items-center gap-3 py-3">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-slate-100">
           <ProductImage
-            src={product.imageUrl} alt=""
+            src={product.visuelFactice ? null : product.imageUrl} alt=""
             className="h-full w-full p-1.5" iconClassName="w-5 h-5"
           />
         </div>
@@ -507,7 +507,7 @@ function BarreAchatCollante({ product, agir, ancre }: {
       >
         <div className="container mx-auto flex max-w-6xl items-center gap-4 px-6 py-3">
           <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-slate-100 sm:flex">
-            <ProductImage src={product.imageUrl} alt="" className="h-full w-full p-1" iconClassName="w-4 h-4" />
+            <ProductImage src={product.visuelFactice ? null : product.imageUrl} alt="" className="h-full w-full p-1" iconClassName="w-4 h-4" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="line-clamp-1 text-sm font-bold text-brand-dark">{product.name}</p>

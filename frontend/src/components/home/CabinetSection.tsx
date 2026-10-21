@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { catalogService } from '../../api/catalogService';
 import type { Category } from '../../api/catalogService';
 import { ProductCard } from '../catalog/ProductCard';
-import { visuelAFaire } from '../../api/productMediaService';
 
 /**
  * Rayons dont cette section vit. Ce sont des identifiants du catalogue, pas des libellés :
@@ -151,7 +150,7 @@ function PanneauMobilier({ rayon }: { rayon: Category }) {
         </Link>
       </div>
 
-      {!visuelAFaire(rayon.imageUrl) && (
+      {Boolean(rayon.imageUrl) && (
         <div className="flex h-32 items-center justify-center">
           {/* alt="" : la photo illustre le rayon que le titre au-dessus vient de nommer. */}
           <img

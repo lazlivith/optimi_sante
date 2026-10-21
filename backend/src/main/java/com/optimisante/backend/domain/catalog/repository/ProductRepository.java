@@ -116,8 +116,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
                 AND (:needsVisual = false
                      OR p.image_url IS NULL
                      OR p.image_url = ''
-                     OR p.image_url LIKE '%medical-placeholder%'
-                     OR p.image_url LIKE '%unsplash%')
+                     OR p.image_url LIKE ANY (CAST(:motifsFactices AS text[])))
             ORDER BY
               CASE WHEN CAST(:sortBy AS text) = 'name_asc'    THEN p.name END ASC,
               CASE WHEN CAST(:sortBy AS text) = 'price_asc'   THEN p.base_price END ASC,
@@ -140,14 +139,14 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
                 AND (:needsVisual = false
                      OR p.image_url IS NULL
                      OR p.image_url = ''
-                     OR p.image_url LIKE '%medical-placeholder%'
-                     OR p.image_url LIKE '%unsplash%')
+                     OR p.image_url LIKE ANY (CAST(:motifsFactices AS text[])))
             """,
             nativeQuery = true)
     Page<AdminProductRow> searchForAdmin(@Param("search") String search,
                                          @Param("categoryId") String categoryId,
                                          @Param("activeState") String activeState,
                                          @Param("lowStock") boolean lowStock,
+                                         @Param("motifsFactices") String[] motifsFactices,
                                          @Param("needsVisual") boolean needsVisual,
                                          @Param("sortBy") String sortBy,
                                          Pageable pageable);
