@@ -109,7 +109,20 @@ export function CategoryPage() {
   }
 
   const enPromotion = promotions?.content ?? [];
-  const listeProduits = produits?.content ?? [];
+  /**
+   * Les produits illustrés d'abord, ceux dont le visuel reste à faire ensuite.
+   *
+   * <p>Un rayon qui s'ouvre sur quatre cadres gris donne l'impression d'un catalogue vide,
+   * alors qu'il contient plus de cent références. L'ordre relatif est préservé à l'intérieur
+   * de chaque groupe — un tri STABLE, qui ne réordonne pas ce que le serveur a classé.</p>
+   *
+   * <p>Le tri porte sur la PAGE affichée, pas sur le rayon entier : un produit sans visuel
+   * en page 1 ne saute pas en page 3. Classer le rayon entier se décide côté serveur, et
+   * c'est un autre chantier.</p>
+   */
+  const listeProduits = [...(produits?.content ?? [])].sort(
+    (a, b) => Number(visuelAFaire(a.imageUrl)) - Number(visuelAFaire(b.imageUrl)),
+  );
   const total = produits?.totalElements ?? rayon.productCount ?? 0;
   const dernierePage = Math.max(0, (produits?.totalPages ?? 1) - 1);
 
