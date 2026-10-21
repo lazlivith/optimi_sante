@@ -83,8 +83,12 @@ describe('aucun lien vers un site extérieur', () => {
     await waitFor(() => expect(container.querySelectorAll('section').length).toBeGreaterThan(0));
 
     // Ni en lien, ni en texte brut : une adresse recopiée à la main serait le même aveu.
+    // Aucun nom de domaine, nulle part — pas même dans une mention de source. Ma
+    // première version citait « demarche.numerique.gouv.fr » en toutes lettres : une
+    // adresse recopiée reste une adresse, et elle invite à aller voir ailleurs.
     expect(container.innerHTML).not.toContain('cng.sante.fr');
-    expect(container.innerHTML).not.toContain('demarche.numerique.gouv.fr/y');
+    expect(container.innerHTML).not.toContain('demarche.numerique.gouv.fr');
+    expect(container.innerHTML).not.toMatch(/[a-z0-9-]+\.(fr|com|gouv\.fr|org)/i);
   });
 
   it('cite la source sans la rendre cliquable', async () => {

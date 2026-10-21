@@ -297,7 +297,7 @@ function SectionAep({ section, periodes, specialites, constateLe, ouvrirDemande 
               <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">{bloc.texte}</p>
               {bloc.titre.toLowerCase().includes('renouvellement') && (
                 <MentionSource constateLe={constateLe}
-                               source="service public — demarche.numerique.gouv.fr" />
+                               source="téléprocédure officielle de l'État" />
               )}
             </div>
           ))}
