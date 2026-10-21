@@ -175,11 +175,32 @@ ligne par téléchargement, conservée comme une pièce de sécurité.
 avez **1 CPU**. Un PDF de 50 pages prend de l'ordre de la seconde. À dix
 téléchargements simultanés, le site ralentit. Le lot 1 devra mesurer cela.
 
-### 3.3 Livrable seul
+### 3.3 Gratuit puis complet — décision du 21 octobre
+
+| Accès | Contenu | Condition |
+|---|---|---|
+| **Découverte** | **une session d'exemple par spécialité** | création du compte à la suite d'une demande |
+| **Complet** | toutes les annales de la spécialité | paiement de l'**Orientation EVC** |
+
+C'est l'offre Orientation EVC qui ouvre le catalogue complet — son texte le dit
+désormais : « Accès à toutes les annales de votre spécialité ».
+
+**Conséquence sur le modèle.** L'étape `ANNALES` ne suffit plus : il faut
+distinguer deux niveaux. Soit une colonne `niveau` sur `parcours_medecin`
+(`DECOUVERTE` / `COMPLET`), soit un drapeau `exemple` sur chaque annale et un
+filtre côté serveur. **Je recommande le drapeau sur l'annale** : c'est
+l'administration qui désigne la session d'exemple, spécialité par spécialité, et
+elle peut en changer sans toucher aux droits de qui que ce soit.
+
+Le filtre est appliqué **côté serveur**, dans la requête : une liste complète
+envoyée au navigateur puis masquée à l'écran serait lisible dans les outils de
+développement. L'écran affiche en revanche ce qui existe et reste fermé — c'est
+ce qui donne envie de payer, et c'est honnête.
+
+### 3.4 Livrable seul
 
 L'étape 1 ne dépend ni du formulaire, ni des pièces, ni de la facturation. **Elle
-peut partir en premier**, à condition que la décision de stockage (§ 1.3) soit
-prise.
+peut partir en premier**, à condition que le lot 0 soit fait.
 
 ---
 
@@ -210,14 +231,31 @@ perte.**
 
 ### 4.3 Le mandat
 
-`mandat_signe` : `dossier_id`, `texte_version`, `accepte_le`, `ip`,
-`agent_utilisateur`. Le **texte** du mandat est versionné comme le formulaire :
-on doit pouvoir prouver *ce qui a été accepté*, pas seulement *qu'on a accepté*.
+**Décidé le 21 octobre, en trois temps :**
 
-> **Question ouverte, déjà signalée pour les CGV.** Une case cochée a une valeur
-> probante faible. Un document signé et téléversé est plus solide. Le chantier
-> facturation produira des devis signés : **mutualiser les deux** est la voie que
-> je recommande, mais c'est votre décision — et celle de votre conseil.
+| Quand | Forme |
+|---|---|
+| **Dès maintenant, hors plateforme** | PDF signé — modèle écrit : `docs/modele_mandat_evc.md` |
+| **Lot 2** | acceptation en ligne + **copie automatique par e-mail au candidat** |
+| **Plus tard** | signature électronique, à étudier avec le chantier facturation |
+
+`mandat_signe` : `dossier_id`, `texte_version`, `accepte_le`, `ip`,
+`agent_utilisateur`, `copie_envoyee_le`. Le **texte** du mandat est versionné
+comme le formulaire : on doit pouvoir prouver *ce qui a été accepté*, pas
+seulement *qu'on a accepté*.
+
+**La copie par e-mail n'est pas un confort, c'est une pièce.** Un praticien qui
+conteste avoir mandaté opposera qu'il n'a jamais rien reçu ; l'envoi horodaté,
+avec le texte intégral, est ce qui lui répond. Elle part donc **automatiquement**,
+dans la foulée de l'acceptation, et son envoi est enregistré.
+
+Le mandat accepté en ligne reprend **le texte du PDF**, mot pour mot : deux
+rédactions divergentes pour un même engagement seraient une faille, pas une
+commodité.
+
+> **Ce qui reste vrai malgré la décision.** Une case cochée et un PDF signé n'ont
+> pas la même valeur probante. Tant que la signature électronique n'est pas en
+> place, pour un dossier à enjeu, le PDF reste le plus solide.
 
 ### 4.4 Export PDF
 
@@ -252,23 +290,36 @@ l'administration, comme les sections de la page publique.
 `ControleFichier` plafonne à **10 Mo** et vérifie la cohérence extension / type
 MIME. À étendre aux pièces : PDF, JPG, PNG.
 
-**L'antivirus : réponse honnête — rien n'existe, et ce n'est pas simple ici.**
-Render n'offre pas de service d'analyse managé, et faire tourner ClamAV dans le
-conteneur applicatif demanderait de la mémoire (environ 1 Go pour la base de
-signatures) et un rafraîchissement régulier — sur une instance de 2 Go qui sert
-déjà le site. Trois voies :
+**L'antivirus est reporté — décision du 21 octobre.** Rien n'existe aujourd'hui,
+et ClamAV dans le conteneur applicatif demanderait environ 1 Go pour ses
+signatures, sur une instance de 2 Go qui sert déjà le site.
 
-1. **Un service d'analyse par API** (VirusTotal, Cloudmersive) : simple, mais une
-   dépendance externe de plus, et des pièces d'identité envoyées à un tiers — ce
-   qui pose sa propre question RGPD.
-2. **Un conteneur ClamAV séparé** sur Render : propre, mais c'est une instance de
-   plus à payer.
-3. **Différer**, en s'appuyant sur le contrôle de type, le plafond de taille, et
-   le fait que ces fichiers ne sont **jamais exécutés ni servis publiquement**.
+**À la place, quatre mesures au lot 3**, qui valent mieux qu'un antivirus mal
+posé parce qu'elles s'attaquent au risque réel — un administrateur qui ouvre une
+pièce piégée sur son poste :
 
-**Je recommande la voie 3 pour le lot 3, et la voie 2 quand le volume le
-justifiera.** Le risque réel ici n'est pas l'infection de notre serveur — c'est
-qu'un administrateur ouvre une pièce vérolée sur son poste.
+1. **PDF, JPG et PNG uniquement.** Pas de document bureautique, pas d'archive.
+2. **Vérification du type RÉEL, par la signature binaire** — les premiers octets
+   du fichier — et non par l'extension ni par le type annoncé par le navigateur.
+   Les deux sont fournis par le poste, donc falsifiables en une ligne.
+   `ControleFichier` compare aujourd'hui l'extension au type annoncé : **les deux
+   viennent du même menteur potentiel.** C'est à corriger, et ce correctif
+   bénéficie à toute la plateforme, pas seulement aux pièces.
+3. **Réencodage des images par le serveur.** Une image décodée puis réencodée
+   perd tout ce qui n'est pas de l'image : charge utile cachée, métadonnées
+   exotiques, octets en trop après la fin du flux. C'est la mesure la plus
+   efficace du lot, et elle ne dépend d'aucun tiers.
+4. **Consultation dans le navigateur, sans téléchargement.** L'administration
+   lit la pièce dans un visualiseur ; rien n'atterrit sur son poste. Pour un PDF,
+   l'affichage se fait dans un cadre isolé (`sandbox`), servi avec
+   `Content-Disposition: inline` et `X-Content-Type-Options: nosniff`.
+
+> **Ce que ces mesures ne font pas.** Un PDF malveillant reste un PDF
+> malveillant : le réencodage ne s'applique qu'aux images, et un visualiseur de
+> navigateur a déjà eu ses failles. Le risque est **réduit, pas supprimé** — et
+> il faudra y revenir quand le volume le justifiera, avec un conteneur ClamAV
+> séparé plutôt qu'une API tierce : envoyer des pièces d'identité à un service
+> d'analyse extérieur poserait sa propre question RGPD.
 
 ### 5.5 Conservation
 
@@ -339,20 +390,32 @@ de `accompaniment_requests.statut` — et une migration appliquée ne se modifie
 
 ---
 
-## 8. Découpage
+## 8. Découpage et ordre
 
-| Lot | Contenu | Migrations | Estimation |
+**Ordre arrêté le 21 octobre :**
+
+```
+V79  →  lot 0  →  lot 1  →  lot 2  →  lot 3  →  lot 4
+```
+
+| Étape | Contenu | Migrations | Estimation |
 |---|---|---|---|
-| **0** | Décision de stockage + magasin privé (§ 1.3) | — | **2 à 4 j** selon l'option |
-| **1** | Parcours cumulables, invitation à usage unique, annales, filigrane, journal | V80–V81 | **4 à 6 j** |
-| **2** | Formulaire versionné, annotations, mandat, export PDF | V82–V83 | **5 à 7 j** |
-| **3** | Pièces justificatives, liste gérée, traçabilité des consultations | V84 | **4 à 5 j** |
-| **4** | Sessions et calendrier enrichis, date de constat par source | V85 | **2 à 3 j** |
+| **V79** | Règles de passage entre statuts, **« Déposé » compris dans le graphe et la contrainte**, en reprenant `EnrollmentTransitions` | V79 | **1,5 à 2 j** |
+| **Lot 0** | Magasin privé — **ne démarre pas avant votre feu vert, après le webinaire du 22** | — | **2 à 4 j** |
+| **Lot 1** | Parcours cumulables, invitation à usage unique, annales (découverte + complet), filigrane, journal | V80–V81 | **5 à 7 j** |
+| **Lot 2** | Formulaire versionné, annotations, mandat en ligne + copie par e-mail, export PDF | V82–V83 | **5 à 7 j** |
+| **Lot 3** | Pièces, type réel par signature binaire, réencodage des images, consultation sans téléchargement, traçabilité | V84 | **5 à 6 j** |
+| **Lot 4** | Sessions et calendrier enrichis, date de constat par source | V85 | **2 à 3 j** |
 
-**Total : 17 à 25 jours**, hors décisions et hors antivirus.
+**Total : 20,5 à 29 jours.**
 
-**Le lot 0 n'était pas dans votre découpage, et il conditionne tout le reste** :
-sans magasin privé, ni les annales ni les pièces ne peuvent être livrées.
+Les lots 1 et 3 ont été réévalués à la hausse : le premier porte désormais deux
+niveaux d'accès aux annales, le second quatre mesures de sécurité au lieu d'un
+renvoi à plus tard.
+
+**Le lot 0 n'était pas dans votre découpage et il conditionne les lots 1 et 3** :
+sans magasin privé, ni les annales ni les pièces ne peuvent être livrées. Il
+attend votre feu vert.
 
 ---
 
@@ -370,18 +433,24 @@ sans magasin privé, ni les annales ni les pièces ne peuvent être livrées.
 
 ---
 
-## 10. Les décisions qui vous reviennent
+## 10. Décisions — état au 21 octobre
 
-1. **Le magasin privé** (§ 1.3) — S3 compatible, Cloudinary `authenticated`, ou
-   autre. **Bloquant pour tout.**
-2. **Le mandat** : case cochée ou document signé (§ 4.3), et mutualisation avec
-   le chantier facturation.
-3. **L'antivirus** : différer, API tierce, ou conteneur dédié (§ 5.4).
-4. **L'ordre réel des lots.** Vous demandez annales d'abord ; c'est le bon choix
-   si le lot 0 est tranché rapidement. Sinon, le lot 4 — sessions et calendrier —
-   ne dépend d'aucun stockage et peut passer devant.
-5. **Le périmètre de l'étape 1** : les annales sont-elles ouvertes à tout compte
-   créé après une demande, ou seulement après un premier paiement ? Votre texte
-   dit « dès la création du compte qui suit une demande d'accompagnement » — donc
-   gratuitement. **Je le signale parce que c'est de la valeur donnée avant tout
-   encaissement**, et que c'est un choix commercial, pas technique.
+| Question | Décision |
+|---|---|
+| **Magasin privé** | Lot 0, **ne démarre pas avant feu vert, après le webinaire du 22** |
+| **Mandat** | PDF signé hors plateforme maintenant ; acceptation en ligne + copie e-mail au lot 2 ; signature électronique plus tard |
+| **Antivirus** | Reporté. Quatre mesures au lot 3 à la place (§ 5.4) |
+| **Ordre** | V79 → lot 0 → lot 1 → lot 2 → lot 3 → lot 4 |
+| **Annales** | Une session d'exemple par spécialité gratuite ; catalogue complet après l'Orientation EVC |
+
+### Ce qui reste ouvert
+
+1. **Le choix du fournisseur de stockage**, quand le lot 0 démarrera. La décision
+   d'option — S3 compatible, Cloudinary `authenticated`, autre — n'est pas prise ;
+   seul son calendrier l'est.
+2. **La relecture juridique du mandat** (`docs/modele_mandat_evc.md`). Je l'ai
+   rédigé à partir de l'article 3.8 et de vos instructions. Je ne suis pas
+   juriste, et ce document engage votre responsabilité sur le dépôt d'un dossier
+   au nom d'un tiers.
+3. **Le coût du filigrane sur 1 CPU**, à mesurer au lot 1 — pas une décision,
+   une vérification.

@@ -207,7 +207,7 @@ super administrateur). Un point par ligne.
 
 | Aujourd'hui | Demain |
 |---|---|
-| Vérification de votre éligibilité<br>Explication de la procédure et du calendrier<br>Aide à l'inscription à la session<br>Orientation vers des ressources de préparation | Diagnostic de votre éligibilité, profession et spécialité comprises<br>Explication de la procédure et du calendrier qui vous concernent<br>Aide à l'inscription à la session<br>Orientation vers des ressources de préparation<br>**Ne comprend pas le dépôt de votre dossier**<br>**Les 89 € sont déduits si vous poursuivez avec « Dossier & démarches »** |
+| Vérification de votre éligibilité<br>Explication de la procédure et du calendrier<br>Aide à l'inscription à la session<br>Orientation vers des ressources de préparation | Diagnostic de votre éligibilité, profession et spécialité comprises<br>Explication de la procédure et du calendrier qui vous concernent<br>Aide à l'inscription à la session<br>**Accès à toutes les annales de votre spécialité**<br>Orientation vers des ressources de préparation<br>**Ne comprend pas le dépôt de votre dossier**<br>**Les 89 € sont déduits si vous poursuivez avec « Dossier & démarches »** |
 
 > Deux points ajoutés, et le premier compte autant que le second : dire ce qu'une
 > offre **ne** comprend **pas** prévient le litige que la déduction, seule, ne
@@ -262,8 +262,10 @@ formation sont conservées ; l'article 3.9 (TVA) ne change pas.
 > d'autorisation d'exercice en France. Selon la prestation souscrite,
 > l'accompagnement comprend la préparation du dossier, la vérification de sa
 > complétude et de sa conformité, et **le dépôt du dossier au nom du praticien,
-> sur son mandat exprès**. Le mandat est donné par écrit, pour un dépôt
-> déterminé ; il ne confère à Optimi Santé aucune autre représentation.
+> sur son mandat exprès**. Le mandat est **écrit, signé par le praticien ou
+> accepté en ligne** ; il est donné pour un dépôt déterminé, identifié par la
+> session et la spécialité visées, et ne confère à Optimi Santé aucune autre
+> représentation.
 >
 > **Obligations du praticien.** Le praticien fournit des pièces **exactes,
 > authentiques et complètes**, dans les délais qui lui sont indiqués. Il répond
@@ -323,15 +325,22 @@ Votre liste ne les mentionnait pas, et je les crois nécessaires :
 4. **L'évolution des règles décidée par l'autorité.** Un calendrier déplacé n'est
    pas une faute d'Optimi Santé.
 
-### 7.2 Ce que je ne peux pas trancher
+### 7.2 Le mandat écrit — décidé
 
-**Le mandat écrit doit exister quelque part.** Les CGV peuvent l'exiger, mais
-aucune procuration n'est aujourd'hui produite ni archivée par la plateforme.
-Trois options :
+Votre arbitrage du 21 octobre, en trois temps :
 
-- une case cochée et horodatée au devis — faible valeur probante ;
-- **un document signé, téléversé dans le dossier** — ce que je recommande ;
-- un mandat papier conservé hors plateforme — simple, mais invisible du système.
+| Quand | Forme | État |
+|---|---|---|
+| **Dès maintenant** | PDF signé hors plateforme | modèle écrit : `docs/modele_mandat_evc.md` |
+| **Lot 2 du parcours EVC** | acceptation en ligne — case cochée, texte versionné, date et heure, compte identifié, **copie envoyée automatiquement par e-mail** | à développer |
+| **Plus tard** | signature électronique avec prestataire | à étudier avec le chantier facturation |
 
-À décider avec votre conseil, et à rattacher au chantier facturation, qui
-produira déjà des devis signés.
+La rédaction de l'article 3.8 — « **écrit, signé par le praticien ou accepté en
+ligne** » — couvre les deux premières formes sans avoir à être retouchée quand la
+seconde arrivera. C'était le but.
+
+> **Ce qui reste à surveiller.** Une case cochée et un PDF signé n'ont pas la
+> même valeur probante. Tant que la signature électronique n'est pas en place,
+> **le PDF signé reste le plus solide** : pour un dossier à enjeu — un dépôt
+> contesté, un praticien qui conteste avoir mandaté — demandez le PDF, même si
+> l'acceptation en ligne existe.
