@@ -10,6 +10,7 @@ import { LogoOptimi } from '../components/marque/LogoOptimi';
 import { Menu } from 'lucide-react';
 import { MenuMobile } from './MenuMobile';
 import { MenuServices } from './MenuServices';
+import { NAVIGATION_ORDINATEUR } from '../lib/navigationPrincipale';
 import { useTiroirNavigation } from '../hooks/useTiroirNavigation';
 
 
@@ -238,25 +239,24 @@ export const Navbar = () => {
               la rangee centre ses liens. Sans le second, une rangee plus etroite que son
               conteneur resterait collee a gauche a l'interieur. */}
           <nav className="flex items-center justify-center gap-0.5 overflow-x-auto scrollbar-hide">
-            <Link to="/" className="whitespace-nowrap px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-brand-dark transition-colors rounded-md hover:bg-gray-50">
-              Accueil
-            </Link>
-            <Link to="/formations" className="whitespace-nowrap px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-brand-dark transition-colors rounded-md hover:bg-gray-50">
-              Formations Médicales
-            </Link>
-            {/* Place juste apres les formations : c'est en hesitant devant une formation qu'on
-                veut savoir ce qui est pris en charge autour. */}
-            <MenuServices />
-            <Link to="/devenir-partenaire" className="whitespace-nowrap px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-brand-dark transition-colors rounded-md hover:bg-gray-50">
-              Devenir Partenaire
-            </Link>
-            <Link to="/catalog" className="whitespace-nowrap px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-brand-dark transition-colors rounded-md hover:bg-gray-50">
-              Catalogue
-            </Link>
-            <Link to="/catalog?promo=true" className="whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-brand-dark transition-colors rounded-md hover:bg-gray-50">
-              Promotions
-              <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">New</span>
-            </Link>
+            {NAVIGATION_ORDINATEUR.map((entree) => (
+              entree.panneauServices
+                ? <MenuServices key={entree.to} />
+                : (
+                  <Link
+                    key={entree.to}
+                    to={entree.to}
+                    className="whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-brand-dark transition-colors rounded-md hover:bg-gray-50"
+                  >
+                    {entree.libelle}
+                    {entree.badge && (
+                      <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">
+                        {entree.badge}
+                      </span>
+                    )}
+                  </Link>
+                )
+            ))}
           </nav>
         </div>
       </div>

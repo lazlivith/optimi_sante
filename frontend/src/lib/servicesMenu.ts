@@ -9,6 +9,14 @@ export interface EntreeService {
   titre: string;
   texte: string;
   icon: LucideIcon;
+  /**
+   * Pastille « Nouveau », À L'INTÉRIEUR du sous-menu seulement.
+   *
+   * <p>La barre principale ne porte qu'un seul badge, sur « Promotions ». Signaler une
+   * nouveauté ici la fait remarquer de qui ouvre le menu, sans entrer en concurrence avec
+   * lui : deux badges côte à côte n'en font aucun.</p>
+   */
+  nouveau?: boolean;
 }
 
 export interface GroupeServices {
@@ -50,6 +58,7 @@ export const GROUPES_SERVICES: GroupeServices[] = [
       },
       {
         to: '/exercer-en-france',
+        nouveau: true,
         titre: 'Exercer en France avec un diplôme hors UE',
         texte: 'EVC, attestation provisoire et commission d’autorisation d’exercice.',
         icon: Stamp,
