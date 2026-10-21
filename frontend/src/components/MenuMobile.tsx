@@ -5,6 +5,7 @@ import { LogoOptimi } from './marque/LogoOptimi';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { GROUPES_SERVICES } from '../lib/servicesMenu';
+import { NAVIGATION_PRINCIPALE } from '../lib/navigationPrincipale';
 
 /**
  * Menu de navigation du site sur telephone et tablette.
@@ -82,18 +83,20 @@ export function MenuMobile({ ouvert, fermer, fermerSurLien, panneau }: {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-5 divide-y divide-slate-100">
-        <Entree to="/">Accueil</Entree>
-        <Entree to="/formations">Formations Médicales</Entree>
-        <AccordeonServices />
-        <Entree to="/devenir-partenaire">Devenir Partenaire</Entree>
-        <Entree to="/catalog">Catalogue</Entree>
-        <Entree to="/blog">Blog &amp; événements</Entree>
-        <Entree to="/catalog?promo=true">
-          Promotions
-          <span className="ml-2 bg-danger text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase align-middle">
-            New
-          </span>
-        </Entree>
+        {NAVIGATION_PRINCIPALE.map((entree) => (
+          entree.panneauServices
+            ? <AccordeonServices key={entree.to} />
+            : (
+              <Entree key={entree.to} to={entree.to}>
+                {entree.libelle}
+                {entree.badge && (
+                  <span className="ml-2 bg-danger text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase align-middle">
+                    {entree.badge}
+                  </span>
+                )}
+              </Entree>
+            )
+        ))}
       </nav>
     </div>
   );
@@ -140,6 +143,9 @@ function AccordeonServices() {
                     >
                       <entree.icon aria-hidden="true" className="h-4 w-4 shrink-0 text-brand" />
                       {entree.titre}
+                      {entree.nouveau && (
+                        <span className="ml-2 align-middle rounded-full bg-brand-accent px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">Nouveau</span>
+                      )}
                     </Link>
                   </li>
                 ))}

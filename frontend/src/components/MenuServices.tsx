@@ -119,6 +119,9 @@ export function MenuServices() {
                         <span className="min-w-0">
                           <span className="block text-sm font-semibold text-brand-dark">
                             {entree.titre}
+                            {entree.nouveau && (
+                              <span className="ml-2 align-middle rounded-full bg-brand-accent px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">Nouveau</span>
+                            )}
                           </span>
                           <span className="block text-xs leading-relaxed text-slate-500">
                             {entree.texte}
