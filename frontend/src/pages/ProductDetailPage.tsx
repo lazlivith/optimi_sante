@@ -5,7 +5,7 @@ import { catalogService, cheminProduit } from '../api/catalogService';
 import type { Product } from '../api/catalogService';
 import { useCart } from '../context/CartContext';
 import {
-  ArrowRight, GraduationCap, Loader2, Minus, Plus, ShieldCheck, Truck, X,
+  ArrowRight, GraduationCap, Loader2, Minus, Plus, Truck, X,
 } from 'lucide-react';
 import { CountdownTimer } from '../components/common/CountdownTimer';
 import { Toast, type ToastType } from '../components/common/Toast';
@@ -150,14 +150,32 @@ export function ProductDetailPage() {
             <section className="rounded-2xl border border-slate-200 bg-white p-6 lg:p-8">
               <h2 className="mb-5 text-xl font-bold text-brand-dark">Description</h2>
               <div className="flex flex-col gap-4">
-                {/* whitespace-pre-line : les descriptions sont saisies une idée par ligne,
-                    sans ligne vide entre elles. Les réduire à un bloc unique collerait
-                    dix caractéristiques en une seule phrase illisible. */}
-                {fiche.paragraphes.map((p, i) => (
-                  <p key={i} className="whitespace-pre-line leading-relaxed text-slate-700">
-                    {p}
-                  </p>
-                ))}
+                {/*
+                  UNE IDÉE PAR LIGNE DEVIENT UNE VRAIE PUCE.
+
+                  Les descriptions du fournisseur énumèrent les caractéristiques, une par
+                  ligne, sans ligne vide. « whitespace-pre-line » les séparait visuellement
+                  mais le texte restait un seul paragraphe : un lecteur d'écran l'annonçait
+                  d'un trait, et rien ne disait qu'il s'agissait d'une liste. Un paragraphe
+                  d'une seule ligne, lui, reste un paragraphe — en faire une puce isolée
+                  serait une liste à un élément, ce qui n'a pas de sens.
+                */}
+                {fiche.paragraphes.map((p, i) => {
+                  const lignes = p.split('\n').map((l) => l.trim()).filter(Boolean);
+                  return lignes.length > 1 ? (
+                    <ul key={i} className="flex flex-col gap-2">
+                      {lignes.map((ligne, j) => (
+                        <li key={j} className="flex gap-2.5 leading-relaxed text-slate-700">
+                          <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0
+                                                              rounded-full bg-brand" />
+                          <span>{ligne}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p key={i} className="leading-relaxed text-slate-700">{lignes[0] ?? p}</p>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -414,16 +432,27 @@ function PanneauAchat({ product, quantity, setQuantity, agir, ancre, grosVolume,
         </div>
       )}
 
-      <ul className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5">
-        <li className="flex items-center gap-3">
-          <ShieldCheck className="h-5 w-5 shrink-0 text-brand" aria-hidden="true" />
-          <span className="text-sm text-slate-700">Garantie 2 ans incluse</span>
-        </li>
-        <li className="flex items-center gap-3">
-          <Truck className="h-5 w-5 shrink-0 text-brand" aria-hidden="true" />
-          <span className="text-sm text-slate-700">Livraison chiffrée au devis</span>
-        </li>
-      </ul>
+      {/*
+        CE BLOC NE DIT PLUS QUE CE QUI EST VRAI POUR CE PRODUIT.
+
+        « Garantie 2 ans incluse » s'affichait sur les 1 529 fiches du catalogue, sans
+        qu'aucune donnée ne la porte : le produit ne possède pas de champ de garantie. Une
+        promesse contractuelle affichée au jugé engage la maison sur des gants à usage
+        unique comme sur un échographe. Elle est retirée, et reviendra le jour où la durée
+        sera une donnée du produit.
+
+        « Livraison chiffrée au devis » était vraie pour les produits sur devis et fausse
+        pour tous les autres, dont le prix et la livraison sont connus. Elle ne s'affiche
+        plus que là où elle a un sens.
+      */}
+      {product.isQuoteOnly && (
+        <ul className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5">
+          <li className="flex items-center gap-3">
+            <Truck className="h-5 w-5 shrink-0 text-brand" aria-hidden="true" />
+            <span className="text-sm text-slate-700">Livraison chiffrée au devis</span>
+          </li>
+        </ul>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Play, X, ZoomIn } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Image as ImageIcon, Play, X, ZoomIn } from 'lucide-react';
 import { ProductImage } from '../common/ProductImage';
 import { ProductVideo, type VideoProvider } from './ProductVideo';
 import type { Product } from '../../api/catalogService';
@@ -15,10 +15,16 @@ type Vue =
  * <p>Le visuel principal ouvre toujours la marche, même absent : sa place vide affiche le
  * pictogramme de repli, et le visiteur comprend qu'il regarde un produit sans photo plutôt
  * qu'un détail sorti de son contexte. La vidéo ferme la marche.</p>
+ *
+ * <p><b>Une image de remplissage vaut une absence d'image.</b> Le serveur pose
+ * {@code visuelFactice} ; la carte de rayon, la liste des produits apparentés et la barre
+ * d'achat le respectaient déjà, mais pas ce composant — et c'est ici que l'image est grande.
+ * Quarante-six fiches de production montraient donc, en plein format, la photo de repli
+ * déposée à l'import : celle d'un autre produit, sur laquelle on décide d'acheter.</p>
  */
 function construireVues(produit: Product): Vue[] {
   const vues: Vue[] = [
-    { genre: 'image', url: produit.imageUrl, legende: null },
+    { genre: 'image', url: produit.visuelFactice ? null : produit.imageUrl, legende: null },
   ];
 
   for (const visuel of produit.gallery ?? []) {
@@ -77,6 +83,24 @@ export function ProductGallery({ product }: { product: Product }) {
       document.body.style.overflow = defilement;
     };
   }, [pleinEcran, aller]);
+
+  /*
+    RIEN À MONTRER N'OCCUPE PAS LA PLACE D'UNE PHOTO.
+
+    Un carré de côté égal à la largeur de la colonne, c'est près de six cents pixels sur
+    ordinateur. Vide, il repousse sous la ligne de flottaison la description et la fiche
+    technique — les seules choses qui restent à lire quand la photo manque. Le repli se dit
+    donc en une ligne, et rend la hauteur au contenu.
+  */
+  if (total === 1 && vues[0].genre === 'image' && !vues[0].url) {
+    return (
+      <div className="flex items-center gap-4 rounded-2xl border border-dashed border-slate-200
+                      bg-slate-50 px-5 py-5">
+        <ImageIcon className="h-8 w-8 shrink-0 text-brand/30" aria-hidden="true" />
+        <p className="text-sm text-slate-500">Visuel en cours de préparation.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
