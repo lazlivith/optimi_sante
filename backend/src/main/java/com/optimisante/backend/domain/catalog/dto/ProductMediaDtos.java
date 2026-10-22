@@ -53,6 +53,8 @@ public final class ProductMediaDtos {
         private UUID productId;
         /** Vignette du catalogue : une seule image, celle qui represente le produit. */
         private String imageUrl;
+        /** Posé par le serveur : ce visuel est-il un remplissage ? Voir VisuelProduit. */
+        private boolean visuelFactice;
         private String videoUrl;
         private String videoProvider;
         /** Vrai si la video doit etre jouee sur les cartes de promotion. */

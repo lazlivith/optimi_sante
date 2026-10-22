@@ -6,7 +6,6 @@ import { ArrowRight, ChevronLeft, ChevronRight, SlidersHorizontal, X } from 'luc
 import { catalogService } from '../api/catalogService';
 import type { Category } from '../api/catalogService';
 import { ProductCard } from '../components/catalog/ProductCard';
-import { visuelAFaire } from '../api/productMediaService';
 import {
   lireFiltres, ecrireFiltres, etiquettes, auMoinsUnFiltre, FILTRES_VIDES, TRIS,
   type FiltresRayon, type TriRayon,
@@ -152,7 +151,7 @@ export function CategoryPage() {
    * c'est un autre chantier.</p>
    */
   const listeProduits = [...(produits?.content ?? [])].sort(
-    (a, b) => Number(visuelAFaire(a.imageUrl)) - Number(visuelAFaire(b.imageUrl)),
+    (a, b) => Number(a.visuelFactice ?? false) - Number(b.visuelFactice ?? false),
   );
   const total = produits?.totalElements ?? rayon.productCount ?? 0;
   const nombreFiltres = etiquettes(filtres).length;
@@ -160,7 +159,9 @@ export function CategoryPage() {
 
   const autresRayons = (categories ?? [])
     // Connu vide, et non « compteur absent » : voir CategoriesSection.
-    .filter((c) => c.id !== rayon.id && c.productCount !== 0 && !visuelAFaire(c.imageUrl))
+    // Le serveur ne retient qu'une VRAIE photo pour illustrer un rayon : une adresse
+    // présente suffit donc ici, sans réinterpréter laquelle.
+    .filter((c) => c.id !== rayon.id && c.productCount !== 0 && Boolean(c.imageUrl))
     .sort((a, b) => (b.productCount ?? 0) - (a.productCount ?? 0))
     .slice(0, RAYONS_SUGGERES);
 

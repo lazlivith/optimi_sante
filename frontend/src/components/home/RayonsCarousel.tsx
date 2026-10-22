@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { catalogService } from '../../api/catalogService';
 import type { Category } from '../../api/catalogService';
 import { ProductCard } from '../catalog/ProductCard';
-import { visuelAFaire } from '../../api/productMediaService';
 
 /** Onglets proposés. Neuf tiennent sur deux lignes sans que la rangée devienne un mur. */
 const ONGLETS = 9;
@@ -39,7 +38,7 @@ export function RayonsCarousel({ categories }: { categories: Category[] }) {
   const piste = useRef<HTMLDivElement>(null);
 
   const rayons = categories
-    .filter((c) => c.productCount !== 0 && !visuelAFaire(c.imageUrl))
+    .filter((c) => c.productCount !== 0 && Boolean(c.imageUrl))
     .sort((a, b) => (b.productCount ?? 0) - (a.productCount ?? 0))
     .slice(0, ONGLETS);
 

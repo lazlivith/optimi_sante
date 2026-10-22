@@ -317,6 +317,7 @@ public class ProductMediaService {
         return ProductMediaView.builder()
                 .productId(p.getId())
                 .imageUrl(p.getImageUrl())
+                .visuelFactice(com.optimisante.backend.domain.catalog.entity.VisuelProduit.estFactice(p.getImageUrl()))
                 .videoUrl(p.getVideoUrl())
                 .videoProvider(p.getVideoProvider())
                 .videoPromoted(Boolean.TRUE.equals(p.getIsVideoPromoted()))

@@ -3,7 +3,6 @@ import { Loader2, Plus, Pencil, Trash2, Package, X, RotateCcw, Tag, Search, Slid
 import { adminCatalogService, type AdminProductDto, type AdminProductRequestDto, type AdminCategoryDto, type CatalogFilters, type TrainingLookupDto } from '../../api/adminCatalogService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { ProductMediaDialog } from '../../components/catalog/ProductMediaDialog';
-import { visuelAFaire } from '../../api/productMediaService';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -385,11 +384,11 @@ export function AdminCatalogPage() {
                       <button
                         onClick={() => setMediasDe(p)}
                         className={`inline-flex items-center justify-center p-2 rounded-lg transition ${
-                          visuelAFaire(p.imageUrl)
+                          (p.visuelFactice ?? false)
                             ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
-                        title={visuelAFaire(p.imageUrl)
+                        title={(p.visuelFactice ?? false)
                           ? 'Visuel à faire — déposer la vraie photo'
                           : 'Médias : visuel, galerie, vidéo'}
                       >

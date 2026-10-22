@@ -31,6 +31,14 @@ export interface Product {
   /** Quantité à partir de laquelle la boutique propose un devis plutôt qu'un achat direct. */
   quoteThreshold?: number;
   imageUrl?: string;
+  /**
+   * Posé par le SERVEUR : ce visuel est-il un remplissage ?
+   *
+   * La règle vivait ici, en TypeScript, et en trois exemplaires dans les requêtes SQL.
+   * Aucune ne reconnaissait les images de repli déposées aux imports. Le serveur tranche
+   * désormais, et l'écran n'interprète plus d'adresse.
+   */
+  visuelFactice?: boolean;
   category?: Category;
   isOnPromo?: boolean;
   promoEndsAt?: string;

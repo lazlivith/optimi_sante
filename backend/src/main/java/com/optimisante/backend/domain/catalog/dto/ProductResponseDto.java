@@ -16,6 +16,17 @@ public record ProductResponseDto(
         Integer stockQuantity,
         Boolean isQuoteOnly,
         String imageUrl,
+
+        /**
+         * Ce visuel est-il un remplissage plutôt qu'une photo du produit ?
+         *
+         * <p>Le serveur tranche, l'écran n'interprète plus l'adresse. La règle vivait en
+         * quatre exemplaires — trois requêtes SQL et une fonction TypeScript — et aucune ne
+         * reconnaissait les images de repli déposées aux imports. Un indicateur unique
+         * garantit que la carte, la fiche, les produits apparentés et le panier montrent la
+         * même chose : jamais la photo d'une personne ni celle d'un autre produit.</p>
+         */
+        Boolean visuelFactice,
         CategorySummaryDto category,
         Boolean isOnPromo,
         OffsetDateTime promoEndsAt,
