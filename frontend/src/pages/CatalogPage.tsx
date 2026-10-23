@@ -267,11 +267,11 @@ export function CatalogPage() {
                         <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] font-bold text-brand-accent border border-brand-orange/30 bg-orange-50 rounded-md tracking-wider shadow-sm">
                           SUR DEVIS
                         </span>
-                      ) : product.stockQuantity < 5 ? (
-                        <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] font-bold text-red-600 border border-red-200 bg-red-50 rounded-md tracking-wider shadow-sm">
-                          STOCK BAS
-                        </span>
                       ) : null}
+                      {/* « STOCK BAS » a disparu : il se lisait sur stockQuantity, qui vaut 50
+                          par défaut d'import sur 1 468 fiches sur 1 497. Aucun inventaire ne
+                          suit ce chiffre, et une rareté annoncée sans rien derrière presse
+                          l'acheteur sur une donnée inventée. */}
                     </div>
                   </Link>
 

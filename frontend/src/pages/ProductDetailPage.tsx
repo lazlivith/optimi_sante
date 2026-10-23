@@ -7,7 +7,6 @@ import { useCart } from '../context/CartContext';
 import {
   ArrowRight, GraduationCap, Loader2, Minus, Plus, Truck, X,
 } from 'lucide-react';
-import { CountdownTimer } from '../components/common/CountdownTimer';
 import { Toast, type ToastType } from '../components/common/Toast';
 import { ProductGallery } from '../components/catalog/ProductGallery';
 import { ProductImage } from '../components/common/ProductImage';
@@ -376,13 +375,6 @@ function PanneauAchat({ product, quantity, setQuantity, agir, ancre, grosVolume,
 
       <Disponibilite product={product} />
 
-      {!product.isQuoteOnly && product.stockQuantity > 0 && product.stockQuantity < 5 && (
-        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-danger/20 bg-danger/5 p-3">
-          <span className="text-sm font-medium text-danger">Réservation temporaire :</span>
-          <CountdownTimer initialMinutes={15} />
-        </div>
-      )}
-
       <div ref={ancre} className="mt-5 flex gap-3">
         {!product.isQuoteOnly && (
           <div className="flex h-12 items-center overflow-hidden rounded-xl border border-slate-200">
@@ -485,20 +477,27 @@ function FicheIntrouvable() {
   );
 }
 
-/** L'état du stock, dit en toutes lettres plutôt que par une couleur seule. */
+/**
+ * Ce qu'on peut honnêtement dire de la disponibilite : presque rien.
+ *
+ * <p><b>« En stock » était faux sur 1 468 fiches sur 1 497.</b> Elles portent toutes la
+ * meme valeur, 50, posée par défaut a l'import : aucun inventaire ne les suit, aucun
+ * mouvement ne les met à jour. Le chiffre ne dit donc rien de ce qui est en entrepôt, et
+ * l'annoncer en vert à un acheteur professionnel est une promesse que rien ne tient.</p>
+ *
+ * <p><b>Seul le refus reste, parce que le serveur l'applique.</b> Une réservation de stock
+ * échoue au paiement si la quantité disponible est insuffisante — c'est une règle réelle, pas
+ * une lecture du même chiffre. Laisser le bouton inerte sans l'expliquer serait pire que de
+ * le dire.</p>
+ */
 function Disponibilite({ product }: { product: Product }) {
-  if (product.isQuoteOnly) return null;
-
-  const [fond, texte, libelle] = product.stockQuantity < 1
-    ? ['bg-danger/10', 'text-danger', 'Rupture de stock']
-    : product.stockQuantity < 5
-      ? ['bg-warning/10', 'text-warning', `Plus que ${product.stockQuantity} en stock`]
-      : ['bg-success/10', 'text-success', 'En stock'];
+  if (product.isQuoteOnly || product.stockQuantity >= 1) return null;
 
   return (
-    <p className={`mt-4 flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold ${fond} ${texte}`}>
+    <p className="mt-4 flex items-center gap-2 rounded-xl bg-danger/10 px-4 py-2.5
+                  text-sm font-bold text-danger">
       <span aria-hidden="true" className="h-2 w-2 rounded-full bg-current" />
-      {libelle}
+      Indisponible à la commande
     </p>
   );
 }
