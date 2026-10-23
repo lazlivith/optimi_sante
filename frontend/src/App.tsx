@@ -18,6 +18,7 @@ import {
 // Purement une question de performance de chargement — aucune logique métier n'est modifiée.
 const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
 const CatalogPage = lazy(() => import('./pages/CatalogPage').then(m => ({ default: m.CatalogPage })));
+import { PageIntrouvable } from './pages/PageIntrouvable';
 const CategoryPage = lazy(() => import('./pages/CategoryPage').then(m => ({ default: m.CategoryPage })));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then(m => ({ default: m.ProductDetailPage })));
 const CartPage = lazy(() => import('./pages/CartPage').then(m => ({ default: m.CartPage })));
@@ -253,6 +254,10 @@ export function App() {
                     <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
                     <Route path="/mes-donnees" element={<MyPersonalDataPage />} />
                   </Route>
+
+                  {/* Dernière route, et la seule qui accepte tout : sans elle, une adresse
+                      inconnue affichait l'en-tête, le pied de page et rien entre les deux. */}
+                  <Route path="*" element={<PageIntrouvable />} />
                 </Routes>
               </Layout>
             }
