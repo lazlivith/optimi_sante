@@ -20,8 +20,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -124,9 +126,13 @@ public class CatalogService {
             throw new IllegalStateException("Tenant context is required");
         }
 
+        // 404, et non le 400 du filet generique : une fiche qui n'existe pas n'est pas une
+        // requete malformee. L'ecran a besoin de la difference pour afficher sa page « ce
+        // produit n'existe pas ou plus » plutot qu'une erreur indistincte.
         Product product = productRepository.findByTenantIdAndSlug(tenantId, slug)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-                
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Aucun produit a cette adresse."));
+
         BigDecimal b2bDiscountRate = getB2BDiscountRate();
         // Une seule requete supplementaire, pour un seul produit : c'est la fiche detaillee
         // qui affiche le carrousel, jamais la liste.

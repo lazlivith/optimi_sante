@@ -75,7 +75,7 @@ export function ProductDetailPage() {
   const setQuantity = (n: number) => setSaisieQuantite({ slug, n });
 
   if (isLoading) return <div className="py-20 text-center">Chargement...</div>;
-  if (error || !product) return <div className="py-20 text-center text-red-500">Produit introuvable.</div>;
+  if (error || !product) return <FicheIntrouvable />;
 
   const handleAddToCart = () => {
     addToCart(product, quantity);
@@ -453,6 +453,34 @@ function PanneauAchat({ product, quantity, setQuantity, agir, ancre, grosVolume,
           </li>
         </ul>
       )}
+    </div>
+  );
+}
+
+/**
+ * Ce produit n'existe pas, ou plus.
+ *
+ * <p>La page disait « Produit introuvable » en rouge, sur fond vide. Mais surtout, on n'y
+ * arrivait jamais : l'intercepteur renvoyait d'abord vers la connexion. Une adresse inconnue
+ * mène ici, et nulle part ailleurs — une page publique ne demande pas de s'identifier pour
+ * apprendre qu'elle n'a rien à montrer.</p>
+ */
+function FicheIntrouvable() {
+  return (
+    <div className="min-h-[60vh] bg-slate-50">
+      <div className="container mx-auto max-w-xl px-6 py-24 text-center">
+        <h1 className="text-2xl font-bold text-brand-dark">Ce produit n'existe pas ou plus</h1>
+        <p className="mt-3 leading-relaxed text-slate-600">
+          L'adresse est peut-être incomplète, ou l'article a quitté le catalogue.
+        </p>
+        <Link
+          to="/catalog"
+          className="mt-8 inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3 font-bold
+                     text-white transition-colors hover:bg-brand-fonce"
+        >
+          Retour au catalogue <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </div>
     </div>
   );
 }

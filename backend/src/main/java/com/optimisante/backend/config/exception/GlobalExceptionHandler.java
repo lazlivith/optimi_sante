@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Arrays;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.exc.InvalidFormatException;
 
 /**
@@ -149,6 +150,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("message", ex.getMessage() != null ? ex.getMessage() : "Action impossible dans l'état actuel."));
+    }
+
+    /**
+     * Une exception qui porte déjà son code : on le respecte.
+     *
+     * <p><b>Sans ce handler, elle n'en portait aucun.</b> {@code ResponseStatusException} est
+     * une {@code RuntimeException} : elle tombait dans le filet générique ci-dessous et
+     * ressortait en 400, quel que soit le code demandé. Un 404 écrit dans le code devenait
+     * donc un 400 sur le réseau — indistinguable d'une requête malformée pour l'écran, qui ne
+     * pouvait pas afficher « ce produit n'existe pas » plutôt qu'une erreur générique.</p>
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(Map.of("message", ex.getReason() != null ? ex.getReason() : "Requête refusée."));
     }
 
     /**
