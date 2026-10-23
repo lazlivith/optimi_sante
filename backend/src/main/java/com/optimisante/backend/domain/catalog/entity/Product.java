@@ -145,6 +145,18 @@ public class Product {
     @PrePersist
     protected void onCreate() {
         this.createdAt = OffsetDateTime.now();
+        SlugValide.exiger("le produit « " + name + " »", slug);
+    }
+
+    /**
+     * Le slug est verifie aussi a la MODIFICATION, et pas seulement a la creation.
+     *
+     * <p>Une fiche entre une fois et se modifie cent fois : un import qui reecrit le slug
+     * d'un produit existant echapperait a un controle pose a la seule creation.</p>
+     */
+    @PreUpdate
+    protected void onUpdate() {
+        SlugValide.exiger("le produit « " + name + " »", slug);
     }
 
     /**

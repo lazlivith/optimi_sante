@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { reessayer } from './api/reessais';
 import { App } from './App';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -31,7 +32,11 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 }
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  // Voir `reessais.ts` : un 404 n'est pas une panne, et une fiche introuvable ne doit plus
+  // faire lire « Chargement… » pendant dix secondes.
+  defaultOptions: { queries: { retry: reessayer } },
+});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

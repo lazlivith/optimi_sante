@@ -64,4 +64,16 @@ public class Category {
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Category> subcategories = new ArrayList<>();
+
+    /**
+     * Meme garde-fou que pour un produit, et pour la meme raison.
+     *
+     * <p>Une categorie au slug invalide rend son rayon entier injoignable — neuf fiches dans
+     * le cas rencontre le 23 octobre — alors qu'une seule ligne est en cause.</p>
+     */
+    @PrePersist
+    @PreUpdate
+    protected void verifierSlug() {
+        SlugValide.exiger("la categorie « " + name + " »", slug);
+    }
 }
