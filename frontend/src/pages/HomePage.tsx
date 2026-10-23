@@ -398,9 +398,9 @@ function ProductCardHome({ product }: { product: Product }) {
           <span className="absolute top-3 left-3 bg-blue-500 text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase">Devis</span>
         ) : product.b2bDiscountRate > 0 ? (
           <span className="absolute top-3 left-3 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase">{product.b2bDiscountRate}% off</span>
-        ) : product.stockQuantity < 5 && product.stockQuantity > 0 ? (
-          <span className="absolute top-3 left-3 bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase">Bon Plan</span>
         ) : null}
+        {/* « Bon Plan » a disparu : il ne signalait aucune remise, seulement un stock
+            inférieur à 5 — lu sur un chiffre posé par défaut à l'import. */}
       </div>
 
       {/* Wishlist */}
