@@ -37,6 +37,9 @@ import java.util.concurrent.Executors;
 @RequiredArgsConstructor
 public class AiResource {
 
+    /** Séparateur que la spécification SSE place entre {@code data:} et la donnée. */
+    private static final String SEPARATEUR_SSE = " ";
+
     /** Un flux SSE monopolise un thread : pool borné et nommé pour rester diagnosticable. */
     private static final ExecutorService STREAM_POOL = Executors.newFixedThreadPool(8, r -> {
         Thread t = new Thread(r, "ai-chat-stream");
@@ -158,7 +161,15 @@ public class AiResource {
                             // seule ligne) ; l'historique conserve, lui, le texte lisible.
                             collected.append(data.replace("\\n", "\n"));
                         }
-                        emitter.send(SseEmitter.event().name(event).data(data));
+                        // L'espace ajoute ici est le separateur SSE, pas du contenu. Spring
+                        // ecrit la ligne « data: » SANS separateur : un fragment commencant
+                        // lui-meme par une espace (« ␣effectuer ») produisait alors la ligne
+                        // « data:␣effectuer », que tout client conforme — le navigateur comme
+                        // notre lecteur — lit comme « effectuer », separateur consomme. Les
+                        // mots arrivaient colles. En posant le separateur explicitement, la
+                        // ligne porte deux espaces, le client en retire un, et le fragment
+                        // garde le sien.
+                        emitter.send(SseEmitter.event().name(event).data(SEPARATEUR_SSE + data));
                     } catch (IOException e) {
                         throw new IllegalStateException("Client déconnecté", e);
                     }

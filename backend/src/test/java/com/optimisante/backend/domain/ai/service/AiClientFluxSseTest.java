@@ -60,6 +60,19 @@ class AiClientFluxSseTest {
     }
 
     @Test
+    @DisplayName("un fragment survit a l'aller-retour relais puis reemission")
+    void surviveALAllerRetour() throws IOException {
+        // Le contrat entre ce relais et AiResource : Spring ecrit « data: » SANS separateur, donc
+        // AiResource en pose un explicitement. Sans lui, « ␣effectuer » repartait en
+        // « data:␣effectuer » et le client le relisait « effectuer » — les mots se collaient.
+        String fragment = " effectuer un achat";
+
+        String reemis = "event: delta\ndata: " + fragment + "\n\n";
+
+        assertThat(relayer(reemis)).isEqualTo(fragment);
+    }
+
+    @Test
     @DisplayName("les evenements autres que delta sont bien distingues")
     void distingueLesEvenements() throws IOException {
         List<String> evenements = new ArrayList<>();
