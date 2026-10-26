@@ -140,6 +140,15 @@ export interface ChatStreamHandlers {
  *
  * Renvoie une fonction d'annulation (à appeler au démontage du composant).
  */
+/**
+ * Défait l'échappement appliqué par le service IA (une trame SSE ne peut pas contenir de vrai
+ * saut de ligne). On balaie la chaîne une seule fois : un `replace('\\n')` naïf transformerait
+ * aussi le « \n » d'un antislash déjà échappé.
+ */
+function unescapeSse(data: string): string {
+  return data.replace(/\\(.)/g, (_, c: string) => (c === 'n' ? '\n' : c));
+}
+
 export function streamChat(
   question: string,
   conversationId: string | null | undefined,
@@ -196,7 +205,7 @@ export function streamChat(
           }
           const data = dataLines.join('\n');
 
-          if (event === 'delta') handlers.onDelta(data);
+          if (event === 'delta') handlers.onDelta(unescapeSse(data));
           else if (event === 'conversation') {
             try {
               handlers.onConversation?.(JSON.parse(data).conversationId);

@@ -219,5 +219,9 @@ def chat_stream(
 
 def _sse(event: str, data: str) -> str:
     # Une seule ligne `data:` : on échappe les sauts de ligne pour ne pas casser la trame.
-    payload = data.replace("\r", "").replace("\n", "\\n")
+    # L'antislash est échappé en premier, sinon un « \n » déjà présent dans le texte du modèle
+    # deviendrait un vrai saut de ligne côté navigateur au moment du déséchappement.
+    # Le contenu n'est jamais rogné : un fragment vaut souvent « ␣mot », et perdre cet espace
+    # colle les mots dans la bulle de chat.
+    payload = data.replace("\\", "\\\\").replace("\r", "").replace("\n", "\\n")
     return f"event: {event}\ndata: {payload}\n\n"

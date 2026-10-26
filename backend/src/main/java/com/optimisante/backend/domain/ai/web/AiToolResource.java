@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -61,25 +62,91 @@ public class AiToolResource {
     }
 
     /**
-     * Requêtes construites par concaténation : un bloc de texte Java ne peut pas être rouvert en
-     * milieu de ligne pour y insérer une expression, il faut donc assembler les fragments.
+     * Mots de liaison retirés de la recherche. L'assistant transmet parfois la phrase entière de
+     * l'utilisateur : chercher « quelles formations proposez-vous » comme une seule chaîne ne
+     * remontait rien, et l'assistant annonçait un catalogue vide alors qu'il est rempli.
      */
-    private static final String PRODUCT_SEARCH_SQL =
-            "SELECT name, slug, base_price, promo_price, stock_quantity, description "
-                    + "FROM products "
-                    + "WHERE deleted_at IS NULL AND is_active = true "
-                    + "  AND (" + unaccentSql("name") + " LIKE ? "
-                    + "       OR " + unaccentSql("COALESCE(description, '')") + " LIKE ?) "
-                    + "ORDER BY name LIMIT ?";
+    private static final Set<String> MOTS_VIDES = Set.of(
+            "les", "des", "une", "aux", "pour", "avec", "dans", "sur", "vous", "nous", "votre",
+            "vos", "mon", "mes", "que", "qui", "quoi", "quel", "quels", "quelle", "quelles",
+            "est", "sont", "avez", "propose", "proposez", "proposes", "cherche", "recherche",
+            "voudrais", "souhaite", "existe", "avoir", "faire", "svp", "plus", "tout", "tous",
+            "toutes", "combien", "comment", "pourquoi", "lequel", "chez", "par", "pas");
 
-    private static final String TRAINING_SEARCH_SQL =
-            "SELECT id, title, medical_specialty, price, duration_days, description "
-                    + "FROM trainings "
-                    + "WHERE is_published = true "
-                    + "  AND (" + unaccentSql("title") + " LIKE ? "
-                    + "       OR " + unaccentSql("COALESCE(description, '')") + " LIKE ? "
-                    + "       OR " + unaccentSql("COALESCE(medical_specialty, '')") + " LIKE ?) "
-                    + "ORDER BY title LIMIT ?";
+    /**
+     * Requêtes construites par concaténation : un bloc de texte Java ne peut pas être rouvert en
+     * milieu de ligne pour y insérer une expression, il faut donc assembler les fragments. Le
+     * groupe de conditions dépend du nombre de mots-clés : il est assemblé à l'exécution.
+     */
+    private static String productSearchSql(int tokens) {
+        return "SELECT name, slug, base_price, promo_price, stock_quantity, description "
+                + "FROM products "
+                + "WHERE deleted_at IS NULL AND is_active = true "
+                + "  AND (" + orLike(tokens, unaccentSql("name"),
+                        unaccentSql("COALESCE(description, '')")) + ") "
+                + "ORDER BY name LIMIT ?";
+    }
+
+    private static String trainingSearchSql(int tokens) {
+        return "SELECT id, title, medical_specialty, price, duration_days, description "
+                + "FROM trainings "
+                + "WHERE is_published = true "
+                + "  AND (" + orLike(tokens, unaccentSql("title"),
+                        unaccentSql("COALESCE(description, '')"),
+                        unaccentSql("COALESCE(medical_specialty, '')")) + ") "
+                + "ORDER BY title LIMIT ?";
+    }
+
+    /** Un {@code LIKE ?} par colonne et par mot-clé, le tout en OR. Aucune valeur n'est concaténée. */
+    private static String orLike(int tokens, String... columns) {
+        StringBuilder sql = new StringBuilder();
+        for (int i = 0; i < tokens; i++) {
+            for (String column : columns) {
+                if (sql.length() > 0) {
+                    sql.append(" OR ");
+                }
+                sql.append(column).append(" LIKE ?");
+            }
+        }
+        return sql.toString();
+    }
+
+    /**
+     * Découpe la demande en mots-clés cherchables : accents retirés, mots de liaison et mots de
+     * moins de trois lettres écartés, pluriel simple coupé pour que « formations » retrouve
+     * « formation ». Une demande qui ne laisse aucun mot-clé retombe sur la chaîne entière.
+     */
+    private static List<String> motsCles(String query) {
+        List<String> mots = new ArrayList<>();
+        for (String brut : unaccent(query).split("[^a-z0-9]+")) {
+            if (brut.length() < 3 || MOTS_VIDES.contains(brut)) {
+                continue;
+            }
+            String mot = brut.length() > 4 && brut.endsWith("s") ? brut.substring(0, brut.length() - 1) : brut;
+            if (!mots.contains(mot)) {
+                mots.add(mot);
+            }
+            if (mots.size() == 5) {
+                break;
+            }
+        }
+        if (mots.isEmpty()) {
+            mots.add(unaccent(query).trim());
+        }
+        return mots;
+    }
+
+    /** Les paramètres de la requête : chaque mot-clé une fois par colonne, puis la limite. */
+    private static Object[] parametres(List<String> mots, int columns) {
+        List<Object> args = new ArrayList<>();
+        for (String mot : mots) {
+            for (int c = 0; c < columns; c++) {
+                args.add("%" + mot + "%");
+            }
+        }
+        args.add(MAX_ROWS);
+        return args.toArray();
+    }
 
     private final JdbcTemplate jdbc;
     private final OrderService orderService;
@@ -90,12 +157,12 @@ public class AiToolResource {
     @GetMapping("/catalog/search")
     @Transactional(readOnly = true)
     public List<Map<String, Object>> searchCatalog(@RequestParam(name = "q", defaultValue = "") String query) {
-        String term = "%" + unaccent(query.trim()) + "%";
+        List<String> mots = motsCles(query);
         List<Map<String, Object>> results = new ArrayList<>();
 
         try {
             results.addAll(jdbc.query(
-                    PRODUCT_SEARCH_SQL,
+                    productSearchSql(mots.size()),
                     (rs, i) -> {
                         Map<String, Object> row = new LinkedHashMap<>();
                         row.put("kind", "produit");
@@ -107,14 +174,14 @@ public class AiToolResource {
                         row.put("description", truncate(rs.getString("description")));
                         return row;
                     },
-                    term, term, MAX_ROWS));
+                    parametres(mots, 2)));
         } catch (Exception e) {
             log.warn("AI tool catalog search (products) failed: {}", e.getMessage());
         }
 
         try {
             results.addAll(jdbc.query(
-                    TRAINING_SEARCH_SQL,
+                    trainingSearchSql(mots.size()),
                     (rs, i) -> {
                         Map<String, Object> row = new LinkedHashMap<>();
                         row.put("kind", "formation");
@@ -126,7 +193,7 @@ public class AiToolResource {
                         row.put("description", truncate(rs.getString("description")));
                         return row;
                     },
-                    term, term, term, MAX_ROWS));
+                    parametres(mots, 3)));
         } catch (Exception e) {
             log.warn("AI tool catalog search (trainings) failed: {}", e.getMessage());
         }

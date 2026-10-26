@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { Bot, Send, Sparkles, X } from 'lucide-react';
 import { streamChat, type ChatMessage } from '../../api/aiService';
 import { useAuth } from '../../context/AuthContext';
@@ -206,14 +207,93 @@ function Bubble({ role, content }: ChatMessage) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap break-words ${
+        className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm break-words ${
           isUser
-            ? 'bg-brand text-white rounded-br-sm'
-            : 'bg-white border border-slate-200 text-slate-700 rounded-bl-sm'
+            ? 'bg-brand text-white rounded-br-sm whitespace-pre-wrap'
+            : 'bg-white border border-slate-200 text-slate-700 rounded-bl-sm space-y-1.5'
         }`}
       >
-        {content}
+        {isUser ? content : <AssistantText text={content} />}
       </div>
     </div>
   );
+}
+
+/**
+ * Rendu du sous-ensemble de Markdown que le modèle a le droit d'employer : gras, puces,
+ * listes numérotées et chemins internes. Sans ce rendu, la bulle affichait littéralement
+ * « 1. **Connexion** : ». On n'injecte jamais de HTML : chaque fragment devient un nœud React.
+ */
+export function AssistantText({ text }: { text: string }) {
+  const blocks: ReactNode[] = [];
+  const lines = text.split('\n');
+  let items: string[] = [];
+  let ordered = false;
+
+  const flush = () => {
+    if (items.length === 0) return;
+    const List = ordered ? 'ol' : 'ul';
+    blocks.push(
+      <List
+        key={`l${blocks.length}`}
+        className={`pl-4 space-y-1 ${ordered ? 'list-decimal' : 'list-disc'}`}
+      >
+        {items.map((item, i) => (
+          <li key={i}>{renderInline(item)}</li>
+        ))}
+      </List>,
+    );
+    items = [];
+  };
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    const bullet = /^[-*•]\s+(.*)$/.exec(line);
+    const numbered = /^\d+[.)]\s+(.*)$/.exec(line);
+
+    if (bullet || numbered) {
+      const isOrdered = Boolean(numbered);
+      if (items.length > 0 && isOrdered !== ordered) flush();
+      ordered = isOrdered;
+      items.push((bullet?.[1] ?? numbered?.[1] ?? '').trim());
+      continue;
+    }
+
+    flush();
+    if (line) blocks.push(<p key={`p${blocks.length}`}>{renderInline(line)}</p>);
+  }
+  flush();
+
+  return <>{blocks}</>;
+}
+
+/** `**gras**`, `[texte](/chemin)` et chemins internes nus (`/catalog`). */
+const INLINE = /\*\*([^*]+)\*\*|\[([^\]]+)\]\((\/[^)\s]*)\)|(?<![\w/])(\/[a-z0-9][a-z0-9\-/]*)/gi;
+
+function renderInline(text: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let last = 0;
+
+  for (const m of text.matchAll(INLINE)) {
+    const start = m.index ?? 0;
+    if (start > last) nodes.push(text.slice(last, start));
+
+    if (m[1] !== undefined) {
+      nodes.push(<strong key={start}>{m[1]}</strong>);
+    } else {
+      // Un chemin nu termine souvent une phrase : la ponctuation finale reste du texte.
+      const target = (m[3] ?? m[4]).replace(/[.,;:]+$/, '');
+      const label = m[2] ?? target;
+      nodes.push(
+        <Link key={start} to={target} className="text-brand underline underline-offset-2">
+          {label}
+        </Link>,
+      );
+      if (m[2] === undefined) nodes.push(m[4].slice(target.length));
+    }
+    last = start + m[0].length;
+  }
+
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
 }

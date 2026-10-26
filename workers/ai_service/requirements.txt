@@ -7,7 +7,13 @@ python-multipart>=0.0.20
 
 # Couche de portabilité : un seul appel `completion(model=...)` pour Gemini, Mistral, Groq,
 # Ollama... Changer de fournisseur = changer une variable d'environnement.
-litellm>=1.55,<2
+#
+# L'extra `mcp` n'est pas optionnel pour nous : dès qu'on passe des `tools` à `completion()`
+# — ce que fait l'assistant conversationnel à chaque question — LiteLLM importe son module
+# MCP, et l'installation nue échoue sur « No module named 'mcp' ». On passe par l'extra
+# plutôt que d'ajouter `mcp` à la main : la borne de version vient ainsi de LiteLLM, qui
+# seul sait quelle version de `mcp.types` il appelle.
+litellm[mcp]>=1.55,<2
 
 pydantic>=2.9,<3
 pydantic-settings>=2.7,<3
