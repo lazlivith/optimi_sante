@@ -28,16 +28,20 @@ TOOL_SPECS: list[dict[str, Any]] = [
         "function": {
             "name": "search_catalog",
             "description": (
-                "Recherche des produits et des formations dans le catalogue Optimi Santé. "
-                "À utiliser dès que l'utilisateur demande un produit, une formation, un prix "
-                "ou une disponibilité."
+                "Recherche un produit ou une formation précis dans le catalogue Optimi Santé, "
+                "par mot-clé. À utiliser quand l'utilisateur nomme un article, un domaine ou "
+                "demande un prix. Pour une demande générale du type « quelles formations "
+                "proposez-vous », utiliser list_trainings à la place."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Mots-clés de recherche (ex. « cardiologie », « tensiomètre »).",
+                        "description": (
+                            "Un ou deux mots-clés seulement, jamais la phrase de l'utilisateur "
+                            "(ex. « cardiologie », « tensiomètre », « échographie »)."
+                        ),
                     }
                 },
                 "required": ["query"],
@@ -49,8 +53,10 @@ TOOL_SPECS: list[dict[str, Any]] = [
         "function": {
             "name": "list_trainings",
             "description": (
-                "Liste les formations médicales proposées et leurs sessions ouvertes "
-                "(dates, places restantes, établissement d'accueil)."
+                "Liste TOUTES les formations médicales proposées et leurs sessions ouvertes "
+                "(dates, places restantes, établissement d'accueil). À appeler pour toute "
+                "question générale sur les formations, l'offre de formation, les dates ou les "
+                "places disponibles, et avant d'affirmer qu'une formation n'existe pas."
             ),
             "parameters": {"type": "object", "properties": {}},
         },

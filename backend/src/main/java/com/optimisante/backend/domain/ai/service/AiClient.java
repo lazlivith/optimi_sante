@@ -13,6 +13,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -150,20 +151,38 @@ public class AiClient {
                     .exchange((request, response) -> {
                         try (BufferedReader reader = new BufferedReader(
                                 new InputStreamReader(response.getBody(), StandardCharsets.UTF_8))) {
-                            String event = "delta";
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                if (line.startsWith("event:")) {
-                                    event = line.substring(6).trim();
-                                } else if (line.startsWith("data:")) {
-                                    onEvent.accept(event, line.substring(5).trim().replace("\\n", "\n"));
-                                }
-                            }
+                            relayerFlux(reader, onEvent);
                         }
                         return null;
                     });
         } catch (Exception e) {
             throw unavailable(e);
+        }
+    }
+
+    /**
+     * Lit les trames SSE du service IA et les transmet une a une.
+     *
+     * <p>Point sensible : la donnee n'est jamais rognee. Un {@code trim()} mangeait l'espace de
+     * tete de chaque fragment (« Pour », « ␣effectuer », « ␣un ») et collait les mots dans la
+     * bulle du chat. La specification SSE ne retire qu'UN espace apres le deux-points : on s'en
+     * tient a cela. L'echappement des sauts de ligne est laisse intact, car le fragment est
+     * reemis tel quel vers le navigateur, qui le defait lui-meme ; le defaire ici produirait une
+     * trame multi-lignes dont le navigateur perdrait tout sauf la premiere ligne.</p>
+     */
+    static void relayerFlux(BufferedReader reader, BiConsumer<String, String> onEvent) throws IOException {
+        String event = "delta";
+        String line;
+        while ((line = reader.readLine()) != null) {
+            if (line.startsWith("event:")) {
+                event = line.substring(6).trim();
+            } else if (line.startsWith("data:")) {
+                String data = line.substring(5);
+                if (data.startsWith(" ")) {
+                    data = data.substring(1);
+                }
+                onEvent.accept(event, data);
+            }
         }
     }
 

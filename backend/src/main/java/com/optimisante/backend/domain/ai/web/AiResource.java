@@ -154,7 +154,9 @@ public class AiResource {
                 aiClient.streamChat(body, auth, (event, data) -> {
                     try {
                         if ("delta".equals(event)) {
-                            collected.append(data);
+                            // En transit les sauts de ligne restent echappes (trame SSE sur une
+                            // seule ligne) ; l'historique conserve, lui, le texte lisible.
+                            collected.append(data.replace("\\n", "\n"));
                         }
                         emitter.send(SseEmitter.event().name(event).data(data));
                     } catch (IOException e) {
