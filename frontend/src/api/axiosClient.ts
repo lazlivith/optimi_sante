@@ -55,6 +55,22 @@ export function deconnecteSur(url: string | undefined, jeton: string | null): bo
   return !ROUTES_PUBLIQUES.some(prefixe => adresse.includes(prefixe));
 }
 
+/**
+ * La lecture du profil au démarrage mérite-t-elle d'être traitée à part ?
+ *
+ * <p>Oui : c'est la seule requête que personne n'a demandée. Elle part au chargement de chaque
+ * page pour restaurer la session, y compris sur l'accueil ou une fiche produit. Un 401 y
+ * signifie « la session a expiré », ce qui est vrai — mais renvoyer de force vers la connexion
+ * un visiteur venu lire une page publique est une sanction sans rapport avec ce qu'il faisait.
+ * Le contexte d'authentification efface déjà le jeton dans ce cas : il reste sur sa page,
+ * simplement déconnecté. Modifier son profil ou son mot de passe, en revanche, est une action
+ * délibérée : là, le renvoi vers la connexion est la bonne réponse.</p>
+ */
+export function estLectureDuProfil(config: { url?: string; method?: string } | undefined): boolean {
+  return (config?.method ?? '').toLowerCase() === 'get'
+    && (config?.url ?? '').includes('/auth/profile');
+}
+
 // Response interceptor for automatic logout on 401/403
 axiosClient.interceptors.response.use(
   (response) => response,
@@ -69,7 +85,9 @@ axiosClient.interceptors.response.use(
     // 403 signifie « connecté, mais pas autorisé à cette action ». Le traiter comme une session
     // expirée déconnectait l'utilisateur pour une simple action interdite — un client qui ouvrait
     // par erreur une page réservée aux médecins perdait sa session en plus du message d'erreur.
-    if (error.response?.status === 401 && deconnecteSur(originalRequest?.url, localStorage.getItem('token'))) {
+    if (error.response?.status === 401
+        && !estLectureDuProfil(originalRequest)
+        && deconnecteSur(originalRequest?.url, localStorage.getItem('token'))) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

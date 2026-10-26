@@ -60,6 +60,18 @@ public class SecurityConfig {
                         // /file/** est ouvert — surtout pas /api/v1/documents/**, qui exposerait
                         // le contrôleur authentifié voisin.
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/file/*").permitAll()
+                        // Le compte de l'utilisateur courant n'a rien de public, et il vit sous
+                        // le meme prefixe que la connexion et l'inscription, qui le sont. Laisse
+                        // ouvert, il laissait passer la requete anonyme jusqu'au service, qui
+                        // levait alors un RuntimeException traduit en 400 — statut auquel le
+                        // navigateur ne sait pas reagir : il y lisait une panne passagere,
+                        // rejouait six fois en trente secondes puis CONSERVAIT le jeton mort.
+                        // Un 401 dit la verite, et la session perimee est nettoyee du premier
+                        // coup. Ces regles precedent le permitAll : la premiere qui correspond
+                        // l'emporte.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/profile").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/auth/profile").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/auth/change-password").authenticated()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/catalog/**").permitAll()
                         // Le cout de la livraison doit etre connu AVANT de valider : c'est ce

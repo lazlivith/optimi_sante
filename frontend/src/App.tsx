@@ -48,6 +48,7 @@ const AdminHomeRedirect = lazy(() => import('./pages/admin/AdminHomeRedirect').t
 const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage').then(m => ({ default: m.AdminUsersPage })));
 const AdminEnrollmentsListPage = lazy(() => import('./pages/admin/AdminEnrollmentsListPage').then(m => ({ default: m.AdminEnrollmentsListPage })));
 const AdminCatalogPage = lazy(() => import('./pages/admin/AdminCatalogPage').then(m => ({ default: m.AdminCatalogPage })));
+const AdminStockPage = lazy(() => import('./pages/admin/AdminStockPage').then(m => ({ default: m.AdminStockPage })));
 const AdminSuppliersPage = lazy(() => import('./pages/admin/AdminSuppliersPage').then(m => ({ default: m.AdminSuppliersPage })));
 const AdminSupplierDetailPage = lazy(() => import('./pages/admin/AdminSupplierDetailPage').then(m => ({ default: m.AdminSupplierDetailPage })));
 const AdminPartnershipRequestsPage = lazy(() => import('./pages/admin/AdminPartnershipRequestsPage').then(m => ({ default: m.AdminPartnershipRequestsPage })));
@@ -131,6 +132,7 @@ export function App() {
                 <Route path="finance" element={<AdminFinancePage />} />
                 <Route path="orders" element={<AdminOrdersPage />} />
                 <Route path="catalog" element={<AdminCatalogPage />} />
+                <Route path="stock" element={<AdminStockPage />} />
                 <Route path="suppliers" element={<AdminSuppliersPage />} />
                 <Route path="suppliers/:id" element={<AdminSupplierDetailPage />} />
                 <Route path="promo-codes" element={<AdminPromoCodesPage />} />

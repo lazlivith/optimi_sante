@@ -63,9 +63,19 @@ public class Product {
     @Builder.Default
     private Integer stockQuantity = 0;
 
+    /** En deçà de ce seuil, le produit est signalé comme critique en administration. */
     @Column(name = "stock_threshold")
     @Builder.Default
     private Integer stockThreshold = 5;
+
+    /**
+     * Date du dernier comptage physique. {@code null} signifie « jamais inventorié » — l'état
+     * de tout le catalogue importé, dont le stock vaut le défaut du fichier fournisseur et non
+     * un chiffre constaté. Sans cette distinction, un stock inventé et un stock compté
+     * s'affichent à l'identique, et personne ne sait auquel se fier.
+     */
+    @Column(name = "stock_inventorie_le")
+    private OffsetDateTime stockInventorieLe;
 
     @Column(name = "is_quote_only")
     @Builder.Default

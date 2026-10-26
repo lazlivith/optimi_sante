@@ -5,6 +5,7 @@ import com.optimisante.backend.config.tenant.TenantContext;
 import com.optimisante.backend.domain.catalog.entity.Product;
 import com.optimisante.backend.domain.catalog.repository.ProductRepository;
 import com.optimisante.backend.domain.catalog.service.StockReservationService;
+import com.optimisante.backend.domain.catalog.service.StockService;
 import com.optimisante.backend.domain.catalog.repository.StockReservationRepository;
 import com.optimisante.backend.domain.catalog.entity.StockReservation;
 import com.optimisante.backend.domain.document.recu.Encaissement;
@@ -57,6 +58,7 @@ public class OrderService {
     private final com.optimisante.backend.domain.orders.shipping.ServiceLivraison serviceLivraison;
     private final com.optimisante.backend.domain.finance.ServiceDevises serviceDevises;
     private final StockReservationService stockReservationService;
+    private final StockService stockService;
     private final StockReservationRepository stockReservationRepository;
     private final StripePaymentService stripePaymentService;
     private final PdfGeneratorService pdfGeneratorService;
@@ -483,17 +485,20 @@ public class OrderService {
         order.setPaymentStatus(PaymentStatus.PAID);
         orderRepository.save(order);
 
-        // Deduct actual stock and remove reservations
+        // Sortie de stock et levée des réservations.
+        //
+        // Le décrément se faisait ici, à la main et sans trace : rien ne permettait ensuite de
+        // dire d'où venait un chiffre devenu faux. Il passe désormais par StockService, qui
+        // pose le même verrou pessimiste, écrit le mouvement au journal et prévient
+        // l'administration au franchissement du seuil critique. Le comportement de la vente
+        // est inchangé ; ce qui change, c'est qu'elle laisse une trace.
         for (OrderItem item : order.getItems()) {
-            Product product = productRepository.findByIdWithPessimisticLock(item.getProduct().getId())
-                    .orElseThrow(() -> new RuntimeException("Product not found"));
-
-            product.setStockQuantity(product.getStockQuantity() - item.getQuantity());
-            productRepository.save(product);
+            UUID productId = item.getProduct().getId();
+            stockService.sortieVente(productId, item.getQuantity(), order.getId());
 
             List<StockReservation> reservations = stockReservationRepository
-                    .findByUserIdAndProductId(order.getUser().getId(), product.getId());
-            
+                    .findByUserIdAndProductId(order.getUser().getId(), productId);
+
             // Just delete the reservations related to this product and user (we assume FIFO or all for this checkout session)
             stockReservationRepository.deleteAll(reservations);
         }

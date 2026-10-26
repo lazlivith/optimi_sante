@@ -60,6 +60,15 @@ public class NotificationAlertJob {
                     + "AND created_at < now() - (? || ' hours')::interval";
             case "ENROLLMENT_STALE" -> "SELECT COUNT(*) FROM enrollments "
                     + "WHERE status = 'UNDER_OPTIMI_REVIEW' AND submitted_at < now() - (? || ' hours')::interval";
+            // Filet de securite derriere l'alerte immediate de StockService : celle-ci ne part
+            // qu'au franchissement du seuil, et manquerait un stock devenu critique autrement
+            // qu'en vendant — un inventaire, un import. La fenetre ne sert pas ici : l'etat
+            // observe est present, pas date. Le parametre reste passe pour que toutes les
+            // sondes gardent la meme signature.
+            case "STOCK_CRITIQUE" -> "SELECT COUNT(*) FROM products "
+                    + "WHERE deleted_at IS NULL AND is_active = true "
+                    + "AND stock_inventorie_le IS NOT NULL "
+                    + "AND stock_quantity <= stock_threshold AND ? >= 0";
             default -> null;
         };
         if (sql == null) {
@@ -77,6 +86,8 @@ public class NotificationAlertJob {
                     count + " commande(s) restent non payées depuis plus de " + windowHours + " h.";
             case "ENROLLMENT_STALE" ->
                     count + " dossier(s) CHU attendent un examen depuis plus de " + windowHours + " h.";
+            case "STOCK_CRITIQUE" ->
+                    count + " produit(s) inventorie(s) sont sous leur seuil de stock critique.";
             default -> count + " élément(s) à vérifier.";
         };
     }
@@ -86,6 +97,7 @@ public class NotificationAlertJob {
             case "REPORT_FAILURE" -> "/admin/reports";
             case "ORDER_UNPAID_STALE" -> "/admin/orders";
             case "ENROLLMENT_STALE" -> "/admin/enrollments";
+            case "STOCK_CRITIQUE" -> "/admin/stock";
             default -> "/admin/alerts";
         };
     }

@@ -1,6 +1,6 @@
 import {
   Truck,
-  LayoutDashboard, TrendingUp, ShoppingBag, Package, Tag, FileText,
+  LayoutDashboard, TrendingUp, ShoppingBag, Package, Boxes, Tag, FileText,
   GraduationCap, BookOpen, Building2, Mail, Banknote, Users,
   BarChart3, FileSpreadsheet, ScrollText, ShieldCheck, BellRing, Bot, Newspaper,
   type LucideIcon, Coins, Receipt, Stamp, Inbox,
@@ -64,6 +64,8 @@ export const ECOMMERCE_UNIVERSE: AdminUniverse = {
     { to: '/admin/finance', label: 'Chiffre d\'affaires', icon: TrendingUp },
     { to: '/admin/orders', label: 'Commandes', icon: ShoppingBag },
     { to: '/admin/catalog', label: 'Catalogue', icon: Package },
+    // Juste apres le catalogue : c'est la meme marchandise, vue par ce qu'il en reste.
+    { to: '/admin/stock', label: 'Stock', icon: Boxes },
     { to: '/admin/suppliers', label: 'Fournisseurs', icon: Truck },
     { to: '/admin/promo-codes', label: 'Codes promo', icon: Tag },
     { to: '/admin/shipping', label: 'Frais de livraison', icon: Truck },
