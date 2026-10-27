@@ -333,7 +333,10 @@ function PanneauAchat({ product, quantity, setQuantity, agir, ancre, grosVolume,
   const remise = product.isOnPromo && product.basePrice > product.finalPrice
     ? Math.round((1 - product.finalPrice / product.basePrice) * 100)
     : 0;
-  const enRupture = !product.isQuoteOnly && product.stockQuantity < 1;
+  // Un bouton inerte est une affirmation : « vous ne pouvez pas commander ceci ». Elle ne
+  // vaut que si le serveur l'applique, donc sur un stock que nous tenons.
+  const enRupture = product.modeStock === 'PROPRE'
+    && !product.isQuoteOnly && product.stockQuantity < 1;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6">
@@ -491,6 +494,10 @@ function FicheIntrouvable() {
  * le dire.</p>
  */
 function Disponibilite({ product }: { product: Product }) {
+  // Seul un stock que NOUS tenons peut dire « indisponible ». Sur un produit non suivi, ou
+  // expédié depuis l'entrepôt d'un fournisseur, un zéro ne veut rien dire : c'est le chiffre
+  // de l'import, ou celui d'un tiers. Le serveur ne refusera d'ailleurs pas la commande.
+  if (product.modeStock !== 'PROPRE') return null;
   if (product.isQuoteOnly || product.stockQuantity >= 1) return null;
 
   return (
@@ -554,7 +561,10 @@ function BarreAchatCollante({ product, agir, ancre }: {
     return () => guetteur.disconnect();
   }, [ancre]);
 
-  const enRupture = !product.isQuoteOnly && product.stockQuantity < 1;
+  // Un bouton inerte est une affirmation : « vous ne pouvez pas commander ceci ». Elle ne
+  // vaut que si le serveur l'applique, donc sur un stock que nous tenons.
+  const enRupture = product.modeStock === 'PROPRE'
+    && !product.isQuoteOnly && product.stockQuantity < 1;
 
   return (
     <div

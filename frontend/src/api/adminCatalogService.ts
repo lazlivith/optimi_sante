@@ -12,6 +12,8 @@ export interface AdminProductDto {
   description: string | null;
   basePrice: number;
   stockQuantity: number;
+  /** Ce qu'on sait du stock : NON_SUIVI, PROPRE ou FOURNISSEUR. */
+  modeStock?: 'NON_SUIVI' | 'PROPRE' | 'FOURNISSEUR';
   stockThreshold: number;
   isQuoteOnly: boolean;
   isActive: boolean;

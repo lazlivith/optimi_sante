@@ -18,6 +18,9 @@ public interface AdminProductRow {
     String getDescription();
     BigDecimal getBasePrice();
     Integer getStockQuantity();
+
+    /** Ce qu'on sait du stock : NON_SUIVI, PROPRE ou FOURNISSEUR. */
+    String getModeStock();
     Integer getStockThreshold();
     Boolean getIsQuoteOnly();
     Boolean getIsActive();

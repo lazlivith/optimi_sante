@@ -27,6 +27,17 @@ public record ProductResponseDto(
          * même chose : jamais la photo d'une personne ni celle d'un autre produit.</p>
          */
         Boolean visuelFactice,
+
+        /**
+         * Ce qu'on sait du stock de ce produit : {@code NON_SUIVI}, {@code PROPRE} ou
+         * {@code FOURNISSEUR}.
+         *
+         * <p>L'ecran ne doit rien promettre de la disponibilite d'un produit dont personne ne
+         * compte le stock. Sans cet indicateur, il ne pouvait pas faire la difference entre un
+         * chiffre tenu a jour et le 50 pose par defaut a l'import, que portaient 1 464 produits
+         * sur 1 497.</p>
+         */
+        String modeStock,
         CategorySummaryDto category,
         Boolean isOnPromo,
         OffsetDateTime promoEndsAt,

@@ -95,6 +95,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
     @Query(value = """
             SELECT p.id, p.sku, p.name, p.slug, p.description, p.base_price AS basePrice,
                    p.stock_quantity AS stockQuantity, p.stock_threshold AS stockThreshold,
+                   p.mode_stock AS modeStock,
                    p.is_quote_only AS isQuoteOnly, p.is_active AS isActive, p.image_url AS imageUrl,
                    p.category_id AS categoryId, p.training_id AS trainingId, p.promo_price AS promoPrice,
                    p.promo_starts_at AS promoStartsAt, p.promo_ends_at AS promoEndsAt,
@@ -154,6 +155,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
     @Query(value = """
             SELECT p.id, p.sku, p.name, p.slug, p.description, p.base_price AS basePrice,
                    p.stock_quantity AS stockQuantity, p.stock_threshold AS stockThreshold,
+                   p.mode_stock AS modeStock,
                    p.is_quote_only AS isQuoteOnly, p.is_active AS isActive, p.image_url AS imageUrl,
                    p.category_id AS categoryId, p.training_id AS trainingId, p.promo_price AS promoPrice,
                    p.promo_starts_at AS promoStartsAt, p.promo_ends_at AS promoEndsAt,

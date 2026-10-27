@@ -1,6 +1,8 @@
 package com.optimisante.backend.domain.catalog.supplier;
 
 import com.optimisante.backend.domain.catalog.entity.Category;
+import com.optimisante.backend.domain.catalog.entity.ModeStock;
+import com.optimisante.backend.domain.catalog.service.StockService;
 import com.optimisante.backend.domain.catalog.entity.Product;
 import com.optimisante.backend.domain.catalog.entity.ProductGalleryImage;
 import com.optimisante.backend.domain.catalog.repository.CategoryRepository;
@@ -39,6 +41,7 @@ public class EcrivainCatalogue {
     private final TenantRepository tenantRepository;
     private final SupplierRepository supplierRepository;
     private final ProductGalleryImageRepository galerieRepository;
+    private final StockService stockService;
 
     public enum Action {
         CREER, METTRE_A_JOUR, IGNORER
@@ -181,7 +184,7 @@ public class EcrivainCatalogue {
      *                être récupérée pour la ligne
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Resultat ecrire(UUID tenantId, UUID supplierId, List<Decision> lot,
+    public Resultat ecrire(UUID tenantId, UUID supplierId, UUID importId, List<Decision> lot,
                            Map<String, VisuelsProduit> visuels) {
         var tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new IllegalStateException("Tenant introuvable."));
@@ -201,6 +204,19 @@ public class EcrivainCatalogue {
                 motifs.add("Ligne " + ligne.numero() + " (" + ligne.sku() + ") : " + decision.motif());
                 continue;
             }
+            // VALIDEE AVANT D'ETRE ECRITE.
+            //
+            // Une ecriture qui echoue empoisonne la session JPA : les lignes suivantes du lot
+            // echouent a leur tour, quelles qu'elles soient. Juger la ligne d'abord permet
+            // d'ecarter la seule fautive, de dire pourquoi avec son numero, et de continuer.
+            String slug = slugUnique(tenantId, ligne.nom());
+            String refus = ValidationLigneCatalogue.refus(ligne, slug);
+            if (refus != null) {
+                ignores++;
+                motifs.add("Ligne " + ligne.numero() + " (" + ligne.sku() + ") : " + refus);
+                continue;
+            }
+
             Category categorie = categorie(tenantId, ligne.categorie(), ligne, motifs);
             VisuelsProduit apport = visuels.get(ligne.sku());
             String visuel = apport == null || apport.principal() == null ? null : apport.principal().url();
@@ -215,18 +231,29 @@ public class EcrivainCatalogue {
                         .tenant(tenant)
                         .sku(ligne.sku())
                         .name(ligne.nom())
-                        .slug(slugUnique(tenantId, ligne.nom()))
+                        .slug(slug)
                         .description(ligne.description())
                         .basePrice(prix.prixVente())
                         .purchasePrice(ligne.prixAchat())
-                        .stockQuantity(ligne.stock() != null ? ligne.stock() : 0)
+                        // Le stock part a zero et arrive par un MOUVEMENT, jamais par ce
+                        // builder : c'est la seule facon que la somme des mouvements d'un
+                        // produit egale son stock courant, et donc que le journal soit
+                        // verifiable. Voir StockService.majFournisseur.
+                        .stockQuantity(0)
+                        // Un produit importe decrit l'entrepot d'un tiers. Seul un inventaire
+                        // peut le faire passer en PROPRE.
+                        .modeStock(ModeStock.FOURNISSEUR)
                         .category(categorie)
                         .imageUrl(visuel)
                         .supplier(fournisseur)
                         .build();
                 // L'identifiant vient de l'entite RENDUE par save : celle du builder ne le porte
                 // pas encore, et la galerie partait alors sans produit.
-                garnirGalerie(productRepository.save(produit).getId(), apport);
+                UUID produitId = productRepository.save(produit).getId();
+                garnirGalerie(produitId, apport);
+                if (ligne.stock() != null) {
+                    stockService.majFournisseur(produitId, ligne.stock(), importId);
+                }
                 crees++;
             } else {
                 Product produit = productRepository.findById(decision.produitId()).orElse(null);
@@ -245,17 +272,27 @@ public class EcrivainCatalogue {
                 if (ligne.description() != null) {
                     produit.setDescription(ligne.description());
                 }
-                if (ligne.stock() != null) {
-                    produit.setStockQuantity(ligne.stock());
-                }
                 if (categorie != null) {
                     produit.setCategory(categorie);
                 }
                 if (visuel != null) {
                     produit.setImageUrl(visuel);
                 }
+                // Un produit que NOUS comptons garde son mode et son stock : notre inventaire
+                // fait foi, pas la photographie mensuelle de l'entrepot d'un tiers. Les autres
+                // passent en FOURNISSEUR, puisque c'est un fournisseur qui les decrit.
+                boolean comptezNous = produit.getModeStock() != null
+                        && produit.getModeStock().estOpposable();
+                if (!comptezNous) {
+                    produit.setModeStock(ModeStock.FOURNISSEUR);
+                }
                 productRepository.save(produit);
                 garnirGalerie(produit.getId(), apport);
+                // majFournisseur laisse un produit PROPRE intact : le test est chez lui, en un
+                // seul endroit, plutot que reecrit a chaque appelant.
+                if (ligne.stock() != null) {
+                    stockService.majFournisseur(produit.getId(), ligne.stock(), importId);
+                }
                 misAJour++;
             }
             if (visuel != null) {

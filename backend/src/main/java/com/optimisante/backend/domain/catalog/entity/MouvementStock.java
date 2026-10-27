@@ -51,6 +51,16 @@ public class MouvementStock {
     @Column(name = "order_id")
     private UUID orderId;
 
+    /**
+     * De quel import vient ce mouvement, quand il en vient un.
+     *
+     * <p>Un import de catalogue en ecrit des milliers d'un coup : sans cette reference, ils
+     * seraient indiscernables d'un geste humain ou d'une vente, et impossibles a retrouver
+     * ensemble si l'import s'est mal passe.</p>
+     */
+    @Column(name = "import_id")
+    private UUID importId;
+
     /** Qui a agi, quand c'est un humain. Nul pour un mouvement déclenché par le système. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "auteur_id")

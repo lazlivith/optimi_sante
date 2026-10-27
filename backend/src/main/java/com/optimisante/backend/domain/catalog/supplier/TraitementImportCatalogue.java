@@ -65,7 +65,31 @@ public class TraitementImportCatalogue {
 
                 // Réseau d'abord, base ensuite : aucune connexion n'est retenue pendant un téléchargement.
                 Map<String, EcrivainCatalogue.VisuelsProduit> visuels = visuels(lot, remplacer, dossier);
-                EcrivainCatalogue.Resultat resultat = ecrivain.ecrire(tenantId, supplierId, lot, visuels);
+
+                // UN LOT PERDU N'EMPORTE PLUS L'IMPORT.
+                //
+                // Chaque lot a sa propre transaction : ce qui est écrit l'est définitivement.
+                // Mais l'exception remontait jusqu'au `catch` général, et l'import entier
+                // passait en ÉCHEC — sur un fichier de 7 432 lignes, une seule ligne fautive
+                // au milieu perdait son lot de cinquante ET les milliers de lignes suivantes.
+                // La ligne fautive est désormais écartée avant l'écriture ; ce `catch` ne
+                // couvre plus que l'imprévu, et il le signale sans arrêter la marche.
+                EcrivainCatalogue.Resultat resultat;
+                try {
+                    resultat = ecrivain.ecrire(tenantId, supplierId, importId, lot, visuels);
+                } catch (Exception e) {
+                    int premiere = lot.get(0).ligne().numero();
+                    int derniere = lot.get(lot.size() - 1).ligne().numero();
+                    log.error("Import {} : lot des lignes {} à {} perdu ({}). L'import continue.",
+                            importId, premiere, derniere, e.getMessage(), e);
+                    if (motifs.size() < MOTIFS_MAX) {
+                        motifs.add("Lignes " + premiere + " à " + derniere + " : lot perdu ("
+                                + e.getMessage() + "). Les autres lignes ont été importées.");
+                    }
+                    traitees += lot.size();
+                    suivi.majAvancement(importId, traitees, crees, majs, images);
+                    continue;
+                }
 
                 crees += resultat.crees();
                 majs += resultat.misAJour();
