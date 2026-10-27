@@ -146,10 +146,10 @@ function HeroSlider() {
       </div>
 
       {/* Arrow nav */}
-      <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors z-10">
+      <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md hidden sm:flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors z-10">
         <ChevronLeft className="w-5 h-5" />
       </button>
-      <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors z-10">
+      <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md hidden sm:flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors z-10">
         <ChevronRight className="w-5 h-5" />
       </button>
 
