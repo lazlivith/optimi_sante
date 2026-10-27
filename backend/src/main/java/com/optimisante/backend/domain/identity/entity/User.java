@@ -57,6 +57,20 @@ public class User {
     @Column(name = "stripe_customer_id", length = 255)
     private String stripeCustomerId;
 
+    /**
+     * Le mode Stripe qui a créé {@link #stripeCustomerId} : {@code test} ou {@code live}.
+     *
+     * <p>{@code null} signifie « provenance inconnue », donc identifiant non réutilisable : un
+     * {@code cus_…} n'existe que dans l'environnement qui l'a créé, et s'en servir ailleurs
+     * fait échouer le paiement avec {@code No such customer}.</p>
+     */
+    @Column(name = "stripe_customer_mode", length = 10)
+    private String stripeCustomerMode;
+
+    /** Le compte Stripe ({@code acct_…}) qui a créé l'identifiant, s'il a pu être lu. */
+    @Column(name = "stripe_customer_compte", length = 40)
+    private String stripeCustomerCompte;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private ZonedDateTime createdAt;

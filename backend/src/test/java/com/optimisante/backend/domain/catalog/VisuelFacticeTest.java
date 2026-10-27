@@ -33,8 +33,14 @@ class VisuelFacticeTest {
             "https://res.cloudinary.com/x/image/upload/v1787455211/optimisante/products/prod_fallback_902167590.jpg",
             // Une photo reprise d'une banque d'images.
             "https://images.unsplash.com/photo-1576091160550",
+            // Les trois adresses posées par la migration V9. Aucune n'a jamais été déposée sur
+            // Cloudinary : elles répondent 404 depuis l'origine. Elles manquaient à la règle, et
+            // « LOT DE 3 TIRE-TIQUES » passait donc pour illustré avec un cadre vide.
+            "https://res.cloudinary.com/vyvufvnw/image/upload/v1724000000/catalog/default-medical-equipment.jpg",
+            "https://res.cloudinary.com/vyvufvnw/image/upload/v1724000000/catalog/stetho.jpg",
+            "https://res.cloudinary.com/vyvufvnw/image/upload/v1724000000/catalog/microscope.jpg",
     })
-    @DisplayName("les trois cas de visuel de remplissage sont reconnus")
+    @DisplayName("tous les cas de visuel de remplissage sont reconnus")
     void lesTroisCas(String adresse) {
         assertThat(VisuelProduit.estFactice(adresse)).isTrue();
     }
@@ -79,10 +85,14 @@ class VisuelFacticeTest {
     @DisplayName("les motifs SQL et la règle Java disent la même chose")
     void memeRegleDesDeuxCotes() {
         // Les requêtes reçoivent MOTIFS en paramètre plutôt que de les réécrire : si l'un
-        // des trois disparaissait de la liste, les deux côtés cesseraient de le reconnaître
-        // ENSEMBLE — ce qui vaut mieux qu'une divergence silencieuse.
+        // disparaissait de la liste, les deux côtés cesseraient de le reconnaître ENSEMBLE —
+        // ce qui vaut mieux qu'une divergence silencieuse.
+        //
+        // Cette liste est écrite à la main exprès : ajouter un motif oblige à passer ici, donc
+        // à décider sciemment qu'un visuel de plus cesse de compter comme une vraie photo.
         assertThat(VisuelProduit.MOTIFS)
-                .containsExactlyInAnyOrder("%medical-placeholder%", "%prod_fallback_%", "%unsplash%");
+                .containsExactlyInAnyOrder("%medical-placeholder%", "%prod_fallback_%", "%unsplash%",
+                        "%default-medical-equipment%", "%stetho.jpg%", "%microscope.jpg%");
         for (String motif : VisuelProduit.MOTIFS) {
             assertThat(VisuelProduit.estFactice("https://x/" + motif.replace("%", "") + ".jpg"))
                     .as("le motif %s doit être reconnu par la règle Java", motif)

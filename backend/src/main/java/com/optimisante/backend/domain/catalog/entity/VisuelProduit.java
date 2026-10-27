@@ -28,6 +28,13 @@ public final class VisuelProduit {
             "%medical-placeholder%",
             "%prod_fallback_%",
             "%unsplash%",
+            // Les trois adresses écrites par la migration V9. Aucune n'a jamais été déposée sur
+            // Cloudinary : elles répondent 404 depuis l'origine. Elles manquaient ici, et un
+            // produit — « LOT DE 3 TIRE-TIQUES » — passait donc pour illustré alors que sa fiche
+            // montre un cadre vide. C'est le même oubli que `prod_fallback_` avant lui.
+            "%default-medical-equipment%",
+            "%stetho.jpg%",
+            "%microscope.jpg%",
     };
 
     private VisuelProduit() {

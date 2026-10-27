@@ -1,10 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { CheckoutProvider, PaymentElement, useCheckout } from '@stripe/react-stripe-js';
-import { Loader2, CreditCard } from 'lucide-react';
+import { Loader2, CreditCard, AlertTriangle } from 'lucide-react';
+import {
+  CLE_PUBLIQUE_STRIPE,
+  MESSAGE_PAIEMENT_INDISPONIBLE,
+  clePubliqueUtilisable,
+} from '../../api/clePubliqueStripe';
+import { signalerIncident } from '../../api/journalClient';
 
 // À appeler une seule fois hors composant pour ne pas recréer l'objet Stripe à chaque rendu.
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+//
+// Seulement si la clé est exploitable : `loadStripe('')` lève un IntegrationError et laisse un
+// cadre de paiement vide à l'écran — une page qui a l'air de fonctionner et où rien ne se
+// passe. Mieux vaut ne pas appeler Stripe du tout et le dire.
+const stripePromise = clePubliqueUtilisable() ? loadStripe(CLE_PUBLIQUE_STRIPE) : null;
 
 function PayForm({ payLabel }: { payLabel: string }) {
   const checkout = useCheckout();
@@ -47,7 +57,38 @@ function PayForm({ payLabel }: { payLabel: string }) {
  * (devise locale du client) s'applique automatiquement une fois activée côté Dashboard Stripe,
  * sans configuration supplémentaire côté client dans cette version du SDK.
  */
+/**
+ * Ce que voit le visiteur quand la clé publique manque.
+ *
+ * <p>Un encart explicite, et non un cadre vide : le visiteur sait que la panne est de notre
+ * côté, qu'il peut revenir, et qu'il peut nous joindre. L'incident part en même temps dans nos
+ * journaux — sans cela, personne chez nous ne saurait que le paiement est tombé.</p>
+ */
+function PaiementIndisponible() {
+  useEffect(() => {
+    signalerIncident(
+      'paiement-carte',
+      'VITE_STRIPE_PUBLISHABLE_KEY absente ou invalide dans le paquet servi : ' +
+        'le formulaire de paiement ne peut pas être affiché.',
+    );
+  }, []);
+
+  return (
+    <div
+      role="alert"
+      className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4"
+    >
+      <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" aria-hidden="true" />
+      <p className="text-sm text-amber-900">{MESSAGE_PAIEMENT_INDISPONIBLE}</p>
+    </div>
+  );
+}
+
 export function StripeEmbeddedCheckout({ clientSecret, payLabel = 'Payer' }: { clientSecret: string; payLabel?: string }) {
+  if (!stripePromise) {
+    return <PaiementIndisponible />;
+  }
+
   return (
     <CheckoutProvider
       stripe={stripePromise}

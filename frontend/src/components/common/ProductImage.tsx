@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { Image as ImageIcon } from 'lucide-react';
 
-// Un import de données historique a rempli certains produits avec cette URL de secours
-// codée en dur, qui n'a jamais été réellement uploadée sur Cloudinary (404 permanent).
-// On la traite comme "pas d'image" au même titre qu'une valeur vide.
+// La migration V9 a rempli certains produits avec quatre URL de secours codées en dur, dont
+// aucune n'a jamais été déposée sur Cloudinary : toutes répondent 404 depuis l'origine. On les
+// traite comme "pas d'image" au même titre qu'une valeur vide, ce qui évite au navigateur une
+// requête vouée à l'échec avant d'afficher le repli.
 const KNOWN_BROKEN_URLS = [
   'https://res.cloudinary.com/vyvufvnw/image/upload/v1724000000/catalog/medical-placeholder.jpg',
+  'https://res.cloudinary.com/vyvufvnw/image/upload/v1724000000/catalog/default-medical-equipment.jpg',
+  'https://res.cloudinary.com/vyvufvnw/image/upload/v1724000000/catalog/stetho.jpg',
+  'https://res.cloudinary.com/vyvufvnw/image/upload/v1724000000/catalog/microscope.jpg',
 ];
 
 interface ProductImageProps {
