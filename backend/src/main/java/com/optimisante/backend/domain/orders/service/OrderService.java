@@ -21,6 +21,7 @@ import com.optimisante.backend.domain.orders.entity.*;
 import com.optimisante.backend.domain.orders.repository.OrderRepository;
 import com.optimisante.backend.domain.document.service.PdfGeneratorService;
 import com.optimisante.backend.domain.promotion.service.PromoCodeService;
+import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,6 +62,8 @@ public class OrderService {
     private final StockService stockService;
     private final StockReservationRepository stockReservationRepository;
     private final StripePaymentService stripePaymentService;
+    private final ServiceClientStripe serviceClientStripe;
+    private final EnvironnementStripe environnementStripe;
     private final PdfGeneratorService pdfGeneratorService;
     private final PromoCodeService promoCodeService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
@@ -224,34 +227,24 @@ public class OrderService {
 
         String clientSecret = null;
         if (paymentMethod == PaymentMethod.STRIPE_CARD) {
-            try {
-                // Customer Stripe réutilisable : permet à l'utilisateur de retrouver ses cartes
-                // enregistrées lors d'un achat précédent (Stripe Elements, cf. doc "Save customer
-                // payment methods"). Créé une seule fois puis persisté sur le compte.
-                String customerId = user.getStripeCustomerId();
-                if (customerId == null) {
-                    customerId = stripePaymentService.createCustomer(user.getEmail());
-                    user.setStripeCustomerId(customerId);
-                    userRepository.save(user);
-                }
+            // ui_mode "elements" : le formulaire de paiement s'affiche intégré dans notre
+            // propre page de checkout (pas de redirection vers checkout.stripe.com). Le
+            // navigateur n'est renvoyé vers returnUrl qu'après confirmation du paiement.
+            String returnUrl = frontendBaseUrl + "/checkout/complete?session_id={CHECKOUT_SESSION_ID}";
 
-                // ui_mode "elements" : le formulaire de paiement s'affiche intégré dans notre
-                // propre page de checkout (pas de redirection vers checkout.stripe.com). Le
-                // navigateur n'est renvoyé vers returnUrl qu'après confirmation du paiement.
-                String returnUrl = frontendBaseUrl + "/checkout/complete?session_id={CHECKOUT_SESSION_ID}";
-
-                Session session = stripePaymentService.createElementsCheckoutSessionForCustomer(
-                        savedOrder.getId(), montantAFacturer, customerId, returnUrl,
-                        "Commande Optimi Santé #" + savedOrder.getOrderNumber(), null
-                );
-                savedOrder.setStripeCheckoutSessionId(session.getId());
-                savedOrder.setStripePaymentIntentId(session.getPaymentIntent());
-                clientSecret = session.getClientSecret();
-                savedOrder = orderRepository.save(savedOrder);
-            } catch (Exception e) {
-                log.error("Failed to create Stripe Checkout Session", e);
-                throw new RuntimeException("Failed to initialize payment process");
-            }
+            // Le client Stripe réutilisable — qui permet de retrouver une carte enregistrée lors
+            // d'un achat précédent — est résolu par ServiceClientStripe, seul endroit qui sache
+            // si l'identifiant en base appartient à l'environnement courant. Plus de try/catch
+            // ici : il traduisait toute panne de Stripe en RuntimeException nue, donc en 400 sur
+            // le réseau — « ta requête est fausse » pour une requête qui ne l'était pas.
+            Session session = serviceClientStripe.ouvrirSession(
+                    user, savedOrder.getId(), montantAFacturer, returnUrl,
+                    "Commande Optimi Santé #" + savedOrder.getOrderNumber(), null
+            );
+            savedOrder.setStripeCheckoutSessionId(session.getId());
+            savedOrder.setStripePaymentIntentId(session.getPaymentIntent());
+            clientSecret = session.getClientSecret();
+            savedOrder = orderRepository.save(savedOrder);
         }
 
         // --- SPRINT 4: Génération PDF (Devis) ---
@@ -337,9 +330,24 @@ public class OrderService {
                         .ifPresent(order -> result.put("orderNumber", order.getOrderNumber()));
             }
             return result;
+        } catch (StripeException e) {
+            // Session créée dans un autre environnement Stripe : elle décrit un paiement qui a
+            // eu lieu, ou pas, et on ne peut pas la recréer — contrairement à un client. La
+            // seule conduite honnête est de dire « invérifiable » : on ne démarque pas la
+            // commande, et le webhook reste la source de vérité. Journalisé sans donnée
+            // personnelle, et sans l'identifiant de session complet.
+            if (ServiceClientStripe.ressourceIntrouvable(e)) {
+                log.warn("Session de paiement inconnue de l'environnement Stripe courant "
+                                + "(mode {}, compte {}) : statut invérifiable, la commande est "
+                                + "laissée en l'état.",
+                        environnementStripe.mode(), environnementStripe.compte());
+                return java.util.Map.of("status", "inconnu", "paymentStatus", "inconnu");
+            }
+            log.error("Lecture de la session de paiement impossible.", e);
+            throw new PaiementIndisponibleException(e);
         } catch (Exception e) {
-            log.error("Failed to retrieve Stripe Checkout Session {}", stripeSessionId, e);
-            throw new RuntimeException("Impossible de récupérer le statut du paiement");
+            log.error("Lecture de la session de paiement impossible.", e);
+            throw new PaiementIndisponibleException(e);
         }
     }
 

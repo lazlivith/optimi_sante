@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "verifier:charte": "node scripts/verifier-charte.mjs",
-    "prebuild": "npm run test && node scripts/verifier-charte.mjs",
+    "prebuild": "node scripts/verifier-env.mjs && npm run test && node scripts/verifier-charte.mjs",
     "postbuild": "node scripts/verifier-charte.mjs --poids",
     "test": "vitest run",
     "test:watch": "vitest"

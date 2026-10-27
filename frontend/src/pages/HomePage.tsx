@@ -19,7 +19,7 @@ const HOMEPAGE_CATALOG_PREVIEW_COUNT = 8;
 // ──────────────────────────────────────────────────
 // Hero Slider
 // ──────────────────────────────────────────────────
-const heroSlides = [
+export const heroSlides = [
   {
     id: 1,
     badge: 'NOUVEAUTÉ 2026',
@@ -28,7 +28,7 @@ const heroSlides = [
     bgFrom: '#C8E6F5',
     bgTo: '#E8F4FD',
     accentColor: '#154D44',
-    imageSrc: 'https://res.cloudinary.com/vyvufvnw/image/upload/v1724000000/catalog/default-medical-equipment.jpg',
+    imageSrc: '',
   },
   {
     id: 2,
@@ -38,7 +38,7 @@ const heroSlides = [
     bgFrom: '#D4EDD6',
     bgTo: '#E8F5E9',
     accentColor: '#154D44',
-    imageSrc: 'https://res.cloudinary.com/vyvufvnw/image/upload/v1724000000/catalog/stetho.jpg',
+    imageSrc: '',
   },
   {
     id: 3,
@@ -48,9 +48,40 @@ const heroSlides = [
     bgFrom: '#F5E6D4',
     bgTo: '#FDF3E8',
     accentColor: '#D98A3C',
-    imageSrc: 'https://res.cloudinary.com/vyvufvnw/image/upload/v1724000000/catalog/microscope.jpg',
+    imageSrc: '',
   },
 ];
+
+/**
+ * Le visuel d'une diapositive, ou rien du tout.
+ *
+ * <p>Les trois adresses d'origine n'ont jamais été déposées sur Cloudinary : elles répondaient
+ * 404, et le bandeau se contentait de masquer la balise `img` — ce qui laissait une colonne
+ * vide de 208 px à droite du texte, sur chacune des trois diapositives. Ici, pas d'adresse
+ * signifie pas de colonne : la grille repasse à une seule colonne et le texte occupe la
+ * largeur.</p>
+ *
+ * <p>Le même repli joue si une photo fournie plus tard venait à échouer : on ne montre jamais
+ * un cadre vide. Pour remettre une photo, il suffit de renseigner `imageSrc` sur la
+ * diapositive.</p>
+ */
+export function HeroVisuel({ src }: { src?: string }) {
+  const [echec, setEchec] = useState(false);
+
+  if (!src || echec) return null;
+
+  return (
+    <div className="flex justify-center items-end h-52">
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className="h-full object-contain drop-shadow-xl transition-all duration-500"
+        onError={() => setEchec(true)}
+      />
+    </div>
+  );
+}
 
 function HeroSlider() {
   const [current, setCurrent] = useState(0);
@@ -77,7 +108,11 @@ function HeroSlider() {
       className="relative overflow-hidden rounded-2xl mx-4 md:mx-8 mt-4"
       style={{ background: `linear-gradient(135deg, ${slide.bgFrom}, ${slide.bgTo})`, minHeight: 280 }}
     >
-      <div className="container mx-auto px-8 py-12 grid lg:grid-cols-2 gap-8 items-center min-h-[280px]">
+      <div
+        className={`container mx-auto px-8 py-12 grid gap-8 items-center min-h-[280px] ${
+          slide.imageSrc ? 'lg:grid-cols-2' : 'grid-cols-1'
+        }`}
+      >
         {/* Text */}
         <div className="space-y-4">
           <span className="inline-block text-[10px] font-bold tracking-widest uppercase px-3 py-1 rounded-full bg-white/60 text-gray-600">
@@ -106,22 +141,15 @@ function HeroSlider() {
           </div>
         </div>
 
-        {/* Image */}
-        <div className="flex justify-center items-end h-52">
-          <img
-            src={slide.imageSrc}
-            alt="produit médical"
-            className="h-full object-contain drop-shadow-xl transition-all duration-500"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-        </div>
+        {/* Visuel : absent tant qu'aucune photo n'est fournie, et retiré s'il échoue. */}
+        <HeroVisuel src={slide.imageSrc} />
       </div>
 
       {/* Arrow nav */}
-      <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors z-10">
+      <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md hidden sm:flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors z-10">
         <ChevronLeft className="w-5 h-5" />
       </button>
-      <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors z-10">
+      <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md hidden sm:flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors z-10">
         <ChevronRight className="w-5 h-5" />
       </button>
 

@@ -1,5 +1,6 @@
 package com.optimisante.backend.config.exception;
 
+import com.optimisante.backend.domain.orders.service.PaiementIndisponibleException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -165,6 +166,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException ex) {
         return ResponseEntity.status(ex.getStatusCode())
                 .body(Map.of("message", ex.getReason() != null ? ex.getReason() : "Requête refusée."));
+    }
+
+    /**
+     * Panne du prestataire de paiement : 502, et non 400.
+     *
+     * <p>Doit précéder le filet générique ci-dessous, qui rendrait un 400 — « ta requête est
+     * fausse » — pour une requête parfaitement valable dont seul Stripe a échoué. Le message
+     * est celui de l'exception, unique et déjà rédigé pour le visiteur : aucune cause technique
+     * ne traverse jusqu'à l'écran.</p>
+     */
+    @ExceptionHandler(PaiementIndisponibleException.class)
+    public ResponseEntity<Map<String, String>> handlePaiementIndisponible(PaiementIndisponibleException ex) {
+        log.error("Paiement indisponible : le prestataire n'a pas pu être employé.", ex);
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(Map.of("message", PaiementIndisponibleException.MESSAGE));
     }
 
     /**
