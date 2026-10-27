@@ -23,6 +23,9 @@ public class AdminProductResponseDto {
     private String imageUrl;
     /** Posé par le serveur : ce visuel est-il un remplissage ? Voir VisuelProduit. */
     private boolean visuelFactice;
+
+    /** Ce qu'on sait du stock : NON_SUIVI, PROPRE ou FOURNISSEUR. Voir ModeStock. */
+    private String modeStock;
     private UUID categoryId;
     private String categoryName;
     private BigDecimal promoPrice;

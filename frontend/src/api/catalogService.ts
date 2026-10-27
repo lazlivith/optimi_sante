@@ -39,6 +39,14 @@ export interface Product {
    * désormais, et l'écran n'interprète plus d'adresse.
    */
   visuelFactice?: boolean;
+  /**
+   * Pose par le SERVEUR : ce qu'on sait du stock de ce produit.
+   *
+   * `NON_SUIVI` personne ne compte, `PROPRE` nous comptons, `FOURNISSEUR` le fournisseur
+   * expedie depuis son entrepot. L'ecran ne promet rien hors `PROPRE` : 1 464 produits sur
+   * 1 497 portent encore le 50 pose par defaut a l'import.
+   */
+  modeStock?: 'NON_SUIVI' | 'PROPRE' | 'FOURNISSEUR';
   category?: Category;
   isOnPromo?: boolean;
   promoEndsAt?: string;

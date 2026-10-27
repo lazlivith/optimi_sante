@@ -27,5 +27,16 @@ public enum MotifMouvementStock {
     CORRECTION,
 
     /** Remise en stock après annulation ou remboursement d'une commande. Delta positif. */
-    ANNULATION
+    ANNULATION,
+
+    /**
+     * Quantité annoncée par un fournisseur lors d'un import de catalogue.
+     *
+     * <p><b>Ce n'est pas notre stock.</b> C'est une photographie de l'entrepôt de quelqu'un
+     * d'autre, datée du jour de l'import, et elle ne refuse aucune commande. Elle est
+     * journalisée tout de même : avant, l'import écrivait {@code stock_quantity} directement,
+     * sans mouvement ni verrou — un inventaire compté le matin disparaissait sans trace à
+     * l'import du soir. {@code importId} porte le job qui l'a écrite.</p>
+     */
+    MISE_A_JOUR_FOURNISSEUR
 }

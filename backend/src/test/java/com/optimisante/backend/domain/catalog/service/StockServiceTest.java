@@ -58,8 +58,16 @@ class StockServiceTest {
         when(produits.save(any())).thenAnswer(i -> i.getArgument(0));
     }
 
+    /**
+     * Un produit dont NOUS tenons le stock.
+     *
+     * <p>Le mode est explicite ici parce qu'il décide de tout : hors {@code PROPRE}, une vente
+     * ne retire rien. Ces tests décrivent le comportement d'un stock tenu — ceux du stock non
+     * tenu vivent dans {@code ModeStockVenteTest}, à travers la commande.</p>
+     */
     private Product produitAvec(int stock, int seuil) {
-        Product p = Product.builder().name("Tensiomètre").stockQuantity(stock).stockThreshold(seuil).build();
+        Product p = Product.builder().name("Tensiomètre").stockQuantity(stock).stockThreshold(seuil)
+                .modeStock(com.optimisante.backend.domain.catalog.entity.ModeStock.PROPRE).build();
         p.setId(PRODUIT);
         when(produits.findByIdWithPessimisticLock(PRODUIT)).thenReturn(Optional.of(p));
         when(produits.findById(PRODUIT)).thenReturn(Optional.of(p));

@@ -53,6 +53,18 @@ public class StockService {
     @Transactional
     public int appliquer(UUID productId, int delta, MotifMouvementStock motif,
                          UUID orderId, UUID auteurId, String commentaire) {
+        return appliquer(productId, delta, motif, orderId, null, auteurId, commentaire);
+    }
+
+    /**
+     * Même chose, en rattachant le mouvement à l'import qui l'a provoqué.
+     *
+     * @param importId le job d'import, pour retrouver d'un coup les milliers de mouvements
+     *                 qu'une seule exécution écrit
+     */
+    @Transactional
+    public int appliquer(UUID productId, int delta, MotifMouvementStock motif,
+                         UUID orderId, UUID importId, UUID auteurId, String commentaire) {
         if (delta == 0) {
             return lireStock(productId);
         }
@@ -86,6 +98,7 @@ public class StockService {
                 .stockApres(apres)
                 .motif(motif)
                 .orderId(orderId)
+                .importId(importId)
                 .auteur(auteurId == null ? null : userRepository.findById(auteurId).orElse(null))
                 .commentaire(commentaire)
                 .build());
@@ -115,10 +128,48 @@ public class StockService {
         return appliquer(productId, ecart, MotifMouvementStock.INVENTAIRE, null, auteurId, commentaire);
     }
 
-    /** Sortie liée à une commande payée. Appelé par {@code OrderService}. */
+    /**
+     * Sortie liée à une commande payée. Appelé par {@code OrderService}.
+     *
+     * <p><b>Seul un stock que nous tenons se décrémente.</b> Retirer une unité d'un chiffre
+     * que personne ne compte ne décrit rien : cela érode un nombre inventé jusqu'à le rendre
+     * bloquant. Onze produits étaient déjà passés de 50 à 49 par ce chemin, et au
+     * cinquantième exemplaire vendu la référence serait devenue invendable sans que rien ne
+     * manque en entrepôt.</p>
+     */
     @Transactional
     public int sortieVente(UUID productId, int quantite, UUID orderId) {
+        if (!estOpposable(productId)) {
+            return lireStock(productId);
+        }
         return appliquer(productId, -Math.abs(quantite), MotifMouvementStock.VENTE, orderId, null, null);
+    }
+
+    /**
+     * Quantité annoncée par un fournisseur lors d'un import de catalogue.
+     *
+     * <p><b>Elle ne remplace jamais un stock que nous comptons.</b> Un produit PROPRE est
+     * laissé intact : c'est notre inventaire qui fait foi, pas la photographie mensuelle de
+     * l'entrepôt d'un tiers. Avant ce passage obligé, l'import écrivait
+     * {@code stock_quantity} directement — un comptage du matin disparaissait sans trace à
+     * l'import du soir, sans mouvement et sans verrou.</p>
+     *
+     * @return le stock après coup, ou le stock inchangé si le produit est PROPRE
+     */
+    @Transactional
+    public int majFournisseur(UUID productId, int quantiteAnnoncee, UUID importId) {
+        if (quantiteAnnoncee < 0) {
+            throw new IllegalArgumentException("Une quantité fournisseur ne peut pas être négative.");
+        }
+        if (estOpposable(productId)) {
+            return lireStock(productId);
+        }
+        int ecart = quantiteAnnoncee - lireStock(productId);
+        if (ecart == 0) {
+            return quantiteAnnoncee;
+        }
+        return appliquer(productId, ecart, MotifMouvementStock.MISE_A_JOUR_FOURNISSEUR,
+                null, importId, null, null);
     }
 
     /** Retour en stock après annulation ou remboursement. */
@@ -152,6 +203,19 @@ public class StockService {
                 .build());
 
         return stock;
+    }
+
+    /**
+     * Ce stock est-il tenu par nous, et donc opposable à un client ?
+     *
+     * <p>Lecture sans verrou : le mode d'un produit ne change qu'à la main, depuis
+     * l'administration, jamais au fil des ventes. Le verrouiller ici ferait attendre chaque
+     * paiement pour une valeur qui ne bouge pas.</p>
+     */
+    private boolean estOpposable(UUID productId) {
+        return productRepository.findById(productId)
+                .map(p -> p.getModeStock() != null && p.getModeStock().estOpposable())
+                .orElseThrow(() -> new IllegalArgumentException("Produit introuvable : " + productId));
     }
 
     private int lireStock(UUID productId) {

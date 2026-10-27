@@ -240,6 +240,7 @@ public class CatalogService {
                 product.getImageUrl(),
                 com.optimisante.backend.domain.catalog.entity.VisuelProduit
                         .estFactice(product.getImageUrl()),
+                product.getModeStock() == null ? null : product.getModeStock().name(),
                 categoryDto,
                 product.isPromoActive(),
                 product.isPromoActive() ? product.getPromoEndsAt() : null,

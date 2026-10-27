@@ -77,6 +77,17 @@ public class Product {
     @Column(name = "stock_inventorie_le")
     private OffsetDateTime stockInventorieLe;
 
+    /**
+     * Ce qu'on sait du stock de ce produit. Voir {@link ModeStock}.
+     *
+     * <p>Defaut {@code NON_SUIVI} : c'est l'etat reel du catalogue, ou 1 464 produits sur
+     * 1 497 portent le 50 pose par l'import sans qu'aucun n'ait jamais ete compte.</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mode_stock", nullable = false, length = 20)
+    @Builder.Default
+    private ModeStock modeStock = ModeStock.NON_SUIVI;
+
     @Column(name = "is_quote_only")
     @Builder.Default
     private Boolean isQuoteOnly = false;
