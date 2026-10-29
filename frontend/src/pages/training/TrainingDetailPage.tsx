@@ -5,7 +5,6 @@ import { CarteAdresse } from '../../components/carte/CarteAdresse';
 import { trainingService, type LeadCaptureRequestDto, type TrainingSummaryDto } from '../../api/trainingService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
-import { useApercuDocument } from '../../context/ApercuDocumentContext';
 import { ProductImage } from '../../components/common/ProductImage';
 import { usePageMeta } from '../../hooks/usePageMeta';
 
@@ -57,7 +56,6 @@ export function TrainingDetailPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-  const { ouvrir: ouvrirApercu } = useApercuDocument();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,20 +63,16 @@ export function TrainingDetailPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await trainingService.captureLead(id, form);
-      if (response.brochureDownloadUrl) {
-        // Aperçu intégré plutôt qu'un onglet : on reste sur la fiche de la formation. Le
-        // message ne se prononce qu'APRÈS l'issue réelle — il annonçait « téléchargée avec
-        // succès » avant même que l'onglet ne s'ouvre, y compris quand il était bloqué.
-        const lien = response.brochureDownloadUrl;
-        const issue = await ouvrirApercu(
-          `Brochure — ${training?.title ?? 'formation'}`, async () => lien);
-        setToast(issue === 'echec'
-          ? { message: "La brochure n'a pas pu être ouverte. Notre équipe vous la transmettra.", type: 'error' }
-          : { message: 'Demande enregistrée : la brochure est affichée.', type: 'success' });
-      }
+      // Aucun lien dans la réponse : rien à ouvrir, et le message le dit au futur. La
+      // brochure d'origine du partenaire ne sort plus — elle portait les coordonnées du CHU.
+      await trainingService.captureLead(id, form);
+      setToast({
+        message: 'Votre demande est enregistrée. Un conseiller Optimi Santé vous envoie la '
+          + "brochure et les modalités d'inscription.",
+        type: 'success',
+      });
     } catch (err: any) {
-      setToast({ message: err.response?.data?.message || 'Erreur lors du téléchargement de la brochure.', type: 'error' });
+      setToast({ message: err.response?.data?.message || "Erreur lors de l'envoi de votre demande.", type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

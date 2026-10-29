@@ -9,8 +9,15 @@ export interface LeadCaptureRequestDto {
   specialty: string;
 }
 
+/**
+ * La réponse ne porte plus aucun lien, et c'est tout son objet.
+ *
+ * Elle portait `brochureDownloadUrl` : un lien vers la brochure **d'origine du partenaire**,
+ * rendu à quiconque laissait une adresse sur le formulaire public. Les coordonnées du CHU
+ * partaient avec. Rien ici ne doit redevenir une URL, un jeton ou une clé de fichier.
+ */
 export interface LeadCaptureResponseDto {
-  brochureDownloadUrl: string;
+  demandeEnregistree: boolean;
 }
 
 export interface TrainingSummaryDto {
@@ -21,7 +28,8 @@ export interface TrainingSummaryDto {
   durationDays: number;
   isLongStay: boolean;
   location: string | null;
-  brochureUrl: string | null;
+  /* Aucun champ de brochure : le serveur ne sert plus le fichier d'origine du partenaire sur
+     cette route publique. Le bouton « Brochure » garde son message d'indisponibilité. */
   imageUrl: string | null;
   videoUrl: string | null;
   price: number;

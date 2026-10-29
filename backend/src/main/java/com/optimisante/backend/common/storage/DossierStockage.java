@@ -62,7 +62,24 @@ public enum DossierStockage {
 
     /** Nature du fichier, qui décide de la façon dont le stockage le conserve et le sert. */
     public enum TypeRessource {
-        /** PDF et images justificatives : servis par lien signé, jamais publiquement. */
+        /**
+         * PDF et images justificatives, déposés en ressource « raw ».
+         *
+         * <p><b>Ce n'est pas un stockage privé, et il ne faut pas le croire.</b> Cette ligne
+         * promettait « servis par lien signé, jamais publiquement ». C'est faux :
+         * {@code CloudinaryStorageService} dépose avec {@code type: "upload"}, le mode public
+         * de Cloudinary — le mode {@code authenticated} exige un contrôle d'accès que ce
+         * compte n'a pas. Qui connaît la clé atteint le fichier, sans signature et sans
+         * limite de durée.</p>
+         *
+         * <p>Ce que la signature protège, c'est <b>notre</b> adresse : nos liens passent par
+         * {@code /api/v1/documents/file/<jeton>}, à durée limitée, et la clé de stockage n'y
+         * apparaît pas. La confidentialité tient donc à ce que la clé ne sorte jamais — pas à
+         * une protection du stockage.</p>
+         *
+         * <p><b>Conséquence</b> : un document qui ne doit être vu de personne d'autre ne va
+         * pas ici tant que ce compte reste ainsi configuré.</p>
+         */
         DOCUMENT,
         /** Visuel affiché tel quel dans une page. */
         IMAGE,

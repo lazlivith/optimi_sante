@@ -123,12 +123,15 @@ export function TrainingsPage() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-3 mt-auto">
-                {/* L'adresse est déjà dans la fiche : aucun appel réseau ici, mais le
-                    composant apporte l'annonce du format et de l'ouverture en onglet. */}
+                {/* Le bouton reste, et son message d'indisponibilité avec lui. Il servait la
+                    brochure d'ORIGINE du partenaire, coordonnées du CHU comprises, sans
+                    demander de compte. La brochure rééditée par Optimi Santé prendra la
+                    place — d'ici là, le visiteur lit qu'elle n'est pas en ligne, ce qui est
+                    exact. */}
                 <DocumentButton
                   libelle="Brochure"
                   variante="bouton"
-                  obtenirLien={async () => training.brochureUrl ?? null}
+                  obtenirLien={async () => null}
                   messageIndisponible="La brochure de cette formation n'est pas encore en ligne."
                   className="flex-1 justify-center px-4 py-2.5 rounded-xl border border-slate-200 !bg-white !text-brand-dark hover:!bg-slate-50"
                 />

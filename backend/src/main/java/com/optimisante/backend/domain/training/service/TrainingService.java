@@ -73,30 +73,19 @@ public class TrainingService {
                 .build();
         prospectLeadRepository.save(lead);
 
-        // Lien de telechargement de la brochure, s'il y en a une.
+        // AUCUN lien n'est rendu, et c'est le coeur de ce correctif.
         //
-        // Aucun repli vers une adresse ecrite en dur. Le repli precedent renvoyait le prospect
-        // vers `https://optimisante.com/brochures/default-brochure.pdf`, sur l'ancien site :
-        // cette adresse repond 404, et le front ouvrait quand meme un onglet dessus. Le
-        // visiteur laissait ses coordonnees et recevait une page d'erreur.
+        // Ce bloc generait un lien de telechargement de la brochure D'ORIGINE du partenaire,
+        // valable soixante minutes, pour quiconque laissait une adresse sur le formulaire
+        // public. Le fichier porte les coordonnees du CHU : adresse postale, telephones,
+        // courriels et noms de personnes. Un client les recuperait et pouvait contacter
+        // l'etablissement hors de la plateforme — exactement ce que le chantier doit empecher.
         //
-        // Une brochure absente se dit : elle ne s'invente pas. L'adresse reste nulle, et
-        // l'ecran annonce que la documentation sera transmise par l'equipe.
-        String downloadUrl = null;
-        if (training.getBrochureS3Key() != null && !training.getBrochureS3Key().isBlank()) {
-            try {
-                // Generate a presigned URL valid for 60 minutes
-                downloadUrl = documentLinkService.lienDeTelechargement(training.getBrochureS3Key());
-            } catch (Exception e) {
-                log.error("Failed to generate presigned URL for brochure {}: {}",
-                        training.getBrochureS3Key(), e.getMessage());
-                // La demande est enregistree malgre tout : le prospect compte davantage que
-                // le fichier, et l'equipe peut le recontacter.
-            }
-        }
-
+        // La brochure rendue au public sera celle que nous rediterons, aux seules coordonnees
+        // d'Optimi Sante. Tant qu'elle n'existe pas, un conseiller prend le relais, et l'ecran
+        // le dit : rien ne s'invente, rien ne se promet.
         return LeadCaptureResponseDto.builder()
-                .brochureDownloadUrl(downloadUrl)
+                .demandeEnregistree(true)
                 .build();
     }
 
@@ -120,7 +109,11 @@ public class TrainingService {
                             .durationDays(training.getDurationDays())
                             .isLongStay(training.getIsLongStay())
                             .location(location)
-                            .brochureUrl(safeSignedUrl(training.getBrochureS3Key()))
+                            // Pas de brochure ici. Cette liste est servie par
+                            // GET /api/v1/trainings, qui est en permitAll : le lien vers la
+                            // brochure D'ORIGINE du partenaire etait donc public, sans meme
+                            // avoir a laisser une adresse. Le champ a ete retire du dto pour
+                            // qu'il ne puisse pas revenir par inadvertance.
                             .imageUrl(safeMediaUrl(training.getImageS3Key(), "image"))
                             .videoUrl(safeMediaUrl(training.getVideoS3Key(), "video"))
                             .price(training.getPrice())

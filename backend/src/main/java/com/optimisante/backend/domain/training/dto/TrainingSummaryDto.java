@@ -16,7 +16,16 @@ public class TrainingSummaryDto {
     private Integer durationDays;
     private Boolean isLongStay;
     private String location;
-    private String brochureUrl;
+
+    /*
+     * Aucun champ de brochure ici, volontairement.
+     *
+     * Ce dto est celui de GET /api/v1/trainings, qui est en permitAll. Il portait
+     * `brochureUrl`, un lien vers la brochure D'ORIGINE du partenaire : coordonnees du CHU
+     * comprises, et accessible sans compte ni formulaire. Le champ est retire plutot que mis
+     * a null, pour qu'aucun appel a un constructeur ne le remplisse de nouveau sans qu'on y
+     * pense. La brochure reeditee par Optimi Sante aura son propre champ, quand elle existera.
+     */
     private String imageUrl;
     private String videoUrl;
     private BigDecimal price;
