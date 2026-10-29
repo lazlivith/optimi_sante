@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle, Loader2, X } from 'lucide-react';
 import { trainingService, type LeadCaptureRequestDto } from '../../api/trainingService';
-import { useApercuDocument } from '../../context/ApercuDocumentContext';
 
 interface LeadCaptureModalProps {
   isOpen: boolean;
@@ -11,7 +10,6 @@ interface LeadCaptureModalProps {
 }
 
 export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }: LeadCaptureModalProps) {
-  const { ouvrir: ouvrirApercu } = useApercuDocument();
   const [formData, setFormData] = useState<LeadCaptureRequestDto>({
     email: '',
     firstName: '',
@@ -24,10 +22,6 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  // Vrai si une brochure a réellement été ouverte : le message de confirmation en
-  // dépend, et promettre un document qu'on n'a pas envoyé serait mentir.
-  const [brochureOuverte, setBrochureOuverte] = useState(false);
-  // const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -40,16 +34,10 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
     setIsSubmitting(true);
     setError(null);
     try {
-      const response = await trainingService.captureLead(trainingId, formData);
+      // La réponse ne porte plus de lien : aucun aperçu à ouvrir, aucune promesse à tenir
+      // sur un fichier. La demande est enregistrée, un conseiller prend le relais.
+      await trainingService.captureLead(trainingId, formData);
       setSuccess(true);
-      if (response.brochureDownloadUrl) {
-        // La brochure s'affiche dans l'aperçu intégré, par-dessus la page. Un window.open
-        // lancé APRÈS l'attente réseau était de toute façon bloqué comme fenêtre surgissante
-        // par la plupart des navigateurs — et quand il passait, il sortait de la plateforme.
-        const lien = response.brochureDownloadUrl;
-        const issue = await ouvrirApercu(`Brochure — ${trainingTitle}`, async () => lien);
-        setBrochureOuverte(issue === 'affiche' || issue === 'enregistre');
-      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors de la candidature.');
     } finally {
@@ -73,17 +61,12 @@ export function LeadCaptureModal({ isOpen, onClose, trainingId, trainingTitle }:
               <CheckCircle className="w-8 h-8" />
             </div>
             <h3 className="text-2xl font-bold text-brand-dark">Candidature envoyée</h3>
+            {/* Le sort de la brochure est dit au futur : elle n'est pas jointe à cette
+                réponse. Aucun onglet ne s'ouvre, aucun fichier n'est promis comme déjà
+                remis. */}
             <p className="text-slate-600">
-              Votre dossier de candidature a été transmis avec succès. Notre équipe vous
-              contactera prochainement.
-            </p>
-            {/* Le sort de la brochure est dit explicitement. Auparavant, un onglet s'ouvrait
-                systématiquement sur une adresse qui répondait 404 : le prospect laissait ses
-                coordonnées et recevait une page d'erreur. */}
-            <p className="text-sm text-slate-500">
-              {brochureOuverte
-                ? "La documentation s'est ouverte en aperçu. Vous pouvez la télécharger depuis celui-ci."
-                : 'La documentation détaillée vous sera transmise par notre équipe.'}
+              Votre demande est enregistrée. Un conseiller Optimi Santé vous envoie la
+              brochure et les modalités d'inscription.
             </p>
             <button 
               onClick={onClose}

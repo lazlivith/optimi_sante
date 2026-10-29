@@ -1,5 +1,6 @@
 package com.optimisante.backend.domain.training.controller;
 
+import com.optimisante.backend.common.storage.ControleFichier;
 import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.common.storage.StorageService;
 import com.optimisante.backend.domain.training.dto.CreateTrainingRequestDto;
@@ -96,10 +97,18 @@ public class PartnerTrainingResource {
             }
         }
 
+        // Le contrôle manquait : cette route acceptait n'importe quel fichier, de n'importe
+        // quelle taille, sous le nom de brochure. ControleFichier existait déjà, mais n'était
+        // appelé que par StorageController et OfficialDocumentService.
+        ControleFichier.verifierBrochure(file);
+
         String publicId = storageService.uploadFile(file, DossierStockage.FORMATIONS_BROCHURES);
         training.setBrochureS3Key(publicId);
         trainingRepository.save(training);
 
-        return ResponseEntity.ok(Map.of("publicId", publicId, "message", "Brochure rattachée à la formation avec succès"));
+        // La clé de stockage ne sort plus vers le navigateur. Elle n'était pas lue par l'écran
+        // de dépôt, et tant que les documents sont déposés en « upload » chez Cloudinary, une
+        // clé connue est une adresse publique (voir DossierStockage.TypeRessource.DOCUMENT).
+        return ResponseEntity.ok(Map.of("message", "Brochure rattachée à la formation avec succès"));
     }
 }

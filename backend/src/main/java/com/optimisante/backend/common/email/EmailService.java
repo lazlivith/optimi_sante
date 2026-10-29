@@ -372,6 +372,60 @@ public class EmailService {
     }
 
     /**
+     * Alerte interne : un visiteur demande la brochure d'une formation.
+     *
+     * <p><b>Les coordonnées du prospect sont dans ce message, et c'est un écart assumé.</b>
+     * {@link #sendAccompagnementAlerteAdmin} les laisse délibérément dans la fiche — mais une
+     * fiche existe, derrière une authentification. Ici, <b>aucun écran n'affiche
+     * {@code prospect_leads}</b> : les mettre hors du message serait les mettre nulle part, et
+     * la demande resterait sans réponse. Le jour où l'écran existera, ce message se réduira à
+     * un lien, comme l'autre.</p>
+     *
+     * <p>Aucune pièce jointe : ni la brochure d'origine du partenaire, ni autre chose. C'est
+     * tout l'objet du correctif qui a créé cette alerte.</p>
+     *
+     * @param session description de la session si une est connue, {@code null} sinon — un
+     *                libellé vide vaut mieux qu'une date inventée
+     */
+    public void sendDemandeBrochureAlerteAdmin(String toEmail, String formation, String session,
+                                               String nom, String emailProspect, String telephone,
+                                               String pays, String specialite, String quand) {
+        String subject = "Optimi Santé — Demande de brochure : " + (formation == null ? "formation" : formation);
+        String ligneSession = session == null || session.isBlank() ? ""
+                : "<tr><td style=\"color: #5b6b66;\">Session</td><td>" + texte(session) + "</td></tr>";
+        String html = """
+                <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1a2e29;">
+                    <div style="background-color: #154D44; padding: 24px; border-radius: 12px 12px 0 0;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">Optimi Santé</h1>
+                    </div>
+                    <div style="border: 1px solid #E2EBE5; border-top: none; padding: 32px; border-radius: 0 0 12px 12px;">
+                        <p>Un visiteur demande la brochure d'une formation. <strong>Elle ne lui a
+                        pas été envoyée</strong> : c'est à nous de le faire.</p>
+                        <table style="width: 100%%; background-color: #F6F7F5; border-radius: 8px; padding: 4px; margin: 24px 0;" cellpadding="8">
+                            <tr><td style="color: #5b6b66;">Formation</td><td><strong>%s</strong></td></tr>
+                            %s
+                            <tr><td style="color: #5b6b66;">Prospect</td><td><strong>%s</strong></td></tr>
+                            <tr><td style="color: #5b6b66;">Courriel</td><td>%s</td></tr>
+                            <tr><td style="color: #5b6b66;">Téléphone</td><td>%s</td></tr>
+                            <tr><td style="color: #5b6b66;">Pays</td><td>%s</td></tr>
+                            <tr><td style="color: #5b6b66;">Spécialité</td><td>%s</td></tr>
+                            <tr><td style="color: #5b6b66;">Reçue le</td><td>%s</td></tr>
+                        </table>
+                        <p style="font-size: 13px; color: #5b6b66;">Une seule alerte par vingt-quatre
+                        heures pour un même couple visiteur et formation : la demande est toujours
+                        enregistrée, le message n'est pas répété.</p>
+                        <p style="margin-top: 32px; font-size: 12px; color: #8a9490;">Optimi Santé</p>
+                    </div>
+                </div>
+                """.formatted(texte(formation), ligneSession, texte(nom), texte(emailProspect),
+                              texte(telephone), texte(pays), texte(specialite), texte(quand));
+
+        // NOTIFICATION, et non un type dedie : la contrainte CHECK d'email_logs n'autorise que
+        // les types deja migres, et BR-1 s'interdit une migration. Cf. EmailType.
+        send(toEmail, subject, html, EmailType.NOTIFICATION, null, null);
+    }
+
+    /**
      * Délai avant la seconde tentative, quand le relais a refusé pour cadence excessive.
      *
      * <p>Un peu plus d'une seconde : les relais qui limitent le débit raisonnent à la seconde.</p>

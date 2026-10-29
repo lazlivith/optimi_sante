@@ -33,6 +33,40 @@ public final class ControleFichier {
     private ControleFichier() {
     }
 
+    private static final String BROCHURE_ATTENDUE = "Format non accepté : la brochure doit être un PDF.";
+
+    /**
+     * Contrôle d'une brochure de formation : PDF seul, 10 Mo au plus, et l'en-tête vérifié.
+     *
+     * <p><b>Pourquoi une règle à part et plus stricte.</b> Une brochure n'est pas une pièce
+     * justificative : son contenu est extrait, structuré, puis réédité. Une image n'a rien à
+     * extraire — l'accepter ouvrirait un chemin sans issue, où le partenaire dépose un fichier
+     * que personne ne saura traiter. Et ce PDF-là est lu par nos serveurs, pas seulement
+     * conservé : savoir qu'il commence bien par {@code %PDF-} cesse d'être cosmétique.</p>
+     *
+     * @throws IllegalArgumentException avec un message à montrer tel quel à l'utilisateur
+     */
+    public static void verifierBrochure(MultipartFile fichier) {
+        if (fichier == null || fichier.isEmpty()) {
+            throw new IllegalArgumentException("Aucun fichier reçu.");
+        }
+        if (fichier.getSize() > TAILLE_MAX_OCTETS) {
+            throw new IllegalArgumentException("Le fichier dépasse 10 Mo.");
+        }
+        if (!"pdf".equals(extension(fichier.getOriginalFilename()))) {
+            throw new IllegalArgumentException(BROCHURE_ATTENDUE);
+        }
+        String type = typeAnnonce(fichier.getContentType());
+        if (!type.isEmpty() && !"application/pdf".equals(type)) {
+            throw new IllegalArgumentException(
+                    "Ce fichier porte l'extension « .pdf » mais se présente comme « " + type
+                            + " ». " + BROCHURE_ATTENDUE);
+        }
+        // Le seul des quatre contrôles qui porte sur le contenu, et donc le seul qui prouve
+        // quelque chose : les trois précédents jugent ce que le poste a déclaré.
+        SignatureFichier.exigerPdf(fichier);
+    }
+
     /** @throws IllegalArgumentException avec un message à montrer tel quel à l'utilisateur */
     public static void verifierDocument(MultipartFile fichier) {
         if (fichier == null || fichier.isEmpty()) {

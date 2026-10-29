@@ -28,4 +28,14 @@ public enum EmailType {
     ACCOMPAGNEMENT_RECU,
     /** Alerte interne : une demande d'accompagnement vient d'arriver. */
     ACCOMPAGNEMENT_ALERTE_ADMIN
+    // Pas de DEMANDE_BROCHURE_ALERTE_ADMIN ici, et c'est un choix contraint.
+    //
+    // La table email_logs porte une contrainte CHECK qui enumere les types autorises EN BASE
+    // (V24, puis V50, V55, V72). Ajouter une valeur a cet enum sans etendre la contrainte fait
+    // echouer l'insertion du journal — donc, en cascade, l'envoi. Et etendre la contrainte est
+    // une migration, que BR-1 s'interdit.
+    //
+    // L'alerte de brochure part donc sous le type generique NOTIFICATION (voir
+    // EmailService.sendDemandeBrochureAlerteAdmin). BR-2 porte deja une migration : c'est la
+    // qu'un type dedie sera ajoute, si on juge utile de filtrer ces alertes a part.
 }

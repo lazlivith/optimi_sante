@@ -62,7 +62,37 @@ public enum DossierStockage {
 
     /** Nature du fichier, qui décide de la façon dont le stockage le conserve et le sert. */
     public enum TypeRessource {
-        /** PDF et images justificatives : servis par lien signé, jamais publiquement. */
+        /**
+         * PDF et images justificatives, déposés en ressource « raw ».
+         *
+         * <p><b>Ce n'est pas un stockage privé, et il ne faut pas le croire.</b> Cette ligne
+         * promettait « servis par lien signé, jamais publiquement ». C'est faux :
+         * {@code CloudinaryStorageService} dépose avec {@code type: "upload"}, le mode public
+         * de Cloudinary. Qui connaît la clé atteint le fichier, sans signature et sans limite
+         * de durée.</p>
+         *
+         * <p>Ce que la signature protège, c'est <b>notre</b> adresse : nos liens passent par
+         * {@code /api/v1/documents/file/<jeton>}, à durée limitée, et la clé de stockage n'y
+         * apparaît pas. La confidentialité tient donc à ce que la clé ne sorte jamais — pas à
+         * une protection du stockage.</p>
+         *
+         * <p><b>Et {@code type: "authenticated"} n'est pas hors de portée, contrairement à ce
+         * qui est écrit à côté.</b> Le commentaire du dépôt affirme qu'il « nécessite une
+         * fonctionnalité de contrôle d'accès non activée sur ce compte ». La documentation de
+         * Cloudinary dit l'inverse : une ressource {@code authenticated} servie par URL signée
+         * fonctionne sur tous les comptes ; seules les authentifications <i>par jeton</i> et
+         * <i>par cookie</i> réclament l'offre Advanced et un nom de domaine dédié.</p>
+         *
+         * <p>Le refus « deny or ACL failure » réellement constaté a donc une autre cause, la
+         * même qui a fait retirer les extensions : le réglage <b>« PDF and ZIP files
+         * delivery »</b> des paramètres de sécurité, fermé par défaut tant qu'un compte n'est
+         * pas de confiance. Deux erreurs différentes ont été confondues.</p>
+         *
+         * <p><b>Conséquence</b> : tant que ce dossier reste en {@code upload}, un document qui
+         * ne doit être vu de personne d'autre ne va pas ici. Mais passer les documents en
+         * {@code authenticated} est un chantier atteignable — il mérite d'être évalué avant
+         * de construire un stockage parallèle.</p>
+         */
         DOCUMENT,
         /** Visuel affiché tel quel dans une page. */
         IMAGE,
