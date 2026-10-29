@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Tensiomètres mobile — Optimi Santé</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&amp;family=Source+Sans+3:wght@400;500;600;700&amp;family=Yellowtail&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F7FA}
+a{color:#117098}a:hover{color:#0B4F6C}
+</style>
+</helmet>
+<div style="width: 390px; height: 1960px; overflow: hidden; box-sizing: border-box; font-family: 'Source Sans 3', system-ui, sans-serif; color: #13232C; background: #F5F7FA;">
+
+<header style="background: #FFFFFF; padding: 10px 16px 14px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid #E3E8EC;">
+<div style="display: flex; align-items: center; justify-content: space-between;">
+<button type="button" aria-label="Ouvrir le menu" style="width: 44px; height: 44px; border: 0; background: transparent; color: #13232C; display: flex; align-items: center; justify-content: center; padding: 0;"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg></button>
+<a href="#" aria-label="Optimi Santé — accueil" style="text-decoration: none; color: #13232C; font-family: 'Yellowtail', cursive; font-size: 30px; line-height: 0.9;">Optimi Santé</a>
+<a href="#" aria-label="Panier" style="width: 44px; height: 44px; color: #13232C; display: flex; align-items: center; justify-content: center;"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 10.2a1.5 1.5 0 0 0 1.5 1.1h8.6a1.5 1.5 0 0 0 1.5-1.1L21 7H6"></path><circle cx="9.5" cy="19.5" r="1.3"></circle><circle cx="17" cy="19.5" r="1.3"></circle></svg></a>
+</div>
+</header>
+
+<section style="padding: 14px 16px 0; display: flex; flex-direction: column; gap: 10px;">
+<div style="font-size: 13px; color: #5B6B75;"><a href="FamilleMobile.dc.html" style="color: #5B6B75; text-decoration: none;">‹ Auto-surveillance</a></div>
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<h1 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; line-height: 1; font-weight: 700; text-transform: uppercase;">Tensiomètres</h1>
+<span style="font-size: 14px; color: #5B6B75;">[N] produits</span>
+</div>
+</section>
+
+<div role="group" aria-label="Types de tensiomètres" style="display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px 0;">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="5">
+<sc-if value="{{c.on}}" hint-placeholder-val="{{false}}"><button type="button" aria-pressed="true" onClick="{{c.pick}}" style="flex: 0 0 auto; height: 44px; padding: 0 16px; border-radius: 999px; border: 0; background: #13232C; color: #FFFFFF; font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; white-space: nowrap;">{{c.label}}</button></sc-if>
+<sc-if value="{{c.off}}" hint-placeholder-val="{{true}}"><button type="button" aria-pressed="false" onClick="{{c.pick}}" style="flex: 0 0 auto; height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid #C9DAE2; background: #FFFFFF; color: #13232C; font: inherit; font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap;">{{c.label}}</button></sc-if>
+</sc-for>
+</div>
+
+<div style="display: flex; gap: 10px; padding: 14px 16px 0;">
+<a href="FiltresMobile.dc.html" style="flex: 1; height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; background: #117098; color: #FFFFFF; font-weight: 700; font-size: 15px; text-decoration: none;"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>Filtrer (2)</a>
+<label style="flex: 1; display: flex;">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Trier par</span>
+<select style="width: 100%; height: 46px; border: 1px solid #C9DAE2; border-radius: 12px; padding: 0 12px; font: inherit; font-size: 15px; font-weight: 600; background: #FFFFFF; color: #13232C;">
+<option>Tri : Pertinence</option>
+<option>Prix croissant</option>
+<option>Prix décroissant</option>
+<option>Nouveautés</option>
+</select>
+</label>
+</div>
+
+<div style="display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px 0; align-items: center;">
+<button type="button" style="flex: 0 0 auto; display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid #C9DAE2; background: #E8F1F8; color: #0B4F6C; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;">Électroniques <span aria-hidden="true">×</span></button>
+<button type="button" style="flex: 0 0 auto; display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid #C9DAE2; background: #E8F1F8; color: #0B4F6C; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;">Achat en ligne <span aria-hidden="true">×</span></button>
+<a href="#" style="flex: 0 0 auto; font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap;">Tout effacer</a>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 14px 16px 0;">
+<sc-for list="{{products}}" as="p" hint-placeholder-count="8">
+<article style="background: #FFFFFF; border: 1px solid #E3E8EC; border-radius: 16px; padding: 10px; display: flex; flex-direction: column; gap: 8px;">
+<div style="position: relative; height: 150px; background: #F3F5F7; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #8796A0;">
+<svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M21 16l-5-5-8 8"></path></svg>
+<span style="font-size: 11px; color: #5B6B75;">Photo produit</span>
+<sc-if value="{{p.promo}}" hint-placeholder-val="{{false}}"><span style="position: absolute; top: 8px; left: 8px; background: #D92D20; color: #FFFFFF; font-weight: 800; font-size: 11px; padding: 3px 7px; border-radius: 999px;">{{p.promo}}</span></sc-if>
+</div>
+<a href="ProduitMobile.dc.html" style="font-size: 14px; font-weight: 600; color: #13232C; text-decoration: none; line-height: 1.3; min-height: 54px;">{{p.name}}</a>
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 6px; margin-top: auto;">
+<div style="display: flex; flex-direction: column;">
+<sc-if value="{{p.old}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; color: #5B6B75; text-decoration: line-through;">{{p.old}}</span></sc-if>
+<span style="font-family: 'Barlow Semi Condensed', sans-serif; font-size: 19px; font-weight: 700; color: {{p.priceColor}};">{{p.price}}</span>
+</div>
+<sc-if value="{{p.devis}}" hint-placeholder-val="{{false}}"><button type="button" aria-label="Demander un devis" style="flex: 0 0 44px; width: 44px; height: 44px; border-radius: 12px; border: 1px solid #C9DAE2; background: #FFFFFF; color: #117098; display: flex; align-items: center; justify-content: center;"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></button></sc-if>
+<sc-if value="{{p.achat}}" hint-placeholder-val="{{true}}"><button type="button" aria-label="Ajouter au panier" style="flex: 0 0 44px; width: 44px; height: 44px; border-radius: 12px; border: 0; background: #117098; color: #FFFFFF; display: flex; align-items: center; justify-content: center;"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button></sc-if>
+</div>
+</article>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 16px 0;">
+<span style="font-size: 13px; color: #5B6B75;">8 produits affichés sur [N]</span>
+<button type="button" style="width: 100%; height: 48px; border-radius: 999px; border: 1px solid #117098; background: #FFFFFF; color: #117098; font: inherit; font-size: 16px; font-weight: 700;">Afficher plus de produits</button>
+</div>
+
+<div style="margin: 20px 16px 32px; background: #FDEEE3; border: 1px solid #F3C9A8; border-radius: 14px; padding: 14px; font-size: 14px; line-height: 1.5; color: #3A4B55;"><strong style="color: #13232C;">Bon à savoir :</strong> les produits « sur devis » sont chiffrés selon la quantité et le pays de livraison. Faites votre demande, nous vous répondons avec un prix et un délai.</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1960}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { chip: 1 }; }
+  renderVals() {
+    const labels = ['Tous', 'Électroniques', 'Manuels', 'Brassards & accessoires', 'Pieds & supports'];
+    const chips = labels.map((label, i) => ({ label, on: this.state.chip === i, off: this.state.chip !== i, pick: () => this.setState({ chip: i }) }));
+    const p = (name, price, extra) => Object.assign({ name, price, old: false, promo: false, devis: false, achat: true, priceColor: '#13232C' }, extra || {});
+    return {
+      chips,
+      products: [
+        p('Tensiomètre électronique Microlife® WatchBP Vascular ABI', '1 645,18 €', { old: '1 724,18 €', promo: '−5 %', priceColor: '#B4500D' }),
+        p('Brassard pour Omron M3', '64,69 €'),
+        p('Tensiomètre Babyphon®', '149,57 €'),
+        p('Tensiomètre Precisa® N Shock-proof', 'Sur devis', { devis: true, achat: false }),
+        p('Tensiomètre Lian Nano Clinic®', '[PRIX]'),
+        p('Pied à roulettes pour Omron 907', '[PRIX]'),
+        p('Tensiomètre Boso Classic', '[PRIX]'),
+        p('Tensiomètre mécanique Praktikus', '[PRIX]')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

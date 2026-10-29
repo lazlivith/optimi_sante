@@ -1,0 +1,139 @@
+Le principe : intégrer par lots, dans le bon ordre
+
+Une partie de la maquette dépend de l’arbre des catégories en base, qui n’existe pas encore : méga-menu, page Catalogue, page famille, étiquettes et filtres des rayons. L’autre partie n’en dépend pas : barre de recherche, fiche produit. On commence donc par ce qui peut partir tout de suite.
+
+Lot	Contenu	Dépend de	Quand
+M0	Cadrage : existant, écarts avec la maquette, plan	rien	maintenant (analyse seule)
+M1	Barre de recherche + en-tête mobile	rien	après M0
+M2	Nouvelle fiche produit (ordinateur + mobile)	rien	après M1
+Catégories	Arbre en base (chantier déjà lancé)	ta décision dans le fichier d’arbitrage	en parallèle
+M3	Méga-menu, page Catalogue, page famille, rayon	l’arbre en base	après le chantier catégories
+M4	Champ « Marque » + filtre	rien, mais utile avec M3	après M3
+
+Avant d’ouvrir les vrais paiements, restent à faire, quel que soit l’avancement de la maquette : le webhook de remboursement, le lot B du stock, le cycle de vie des commandes et la facturation.
+
+Prompt M0 : cadrage (aucun code)
+text
+Nouveau chantier : intégration de la maquette du catalogue. Les sources sont dans docs/maquette_catalogue/ (fichiers .dc.html, un par écran, et canvas.json qui donne l'ordre). Ce sont des références visuelles et fonctionnelles, pas du code à copier : on les traduit dans nos composants React existants et nos jetons de charte.
+
+Écrans :
+- Main = page Catalogue (ordinateur) ;
+- Famille = page famille (Auto-surveillance) ;
+- Rayon = page rayon (Tensiomètres) ;
+- Produit = fiche produit ;
+- MegaMenu = menu déroulant au survol de « Catalogue » ;
+- *Mobile = versions mobile (CatalogueMobile, FamilleMobile, RayonMobile, FiltresMobile, ProduitMobile).
+
+ANALYSE SEULEMENT (docs/analyse_integration_maquette.md), aucune branche de code.
+
+1. Pour chaque écran, les éléments, et pour chacun : ce qui existe déjà et se réutilise (NAVIGATION_PRINCIPALE, MenuMobile, méga-menu actuel, CategoryPage et ses filtres côté serveur, ProductDetailPage, ProductGallery, ProductImage et visuelFactice, cartes produit, réessais sur 404, route d'estimation de livraison par pays, mention DAP du panier), ce qui est à modifier, ce qui est à créer.
+2. Les dépendances de données. Pour chaque élément, la donnée qu'il affiche, et si elle existe en base aujourd'hui. Notamment : arbre des catégories (3 niveaux, rattachement de chaque famille de niveau 1 à un « espace » Établissements de santé / Domicile & officine), marque, garantie, documents (notice PDF), vidéo, caractéristiques techniques, délai et frais de livraison par pays, numéro WhatsApp.
+3. Règle absolue : aucun texte de la maquette entre crochets ([PRIX], [DÉLAI], [DURÉE], [RÉFÉRENCE], [À COMPLÉTER], [NUMÉRO]…) n'arrive en production. Un élément dont la donnée n'existe pas est masqué, jamais affiché vide ni inventé. Liste-les.
+4. Le découpage proposé :
+   - M1 en-tête et recherche ;
+   - M2 fiche produit ;
+   - M3 méga-menu, page Catalogue, page famille et rayon, après l'arbre des catégories en base ;
+   - M4 marque.
+   Pour chaque lot : fichiers touchés, migrations éventuelles, estimation, risques, et ce qui dépend du chantier catégories.
+5. Le poids du JS : l'estimation de l'impact de chaque lot sur le paquet (plafond 1 500 Ko, 1 290 aujourd'hui), et le découpage par route (chargement à la demande) proposé pour le méga-menu et les nouvelles pages.
+
+Contraintes qui s'appliqueront à tous les lots (rappelle-les dans le document) :
+- règles du dépôt (CLAUDE.md) : branche dédiée par lot, migrations numérotées à la fusion, mon accord avant tout déploiement, sauvegarde avant toute migration ;
+- couleurs : uniquement les jetons --color-brand* (garde-fou des 247 couleurs) ; les couleurs hexadécimales de la maquette se traduisent en jetons existants, jamais copiées ;
+- pas de dangerouslySetInnerHTML ; liens via hrefSur ; aucune transformation Cloudinary non signée ;
+- règles métier déjà en place, à ne pas casser : visuels factices (jamais de photo factice), badge de stock selon mode_stock (« En stock » seulement pour PROPRE), filtres côté serveur et état dans l'URL, slugs [a-z0-9-], réessais sur 404, page 404 propre ;
+- calcul des prix, de la TVA et du paiement : inchangés (chantier facturation à part) ;
+- accessibilité : clavier complet, focus visible, cibles de 44 px minimum sur mobile, contrastes ;
+- vérification réelle par ta vraie émulation d'écran, captures avant et après en 1 440 px et 375 px.
+Prompt M1 : en-tête et barre de recherche
+text
+Lot M1 — en-tête et barre de recherche. Branche feature/maquette-m1-entete. Référence : docs/maquette_catalogue/Main.dc.html (en-tête) et CatalogueMobile.dc.html (en-tête mobile).
+
+ORDINATEUR
+- Barre de recherche en trois parties, dans un même cadre : sélecteur de catégorie à gauche (« Toutes catégories » par défaut), champ « Rechercher un produit, une référence… », bouton « Rechercher » à droite (fond sombre, icône loupe).
+- Le sélecteur liste les familles de niveau 1 qui existent aujourd'hui en base. Sur une page famille ou rayon, il est présélectionné sur la catégorie en cours. Il sera réalimenté par l'arbre sans changement de code quand le chantier catégories sera fait.
+- La recherche envoie sur la page de résultats existante, avec la catégorie choisie en paramètre et l'état dans l'URL. Si l'API de recherche ne filtre pas encore par catégorie, ajoute le paramètre côté serveur, avec des tests et le rejet des valeurs invalides.
+- Suggestions en cours de frappe : seulement si l'existant les fournit. Sinon, note-le pour M3 sans le coder.
+- Ordre de la barre de navigation inchangé (NAVIGATION_PRINCIPALE).
+
+MOBILE
+- Champ et bouton loupe sombre (icône seule, aria-label « Rechercher »), sans le sélecteur de catégorie. Hauteur 48 px, taille de police 16 px (évite le zoom automatique sur iPhone).
+
+CONTRAINTES
+Celles de docs/analyse_integration_maquette.md. Formulaire sémantique (role="search", libellés accessibles), soumission au clavier, aucune régression de MenuMobile.
+
+TESTS
+- vitest : rendu, soumission avec et sans catégorie, présélection sur une page rayon, accessibilité des libellés ;
+- backend si un paramètre est ajouté ;
+- suite complète verte.
+Captures avant et après (1 440 px et 375 px). Mon accord avant de déployer.
+Prompt M2 : fiche produit
+text
+Lot M2 — fiche produit. Branche feature/maquette-m2-fiche-produit. Références : docs/maquette_catalogue/Produit.dc.html et ProduitMobile.dc.html. Tu fais évoluer ProductDetailPage et ProductGallery existants, sans les réécrire.
+
+ORDINATEUR
+- Fil d'Ariane complet : Accueil / Catalogue / famille / rayon / produit (avec les catégories qui existent aujourd'hui ; il suivra l'arbre après le chantier catégories).
+- Galerie : grande image, bouton « Agrandir », miniatures, et vignette « Vidéo » seulement si le produit a une vidéo. Règle des visuels factices conservée.
+- Bloc d'achat :
+  · badge de catégorie, badge de remise seulement si une campagne de prix est active ;
+  · titre, « Réf. … » et « Marque : … » seulement si ces champs sont remplis ;
+  · prix, prix barré si remise, mention « Prix TTC. Livraison calculée selon le pays. » ;
+  · sélecteur « Pays de livraison » relié à la route d'estimation existante : il affiche le délai et les frais réels, ou rien si l'estimation n'existe pas pour ce pays ; le pays choisi est mémorisé pour le panier si le code le permet déjà, sinon note-le ;
+  · quantité, « Ajouter au panier », « Acheter maintenant » (va directement au panier puis au paiement), lien « Commande en quantité pour un établissement ? Demander un devis » vers le parcours devis existant ;
+  · produit sur devis : pas de prix ni de panier, seulement le bouton de devis ;
+  · badge de stock selon mode_stock (aucun badge pour NON_SUIVI et FOURNISSEUR).
+- Encadré « Livraison hors Union européenne » (mention DAP) : seulement si le pays choisi est hors UE, avec le texte déjà utilisé au panier, en un seul endroit dans le code.
+- Engagements : « Paiement sécurisé : carte bancaire ou virement » ; « Garantie fabricant » seulement si la donnée existe ; contact WhatsApp seulement si le numéro est configuré (configuration, jamais en dur).
+- Onglets accessibles (role tab, flèches du clavier) : Caractéristiques (seulement les champs remplis, ou onglet masqué), Description (description existante, listes en vraies puces, sans HTML injecté), Livraison & frais, Documents (masqué s'il n'y en a aucun).
+- Produits similaires : même catégorie, produits avec visuel d'abord, 5 au maximum, même composant de carte.
+
+MOBILE
+- Galerie à balayer, avec points de position et miniatures défilantes.
+- Onglets transformés en sections dépliables (Caractéristiques ouverte par défaut).
+- Barre d'achat fixe en bas : total qui suit la quantité, et « Ajouter au panier ». Elle ne masque aucun contenu (espace réservé en bas de page).
+
+À NE PAS FAIRE
+Aucun changement au calcul des prix, de la TVA, au panier ni au paiement. Aucun texte entre crochets en production. Aucune donnée inventée.
+
+TESTS
+- vitest : produit avec et sans remise, sur devis, avec et sans vidéo, avec et sans marque, garantie et documents (éléments masqués), pays UE et hors UE (encadré DAP), barre mobile, onglets au clavier ;
+- non-régression : ajout au panier depuis la fiche, puis panier, puis écran de paiement (sans payer) ;
+- suite complète verte, poids du JS sous le plafond.
+Captures avant et après sur 3 fiches réelles : un produit en promotion, un produit sur devis, un produit à visuel factice ; en 1 440 px et 375 px. Mon accord avant de déployer.
+Prompt M3 : méga-menu, Catalogue, famille, rayon
+
+N’envoie ce prompt qu’une fois l’arbre des catégories en base : le chantier catégories (fichier d’arbitrage, puis migration) doit être fait.
+
+text
+Lot M3 — navigation du catalogue. Branche feature/maquette-m3-catalogue. Prérequis : l'arbre des catégories à 3 niveaux est en base, avec l'« espace » (ETABLISSEMENTS / DOMICILE) sur chaque famille de niveau 1. Références : MegaMenu, Main, Famille, Rayon, et leurs versions mobile.
+
+Une seule source : l'arbre en base, servi par UNE route publique, mise en cache, qui élague les nœuds sans produit actif. Aucun arbre écrit en dur dans le code. Le méga-menu actuel est remplacé par cette source.
+
+1. MÉGA-MENU (ordinateur), au survol ou au focus de « Catalogue » :
+   - colonne 1 : familles, regroupées sous « Établissements de santé » et « Domicile & officine », avec vignette ;
+   - colonne 2 : « Découvrir la page {famille} », puis les sous-catégories ;
+   - colonne 3 : les types.
+   Survol avec intention (délai d'ouverture d'environ 150 ms, délai de fermeture d'environ 250 ms, tolérance de trajectoire en diagonale), clavier complet (flèches, Entrée, Échap qui rend le focus), fermeture au clic extérieur et au changement de page. Chargé à la demande pour ne pas alourdir le paquet initial.
+   Mobile : MenuMobile partage la même source, avec une navigation par écrans successifs et un bouton Retour.
+2. PAGE CATALOGUE : accès rapides (Promotions, Nouveautés, Produits sur devis, seulement s'ils ont du contenu), puis les deux espaces avec leurs familles en vignettes (icône ou visuel, nom, 3 sous-catégories), une sélection de produits, et le bandeau « Vous équipez un établissement ? Demander un devis ». Mobile : grille de 2.
+3. PAGE FAMILLE : en-tête de la famille, sous-catégories en vignettes avec leurs types en liens (en liste sur mobile), « incontournables » (produits de la famille, avec visuel d'abord), familles voisines.
+4. PAGE RAYON : fil d'Ariane, étiquettes de navigation entre types voisins (défilement horizontal sur mobile), tri, colonne de filtres existante (le bloc Sous-catégorie apparaît désormais tout seul), filtres actifs, chargement continu ou bouton « Afficher plus », état dans l'URL. Mobile : bouton « Filtrer (n) » et panneau plein écran (FiltresMobile).
+5. Visuels des familles et sous-catégories : champ image géré dans l'administration de l'arbre. Sans image : icône de la famille, jamais de photo factice.
+6. Anciennes adresses de catégories : redirections 301 (prévues au chantier catégories), vérifie qu'elles fonctionnent avec les nouvelles pages.
+
+CONTRAINTES
+Celles de l'analyse M0. Aucun nœud vide affiché. Poids du JS sous le plafond (pages et méga-menu chargés à la demande).
+
+TESTS
+- vitest : méga-menu (survol, clavier, intention), élagage des nœuds vides, présélection et état dans l'URL, panneau mobile ;
+- backend : la route de l'arbre, son cache et son invalidation quand l'arbre change dans l'administration ;
+- vérification réelle du parcours Catalogue → famille → rayon → fiche → Retour.
+Captures avant et après en 1 440 px et 375 px. Livraison possible en deux temps (méga-menu et page Catalogue, puis famille et rayon). Mon accord avant chaque déploiement.
+Prompt M4 : marque
+text
+Lot M4 — marque des produits. Branche feature/marque.
+1. Champ marque sur les produits (table des marques avec slug [a-z0-9-] et logo facultatif, plutôt qu'un texte libre), migration au numéro libre à la fusion.
+2. Reprise de l'existant : propose une détection des marques dans les noms de produits (Microlife, Omron, Riester, Heine…) sous forme de fichier à valider (docs/marques_proposees.xlsx), sans aucune écriture en base avant mon accord.
+3. Import fournisseur : colonne marque reconnue, et marque inconnue signalée dans l'aperçu, jamais créée automatiquement.
+4. Affichage : « Marque : … » sur la fiche, filtre « Marque » dans les rayons (côté serveur, avec compteurs, masqué si aucune marque), recherche par marque.
+Tests, captures, mon accord avant de déployer.

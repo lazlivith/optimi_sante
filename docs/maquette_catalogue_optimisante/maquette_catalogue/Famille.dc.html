@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Auto-surveillance — Optimi Santé</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&amp;family=Source+Sans+3:wght@400;500;600;700&amp;family=Yellowtail&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F7FA}
+a{color:#117098}a:hover{color:#0B4F6C}
+</style>
+</helmet>
+<div style="font-family: 'Source Sans 3', system-ui, sans-serif; color: #13232C; background: #F5F7FA; min-height: 100vh;">
+
+<header style="background: #FFFFFF; position: relative; z-index: 20;" onMouseLeave="{{closeMenu}}">
+<div style="max-width: 1320px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 32px;">
+<a href="#" aria-label="Optimi Santé — accueil" style="flex: 0 0 auto; text-decoration: none; color: #13232C; font-family: 'Yellowtail', cursive; font-size: 40px; line-height: 0.9;">Optimi<br>Santé</a>
+<form role="search" style="flex: 1 1 520px; display: flex; align-items: stretch; height: 52px; border: 1.5px solid #13232C; border-radius: 12px; overflow: hidden; background: #FFFFFF; margin: 0;">
+<label style="flex: 0 0 220px; display: flex; background: #F4F3F0; border-right: 1px solid #E3E8EC;"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Catégorie</span><select style="width: 100%; border: 0; background: transparent; padding: 0 14px; font: inherit; font-size: 15px; color: #13232C;"><option>Auto-surveillance</option><option>Toutes catégories</option><option>Établissements de santé</option><option>Domicile &amp; officine</option></select></label>
+<label style="flex: 1; display: flex; min-width: 0;"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Rechercher</span><input type="search" placeholder="Rechercher un produit, une référence…" style="flex: 1; min-width: 0; border: 0; padding: 0 16px; font: inherit; font-size: 15px; outline: none; color: #13232C;"></label>
+<button type="submit" style="flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 0 22px; border: 0; background: #13232C; color: #FFFFFF; font: inherit; font-weight: 700; font-size: 16px; cursor: pointer;"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>Rechercher</button>
+</form>
+<div style="display: flex; align-items: center; gap: 20px;">
+<a href="#" aria-label="Panier" style="color: #13232C; display: flex;"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 10.2a1.5 1.5 0 0 0 1.5 1.1h8.6a1.5 1.5 0 0 0 1.5-1.1L21 7H6"></path><circle cx="9.5" cy="19.5" r="1.3"></circle><circle cx="17" cy="19.5" r="1.3"></circle></svg></a>
+<a href="#" style="background: #117098; color: #FFFFFF; font-weight: 700; font-size: 15px; padding: 11px 18px; border-radius: 999px; text-decoration: none;">Se connecter</a>
+</div>
+</div>
+<nav aria-label="Navigation principale" style="border-top: 1px solid #EEF1F4; border-bottom: 1px solid #E3E8EC;">
+<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 6px 16px; font-size: 14px; font-weight: 500;">
+<a href="#" style="padding: 10px 12px; color: #13232C; text-decoration: none;">Accueil</a>
+<a href="Main.dc.html" aria-current="page" onMouseEnter="{{openMenu}}" onFocus="{{openMenu}}" aria-expanded="{{menuExpanded}}" style="padding: 10px 12px; color: #117098; text-decoration: none; font-weight: 700; border-bottom: 2px solid #117098;">Catalogue ▾</a>
+<a href="#" style="padding: 10px 12px; color: #13232C; text-decoration: none;">Nos Services ▾</a>
+<a href="#" style="padding: 10px 12px; color: #13232C; text-decoration: none;">Formations Médicales</a>
+<a href="#" style="padding: 10px 12px; color: #13232C; text-decoration: none;">Devenir Partenaire</a>
+<a href="#" style="padding: 10px 12px; color: #13232C; text-decoration: none; display: flex; align-items: center; gap: 6px;">Promotions <span style="background: #D92D20; color: #FFFFFF; font-size: 10px; font-weight: 800; padding: 2px 5px; border-radius: 4px;">NEW</span></a>
+</div>
+</nav>
+<sc-if value="{{menuOpen}}" hint-placeholder-val="{{false}}"><div style="position: absolute; top: 100%; left: 0; right: 0; display: flex; justify-content: center; padding: 8px 24px 0;"><dc-import name="MegaMenu" hint-size="1320px,560px"></dc-import></div></sc-if>
+</header>
+
+<section style="max-width: 1320px; margin: 0 auto; padding: 20px 24px 0;">
+<div style="font-size: 14px; color: #5B6B75; padding-bottom: 14px;"><a href="#" style="color: #5B6B75; text-decoration: none;">Accueil</a>  ›  <a href="Main.dc.html" style="color: #5B6B75; text-decoration: none;">Catalogue</a>  ›  <span style="color: #13232C; font-weight: 600;">Auto-surveillance</span></div>
+<div style="background: #F4F3F0; border: 1px solid #E8E6E1; border-radius: 28px; padding: 40px 48px; display: flex; flex-wrap: wrap; gap: 32px; align-items: center;">
+<span style="flex: 0 0 88px; height: 88px; border-radius: 22px; background: #FFFFFF; color: #B4500D; display: flex; align-items: center; justify-content: center;"><svg aria-hidden="true" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15a8 8 0 0 1 16 0"></path><path d="M12 15l4-4"></path><path d="M4 19h16"></path></svg></span>
+<div style="flex: 1 1 560px; display: flex; flex-direction: column; gap: 10px;">
+<span style="font-size: 13px; font-weight: 700; letter-spacing: 0.16em; color: #B4500D;">POUR LE DOMICILE ET L'OFFICINE</span>
+<h1 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 48px; line-height: 1; font-weight: 700; text-transform: uppercase;">Auto-surveillance</h1>
+<p style="margin: 0; font-size: 17px; line-height: 1.55; color: #3A4B55; max-width: 680px;">Tensiomètres, oxymètres, thermomètres et pesage pour suivre un patient à domicile comme en cabinet.</p>
+</div>
+<a href="Rayon.dc.html" style="background: #117098; color: #FFFFFF; font-weight: 700; font-size: 15px; padding: 14px 22px; border-radius: 999px; text-decoration: none;">Voir tous les produits</a>
+</div>
+</section>
+
+<section style="max-width: 1320px; margin: 0 auto; padding: 40px 24px 0; display: flex; flex-direction: column; gap: 18px;">
+<h2 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 28px; font-weight: 700; text-transform: uppercase;">Choisissez une catégorie</h2>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px;">
+
+<div style="background: #FFFFFF; border: 1px solid #E3E8EC; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+<div style="height: 140px; border-radius: 12px; background: #F3F5F7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #8796A0;"><svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M21 16l-5-5-8 8"></path></svg><span style="font-size: 12px; color: #5B6B75;">Visuel de la catégorie</span></div>
+<a href="#" style="font-size: 18px; font-weight: 700; color: #13232C; text-decoration: none;">Pesage</a>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px;">
+<a href="#" style="text-decoration: none;">Pèse-personnes</a>
+<a href="#" style="text-decoration: none;">Pèse-bébés</a>
+<a href="#" style="text-decoration: none;">Balances impédancemètres</a>
+</div>
+</div>
+
+<div style="background: #FFFFFF; border: 2px solid #117098; border-radius: 18px; padding: 15px; display: flex; flex-direction: column; gap: 12px;">
+<div style="height: 140px; border-radius: 12px; background: #F3F5F7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #8796A0;"><svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M21 16l-5-5-8 8"></path></svg><span style="font-size: 12px; color: #5B6B75;">Visuel de la catégorie</span></div>
+<a href="Rayon.dc.html" style="font-size: 18px; font-weight: 700; color: #13232C; text-decoration: none;">Tensiomètres</a>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px;">
+<a href="Rayon.dc.html" style="text-decoration: none;">Électroniques</a>
+<a href="Rayon.dc.html" style="text-decoration: none;">Manuels</a>
+<a href="Rayon.dc.html" style="text-decoration: none;">Brassards &amp; accessoires</a>
+<a href="Rayon.dc.html" style="text-decoration: none;">Pieds &amp; supports</a>
+</div>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #E3E8EC; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+<div style="height: 140px; border-radius: 12px; background: #F3F5F7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #8796A0;"><svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M21 16l-5-5-8 8"></path></svg><span style="font-size: 12px; color: #5B6B75;">Visuel de la catégorie</span></div>
+<a href="#" style="font-size: 18px; font-weight: 700; color: #13232C; text-decoration: none;">Oxymètres</a>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px;">
+<a href="#" style="text-decoration: none;">Oxymètres de pouls</a>
+<a href="#" style="text-decoration: none;">Capteurs &amp; accessoires</a>
+</div>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #E3E8EC; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+<div style="height: 140px; border-radius: 12px; background: #F3F5F7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #8796A0;"><svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M21 16l-5-5-8 8"></path></svg><span style="font-size: 12px; color: #5B6B75;">Visuel de la catégorie</span></div>
+<a href="#" style="font-size: 18px; font-weight: 700; color: #13232C; text-decoration: none;">Thermomètres</a>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px;">
+<a href="#" style="text-decoration: none;">Sans contact</a>
+<a href="#" style="text-decoration: none;">Électroniques</a>
+</div>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #E3E8EC; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+<div style="height: 140px; border-radius: 12px; background: #F3F5F7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #8796A0;"><svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M21 16l-5-5-8 8"></path></svg><span style="font-size: 12px; color: #5B6B75;">Visuel de la catégorie</span></div>
+<a href="#" style="font-size: 18px; font-weight: 700; color: #13232C; text-decoration: none;">Santé connectée</a>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px;">
+<a href="#" style="text-decoration: none;">Tensiomètres connectés</a>
+<a href="#" style="text-decoration: none;">Oxymètres de pouls connectés</a>
+<a href="#" style="text-decoration: none;">Balances connectées</a>
+</div>
+</div>
+
+</div>
+</section>
+
+<section style="max-width: 1320px; margin: 0 auto; padding: 48px 24px 0; display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px;">
+<h2 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 28px; font-weight: 700; text-transform: uppercase;">Les incontournables de la famille</h2>
+<a href="Rayon.dc.html" style="font-weight: 700; font-size: 15px; text-decoration: none;">Voir tous les produits →</a>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;">
+<sc-for list="{{products}}" as="p" hint-placeholder-count="4">
+<article style="background: #FFFFFF; border: 1px solid #E3E8EC; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+<div style="position: relative; height: 220px; background: #F3F5F7; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #8796A0;">
+<svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M21 16l-5-5-8 8"></path></svg>
+<span style="font-size: 12px; color: #5B6B75;">Photo produit</span>
+<sc-if value="{{p.promo}}" hint-placeholder-val="{{false}}"><span style="position: absolute; top: 10px; left: 10px; background: #D92D20; color: #FFFFFF; font-weight: 800; font-size: 12px; padding: 4px 9px; border-radius: 999px;">{{p.promo}}</span></sc-if>
+</div>
+<span style="font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: #5B6B75; text-transform: uppercase;">{{p.cat}}</span>
+<a href="#" style="font-size: 15px; font-weight: 600; color: #13232C; text-decoration: none; line-height: 1.35; min-height: 40px;">{{p.name}}</a>
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: auto;">
+<div style="display: flex; flex-direction: column; gap: 2px;">
+<sc-if value="{{p.old}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; color: #5B6B75; text-decoration: line-through;">{{p.old}}</span></sc-if>
+<span style="font-family: 'Barlow Semi Condensed', sans-serif; font-size: 22px; font-weight: 700; color: {{p.priceColor}};">{{p.price}}</span>
+</div>
+<sc-if value="{{p.devis}}" hint-placeholder-val="{{false}}"><button type="button" aria-label="Demander un devis" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #C9DAE2; background: #FFFFFF; color: #117098; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></button></sc-if>
+<sc-if value="{{p.achat}}" hint-placeholder-val="{{true}}"><button type="button" aria-label="Ajouter au panier" style="width: 44px; height: 44px; border-radius: 12px; border: 0; background: #117098; color: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button></sc-if>
+</div>
+</article>
+</sc-for>
+</div>
+</section>
+
+<section style="max-width: 1320px; margin: 0 auto; padding: 48px 24px 72px; display: flex; flex-direction: column; gap: 14px;">
+<h2 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 22px; font-weight: 700; text-transform: uppercase;">Familles voisines</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 10px;">
+<a href="#" style="font-size: 15px; font-weight: 600; color: #13232C; background: #FFFFFF; border: 1px solid #E3E8EC; padding: 10px 16px; border-radius: 999px; text-decoration: none;">Diagnostic &amp; monitoring</a>
+<a href="#" style="font-size: 15px; font-weight: 600; color: #13232C; background: #FFFFFF; border: 1px solid #E3E8EC; padding: 10px 16px; border-radius: 999px; text-decoration: none;">Diabète</a>
+<a href="#" style="font-size: 15px; font-weight: 600; color: #13232C; background: #FFFFFF; border: 1px solid #E3E8EC; padding: 10px 16px; border-radius: 999px; text-decoration: none;">Respiratoire</a>
+<a href="#" style="font-size: 15px; font-weight: 600; color: #13232C; background: #FFFFFF; border: 1px solid #E3E8EC; padding: 10px 16px; border-radius: 999px; text-decoration: none;">Maintien à domicile</a>
+<a href="Main.dc.html" style="font-size: 15px; font-weight: 700; color: #117098; background: #E8F1F8; padding: 10px 16px; border-radius: 999px; text-decoration: none;">Toutes les familles</a>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1780}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { menuOpen: false }; }
+  renderVals() {
+    const p = (cat, name, price, extra) => Object.assign({ cat, name, price, old: false, promo: false, devis: false, achat: true, priceColor: '#13232C' }, extra || {});
+    return {
+      menuOpen: this.state.menuOpen,
+      menuExpanded: this.state.menuOpen ? 'true' : 'false',
+      openMenu: () => this.setState({ menuOpen: true }),
+      closeMenu: () => this.setState({ menuOpen: false }),
+      products: [
+        p('Tensiomètres', 'Tensiomètre électronique Microlife® WatchBP Vascular ABI', '1 645,18 €', { old: '1 724,18 €', promo: '−5 %', priceColor: '#B4500D' }),
+        p('Tensiomètres', 'Tensiomètre Babyphon®', '149,57 €'),
+        p('Tensiomètres', 'Brassard pour Omron M3', '64,69 €'),
+        p('Tensiomètres', 'Tensiomètre Precisa® N Shock-proof', 'Sur devis', { devis: true, achat: false })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

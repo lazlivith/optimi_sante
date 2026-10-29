@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Tensiomètres — Optimi Santé</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&amp;family=Source+Sans+3:wght@400;500;600;700&amp;family=Yellowtail&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F7FA}
+a{color:#117098}a:hover{color:#0B4F6C}
+</style>
+</helmet>
+<div style="font-family: 'Source Sans 3', system-ui, sans-serif; color: #13232C; background: #F5F7FA; min-height: 100vh;">
+
+<header style="background: #FFFFFF; position: relative; z-index: 20;" onMouseLeave="{{closeMenu}}">
+<div style="max-width: 1320px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 32px;">
+<a href="#" aria-label="Optimi Santé — accueil" style="flex: 0 0 auto; text-decoration: none; color: #13232C; font-family: 'Yellowtail', cursive; font-size: 40px; line-height: 0.9;">Optimi<br>Santé</a>
+<form role="search" style="flex: 1 1 520px; display: flex; align-items: stretch; height: 52px; border: 1.5px solid #13232C; border-radius: 12px; overflow: hidden; background: #FFFFFF; margin: 0;">
+<label style="flex: 0 0 220px; display: flex; background: #F4F3F0; border-right: 1px solid #E3E8EC;"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Catégorie</span><select style="width: 100%; border: 0; background: transparent; padding: 0 14px; font: inherit; font-size: 15px; color: #13232C;"><option>Tensiomètres</option><option>Auto-surveillance</option><option>Toutes catégories</option></select></label>
+<label style="flex: 1; display: flex; min-width: 0;"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Rechercher</span><input type="search" placeholder="Rechercher un produit, une référence…" style="flex: 1; min-width: 0; border: 0; padding: 0 16px; font: inherit; font-size: 15px; outline: none; color: #13232C;"></label>
+<button type="submit" style="flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 0 22px; border: 0; background: #13232C; color: #FFFFFF; font: inherit; font-weight: 700; font-size: 16px; cursor: pointer;"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>Rechercher</button>
+</form>
+<div style="display: flex; align-items: center; gap: 20px;">
+<a href="#" aria-label="Panier" style="color: #13232C; display: flex;"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 10.2a1.5 1.5 0 0 0 1.5 1.1h8.6a1.5 1.5 0 0 0 1.5-1.1L21 7H6"></path><circle cx="9.5" cy="19.5" r="1.3"></circle><circle cx="17" cy="19.5" r="1.3"></circle></svg></a>
+<a href="#" style="background: #117098; color: #FFFFFF; font-weight: 700; font-size: 15px; padding: 11px 18px; border-radius: 999px; text-decoration: none;">Se connecter</a>
+</div>
+</div>
+<nav aria-label="Navigation principale" style="border-top: 1px solid #EEF1F4; border-bottom: 1px solid #E3E8EC;">
+<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 6px 16px; font-size: 14px; font-weight: 500;">
+<a href="#" style="padding: 10px 12px; color: #13232C; text-decoration: none;">Accueil</a>
+<a href="Main.dc.html" aria-current="page" onMouseEnter="{{openMenu}}" onFocus="{{openMenu}}" aria-expanded="{{menuExpanded}}" style="padding: 10px 12px; color: #117098; text-decoration: none; font-weight: 700; border-bottom: 2px solid #117098;">Catalogue ▾</a>
+<a href="#" style="padding: 10px 12px; color: #13232C; text-decoration: none;">Nos Services ▾</a>
+<a href="#" style="padding: 10px 12px; color: #13232C; text-decoration: none;">Formations Médicales</a>
+<a href="#" style="padding: 10px 12px; color: #13232C; text-decoration: none;">Devenir Partenaire</a>
+<a href="#" style="padding: 10px 12px; color: #13232C; text-decoration: none; display: flex; align-items: center; gap: 6px;">Promotions <span style="background: #D92D20; color: #FFFFFF; font-size: 10px; font-weight: 800; padding: 2px 5px; border-radius: 4px;">NEW</span></a>
+</div>
+</nav>
+<sc-if value="{{menuOpen}}" hint-placeholder-val="{{false}}"><div style="position: absolute; top: 100%; left: 0; right: 0; display: flex; justify-content: center; padding: 8px 24px 0;"><dc-import name="MegaMenu" hint-size="1320px,560px"></dc-import></div></sc-if>
+</header>
+
+<section style="max-width: 1320px; margin: 0 auto; padding: 20px 24px 0; display: flex; flex-direction: column; gap: 16px;">
+<div style="font-size: 14px; color: #5B6B75;"><a href="#" style="color: #5B6B75; text-decoration: none;">Accueil</a>  ›  <a href="Main.dc.html" style="color: #5B6B75; text-decoration: none;">Catalogue</a>  ›  <a href="Famille.dc.html" style="color: #5B6B75; text-decoration: none;">Auto-surveillance</a>  ›  <span style="color: #13232C; font-weight: 600;">Tensiomètres</span></div>
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<h1 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 44px; line-height: 1; font-weight: 700; text-transform: uppercase;">Tensiomètres</h1>
+<span style="font-size: 15px; color: #5B6B75;">[N] produits · prix TTC, livraison calculée à la commande</span>
+</div>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600;">Trier par
+<select style="height: 44px; border: 1px solid #C9DAE2; border-radius: 12px; padding: 0 14px; font: inherit; font-weight: 500; background: #FFFFFF; color: #13232C;">
+<option>Pertinence</option>
+<option>Prix croissant</option>
+<option>Prix décroissant</option>
+<option>Nouveautés</option>
+</select>
+</label>
+</div>
+<div role="group" aria-label="Types de tensiomètres" style="display: flex; flex-wrap: wrap; gap: 8px;">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="5">
+<sc-if value="{{c.on}}" hint-placeholder-val="{{false}}"><button type="button" aria-pressed="true" onClick="{{c.pick}}" style="height: 44px; padding: 0 18px; border-radius: 999px; border: 0; background: #13232C; color: #FFFFFF; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer;">{{c.label}}</button></sc-if>
+<sc-if value="{{c.off}}" hint-placeholder-val="{{true}}"><button type="button" aria-pressed="false" onClick="{{c.pick}}" style="height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid #C9DAE2; background: #FFFFFF; color: #13232C; font: inherit; font-weight: 600; font-size: 15px; cursor: pointer;">{{c.label}}</button></sc-if>
+</sc-for>
+</div>
+</section>
+
+<section style="max-width: 1320px; margin: 0 auto; padding: 24px 24px 72px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+
+<aside aria-label="Filtres" style="flex: 1 1 260px; max-width: 300px; background: #FFFFFF; border: 1px solid #E3E8EC; border-radius: 20px; padding: 22px; display: flex; flex-direction: column; gap: 22px; box-sizing: border-box;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<h2 style="margin: 0; font-size: 18px; font-weight: 700;">Filtres</h2>
+<a href="#" style="font-size: 14px; font-weight: 600; text-decoration: none;">Réinitialiser</a>
+</div>
+<fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px;">
+<legend style="font-size: 15px; font-weight: 700; padding: 0 0 8px;">Type</legend>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><input type="checkbox" checked style="width: 18px; height: 18px; accent-color: #117098;"> Électroniques</label>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><input type="checkbox" style="width: 18px; height: 18px; accent-color: #117098;"> Manuels</label>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><input type="checkbox" style="width: 18px; height: 18px; accent-color: #117098;"> Brassards &amp; accessoires</label>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><input type="checkbox" style="width: 18px; height: 18px; accent-color: #117098;"> Pieds &amp; supports</label>
+</fieldset>
+<fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px;">
+<legend style="font-size: 15px; font-weight: 700; padding: 0 0 8px;">Prix (€)</legend>
+<div style="display: flex; align-items: center; gap: 8px;">
+<label style="flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #5B6B75;">Min<input type="number" placeholder="0" style="height: 40px; border: 1px solid #C9DAE2; border-radius: 10px; padding: 0 10px; font: inherit; width: 100%; box-sizing: border-box;"></label>
+<label style="flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #5B6B75;">Max<input type="number" placeholder="2 000" style="height: 40px; border: 1px solid #C9DAE2; border-radius: 10px; padding: 0 10px; font: inherit; width: 100%; box-sizing: border-box;"></label>
+</div>
+</fieldset>
+<fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px;">
+<legend style="font-size: 15px; font-weight: 700; padding: 0 0 8px;">Type d'achat</legend>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><input type="checkbox" checked style="width: 18px; height: 18px; accent-color: #117098;"> Achat en ligne</label>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><input type="checkbox" style="width: 18px; height: 18px; accent-color: #117098;"> Sur devis</label>
+</fieldset>
+<fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px;">
+<legend style="font-size: 15px; font-weight: 700; padding: 0 0 8px;">Marque</legend>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><input type="checkbox" style="width: 18px; height: 18px; accent-color: #117098;"> Microlife</label>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><input type="checkbox" style="width: 18px; height: 18px; accent-color: #117098;"> Omron</label>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><input type="checkbox" style="width: 18px; height: 18px; accent-color: #117098;"> Boso</label>
+<a href="#" style="font-size: 14px; font-weight: 600; text-decoration: none;">Voir toutes les marques</a>
+</fieldset>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600;"><input type="checkbox" style="width: 18px; height: 18px; accent-color: #117098;"> Seulement les promotions</label>
+<div style="background: #FDEEE3; border: 1px solid #F3C9A8; border-radius: 14px; padding: 14px; font-size: 14px; line-height: 1.5; color: #3A4B55;"><strong style="color: #13232C;">Bon à savoir :</strong> les produits « sur devis » sont chiffrés selon la quantité et le pays de livraison. Faites votre demande, nous vous répondons avec un prix et un délai.</div>
+</aside>
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<span style="font-size: 14px; color: #5B6B75; padding-right: 4px;">Filtres actifs :</span>
+<button type="button" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid #C9DAE2; background: #E8F1F8; color: #0B4F6C; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;">Type : Électroniques <span aria-hidden="true">×</span><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">retirer ce filtre</span></button>
+<button type="button" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid #C9DAE2; background: #E8F1F8; color: #0B4F6C; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;">Achat en ligne <span aria-hidden="true">×</span><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">retirer ce filtre</span></button>
+<a href="#" style="font-size: 14px; font-weight: 600; text-decoration: none; padding-left: 6px;">Tout effacer</a>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;">
+<sc-for list="{{products}}" as="p" hint-placeholder-count="8">
+<article style="background: #FFFFFF; border: 1px solid #E3E8EC; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+<div style="position: relative; height: 190px; background: #F3F5F7; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #8796A0;">
+<svg aria-hidden="true" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M21 16l-5-5-8 8"></path></svg>
+<span style="font-size: 12px; color: #5B6B75;">Photo produit</span>
+<sc-if value="{{p.promo}}" hint-placeholder-val="{{false}}"><span style="position: absolute; top: 10px; left: 10px; background: #D92D20; color: #FFFFFF; font-weight: 800; font-size: 12px; padding: 4px 9px; border-radius: 999px;">{{p.promo}}</span></sc-if>
+</div>
+<span style="font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: #5B6B75; text-transform: uppercase;">{{p.cat}}</span>
+<a href="Produit.dc.html" style="font-size: 15px; font-weight: 600; color: #13232C; text-decoration: none; line-height: 1.35; min-height: 40px;">{{p.name}}</a>
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: auto;">
+<div style="display: flex; flex-direction: column; gap: 2px;">
+<sc-if value="{{p.old}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; color: #5B6B75; text-decoration: line-through;">{{p.old}}</span></sc-if>
+<span style="font-family: 'Barlow Semi Condensed', sans-serif; font-size: 22px; font-weight: 700; color: {{p.priceColor}};">{{p.price}}</span>
+</div>
+<sc-if value="{{p.devis}}" hint-placeholder-val="{{false}}"><button type="button" aria-label="Demander un devis" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #C9DAE2; background: #FFFFFF; color: #117098; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></button></sc-if>
+<sc-if value="{{p.achat}}" hint-placeholder-val="{{true}}"><button type="button" aria-label="Ajouter au panier" style="width: 44px; height: 44px; border-radius: 12px; border: 0; background: #117098; color: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button></sc-if>
+</div>
+</article>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 12px;">
+<span style="font-size: 14px; color: #5B6B75;">8 produits affichés sur [N]</span>
+<button type="button" style="height: 48px; padding: 0 28px; border-radius: 999px; border: 1px solid #117098; background: #FFFFFF; color: #117098; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer;">Afficher plus de produits</button>
+</div>
+</div>
+
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1760}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { chip: 1, menuOpen: false }; }
+  renderVals() {
+    const labels = ['Tous', 'Électroniques', 'Manuels', 'Brassards & accessoires', 'Pieds & supports'];
+    const chips = labels.map((label, i) => ({ label, on: this.state.chip === i, off: this.state.chip !== i, pick: () => this.setState({ chip: i }) }));
+    const p = (cat, name, price, extra) => Object.assign({ cat, name, price, old: false, promo: false, devis: false, achat: true, priceColor: '#13232C' }, extra || {});
+    return {
+      menuOpen: this.state.menuOpen,
+      menuExpanded: this.state.menuOpen ? 'true' : 'false',
+      openMenu: () => this.setState({ menuOpen: true }),
+      closeMenu: () => this.setState({ menuOpen: false }),
+      chips,
+      products: [
+        p('Électroniques', 'Tensiomètre électronique Microlife® WatchBP Vascular ABI', '1 645,18 €', { old: '1 724,18 €', promo: '−5 %', priceColor: '#B4500D' }),
+        p('Brassards & accessoires', 'Brassard pour Omron M3', '64,69 €'),
+        p('Manuels', 'Tensiomètre Babyphon®', '149,57 €'),
+        p('Manuels', 'Tensiomètre Precisa® N Shock-proof', 'Sur devis', { devis: true, achat: false }),
+        p('Manuels', 'Tensiomètre Lian Nano Clinic®', '[PRIX]'),
+        p('Pieds & supports', 'Pied à roulettes pour Omron 907', '[PRIX]'),
+        p('Manuels', 'Tensiomètre Boso Classic', '[PRIX]'),
+        p('Manuels', 'Tensiomètre mécanique Praktikus', '[PRIX]')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
