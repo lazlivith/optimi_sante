@@ -57,7 +57,7 @@ export function TrainingsPage() {
             Formations & stages en CHU
           </h1>
           <p className="text-slate-600 max-w-2xl text-sm leading-relaxed">
-            Renseignez vos coordonnées pour recevoir le lien de téléchargement sécurisé de la brochure (valide 60 min). Un compte Médecin est requis pour postuler.
+            Renseignez vos coordonnées : un conseiller Optimi Santé vous envoie la brochure et les modalités d'inscription. Un compte Médecin est requis pour postuler.
           </p>
         </div>
 

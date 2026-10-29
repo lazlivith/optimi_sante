@@ -247,10 +247,11 @@ export function TrainingDetailPage() {
                 <div className="p-3 bg-brand-orange/10 text-brand-accent rounded-xl">
                   <Download className="w-6 h-6" />
                 </div>
-                <h2 className="text-xl font-bold text-brand-dark">Télécharger la brochure</h2>
+                <h2 className="text-xl font-bold text-brand-dark">Recevoir la brochure</h2>
               </div>
               <p className="text-sm text-slate-500 mb-6">
-                Renseignez vos coordonnées pour recevoir le lien de téléchargement sécurisé du programme détaillé.
+                Renseignez vos coordonnées : un conseiller Optimi Santé vous envoie la brochure
+                et les modalités d'inscription.
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">

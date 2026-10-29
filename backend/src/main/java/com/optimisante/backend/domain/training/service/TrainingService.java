@@ -54,11 +54,32 @@ public class TrainingService {
     private final TenantRepository tenantRepository;
     private final StorageService storageService;
     private final DocumentLinkService documentLinkService;
+    private final com.optimisante.backend.common.email.EmailService emailService;
+    private final com.optimisante.backend.domain.identity.repository.UserRepository userRepository;
+
+    /**
+     * Delai pendant lequel une meme demande ne declenche pas une seconde alerte.
+     *
+     * <p>Vingt-quatre heures : la route est publique, donc rappelable en boucle. Un visiteur
+     * qui redemande la brochure le lendemain a probablement une vraie raison ; dix fois dans
+     * l'heure, non.</p>
+     */
+    private static final java.time.Duration DELAI_SANS_NOUVELLE_ALERTE = java.time.Duration.ofHours(24);
+
+    private static final java.time.format.DateTimeFormatter QUAND =
+            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy 'à' HH'h'mm");
 
     @Transactional
     public LeadCaptureResponseDto captureLead(UUID trainingId, LeadCaptureRequestDto request) {
         Training training = trainingRepository.findById(trainingId)
                 .orElseThrow(() -> new RuntimeException("Training not found with ID: " + trainingId));
+
+        // La question se pose AVANT l'enregistrement : apres, la demande qu'on vient d'ecrire
+        // serait elle-meme le doublon qu'on cherche.
+        boolean dejaAlerte = prospectLeadRepository
+                .existsByEmailIgnoreCaseAndTrainingIdAndDownloadedAtAfter(
+                        request.getEmail(), trainingId,
+                        java.time.OffsetDateTime.now().minus(DELAI_SANS_NOUVELLE_ALERTE));
 
         // Save the prospect lead
         ProspectLead lead = ProspectLead.builder()
@@ -84,9 +105,72 @@ public class TrainingService {
         // La brochure rendue au public sera celle que nous rediterons, aux seules coordonnees
         // d'Optimi Sante. Tant qu'elle n'existe pas, un conseiller prend le relais, et l'ecran
         // le dit : rien ne s'invente, rien ne se promet.
+        //
+        // Encore faut-il que quelqu'un soit prevenu : sans ce message, plus rien ne partait ni
+        // vers le prospect ni vers nous, et la demande dormait.
+        if (!dejaAlerte) {
+            alerterAdministration(training, lead);
+        }
+
         return LeadCaptureResponseDto.builder()
                 .demandeEnregistree(true)
                 .build();
+    }
+
+    /**
+     * Previent l'administration qu'une brochure est demandee.
+     *
+     * <p><b>L'echec ne remonte pas.</b> Le prospect a laisse ses coordonnees et elles sont
+     * enregistrees : lui repondre par une erreur parce que notre relais de courriel est
+     * indisponible lui ferait croire que sa demande est perdue, alors qu'elle ne l'est pas. Le
+     * defaut part dans les journaux, ou il est de notre ressort.</p>
+     */
+    private void alerterAdministration(Training training, ProspectLead lead) {
+        try {
+            List<String> destinataires = userRepository.emailsActifsParRoles(
+                    List.of(com.optimisante.backend.domain.identity.entity.Role.SUPER_ADMIN,
+                            com.optimisante.backend.domain.identity.entity.Role.ADMIN_MOBILITE));
+            if (destinataires.isEmpty()) {
+                // Dit, et non tu : une alerte que personne ne recoit est un angle mort.
+                log.warn("Demande de brochure {} : aucun compte SUPER_ADMIN ou ADMIN_MOBILITE "
+                        + "actif, personne n'a ete prevenu.", lead.getId());
+                return;
+            }
+            String nom = (lead.getFirstName() + " " + lead.getLastName()).trim();
+            String quand = lead.getDownloadedAt() == null ? ""
+                    : lead.getDownloadedAt().format(QUAND);
+            for (String adresse : destinataires) {
+                emailService.sendDemandeBrochureAlerteAdmin(adresse, training.getTitle(),
+                        sessionLisible(training), nom, lead.getEmail(), lead.getPhoneWhatsapp(),
+                        lead.getCountry(), lead.getSpecialty(), quand);
+            }
+        } catch (Exception e) {
+            // Le message, pas l'exception : la trace d'une alerte ne doit pas contenir les
+            // coordonnees qu'elle transportait.
+            log.error("Alerte de demande de brochure non envoyee pour la demande {} : {}",
+                    lead.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * La prochaine session ouverte, en une ligne lisible — ou {@code null} s'il n'y en a pas.
+     *
+     * <p>Aucune date inventee : sans session ouverte, la ligne disparait du message plutot que
+     * d'annoncer une periode que personne n'a fixee.</p>
+     */
+    private String sessionLisible(Training training) {
+        return trainingSessionRepository
+                .findByTrainingIdAndStatus(training.getId(), SessionStatus.OPEN)
+                .stream()
+                .filter(s -> s.getStartDate() != null)
+                .min(java.util.Comparator.comparing(TrainingSession::getStartDate))
+                .map(s -> {
+                    String periode = s.getEndDate() == null ? s.getStartDate().toString()
+                            : s.getStartDate() + " → " + s.getEndDate();
+                    return s.getLocation() == null || s.getLocation().isBlank() ? periode
+                            : periode + " (" + s.getLocation() + ")";
+                })
+                .orElse(null);
     }
 
     @Transactional(readOnly = true)
