@@ -1,7 +1,13 @@
 import { axiosClient } from './axiosClient';
 
 export interface UploadResponseDto {
-  publicId: string;
+  /**
+   * Référence signée du fichier déposé (DP-4). Ce n'est plus le `public_id` Cloudinary : une
+   * référence à courte durée que le serveur résout en clé. L'inscription la renvoie telle quelle.
+   */
+  reference: string;
+  /** Aperçu servi par notre backend (jamais une URL Cloudinary). */
+  previewUrl: string;
   message: string;
 }
 

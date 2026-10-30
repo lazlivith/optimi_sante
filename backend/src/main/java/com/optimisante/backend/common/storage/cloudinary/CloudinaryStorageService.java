@@ -60,14 +60,16 @@ public class CloudinaryStorageService implements StorageService {
             Map<String, Object> uploadParams = ObjectUtils.asMap(
                     "folder", arborescence.dossier(dossier),
                     "public_id", publicId,
-                    // "raw" (et non "auto") : generatePresignedOrSignedUrl() doit connaître le
-                    // resource_type exact au moment de reconstruire l'URL de téléchargement, et
-                    // "auto" n'est valide qu'à l'upload, pas pour une transformation/URL.
+                    // "raw" (et non "auto") : genererUrlSignee() doit connaître le resource_type
+                    // exact au moment de reconstruire l'URL de téléchargement, et "auto" n'est
+                    // valide qu'à l'upload, pas pour une transformation/URL.
                     "resource_type", "raw",
-                    "type", "upload" // "authenticated" nécessite une fonctionnalité de contrôle d'accès
-                                      // non activée sur ce compte Cloudinary (erreur "deny or ACL failure").
-                                      // "upload" + URL signée (voir generatePresignedOrSignedUrl) fonctionne
-                                      // sur tout compte standard, sans configuration supplémentaire.
+                    // DP-1 : les documents non publics partent en "authenticated". Un objet
+                    // authenticated ne se sert QUE par URL signée — la lecture anonyme répond
+                    // 401, et connaître la clé ne suffit plus. Vérifié (analyse DOC-PRIV) : le
+                    // mode authenticated par URL signée fonctionne sur l'offre gratuite ; seules
+                    // les authentifications par jeton et par cookie exigent l'offre Advanced.
+                    "type", typeLivraison(dossier)
             );
 
             Map<?, ?> uploadResult = reessai.executer("Téléversement " + publicId,
@@ -80,6 +82,21 @@ public class CloudinaryStorageService implements StorageService {
         } catch (InterruptedException e) {
             throw interrompu(e);
         }
+    }
+
+    /**
+     * Mode de livraison Cloudinary selon la sensibilité du dossier.
+     *
+     * <p><b>authenticated</b> pour les documents (reçus, conventions, pièces des candidats…) :
+     * l'accès passe obligatoirement par une URL signée, générée côté serveur après contrôle de
+     * rôle. <b>upload</b> (public) pour les images et vidéos, qui sont servies telles quelles
+     * dans les pages et doivent le rester.</p>
+     *
+     * <p>Pendant la transition, d'anciens documents restent en {@code upload} : {@link #download}
+     * tente d'abord {@code authenticated}, puis se replie sur {@code upload}.</p>
+     */
+    private static String typeLivraison(DossierStockage dossier) {
+        return dossier.type() == DossierStockage.TypeRessource.DOCUMENT ? "authenticated" : "upload";
     }
 
     /** Retire l'extension d'un nom de fichier : « passeport.pdf » devient « passeport ». */
@@ -112,10 +129,9 @@ public class CloudinaryStorageService implements StorageService {
                     "folder", arborescence.dossier(dossier),
                     "public_id", publicId,
                     "resource_type", "raw", // PDFs can be uploaded as raw or image, but raw is safer for documents
-                    "type", "upload" // "authenticated" nécessite une fonctionnalité de contrôle d'accès
-                                      // non activée sur ce compte Cloudinary (erreur "deny or ACL failure").
-                                      // "upload" + URL signée (voir generatePresignedOrSignedUrl) fonctionne
-                                      // sur tout compte standard, sans configuration supplémentaire.
+                    // DP-1 : reçus, devis, conventions, attestations, relevés — tous
+                    // authenticated. Ces PDF générés portent des noms et des montants.
+                    "type", typeLivraison(dossier)
             );
 
             Map<?, ?> uploadResult = reessai.executer("Téléversement " + publicId,
@@ -161,42 +177,72 @@ public class CloudinaryStorageService implements StorageService {
         // L'URL signée sert ici de simple adresse de lecture côté serveur : elle ne sort pas
         // de la JVM, contrairement à l'usage qu'on en faisait avant, où elle partait au
         // navigateur et laissait le document lisible par quiconque la détenait.
-        String url = generatePresignedOrSignedUrl(publicId, 1);
-        try {
-            HttpRequest requete = HttpRequest.newBuilder(URI.create(url))
-                    .timeout(Duration.ofSeconds(30))
-                    .GET()
-                    .build();
-            HttpResponse<byte[]> reponse = reessai.executer("Lecture " + publicId,
-                    () -> HTTP.send(requete, HttpResponse.BodyHandlers.ofByteArray()));
-            if (reponse.statusCode() != 200) {
-                throw new IllegalStateException(
-                        "Le stockage a répondu " + reponse.statusCode() + " pour " + publicId);
+        //
+        // DP-1, repli ordonné : on tente d'abord "authenticated" (la cible), puis "upload"
+        // (les documents pas encore bascules). Pendant la transition, les deux coexistent ;
+        // une fois la bascule finie et verifiee, le repli "upload" sera retire (DP-5). Sans ce
+        // repli, un document deja authenticated OU un document encore upload deviendrait
+        // illisible selon le sens de la bascule.
+        IllegalStateException dernierEchec = null;
+        for (String type : new String[] {"authenticated", "upload"}) {
+            try {
+                return telecharger(publicId, type);
+            } catch (IllegalStateException introuvable) {
+                // 401/403/404 pour ce type : le document est probablement servi par l'autre.
+                dernierEchec = introuvable;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Lecture du document interrompue : " + publicId, e);
+            } catch (Exception e) {
+                throw new RuntimeException("Document illisible au stockage : " + publicId, e);
             }
-            return reponse.body();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Lecture du document interrompue : " + publicId, e);
-        } catch (Exception e) {
-            throw new RuntimeException("Document illisible au stockage : " + publicId, e);
         }
+        throw new RuntimeException("Document illisible au stockage : " + publicId, dernierEchec);
+    }
+
+    /** Une tentative de lecture pour un mode de livraison donné ({@code authenticated} ou {@code upload}). */
+    private byte[] telecharger(String publicId, String type) throws Exception {
+        String url = genererUrlSignee(publicId, type);
+        HttpRequest requete = HttpRequest.newBuilder(URI.create(url))
+                .timeout(Duration.ofSeconds(30))
+                .GET()
+                .build();
+        HttpResponse<byte[]> reponse = reessai.executer("Lecture " + type + " " + publicId,
+                () -> HTTP.send(requete, HttpResponse.BodyHandlers.ofByteArray()));
+        if (reponse.statusCode() != 200) {
+            throw new IllegalStateException(
+                    "Le stockage a répondu " + reponse.statusCode() + " (" + type + ") pour " + publicId);
+        }
+        return reponse.body();
     }
 
     @Override
     public String generatePresignedOrSignedUrl(String publicId, int expirationMinutes) {
+        // Conservée pour l'interface et d'éventuels appelants : l'ancienne lecture signée en
+        // "upload". La lecture réelle passe désormais par download(), qui tente authenticated
+        // puis upload.
+        return genererUrlSignee(publicId, "upload");
+    }
+
+    /**
+     * URL signée de lecture pour un mode de livraison donné, à usage strictement interne.
+     *
+     * <p><b>Pas d'expiration dans l'URL, et ce n'est pas un manque.</b> L'expiration par horodatage
+     * dans l'URL relève de l'accès par jeton, réservé aux offres supérieures. Ici l'URL ne quitte
+     * jamais la JVM : {@link #download} la génère, s'en sert une fois, la jette. L'expiration vue
+     * du navigateur est celle de NOTRE jeton ({@code DocumentAccessTokenService}), que nous
+     * maîtrisons. Pour un objet {@code authenticated}, la signature suffit à bloquer l'accès
+     * anonyme — c'est tout ce qu'on lui demande.</p>
+     */
+    private String genererUrlSignee(String publicId, String type) {
         try {
-            // Generate a signed URL — le paramètre expirationMinutes n'est pas exploité tant que le
-            // compte Cloudinary n'a pas la fonctionnalité "Authenticated"/token-based access activée
-            // (cf. commentaire dans uploadFile/uploadGeneratedPdf) ; à revoir si cette fonctionnalité
-            // est activée côté compte pour de vrais liens à expiration.
             return cloudinary.url()
                     .resourceType("raw")
-                    .type("upload")
+                    .type(type)
                     .signed(true)
                     .generate(publicId);
-                    
         } catch (Exception e) {
-            log.error("Failed to generate signed URL for publicId {}: {}", publicId, e.getMessage(), e);
+            log.error("Failed to generate signed URL ({}) for publicId {}: {}", type, publicId, e.getMessage(), e);
             throw new RuntimeException("Could not generate signed URL", e);
         }
     }
@@ -281,9 +327,23 @@ public class CloudinaryStorageService implements StorageService {
 
     @Override
     public void deleteDocument(String publicId) {
+        // DP-1 : un document peut être "authenticated" (déposé depuis ce lot) ou "upload"
+        // (ancien, pas encore basculé). destroy() vise "upload" par défaut : sans le type exact,
+        // un objet authenticated resterait indéfiniment dans le stockage. On tente authenticated
+        // puis upload, et on s'arrête dès qu'un des deux a réellement supprimé quelque chose.
         try {
-            reessai.executer("Suppression " + publicId,
-                    () -> cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "raw")));
+            for (String type : new String[] {"authenticated", "upload"}) {
+                Map<?, ?> resultat = reessai.executer("Suppression (" + type + ") " + publicId,
+                        () -> cloudinary.uploader().destroy(publicId,
+                                ObjectUtils.asMap("resource_type", "raw", "type", type)));
+                Object issue = resultat == null ? null : resultat.get("result");
+                if ("ok".equals(issue)) {
+                    return;
+                }
+            }
+            // Ni l'un ni l'autre : le document n'existait plus. Rien à signaler comme erreur —
+            // l'état voulu (absent) est atteint.
+            log.info("Document déjà absent du stockage à la suppression : {}", publicId);
         } catch (IOException e) {
             log.error("Failed to delete document from Cloudinary (publicId: {}): {}", publicId, e.getMessage(), e);
             throw new RuntimeException("Could not delete document from storage", e);

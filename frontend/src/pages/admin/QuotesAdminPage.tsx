@@ -110,7 +110,7 @@ export function QuotesAdminPage() {
                         <StatusBadge status={quote.status} />
                       </td>
                       <td className="px-6 py-4">
-                        {quote.documentS3Key ? (
+                        {quote.hasDocument ? (
                           <DocumentButton
                             libelle="Ouvrir le devis"
                             obtenirLien={() => vaultService.getPresignedUrl('QUOTE', quote.id)}

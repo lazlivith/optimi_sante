@@ -55,6 +55,29 @@ public class EnrollmentService {
     private final DoctorProfileRepository doctorProfileRepository;
     private final EnrollmentDocumentRepository enrollmentDocumentRepository;
     private final com.optimisante.backend.domain.document.service.PdfGeneratorService pdfGeneratorService;
+    private final com.optimisante.backend.domain.document.service.DocumentAccessTokenService jetonsDocuments;
+
+    private static boolean estPresent(String valeur) {
+        return valeur != null && !valeur.isBlank();
+    }
+
+    /**
+     * Résout la référence rendue par le dépôt en clé de stockage réelle (DP-4).
+     *
+     * <p>Le navigateur ne reçoit plus le {@code public_id} d'une pièce, mais une référence
+     * signée ({@code DocumentAccessTokenService}). L'inscription la renvoie ici, et le serveur
+     * en extrait la clé. Une valeur qui n'est pas une référence valide est refusée : on
+     * n'écrit pas en base une clé que le client aurait fabriquée.</p>
+     */
+    private String resoudreReference(String reference) {
+        if (reference == null || reference.isBlank()) {
+            return null;
+        }
+        return jetonsDocuments.verifier(reference)
+                .map(com.optimisante.backend.domain.document.service.DocumentAccessTokenService.DocumentDemande::publicId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Référence de pièce invalide ou expirée : redéposez le fichier."));
+    }
     private final com.optimisante.backend.common.storage.StorageService storageService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
@@ -126,21 +149,23 @@ public class EnrollmentService {
                             + "ou après une demande de correction.");
         }
 
-        if (dto.diplomaUrl() != null)
-            enrollment.setDiplomaUrl(dto.diplomaUrl());
-        if (dto.medicalBoardRegistrationUrl() != null)
-            enrollment.setMedicalBoardRegistrationUrl(dto.medicalBoardRegistrationUrl());
-        if (dto.passportUrl() != null)
-            enrollment.setPassportUrl(dto.passportUrl());
+        // DP-4 : le client n'envoie plus le public_id, mais la référence signée rendue au dépôt.
+        // On la résout ici en clé réelle avant de l'écrire.
+        String diplome = resoudreReference(dto.diplomaUrl());
+        String ordre = resoudreReference(dto.medicalBoardRegistrationUrl());
+        String passeport = resoudreReference(dto.passportUrl());
+        if (diplome != null) enrollment.setDiplomaUrl(diplome);
+        if (ordre != null) enrollment.setMedicalBoardRegistrationUrl(ordre);
+        if (passeport != null) enrollment.setPassportUrl(passeport);
 
         // Les trois pieces de la candidature etaient jusqu'ici ecrites UNIQUEMENT dans ces
         // colonnes, alors que le coffre-fort (admin, CHU, medecin) ne lit que la table
         // enrollment_documents : diplome, passeport et attestation d'ordre etaient donc
         // invisibles et non telechargeables pour ceux qui doivent instruire le dossier.
         // On les inscrit desormais aussi comme pieces du coffre-fort, seule source consultee.
-        registerVaultDocument(enrollment, DocumentType.DIPLOMA, dto.diplomaUrl());
-        registerVaultDocument(enrollment, DocumentType.MEDICAL_COUNCIL_CERT, dto.medicalBoardRegistrationUrl());
-        registerVaultDocument(enrollment, DocumentType.PASSPORT, dto.passportUrl());
+        registerVaultDocument(enrollment, DocumentType.DIPLOMA, diplome);
+        registerVaultDocument(enrollment, DocumentType.MEDICAL_COUNCIL_CERT, ordre);
+        registerVaultDocument(enrollment, DocumentType.PASSPORT, passeport);
 
         log.info("Documents submitted for enrollment {} by doctor {}", enrollmentId, doctorId);
         Enrollment saved = enrollmentRepository.save(enrollment);
@@ -1068,9 +1093,7 @@ public class EnrollmentService {
                 .status(enrollment.getStatus().name())
                 .registrationType(enrollment.getRegistrationType().name())
                 .rppsNumber(enrollment.getRppsNumber())
-                .diplomaUrl(enrollment.getDiplomaUrl())
-                .medicalBoardRegistrationUrl(enrollment.getMedicalBoardRegistrationUrl())
-                .passportUrl(enrollment.getPassportUrl())
+                // DP-4 : plus de clé de pièce dans la réponse (voir EnrollmentResponseDto).
                 .submittedAt(enrollment.getSubmittedAt())
                 .build();
     }
@@ -1110,11 +1133,10 @@ public class EnrollmentService {
                 .rppsNumber(enrollment.getRppsNumber())
                 .trainingTitle(enrollment.getSession().getTraining().getTitle())
                 .submittedAt(enrollment.getSubmittedAt())
-                .diplomaUrl(enrollment.getDiplomaUrl())
-                .medicalBoardRegistrationUrl(enrollment.getMedicalBoardRegistrationUrl())
-                .passportUrl(enrollment.getPassportUrl())
-                .conventionS3Key(enrollment.getConventionS3Key())
-                .attestationS3Key(enrollment.getAttestationS3Key())
+                // DP-4 : présence seulement, jamais la clé. Les pièces passent par le coffre-fort,
+                // les documents émis par DocumentController — tous deux sous contrôle de rôle.
+                .hasConvention(estPresent(enrollment.getConventionS3Key()))
+                .hasAttestation(estPresent(enrollment.getAttestationS3Key()))
                 .hostInstitution(enrollment.getSession().getLocation())
                 .partnerProfileId(enrollment.getSession().getTraining().getPartnerProfile().getId())
                 .partnerName(enrollment.getSession().getTraining().getPartnerProfile().getInstitutionName())

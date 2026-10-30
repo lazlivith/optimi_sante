@@ -90,7 +90,9 @@ export function TrainingEnrollmentPage() {
     try {
       setLoading(true);
       const res = await storageService.uploadFile(file, 'DOSSIERS_PIECES');
-      setUrl(res.publicId);
+      // DP-4 : on transmet la référence signée, plus le public_id Cloudinary. Le serveur la
+      // résout en clé à la soumission.
+      setUrl(res.reference);
     } catch (error) {
       console.error("Upload failed", error);
       alert("Le téléversement du fichier a échoué. Veuillez réessayer.");

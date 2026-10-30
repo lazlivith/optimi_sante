@@ -18,11 +18,19 @@ public class EnrollmentDetailDto {
     private String doctorName;
     private String doctorEmail;
     private OffsetDateTime submittedAt;
-    private String diplomaUrl;
-    private String medicalBoardRegistrationUrl;
-    private String passportUrl;
-    private String conventionS3Key;
-    private String attestationS3Key;
+
+    /*
+     * DP-4 : aucune clé Cloudinary ni URL de pièce n'est renvoyée au navigateur.
+     *
+     * Les champs diplomaUrl / passportUrl / medicalBoardRegistrationUrl / conventionS3Key /
+     * attestationS3Key portaient le public_id brut d'objets alors publics : les exposer ouvrait
+     * un accès direct hors de tout contrôle de rôle. Les pièces se consultent par le coffre-fort
+     * (enrollment_documents → DocumentController, contrôle de rôle), et les documents émis par
+     * GET /api/v1/documents/{type}/{id}/download. L'interface n'a besoin que de la présence, pour
+     * afficher ou non le bouton.
+     */
+    private boolean hasConvention;
+    private boolean hasAttestation;
 
     // ---- Ajouts pour l'écran de suivi et de paiement du médecin ---------------------
 

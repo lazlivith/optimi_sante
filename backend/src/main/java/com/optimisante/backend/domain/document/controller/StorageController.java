@@ -3,6 +3,8 @@ package com.optimisante.backend.domain.document.controller;
 import com.optimisante.backend.common.storage.ControleFichier;
 import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.common.storage.StorageService;
+import com.optimisante.backend.domain.document.service.DocumentAccessTokenService;
+import com.optimisante.backend.domain.document.service.DocumentLinkService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,10 +31,17 @@ public class StorageController {
     private static final Set<DossierStockage> DOSSIERS_AUTORISES = Set.of(DossierStockage.DOSSIERS_PIECES);
 
     private final StorageService storageService;
+    private final DocumentAccessTokenService jetons;
 
     /**
      * {@code /api/v1/storage/upload} est l'adresse à utiliser ; {@code /api/v1/admin/storage/upload}
      * reste servie pour un écran encore en cache dans un navigateur.
+     *
+     * <p><b>Ne rend plus le {@code public_id} (DP-4).</b> Il livrait au navigateur l'adresse brute
+     * d'un objet Cloudinary. À la place : une <b>référence signée</b> à courte durée — que
+     * l'inscription renvoie au serveur, qui la résout en clé — et une URL d'aperçu passant par
+     * notre backend ({@code /api/v1/documents/file/<jeton>}), jamais Cloudinary. La clé ne quitte
+     * pas le serveur.</p>
      */
     @PostMapping({"/api/v1/storage/upload", "/api/v1/admin/storage/upload"})
     @PreAuthorize("hasAnyRole('MEDECIN', 'ADMIN_ECOMMERCE', 'ADMIN_MOBILITE', 'ADMIN', 'SUPER_ADMIN')")
@@ -43,7 +52,14 @@ public class StorageController {
         DossierStockage dossier = dossier(folder);
         ControleFichier.verifierDocument(file);
         String publicId = storageService.uploadFile(file, dossier);
-        return ResponseEntity.ok(Map.of("publicId", publicId, "message", "Fichier déposé."));
+
+        // La référence EST un jeton de document : l'inscription le résout en clé, et l'aperçu
+        // le sert par notre backend. Le navigateur ne voit jamais le public_id.
+        String reference = jetons.delivrer(publicId, DocumentLinkService.MINUTES_PAR_DEFAUT, null);
+        return ResponseEntity.ok(Map.of(
+                "reference", reference,
+                "previewUrl", "/api/v1/documents/file/" + reference,
+                "message", "Fichier déposé."));
     }
 
     private static DossierStockage dossier(String valeur) {

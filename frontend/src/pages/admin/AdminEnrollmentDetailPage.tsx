@@ -319,15 +319,15 @@ export function AdminEnrollmentDetailPage() {
                 )}
               </div>
 
-              {(enrollment.conventionS3Key || enrollment.attestationS3Key) && (
+              {(enrollment.hasConvention || enrollment.hasAttestation) && (
                 <div className="flex gap-4 pt-4">
-                  {enrollment.conventionS3Key && (
+                  {enrollment.hasConvention && (
                     <DocumentButton
                       libelle="Voir la convention"
                       obtenirLien={() => vaultService.getPresignedUrl('CONVENTION', enrollment.id)}
                     />
                   )}
-                  {enrollment.attestationS3Key && (
+                  {enrollment.hasAttestation && (
                     <DocumentButton
                       libelle="Voir l'attestation"
                       obtenirLien={() => vaultService.getPresignedUrl('ATTESTATION', enrollment.id)}
