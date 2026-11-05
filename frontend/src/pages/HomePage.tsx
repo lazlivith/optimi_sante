@@ -514,28 +514,11 @@ function PromosSection({ products }: { products: Product[] }) {
   );
 }
 
-// ──────────────────────────────────────────────────
-// Partners Slider
-// ──────────────────────────────────────────────────
-const partners = [
-  'CHU de Bordeaux', 'CHU de Lyon', 'AP-HP Paris', 'CHU de Nantes',
-  'CHU de Montpellier', 'CHU de Toulouse', 'CHU de Lille', 'CHU de Strasbourg',
-];
-
-function PartnersSection() {
-  return (
-    <section className="container mx-auto px-4 md:px-8 py-8">
-      <h2 className="text-xl font-bold text-gray-800 mb-5 text-center">Ils nous font confiance</h2>
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-        {partners.map(p => (
-          <div key={p} className="shrink-0 bg-white rounded-xl border border-gray-100 shadow-sm px-6 py-3 flex items-center justify-center h-16 min-w-[160px]">
-            <span className="text-xs font-semibold text-gray-600 text-center">{p}</span>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
+// Le bandeau « Ils nous font confiance » a été retiré : il nommait huit CHU
+// (Bordeaux, Lyon, AP-HP Paris, Nantes, Montpellier, Toulouse, Lille, Strasbourg)
+// comme partenaires. Afficher le nom d'un établissement qui ne nous a rien accordé
+// est une allégation qu'on ne peut pas soutenir. S'il revient un jour, il ne portera
+// que des établissements réellement partenaires, et sur leur accord.
 
 // ──────────────────────────────────────────────────
 // Main Page
@@ -654,10 +637,6 @@ export function HomePage() {
           </Link>
         </div>
       </section>
-
-      {/* Placee apres le catalogue : la preuve sociale a plus de poids une fois l'offre vue
-          qu'avant, ou elle interrompait le parcours entre deux blocs de produits. */}
-      <PartnersSection />
 
       {/* WhatsApp Floating Button */}
       <a
