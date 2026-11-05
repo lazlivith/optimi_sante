@@ -305,26 +305,69 @@ Je ne te demanderai la valeur d'aucune clé. Ce qui suit est la liste des objets
 **nom** des variables à poser sur Render ; les valeurs, tu les colles directement dans
 l'interface de Render, et elles ne passent ni par cette conversation ni par un terminal.
 
+### Le périmètre d'une politique IAM Scaleway : le projet, pas le bucket
+
+**Vérifié, et cela change la cible.** Chez Scaleway, le périmètre (*scope*) d'une règle de
+politique IAM se définit au niveau de l'**organisation** ou du **projet** — « *a scope can be at
+Project or Organization level* » — et **jamais au niveau d'un bucket**. Une politique portant un
+jeu de permissions Object Storage donne accès à **tous les buckets du projet**, y compris les
+buckets créés plus tard.
+
+La restriction à un bucket unique n'existe que par une **politique de bucket** (*bucket policy*),
+qui se pose en plus de la politique IAM : l'IAM ouvre l'accès au service dans le projet, la
+politique de bucket le resserre sur un bucket. Et dès qu'une politique de bucket existe, **seuls
+les mandataires qu'elle nomme** conservent l'accès.
+
+> Sources : [IAM — Glossary (scope)](https://www.scaleway.com/en/docs/iam/concepts/) ·
+> [Understanding IAM Policies](https://www.scaleway.com/en/docs/iam/reference-content/policy/) ·
+> [Using IAM API keys with Object Storage](https://www.scaleway.com/en/docs/iam/api-cli/using-api-key-object-storage/) ·
+> [Permission sets](https://www.scaleway.com/en/docs/iam/reference-content/permission-sets/)
+
+**Donc la cible est bien celle que tu décrivais en second : deux projets séparés.** Un projet par
+environnement, un bucket et une application par projet. L'isolation vient du projet, qui est le
+périmètre réel de l'IAM ; la politique de bucket devient une ceinture en plus de la bretelle,
+utile mais pas la garantie principale. C'est plus simple à vérifier d'un coup d'œil qu'une
+politique de bucket qu'on oublie de poser.
+
 ### Chez Scaleway
 
-1. **Un compte**, et dans ce compte un **projet** dédié — pas le projet par défaut : un projet
-   séparé rend la politique d'accès et la facture lisibles.
-2. **Deux buckets**, en région **`fr-par`**, classe **Standard Multi-AZ** :
-   - `optimisante-documents` — la production ;
-   - `optimisante-documents-dev` — le développement. Deux buckets et **deux clés distinctes** :
-     une session de développement ne doit jamais pouvoir écrire dans le bucket de production.
+1. **Un compte**, et dans ce compte **deux projets** — pas le projet par défaut :
+   - `optimisante-prod` ;
+   - `optimisante-dev`.
+2. **Un bucket par projet**, en région **`fr-par`**, classe **Standard Multi-AZ** :
+   - `optimisante-documents` dans `optimisante-prod` ;
+   - `optimisante-documents-dev` dans `optimisante-dev`.
 3. Sur **chacun** des deux buckets :
    - visibilité **privée** (c'est le défaut ; à vérifier explicitement) ;
    - **chiffrement par défaut activé** — SSE-ONE / `AES256` suffit, SSE-KMS est inutilement
      complexe à notre échelle. **À activer avant le premier dépôt** : les objets importés avant
      l'activation ne sont pas chiffrés ;
    - **gestion des versions activée** — c'est notre protection contre une suppression
-     accidentelle pendant la migration, et elle ne coûte rien tant qu'on ne supprime rien.
-4. **Une « application » (identité) par environnement**, avec une **politique minimale** :
-   - production : `ObjectRead` **et** `ObjectWrite` sur le bucket `optimisante-documents`
-     **seulement**, dans le projet dédié, et **rien d'autre** — ni `BucketDelete`, ni accès aux
-     autres services Scaleway ;
-   - développement : les mêmes droits sur `optimisante-documents-dev` **seulement**.
+     accidentelle pendant la migration. Attention : elle a une conséquence sur la purge, traitée
+     au § A.6.
+4. **Une « application » (identité) par projet**, avec une politique dont le périmètre est **ce
+   projet et lui seul**, et **aucun autre service Scaleway** :
+
+   | Application | Projet | Droits |
+   |---|---|---|
+   | `optimisante-backend-prod` | `optimisante-prod` | lecture, écriture **et suppression** d'objets |
+   | `optimisante-backend-dev` | `optimisante-dev` | lecture, écriture **et suppression** d'objets |
+
+   **La suppression est nécessaire**, et c'est `SP‑7` qui l'impose : la purge des pièces des
+   candidats après la clôture du dossier supprime l'objet **et ses versions non courantes**.
+   Sans ce droit, `SP‑7` échouerait en silence et le passeport resterait. Le droit de supprimer
+   un **bucket** n'est en revanche jamais nécessaire : ne le donne pas.
+
+   **Sur les noms exacts des jeux de permissions** : la documentation de Scaleway bloque la
+   lecture automatisée depuis cet environnement (HTTP 403), je n'ai donc pas pu les recopier
+   mot pour mot. Les sources accessibles confirment l'existence de `ObjectStorageFullAccess`
+   (trop large pour nous : il couvre aussi la gestion des buckets) et de
+   `ObjectStorageBucketPolicyFullAccess`. Au moment de créer la politique, choisis dans le
+   sélecteur de la console les jeux qui couvrent **lecture d'objets**, **écriture d'objets** et
+   **suppression d'objets** — ce sont les opérations S3 `GetObject`, `PutObject`, `DeleteObject`
+   et `DeleteObjectVersion` — et **laisse de côté** tout ce qui touche aux buckets eux-mêmes.
+   Si les noms ne se recoupent pas avec cette description, copie-moi la liste du sélecteur et je
+   te dis lesquels cocher.
 5. **Une paire de clés API par application** (clé d'accès + clé secrète). La clé secrète ne
    s'affiche qu'une fois ; range-la dans ton gestionnaire de mots de passe avant de fermer la
    page.
@@ -400,10 +443,73 @@ Deux conséquences, à tenir dans le même lot :
 
 1. La règle ne se cale **pas sur la date de l'objet** mais sur la **clôture du dossier**, que S3
    ne connaît pas. Le cycle de vie seul ne peut donc pas l'appliquer correctement.
-2. C'est **notre tâche planifiée** qui doit décider, et faire les deux gestes ensemble :
-   supprimer l'objet **et** vider la colonne, dans la même transaction, avec un marqueur
-   `piece_purgee_le` pour que l'écran dise « pièce purgée après la clôture du dossier » au lieu
-   d'afficher une erreur.
+2. C'est **notre tâche planifiée** qui doit décider, et faire **trois** gestes ensemble :
+   supprimer l'objet, **supprimer ses versions non courantes**, et vider la colonne, dans la
+   même transaction, avec un marqueur `piece_purgee_le` pour que l'écran dise « pièce purgée
+   après la clôture du dossier » au lieu d'afficher une erreur.
+
+**Et le troisième geste n'est pas une précaution, c'est la condition pour que la purge
+existe.** Avec la gestion des versions activée (§ A.5), un `DeleteObject` ne supprime rien : il
+pose un **marqueur de suppression** et la version précédente reste là, lisible par son
+identifiant de version. **Le passeport serait conservé indéfiniment par le mécanisme même qui
+devait nous protéger.** `SP‑7` doit donc, pour chaque objet purgé, énumérer ses versions
+(`ListObjectVersions`) et les supprimer une par une (`DeleteObjectVersion`), puis vérifier que
+l'énumération revient vide. C'est aussi la raison du droit de suppression au § A.5, et la
+vérification « l'énumération revient vide » est ce qui fait la différence entre une purge et une
+purge apparente.
+
+Une règle de cycle de vie « expiration des versions non courantes » n'y suffit pas : elle date
+depuis le moment où la version a cessé d'être courante, c'est-à-dire depuis notre suppression —
+elle ajouterait donc un délai au lieu de clore. Elle reste utile comme **filet** pour les objets
+que notre tâche aurait manqués, et c'est à ce titre que je la garde dans l'exemple ci-dessus.
+
+### « Clôture du dossier » : la définition, par parcours
+
+La purge se déclenche sur une date, et cette date n'existe pas aujourd'hui. Il faut la définir
+avant d'écrire `SP‑7`, parce que « clôture » n'a pas le même sens d'un parcours à l'autre.
+
+**Formation courte — parcours `LOCAL_FRANCE`.** Le dossier est clos quand il n'y a plus rien à
+en attendre :
+
+| État atteint | Date de clôture |
+|---|---|
+| `REJECTED`, `CANCELLED` | le jour où l'état est pris |
+| Formation suivie (`READY_TO_START` dépassé, session terminée) | **la date de fin de la session** |
+| `CONFIRMED` ou plus avancé, mais session annulée côté partenaire | le jour de l'annulation |
+
+**Exercer en France — parcours `INTERNATIONAL_VISA`.** C'est le cas long, et celui où une purge
+trop tôt ferait mal : les pièces servent à monter un dossier de visa qui peut demander plusieurs
+tentatives.
+
+| État atteint | Date de clôture |
+|---|---|
+| `REJECTED`, `CANCELLED` | le jour où l'état est pris |
+| `VISA_SUBMITTED` puis refus de visa | **le jour du refus**, saisi par la mobilité |
+| `VISA_GRANTED` → `READY_TO_START` → session terminée | **la date de fin de la session** |
+
+**Les trois mois courent depuis cette date, pas depuis le dépôt de la pièce.** Une pièce déposée
+au mois 1 d'un parcours de dix-huit mois n'est donc pas purgée au mois 4 : elle est purgée au
+mois 21. C'est exactement ce qu'une règle de cycle de vie S3 aurait fait de travers.
+
+**Si un dossier est rouvert.** Cela arrive : un visa refusé qu'on représente, une session
+reportée, un refus revu après réclamation. Trois règles, et elles tiennent ensemble :
+
+1. **La réouverture annule la clôture.** `cloture_le` repasse à `NULL`, et le compte à rebours de
+   trois mois s'arrête. Un dossier rouvert est un dossier vivant.
+2. **Mais une pièce déjà purgée ne revient pas.** La purge est définitive — c'est son objet. Le
+   dossier rouvert repart donc en `ACTION_REQUIRED` avec la note « pièces à redéposer : elles ont
+   été supprimées après la clôture du dossier », et le médecin les redépose. C'est désagréable et
+   c'est **honnête** : la seule alternative serait de garder les pièces, ce qui est précisément ce
+   qu'on refuse.
+3. **La réouverture au-delà de trois mois est donc une reprise à zéro des pièces**, pas une
+   reprise du dossier. L'écran de la mobilité doit le dire **avant** de rouvrir, pas après : un
+   avertissement « les pièces de ce dossier ont été purgées le JJ/MM/AAAA ; la réouverture
+   demandera au médecin de les redéposer », avec confirmation.
+
+**Une marge de sûreté, et je la recommande** : ne pas purger un dossier clos depuis moins de
+trois mois **ni** rouvert dans les trente derniers jours. Deux dossiers rouverts le même mois
+suffisent à montrer qu'une réouverture n'est pas exceptionnelle, et trente jours ne pèsent rien
+face au désagrément d'un redépôt inutile.
 
 Le cycle de vie S3 reste utile pour ce qui se date par l'objet : l'expiration des versions non
 courantes, l'abandon des téléversements incomplets, et les durées longues des pièces comptables.
@@ -460,13 +566,166 @@ C'est le lot **SP‑6**, 1 jour. Il est petit, sans migration, et il ferme le po
 
 ---
 
+## A.8 DP‑4 : l'ordre de déploiement, et la fenêtre où le dépôt casse
+
+Question posée le 30 octobre, jamais traitée. Elle mérite de l'être, parce que **les deux ordres
+cassent le dépôt des pièces** si on n'ajoute rien.
+
+### Les deux pièces qui bougent
+
+1. La **forme de la réponse** de `POST /api/v1/storage/upload` : `{publicId}` devient
+   `{reference, previewUrl}`.
+2. La **valeur acceptée** par `PUT /api/v1/enrollments/{id}/documents` : une clé de stockage
+   devient une référence signée, et `resoudreReference()` **refuse** une clé fabriquée par le
+   client.
+
+L'écran d'inscription enchaîne les deux : `handleFileUpload` range la valeur reçue dans son état
+React, et `handleSubmitDocuments` la renvoie telle quelle.
+
+### Pourquoi les deux ordres cassent
+
+| Ordre | Ce qui se passe |
+|---|---|
+| **Frontend d'abord** | La page neuve lit `res.reference` sur une réponse ancienne : `undefined`. `setUrl(undefined)` laisse `diplomaUrl` vide, donc le bouton « Soumettre » **reste désactivé**. Le candidat voit un fichier accepté et un bouton mort, **sans aucun message**. |
+| **Backend d'abord, sans rien ajouter** | La page ancienne lit `res.publicId` sur une réponse neuve : `undefined`. **Exactement le même cul-de-sac silencieux.** |
+
+C'est le pire type de panne : pas d'erreur, pas de trace, un candidat qui recommence trois fois
+et abandonne.
+
+### Ma recommandation : **le backend d'abord, avec un alias de transition**
+
+La réponse du backend neuf porte **trois** champs :
+
+```json
+{
+  "reference":  "<référence signée>",
+  "previewUrl": "/api/v1/documents/file/<référence signée>",
+  "publicId":   "<référence signée>",
+  "message":    "Fichier déposé."
+}
+```
+
+`publicId` est un **alias de transition**, et sa valeur **est la référence signée** — pas la clé.
+La page ancienne lit `res.publicId`, le range, le renvoie, et `resoudreReference()` le résout
+sans rien savoir du changement. **Elle fonctionne sans avoir été redéployée.**
+
+Et les deux règles tiennent toujours :
+
+- **la clé ne quitte pas le serveur** — l'alias ne transporte qu'une référence ;
+- **aucun `publicId` fourni par le client n'est jamais réaccepté** — `resoudreReference()` ne
+  connaît que les références signées, et une clé de stockage présentée par un client est refusée.
+  L'alias change le **nom** du champ sortant, jamais ce que le serveur accepte en entrée.
+
+**Vérifié avant de le proposer** : la page actuelle ne fait **rien d'autre** du `publicId` que le
+ranger et le renvoyer (`setUrl(res.publicId)`, puis `submitDocuments`). Il n'y a aucun aperçu, et
+aucune URL Cloudinary construite côté navigateur. Si un aperçu avait existé, l'alias aurait cassé
+l'image — il n'en existe pas.
+
+### Le moment, et la durée de vie de l'alias
+
+- **Le backend part seul d'abord** (Render), et on vérifie un dépôt réel avant d'aller plus loin.
+- **Le frontend suit** (Vercel), le même jour, dans un créneau creux — tôt le matin, heure de
+  France.
+- **L'alias ne se retire pas le lendemain.** Vercel sert la page neuve aux nouvelles visites,
+  mais un onglet resté ouvert garde l'ancienne aussi longtemps qu'il reste ouvert. La fenêtre
+  n'est donc pas de quelques minutes : elle dure autant que le plus vieil onglet. L'alias reste
+  **au moins trente jours**, et son retrait est un point du lot `SP‑2`, pas de celui-ci.
+
+### Le cas que l'alias ne peut pas sauver, et le message
+
+Un candidat qui a déposé ses trois pièces **avant** le déploiement du backend tient dans son
+état React trois **vraies clés**. S'il soumet **après**, `resoudreReference()` les refuse — et
+c'est bien ce qu'on veut : réaccepter une clé parce qu'elle arrive au mauvais moment rouvrirait
+exactement la porte qu'on ferme.
+
+Le serveur répond alors **409** avec un code `REFERENCE_PERIMEE`, et l'écran affiche, en clair :
+
+> **La page a été mise à jour, merci de la recharger avant de déposer vos pièces.**
+
+Pas de trace technique, pas de « Erreur lors de la soumission des documents ».
+
+### Et pour que ce message ne soit pas un piège
+
+Aujourd'hui, **recharger la page perd le dossier** : l'identifiant de l'inscription ne vit que
+dans l'état React, et l'étape 1 rejouée crée un doublon que le serveur refuse. Envoyer le
+candidat recharger, dans cet état, serait l'envoyer dans un mur.
+
+Le lot ajoute donc la **reprise du dossier en cours** : au chargement, si le médecin a déjà une
+inscription pour cette formation en attente de pièces, l'écran reprend directement à l'étape 2.
+Ce qui est alors perdu au rechargement : **les trois fichiers choisis, et rien d'autre** — ni le
+parcours, ni la session, ni le numéro RPPS, ni le dossier. Un fichier choisi ne peut pas être
+conservé au travers d'un rechargement (un objet `File` n'est pas sérialisable) ; c'est la seule
+perte, et elle est irréductible.
+
+Cette reprise corrige au passage un défaut qui existe **déjà** aujourd'hui, indépendamment de
+DP‑4 : un candidat qui ferme son onglet entre l'étape 1 et l'étape 2 est bloqué.
+
+---
+
+## A.9 Demande au support Cloudinary (étape de `SP‑5`)
+
+Supprimer un objet chez Cloudinary ne supprime pas forcément ce que Cloudinary en a sauvegardé :
+la FAQ de l'offre gratuite dit que les sauvegardes sont conservées par Cloudinary et comptées dans
+nos crédits de stockage. Tant qu'elles existent, le document existe. La suppression de `SP‑5`
+n'est donc complète qu'avec une demande écrite.
+
+**À envoyer depuis `infos@optimisante.com` au support Cloudinary, après `SP‑4` vérifiée et
+`SP‑5` exécutée** — pas avant : demander la purge de sauvegardes d'objets encore en service
+serait une mauvaise idée.
+
+> **Objet** — Demande de suppression définitive de sauvegardes de ressources `raw` supprimées
+>
+> Bonjour,
+>
+> Nous utilisons le compte Cloudinary `<cloud name>` (offre gratuite).
+>
+> Nous avons migré l'ensemble de nos documents privés vers un autre stockage, puis supprimé les
+> ressources correspondantes de notre compte Cloudinary. Il s'agit de ressources de type
+> `raw`, rangées sous les préfixes suivants :
+>
+> - `optimisante/prod/dossiers-candidats/`
+> - `optimisante/prod/documents-emis/`
+> - `optimisante/prod/partenariats/demandes/`
+> - `optimisante/prod/catalogue/imports/`
+> - `optimisante/prod/formations/brochures/`
+>
+> Ces fichiers contenaient des données à caractère personnel, dont des copies de pièces
+> d'identité et de diplômes. Nous vous demandons, au titre de l'article 17 du RGPD et de nos
+> obligations de sous-traitance :
+>
+> 1. la **suppression définitive** de toute sauvegarde, copie de sécurité ou réplique de ces
+>    ressources encore détenue par Cloudinary, y compris dans les systèmes de sauvegarde
+>    mentionnés dans votre documentation ;
+> 2. une **confirmation écrite** de cette suppression, avec sa date ;
+> 3. l'indication de la **région d'hébergement** de notre compte et de ses sauvegardes, afin que
+>    nous puissions documenter les transferts passés.
+>
+> Nous conservons par ailleurs l'usage de Cloudinary pour nos ressources publiques (images et
+> vidéos) : cette demande ne porte **que** sur les ressources `raw` des préfixes listés.
+>
+> Merci de nous indiquer le délai de traitement.
+>
+> Cordialement,
+> <signature>
+
+**Trois remarques.** Le `<cloud name>` n'est pas un secret, mais je le laisse à ta main plutôt
+que de le recopier d'un fichier de configuration. Le point 3 nous donnera **par écrit** ce que
+le § A.1 n'a pu qu'établir par la documentation. Et la réponse à cette demande est à **garder** :
+c'est la pièce qui documentera, le jour où on nous le demandera, ce qui a été fait et quand.
+
+---
+
 # B. Feuille de route
 
 ## B.1 L'ordre, et pourquoi il tient
 
 ```
-1. Stockage privé  ──►  2. Catégories + import LCM  ──►  3. Stripe en live  ──►  4. Maquettes
-   (SP, 10,5 j)            (CAT, PIL, IMP : 9 j)          (ST, 15,5 j)           (M1→L : 18 j)
+1. Stockage privé ──► 2. Catégories + import ──► 3. Stripe en live ──► 4. Maquettes
+   (SP, 12,5 j)          (M0, CAT, PIL : 8,5–10,5 j)  (ST, 15,5 j)      (M1→L : 19,5 j)
+                                                                        puis IMP (1,5 j)
+
+   + chantier brochures (BR-2 à BR-5 : 9,5 j) — sa place reste à trancher, § B.6 bis :
+     scénario A juste après SP (ma recommandation), scénario B après ST.
 ```
 
 L'ordre que tu donnes est le bon, et chaque flèche a une raison :
@@ -487,8 +746,8 @@ L'ordre que tu donnes est le bon, et chaque flèche a une raison :
 ni du stockage ni de Stripe : ils peuvent avancer pendant l'attente de ton arbitrage sur l'arbre.
 Et `SP‑4` (la copie) tourne en tâche de fond pendant que `CAT` démarre.
 
-**Total : 53 jours de développement**, hors attentes d'arbitrage et hors les deux chantiers déjà
-ouverts qu'il reste à refermer (`docs/doc-priv`, `docs/dette-catalogue`).
+**Total : 67 à 69 jours de développement**, hors attentes d'arbitrage. Le détail par objectif :
+`SP` 12,5 · catalogue 10 à 12 (dont `IMP` 1,5) · `ST` 15,5 · maquettes 19,5 · `BR` 9,5.
 
 ---
 
@@ -497,22 +756,26 @@ ouverts qu'il reste à refermer (`docs/doc-priv`, `docs/dette-catalogue`).
 | Lot | Objet | Dépend de | Jours |
 |---|---|---|---|
 | **SP‑0** | Cette analyse | — | fait |
-| **DP‑4** | **Rejeu de DP‑4 seul** (§ A.3) : plus aucune clé au navigateur. Branche `fix/dp4-cles-hors-navigateur` depuis `main`. Fermable **tout de suite**, indépendamment du reste. | rien | 0,5 (acquis) |
+| **DP‑4** | **Rejeu de DP‑4 seul** (§ A.3) : plus aucune clé au navigateur. Branche `fix/dp4-cles-hors-navigateur` depuis `main`. Plus l'**alias de transition**, le **409 `REFERENCE_PERIMEE`** et la **reprise du dossier en cours** (§ A.8). Fermable **tout de suite**, indépendamment du reste. | rien | 1,5 (dont 0,5 acquis) |
 | **SP‑1** | `StockageService` ouvert à deux adaptateurs ; `StockagePriveS3` (AWS SDK v2, endpoint Scaleway) ; dépôt des neuf dossiers privés vers S3 ; lecture S3 **avec repli Cloudinary**. Aller-retour réel sur le bucket de développement. Tests. | ton compte + bucket + clés (§ A.5) | 3 |
 | **SP‑2** | Correction du commentaire de `DossierStockage`, et de l'inventaire : `partenariats/modeles` reste public (§ A.3). | SP‑1 | 0,5 |
 | **SP‑3** | Script de copie : essai à blanc par défaut, par lots, journal dans le bucket, reprise, vérification taille + SHA‑256. Tâche `SUPER_ADMIN`. | SP‑1 | 2,5 |
 | **SP‑4** | **Exécution**, pièces des candidats d'abord (§ A.4). Sauvegarde de la base avant, et ton accord explicite. | SP‑3 | 1 |
-| **SP‑5** | Retrait du repli Cloudinary, puis suppression des objets documents chez Cloudinary. | SP‑4 vérifié | 1 |
+| **SP‑5** | Retrait du repli Cloudinary, suppression des objets documents chez Cloudinary, **et demande écrite au support Cloudinary de supprimer leurs sauvegardes** (§ A.9). | SP‑4 vérifié | 1 |
 | **SP‑6** | `SignatureFichier` sur toutes les routes de dépôt (§ A.7). | rien | 1 |
-| **SP‑7** | Durées de conservation : règles de cycle de vie **et** tâche de purge qui vide la colonne (§ A.6). | SP‑5, validation comptable | 1 |
+| **SP‑7** | Durées de conservation : règles de cycle de vie, dates de clôture par parcours, tâche de purge qui supprime l'objet **et ses versions non courantes** et vide la colonne, avertissement de réouverture (§ A.6). | SP‑5, validation comptable | 2 |
 
-**Total SP : 10,5 jours**, dont 0,5 déjà écrit.
+**Total SP : 12,5 jours**, dont 0,5 déjà écrit.
 
 **Ce que SP ne fait pas** : il ne touche pas aux images publiques, ni au calcul des prix, ni au
-paiement, ni aux circuits de validation. Aucune migration Flyway — les neuf colonnes gardent
-leurs valeurs (§ A.4). **Une seule exception possible** : SP‑7 a besoin d'une colonne
-`piece_purgee_le` ; c'est la seule migration de tout l'objectif 1, et elle est argumentée par le
-piège du § A.6.
+paiement, ni aux circuits de validation. La copie n'entraîne **aucune migration Flyway** — les
+neuf colonnes gardent leurs valeurs (§ A.4).
+
+**`SP‑7` est la seule exception, et il lui faut trois colonnes**, toutes argumentées par le § A.6 :
+`cloture_le` (la date dont la purge dépend, et qui n'existe nulle part aujourd'hui),
+`rouvert_le` (pour la marge de trente jours), et `piece_purgee_le` (pour que l'écran explique une
+pièce absente au lieu d'afficher une erreur). Le numéro de migration sera le prochain libre **au
+moment de la fusion**, pas à la création de la branche.
 
 ---
 
@@ -680,17 +943,20 @@ le voyait pas.
 
 ---
 
-## B.6 Le budget de poids, et un écart d'arithmétique à trancher
+## B.6 Le budget de poids
 
-Mesuré à l'instant sur `main` (`40d7ef3`), après la fusion du retrait du bandeau :
-**le JavaScript produit pèse 1 289 Ko**, pour un plafond de charte de **1 500 Ko**. Le marge
-disponible est donc de **211 Ko**.
+Mesuré sur `main` (`40d7ef3`), après la fusion du retrait du bandeau : **le JavaScript produit
+pèse 1 289 Ko**, pour un plafond de charte de **1 500 Ko**. La marge disponible est donc de
+**211 Ko**.
 
-Tu donnes **183 Ko**. Je ne sais pas d'où vient l'écart de 28 Ko — peut-être une mesure prise
-avant une fusion, peut-être une réserve que tu gardes volontairement. **Je planifie à 183 Ko**,
-comme tu le demandes, et les 28 Ko restants deviennent une réserve que **aucun lot ne peut
-demander**. Si l'écart était une erreur de ma part, dis-le-moi : le plan a de la marge, il n'en
-manque pas.
+**Et les 183 Ko n'étaient pas un mystère : tu avais raison, et c'est ma note du 29 octobre que
+j'avais oubliée.** « Après les 28 Ko des brochures, il en restera 183 » — les 28 Ko sont les
+plafonds de **BR‑4 (22 Ko)** et **BR‑5 (6 Ko)**. Ce ne sont donc **pas** une réserve
+intouchable, comme je l'avais écrit à tort : c'est le budget d'un chantier réel, que j'avais
+sorti de la feuille de route sans le dire. Il y rentre au § B.6 bis.
+
+**211 Ko = 183 Ko (catalogue) + 28 Ko (brochures).** Le compte est juste, et il n'y a pas de
+réserve cachée.
 
 | Lot | Plafond | Ce qu'il paie |
 |---|---|---|
@@ -702,12 +968,14 @@ manque pas.
 | M4 | 12 Ko | filtre marque, logos |
 | M2-bis | 25 Ko | éditeur clé-valeur, dépôt de documents |
 | L | 6 Ko | affichage du délai, saisie dans l'écran des tarifs |
-| **Réserve attribuable** | **25 Ko** | imprévus, et de quoi refuser un dépassement sans bloquer un lot |
-| **Réserve intouchable** | **28 Ko** | l'écart entre ma mesure et ton chiffre, mis de côté |
+| **BR‑4** | 22 Ko | écran de dépôt partenaire et écran de relecture |
+| **BR‑5** | 6 Ko | écran de validation, motif de refus |
+| **Réserve attribuable** | **21 Ko** | imprévus, et de quoi refuser un dépassement sans bloquer un lot |
 
-**Total attribué : 158 Ko + 25 Ko de réserve = 183 Ko.** Les lots SP et ST ne consomment rien
-côté navigateur, sauf `ST‑1` (affichage du statut de commande au client) et `ST‑4` (bouton de
-téléchargement de facture) : **4 Ko**, pris sur la réserve attribuable, qui tombe à 21 Ko.
+**Total : 158 Ko (catalogue) + 28 Ko (brochures) + 4 Ko (ST‑1, ST‑4) + 21 Ko de réserve =
+211 Ko.** Les autres lots SP et ST ne consomment rien côté navigateur. `DP‑4` non plus : il
+retire des champs et en ajoute un message, le solde est nul à l'octet près — à mesurer, pas à
+supposer.
 
 Les règles de tenue du budget ne changent pas : un lot qui dépasse s'arrête et le signale, un lot
 qui finit sous son plafond rend la différence, le poids se **mesure** et ne s'estime jamais. Et
@@ -715,25 +983,84 @@ augmenter `plafondJsKo` n'est pas une option — c'est le garde-fou, pas un para
 
 ---
 
+## B.6 bis Le chantier brochures revient dans la feuille de route
+
+Je l'avais sorti sans le dire, et les 28 Ko étaient la trace de cet oubli. Il rentre, avec une
+conséquence et une question.
+
+**La conséquence : `BR‑2` change de nature et dépend de `SP‑1`.** Sa décision 2 — « stocker le
+fichier d'origine **en base**, table séparée » — avait été prise parce que le stockage privé
+n'existait pas ; DOC‑PRIV l'avait déjà renversée en faveur de `authenticated`, et c'est
+maintenant **S3 privé**. `BR‑2` perd donc la table de stockage des octets et passe de 2,5 à
+**2 jours**. Il garde sa migration, mais pour les statuts de brochure et l'autorisation du
+partenaire — pas pour des fichiers.
+
+| Lot | Objet | Dépend de | Jours | JS |
+|---|---|---|---|---|
+| **BR‑2** | Modèle : brochure, statuts, autorisation du partenaire, accès contrôlé et journalisé, suppression à 90 jours. **Fichier d'origine en S3 privé**, plus en base. | **SP‑1** | 2 | 0 |
+| **BR‑3** | Extraction PDFBox, garde-fous mémoire / temps / pages, filtre déterministe | BR‑2 | 3 | 0 |
+| **BR‑4** | Écran de dépôt partenaire, écran de relecture, éléments retirés mis en évidence | BR‑3 | 2,5 | 22 Ko |
+| **BR‑5** | Validation `ADMIN_MOBILITE` / `SUPER_ADMIN`, motif de refus, génération du gabarit, **et l'adresse précise réservée à la convocation** | BR‑4 | 2 | 6 Ko |
+
+**Total BR : 9,5 jours, 28 Ko.** `BR‑6` (structuration par l'IA) reste hors feuille de route :
+il dépend d'une décision que tu n'as pas prise, et il ne bloque rien.
+
+### La question : où le placer. Deux scénarios
+
+**Scénario A — juste après SP** · `SP` → **`BR‑2` à `BR‑5`** → `CAT`/`PIL` → `ST` → `IMP` →
+maquettes
+
+| Pour | Contre |
+|---|---|
+| `BR‑2` suit `SP‑1` de quelques jours : le code de stockage est encore en main, et la seule dépendance croisée du chantier se consomme immédiatement. | Repousse l'ouverture des paiements réels de 9,5 jours. |
+| Les partenaires dont `BR‑1` a coupé la brochure la retrouvent **~3 semaines** après le début des travaux. C'est le seul chantier où **quelqu'un d'extérieur attend**. | Le catalogue, qui est le chemin critique de tout le reste, démarre plus tard — et il commence par **ton arbitrage**, donc par une attente qu'on aurait pu paralléliser. |
+| `BR‑1` promettait « leur brochure revient à BR‑5 ». Tenir cette promesse en trois semaines, c'est la tenir. | |
+
+**Scénario B — après ST** · `SP` → `CAT`/`PIL` → `ST` → **`BR‑2` à `BR‑5`** → `IMP` → maquettes
+
+| Pour | Contre |
+|---|---|
+| Les vrais paiements s'ouvrent 9,5 jours plus tôt. C'est le seul chantier des cinq qui n'a **aucun** effet sur le chiffre d'affaires. | Les partenaires restent sans brochure **~9 semaines** de plus. La promesse de `BR‑1` vieillit mal, et une démonstration partenaire devient inconfortable. |
+| `CAT` démarre tout de suite après `SP`, donc ton arbitrage sur l'arbre arrive tôt et son attente se superpose au développement de `ST`. | |
+
+### Ma recommandation : **scénario A**
+
+Deux raisons, et la seconde est la vraie.
+
+1. Les 9,5 jours que A coûte aux paiements sont des jours ajoutés à une ouverture qui dépend
+   déjà de **huit** autres lots et de la validation de ton comptable. Le chemin critique des
+   paiements n'est pas le calendrier : c'est `ST‑1` à `ST‑7` et leurs dépendances. Décaler le
+   départ ne décale pas forcément l'arrivée.
+2. **`BR‑1` a retiré une fonction que des partenaires utilisaient**, et c'est la seule décision
+   de tout ce projet où nous avons dégradé le service de quelqu'un d'extérieur pour fermer une
+   fuite. Nous avions raison de le faire ; nous avons aussi écrit que la brochure reviendrait à
+   `BR‑5`. Neuf semaines de plus, ce n'est plus un délai, c'est un autre engagement.
+
+**Mais si un partenaire s'est manifesté depuis le 30 octobre, A n'est plus une recommandation,
+c'est la seule option.** Et si aucun ne l'a fait et que la trésorerie pousse, B se défend
+honnêtement. **C'est toi qui tranches** ; je n'ai pas l'information qui décide.
+
+---
+
 ## B.7 Ce qu'il te reste à faire, dans l'ordre
 
-1. **Vérifier la région Cloudinary** dans la console (§ A.1) — deux minutes, et cela confirme ou
-   corrige le premier argument de tout ce document.
-2. **Arbitrer le choix du fournisseur** (§ A.2). Je recommande Scaleway `fr-par`.
-3. **Créer le compte, les deux buckets, les deux applications et les clés** (§ A.5), puis poser
-   les sept variables sur Render. `SP‑1` ne peut pas commencer avant.
-4. **Trancher le sort de `fix/dp1-dp4-documents-prives`** (§ A.3) : je recommande de rejouer
-   DP‑4 seul et d'abandonner DP‑1. L'essai `CloudinaryAuthenticatedRoundTripTest` que je te
-   demandais n'est plus dû.
-5. **Me donner le résultat de la requête SQL et de la page *Events* de Stripe** pour clore le
-   diagnostic de l'acompte (`ST‑6`).
-6. **Faire valider les durées de conservation** par ton comptable (§ A.6), en particulier les dix
-   ans sur les conventions.
-7. **Confirmer ou corriger les 183 Ko** (§ B.6).
+**Arbitré le 5 novembre 2026** : fournisseur **Scaleway `fr-par`, Standard Multi-AZ** ; `DP‑4`
+rejoué seul, `DP‑1` abandonné ; ordre accepté, `IMP` après `ST` ; les quatre branches
+documentaires fusionnées dans `main`. Reste :
 
-Et trois branches attendent toujours une décision de fusion : `docs/doc-priv` (l'analyse
-DOC-PRIV, désormais à lire avec le correctif du § A.3), `docs/dette-catalogue` (D0, le plan et
-les prompts), `docs/backlog-securite`.
+1. **Créer les deux projets, les deux buckets, les deux applications et les clés** (§ A.5), puis
+   poser les sept variables sur Render. **`SP‑1` ne peut pas commencer avant.**
+2. **Trancher la place du chantier brochures** (§ B.6 bis) : scénario A juste après `SP`, ou
+   scénario B après `ST`. Je recommande A. La question qui décide : un partenaire s'est-il
+   manifesté depuis le 30 octobre ?
+3. **Vérifier la région Cloudinary** dans la console (§ A.1) — deux minutes. La demande au
+   support de `SP‑5` (§ A.9) nous la donnera aussi par écrit, mais plus tard.
+4. **Me donner le résultat de la requête SQL et de la page *Events* de Stripe** pour clore le
+   diagnostic de l'acompte (`ST‑6`).
+5. **Faire valider les durées de conservation** par ton comptable (§ A.6), en particulier les dix
+   ans sur les conventions.
+6. **Valider les définitions de clôture par parcours** (§ A.6) : ce sont des règles métier, pas
+   techniques, et c'est toi qui sais si un visa refusé se représente.
 
 ---
 
@@ -756,6 +1083,19 @@ Pour mémoire, et pour qu'aucune session ne les redécouvre.
 | Documents produit de `M2-bis` | Ils ne sont **pas tous publics** : `M2-bis` dépose par `StockageService` et dépend donc de `SP‑1`. Dépendance nouvelle (§ B.5). |
 | Durées de conservation « par type » | La règle de cycle de vie S3 **ne suffit pas** pour les pièces des candidats : elle se cale sur la date de l'objet, pas sur la clôture du dossier, et supprimer l'objet sans vider la colonne casse l'écran en silence. D'où `SP‑7` à part (§ A.6). |
 | `SignatureFichier` « sur les routes de dépôt » | Il n'est appelé **qu'à un seul endroit**. `verifierDocument` ne vérifie **aucune** signature, et **neuf** routes de dépôt n'appellent ni `verifierDocument` ni `verifierBrochure` (§ A.7). |
+
+### Corrections apportées le 5 novembre 2026, après ta relecture
+
+| Point | Ce qui a changé |
+|---|---|
+| « 28 Ko de réserve intouchable » | **Mon erreur, et tu avais la bonne explication.** Les 28 Ko sont les plafonds de `BR‑4` (22) et `BR‑5` (6) : j'avais sorti le chantier brochures de la feuille de route sans le dire, et pris la trace de cet oubli pour un mystère. Le chantier y rentre (§ B.6 bis), et `BR‑2` dépend désormais de `SP‑1` : il perd sa table de stockage en base et passe de 2,5 à 2 jours. |
+| « politique limitée à un bucket » | **Impossible chez Scaleway** : le périmètre d'une politique IAM est l'organisation ou le projet, jamais un bucket. D'où **deux projets séparés**, un bucket et une application chacun (§ A.5). La politique de bucket reste une ceinture en plus, pas la garantie principale. |
+| Droits de l'application de production | Il manquait la **suppression d'objets**, sans laquelle `SP‑7` ne peut pas purger. Ajouté, pour la production comme pour le développement ; le droit de supprimer un **bucket** reste exclu (§ A.5). |
+| `SP‑7` et la gestion des versions | **Un `DeleteObject` sur un bucket versionné ne supprime rien** : il pose un marqueur et la version précédente reste lisible. La purge devait donc énumérer et supprimer les **versions non courantes**, et vérifier que l'énumération revient vide — sans quoi le passeport était conservé par le mécanisme même censé nous protéger. `SP‑7` passe de 1 à 2 jours (§ A.6). |
+| « clôture du dossier », laissée floue | Définie par parcours, état par état, avec le traitement d'une **réouverture** : la clôture s'annule, mais une pièce purgée ne revient pas et le dossier repart en `ACTION_REQUIRED`. Trois colonnes nécessaires, et c'est la seule migration de l'objectif 1 (§ A.6). |
+| Ordre de déploiement de DP‑4 | **Question posée le 30 octobre et jamais traitée.** Les **deux** ordres cassent le dépôt des pièces, en silence et sans message. Réglé par un **alias de transition** `publicId` dont la valeur est la référence signée : le backend part d'abord, la page ancienne continue de fonctionner, la clé ne sort pas et aucun `publicId` client n'est jamais réaccepté (§ A.8). |
+| Recharger la page | Le message « rechargez la page » aurait été un piège : aujourd'hui, **recharger perd le dossier** et l'étape 1 rejouée crée un doublon refusé. Le lot ajoute la reprise du dossier en cours — un défaut qui existait **déjà**, indépendamment de DP‑4 (§ A.8). |
+| Sauvegardes Cloudinary | Supprimer un objet ne supprime pas ce que Cloudinary en a sauvegardé, et l'offre gratuite les conserve. `SP‑5` gagne une demande écrite au support, rédigée au § A.9 — qui nous donnera aussi la région par écrit. |
 
 ---
 

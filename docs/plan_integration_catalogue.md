@@ -130,10 +130,10 @@ M0 ──┬── CAT ──┬── M3a ── M3b ── M4    │
 ## 3. Le budget de poids, réparti d'avance
 
 **Mesuré le 5 novembre 2026 sur `main` (`40d7ef3`) : 1 289 Ko produits, pour un plafond de
-charte de 1 500 Ko — soit 211 Ko disponibles.** Le budget est arrêté à **183 Ko** sur décision
-du commanditaire ; les **28 Ko** d'écart entre la mesure et ce chiffre sont une réserve
-intouchable qu'aucun lot ne peut demander. Chaque lot connaît son plafond **avant** de commencer,
-pour qu'aucun lot ne découvre à son ouverture qu'il ne reste rien.
+charte de 1 500 Ko — soit 211 Ko disponibles.** Le budget du **catalogue** est de **183 Ko** ;
+les **28 Ko** restants sont le budget du **chantier brochures** (`BR‑4` 22 Ko + `BR‑5` 6 Ko), et
+non une réserve. `211 = 183 + 28`. Chaque lot connaît son plafond **avant** de commencer, pour
+qu'aucun lot ne découvre à son ouverture qu'il ne reste rien.
 
 | Lot | Plafond | Ce qu'il paie |
 |---|---|---|
@@ -146,8 +146,8 @@ pour qu'aucun lot ne découvre à son ouverture qu'il ne reste rien.
 | M2-bis | 25 Ko | éditeur clé-valeur et dépôt de documents dans l'administration |
 | L | 6 Ko | affichage du délai, saisie dans l'écran des tarifs |
 | ST‑1, ST‑4 | 4 Ko | statut de commande rendu au client, bouton de téléchargement de facture |
+| BR‑4, BR‑5 | 28 Ko | chantier brochures — hors budget catalogue, voir § B.6 bis de l'analyse stockage |
 | **Réserve attribuable** | **21 Ko** | imprévus, et de quoi refuser un dépassement sans bloquer un lot |
-| **Réserve intouchable** | **28 Ko** | l'écart entre la mesure (211 Ko) et le budget arrêté (183 Ko) |
 
 **Règles de tenue du budget.** Un lot qui dépasse son plafond ne prend pas dans la réserve de
 lui-même : il s'arrête et le signale. Un lot qui finit sous son plafond rend la différence à
