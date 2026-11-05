@@ -1,5 +1,14 @@
 # DOC-PRIV — rendre privés les documents non publics (analyse, aucun code)
 
+> **Remplacé pour le stockage par `analyse_stockage_prive_et_feuille_de_route.md` § A ; seul
+> l'inventaire et DP-4 restent valables.**
+>
+> Deux points de cette analyse sont par ailleurs corrigés par le § A.3 du document qui la
+> remplace : les clés Cloudinary **ne s'énumèrent pas** (UUID complet, ou 48 bits d'aléa), et la
+> colonne `partnership_requests.convention_file_key` porte **deux sensibilités** —
+> `partenariats/demandes` est privé, `partenariats/modeles` est un modèle vierge à clé stable
+> qui ne désigne personne et reste public.
+
 Écrit pour : Mounir, pour décision avant développement ; et pour la session qui réalisera les
 lots. Lot **prioritaire, avant BR-2**.
 
