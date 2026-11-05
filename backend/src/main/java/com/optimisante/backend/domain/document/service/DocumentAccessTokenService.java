@@ -44,13 +44,93 @@ public class DocumentAccessTokenService {
      */
     private static final String DOMAINE = "doc-access:v1:";
 
+    /**
+     * Séparation de domaine de la clé de <b>chiffrement</b> : dérivée du même secret que la
+     * signature, mais jamais égale à elle. Deux usages, deux clés.
+     */
+    private static final String DOMAINE_CHIFFREMENT = "doc-access:chiffrement:v1:";
+
+    /** Taille du vecteur d'initialisation d'AES-GCM, en octets. 12 est la valeur recommandée. */
+    private static final int TAILLE_NONCE = 12;
+
+    /** Longueur de l'étiquette d'authentification d'AES-GCM, en bits. */
+    private static final int TAILLE_ETIQUETTE = 128;
+
     private static final Base64.Encoder ENCODEUR = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder DECODEUR = Base64.getUrlDecoder();
 
+    private static final java.security.SecureRandom ALEA = new java.security.SecureRandom();
+
     private final byte[] cle;
+    private final javax.crypto.SecretKey cleChiffrement;
 
     public DocumentAccessTokenService(@Value("${app.security.jwt.secret}") String secret) {
         this.cle = secret.getBytes(StandardCharsets.UTF_8);
+        this.cleChiffrement = deriverCleChiffrement(secret);
+    }
+
+    private static javax.crypto.SecretKey deriverCleChiffrement(String secret) {
+        try {
+            byte[] brut = MessageDigest.getInstance("SHA-256")
+                    .digest((DOMAINE_CHIFFREMENT + secret).getBytes(StandardCharsets.UTF_8));
+            return new SecretKeySpec(brut, "AES");
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 indisponible", impossible);
+        }
+    }
+
+    /**
+     * Chiffre la charge du jeton, au lieu de la coder en base64.
+     *
+     * <p><b>Pourquoi, et c'est un correctif, pas une précaution.</b> La charge était simplement
+     * <em>encodée</em> : {@code base64url(publicId|expiration|libelle)}. Un base64 n'est pas un
+     * secret — un {@code atob(jeton.split('.')[0])} dans la console du navigateur rendait la clé
+     * de stockage en clair. Toute la raison d'être de DP-4 — « la clé ne quitte pas le serveur » —
+     * était donc fausse tant que la charge restait lisible : le jeton <b>était</b> la fuite, sous
+     * une autre forme. La signature empêchait de <em>fabriquer</em> un jeton ; elle n'empêchait
+     * pas de <em>lire</em> celui qu'on avait reçu.</p>
+     *
+     * <p>AES-GCM avec un vecteur d'initialisation tiré au hasard à chaque appel : deux jetons
+     * délivrés pour le même fichier ne se ressemblent pas, ce qui interdit aussi de reconnaître
+     * deux liens comme désignant la même pièce. L'étiquette d'authentification de GCM s'ajoute à
+     * la signature HMAC existante, qui est conservée : une charge modifiée est rejetée deux
+     * fois.</p>
+     */
+    private String chiffrer(String charge) {
+        try {
+            byte[] nonce = new byte[TAILLE_NONCE];
+            ALEA.nextBytes(nonce);
+            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, cleChiffrement,
+                    new javax.crypto.spec.GCMParameterSpec(TAILLE_ETIQUETTE, nonce));
+            byte[] chiffre = cipher.doFinal(charge.getBytes(StandardCharsets.UTF_8));
+
+            byte[] assemble = new byte[nonce.length + chiffre.length];
+            System.arraycopy(nonce, 0, assemble, 0, nonce.length);
+            System.arraycopy(chiffre, 0, assemble, nonce.length, chiffre.length);
+            return ENCODEUR.encodeToString(assemble);
+        } catch (Exception e) {
+            // Même raisonnement que pour la signature : un chiffrement impossible est un défaut
+            // de configuration. Mieux vaut échouer que délivrer un jeton lisible.
+            throw new IllegalStateException("Chiffrement du jeton de document impossible", e);
+        }
+    }
+
+    /** @return la charge en clair, ou {@code null} si le jeton ne se déchiffre pas. */
+    private String dechiffrer(byte[] assemble) {
+        if (assemble.length <= TAILLE_NONCE) return null;
+        try {
+            byte[] nonce = java.util.Arrays.copyOfRange(assemble, 0, TAILLE_NONCE);
+            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(javax.crypto.Cipher.DECRYPT_MODE, cleChiffrement,
+                    new javax.crypto.spec.GCMParameterSpec(TAILLE_ETIQUETTE, nonce));
+            byte[] clair = cipher.doFinal(assemble, TAILLE_NONCE, assemble.length - TAILLE_NONCE);
+            return new String(clair, StandardCharsets.UTF_8);
+        } catch (Exception illisible) {
+            // Jeton d'un ancien format, ou charge altérée : indistinguable pour le visiteur, et
+            // c'est voulu.
+            return null;
+        }
     }
 
     /**
@@ -65,7 +145,8 @@ public class DocumentAccessTokenService {
         // Le « | » sépare les champs : on le retire du libellé plutôt que d'inventer un
         // échappement, un nom de fichier n'en contient jamais légitimement.
         String charge = publicId + "|" + expiration + "|" + nettoyer(libelle);
-        String chargeEncodee = ENCODEUR.encodeToString(charge.getBytes(StandardCharsets.UTF_8));
+        // Chiffrée, et non seulement encodée : voir chiffrer(). Un base64 n'est pas un secret.
+        String chargeEncodee = chiffrer(charge);
         return chargeEncodee + "." + ENCODEUR.encodeToString(signer(chargeEncodee));
     }
 
@@ -83,10 +164,10 @@ public class DocumentAccessTokenService {
 
         String chargeEncodee = jeton.substring(0, point);
         byte[] signatureRecue;
-        String charge;
+        byte[] chargeChiffree;
         try {
             signatureRecue = DECODEUR.decode(jeton.substring(point + 1));
-            charge = new String(DECODEUR.decode(chargeEncodee), StandardCharsets.UTF_8);
+            chargeChiffree = DECODEUR.decode(chargeEncodee);
         } catch (IllegalArgumentException malforme) {
             return Optional.empty();
         }
@@ -95,6 +176,14 @@ public class DocumentAccessTokenService {
         // différent, et la durée de l'échec renseigne alors sur la signature attendue.
         if (!MessageDigest.isEqual(signatureRecue, signer(chargeEncodee))) {
             log.warn("Jeton de document rejeté : signature invalide.");
+            return Optional.empty();
+        }
+
+        // Le déchiffrement vient APRÈS la signature : on ne fait travailler le chiffre que sur une
+        // charge dont on a déjà établi qu'elle vient de nous.
+        String charge = dechiffrer(chargeChiffree);
+        if (charge == null) {
+            log.warn("Jeton de document rejeté : charge illisible.");
             return Optional.empty();
         }
 

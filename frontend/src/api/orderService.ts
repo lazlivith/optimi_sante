@@ -47,7 +47,8 @@ export interface OrderResponseDto {
   paymentUrl?: string;
   /** Renseigné uniquement pour un paiement STRIPE_CARD : initialise le Payment Element intégré (ui_mode "elements"). */
   clientSecret?: string;
-  documentS3Key?: string;
+  // DP-4 : présence seulement, le téléchargement passe par /documents/{type}/{id}/download.
+  hasDocument?: boolean;
   promoCode?: string;
   discountAmount?: number;
   createdAt: string;

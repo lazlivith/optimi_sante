@@ -21,7 +21,16 @@ public record OrderResponseDto(
         String stripeCheckoutSessionId,
         String paymentUrl,
         String clientSecret,
-        String documentS3Key,
+        /**
+         * Un reçu (ou devis) existe-t-il pour cette commande ?
+         *
+         * <p><b>Un booléen, et non la clé de stockage (DP-4).</b> La clé était le {@code public_id}
+         * Cloudinary du document : exposée au navigateur, elle ouvrait un accès direct à un objet
+         * alors public, hors de tout contrôle de rôle. Le téléchargement passe par
+         * {@code GET /api/v1/documents/{type}/{id}/download}, qui vérifie le rôle et rend une URL à
+         * jeton. L'interface n'a besoin que de savoir s'il faut afficher le bouton.</p>
+         */
+        boolean hasDocument,
         String promoCode,
         BigDecimal discountAmount,
         /** Remise accordée par l'administration sur un devis, en pourcentage (V59). Nulle sinon. */

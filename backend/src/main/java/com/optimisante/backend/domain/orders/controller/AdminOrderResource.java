@@ -117,7 +117,8 @@ public class AdminOrderResource {
                 updatedOrder = new OrderResponseDto(
                         updatedOrder.id(), updatedOrder.orderNumber(), updatedOrder.paymentMethod(), updatedOrder.paymentStatus(),
                         updatedOrder.status(), updatedOrder.isQuote(), updatedOrder.totalAmount(), updatedOrder.stripePaymentIntentId(),
-                        updatedOrder.stripeCheckoutSessionId(), updatedOrder.paymentUrl(), updatedOrder.clientSecret(), publicId,
+                        updatedOrder.stripeCheckoutSessionId(), updatedOrder.paymentUrl(), updatedOrder.clientSecret(),
+                        publicId != null && !publicId.isBlank(),
                         updatedOrder.promoCode(), updatedOrder.discountAmount(), updatedOrder.quoteDiscountRate(),
                         updatedOrder.createdAt(), updatedOrder.paymentCurrency(),
                         updatedOrder.paymentAmount(), updatedOrder.refundedAmount(),

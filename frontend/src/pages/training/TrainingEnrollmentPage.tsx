@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Check, ChevronRight, UploadCloud, MapPin, Calendar, Users, Loader2 } from 'lucide-react';
 import { enrollmentService } from '../../api/enrollmentService';
 import type { TrainingSessionDto, EnrollmentResponseDto } from '../../api/enrollmentService';
-import { storageService } from '../../api/storageService';
+import { storageService, estPagePerimee, MESSAGE_PAGE_A_RECHARGER } from '../../api/storageService';
 import { FileUploadDropzone } from '../../components/common/FileUploadDropzone';
 import { useAuth } from '../../context/AuthContext';
 import { QualificationParcours, qualificationComplete } from '../../components/enrollment/QualificationParcours';
@@ -42,11 +42,59 @@ export function TrainingEnrollmentPage() {
   const [passportUrl, setPassportUrl] = useState<string | null>(null);
   const [isUploadingPassport, setIsUploadingPassport] = useState(false);
 
+  /**
+   * Décalage de version entre cette page et le serveur : les pièces ont été déposées avant la
+   * mise à jour du backend, et leurs références ne sont plus celles qu'il attend. Rien n'est
+   * cassé — il faut recharger. Voir DP-4, § A.8 de l'analyse stockage.
+   */
+  const [pagePerimee, setPagePerimee] = useState(false);
+
+  /** Vrai quand l'étape 2 a été rejointe en reprenant un dossier déjà ouvert, et non en le créant. */
+  const [dossierRepris, setDossierRepris] = useState(false);
+
   useEffect(() => {
     if (trainingId) {
       fetchSessions();
     }
   }, [trainingId]);
+
+  /**
+   * Reprend le dossier en cours, s'il y en a un.
+   *
+   * <p>Sans cela, recharger la page perdait le dossier : son identifiant ne vivait que dans
+   * l'état React, et l'étape 1 rejouée créait un doublon que le serveur refuse — « Vous êtes
+   * déjà inscrit à cette session ». Le candidat se retrouvait bloqué sans recours. Ce défaut
+   * existait avant DP-4 (il suffisait de fermer l'onglet) ; il devient inacceptable à partir du
+   * moment où l'on peut inviter quelqu'un à recharger.</p>
+   *
+   * <p>Ce qu'un rechargement perd malgré tout : les trois <b>fichiers choisis</b>, et rien
+   * d'autre. Un objet File ne se conserve pas au travers d'un rechargement ; le parcours, la
+   * session et le numéro RPPS, eux, sont déjà au serveur.</p>
+   */
+  useEffect(() => {
+    if (!trainingId || enrollment || chargementCompte || !user || user.role !== 'MEDECIN') return;
+
+    let abandonne = false;
+    (async () => {
+      try {
+        const dossiers = await enrollmentService.getMyEnrollments();
+        // Seuls les deux états où les pièces sont encore attendues. Au-delà, le dossier suit son
+        // cours ailleurs et cet écran n'a rien à y faire.
+        const enCours = dossiers.find(d => d.trainingId === trainingId
+          && (d.status === 'UNDER_OPTIMI_REVIEW' || d.status === 'ACTION_REQUIRED'));
+        if (abandonne || !enCours) return;
+
+        setEnrollment({ id: enCours.id, status: enCours.status, submittedAt: enCours.submittedAt });
+        setDossierRepris(true);
+        setCurrentStep(2);
+      } catch {
+        // Reprise impossible : on laisse l'écran se comporter comme avant, à l'étape 1. Ne rien
+        // afficher est volontaire — un message d'erreur ici parlerait d'un dossier dont le
+        // candidat n'a peut-être jamais entendu parler.
+      }
+    })();
+    return () => { abandonne = true; };
+  }, [trainingId, enrollment, chargementCompte, user]);
 
   const fetchSessions = async () => {
     try {
@@ -90,8 +138,22 @@ export function TrainingEnrollmentPage() {
     try {
       setLoading(true);
       const res = await storageService.uploadFile(file, 'DOSSIERS_PIECES');
-      setUrl(res.publicId);
+      // DP-4 : on transmet la référence signée, plus la clé de stockage. Le serveur la résout
+      // en clé à la soumission.
+      //
+      // Vérifiée avant d'être rangée : si le backend n'a pas encore été déployé, la réponse ne
+      // porte pas de référence. Ranger `undefined` laisserait le bouton « Soumettre » désactivé
+      // sans un mot d'explication — c'était la panne silencieuse de la fenêtre de déploiement.
+      if (!res.reference) {
+        setPagePerimee(true);
+        return;
+      }
+      setUrl(res.reference);
     } catch (error) {
+      if (estPagePerimee(error)) {
+        setPagePerimee(true);
+        return;
+      }
       console.error("Upload failed", error);
       alert("Le téléversement du fichier a échoué. Veuillez réessayer.");
     } finally {
@@ -110,6 +172,12 @@ export function TrainingEnrollmentPage() {
       });
       setCurrentStep(3);
     } catch (error) {
+      // Le cas nommé passe avant le message générique : le candidat n'a rien fait de mal, sa
+      // page est simplement plus ancienne que le serveur.
+      if (estPagePerimee(error)) {
+        setPagePerimee(true);
+        return;
+      }
       console.error("Failed to submit documents", error);
       alert("Erreur lors de la soumission des documents.");
     } finally {
@@ -138,6 +206,44 @@ export function TrainingEnrollmentPage() {
         </div>
 
         {renderStepper()}
+
+        {/*
+          Décalage de version. Volontairement une bannière et non une alerte modale : le reste de
+          la saisie est conservé, et rien n'est perdu à part les fichiers choisis. Le ton ne met
+          pas la panne sur le dos du candidat, parce qu'elle ne l'est pas.
+        */}
+        {pagePerimee && (
+          <div
+            role="alert"
+            className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-900"
+          >
+            <p className="font-semibold">{MESSAGE_PAGE_A_RECHARGER}</p>
+            <p className="mt-1 text-sm">
+              Votre dossier est enregistré : après le rechargement, vous reviendrez directement au
+              dépôt des pièces. Seuls les fichiers déjà choisis devront être sélectionnés à nouveau.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-4 rounded-lg bg-amber-800 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-900"
+            >
+              Recharger la page
+            </button>
+          </div>
+        )}
+
+        {dossierRepris && !pagePerimee && currentStep === 2 && (
+          <div
+            role="status"
+            className="mb-6 rounded-xl border border-slate-300 bg-white p-5 text-slate-700"
+          >
+            <p className="font-semibold text-slate-900">Vous avez un dossier en cours pour cette formation.</p>
+            <p className="mt-1 text-sm">
+              Nous vous ramenons au dépôt des pièces. Si notre équipe vous a demandé une
+              correction, redéposez la pièce concernée : elle remplacera la précédente.
+            </p>
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
           

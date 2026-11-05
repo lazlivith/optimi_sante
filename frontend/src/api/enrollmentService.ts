@@ -16,9 +16,7 @@ export interface EnrollmentResponseDto {
   status: string;
   registrationType?: RegistrationType;
   rppsNumber?: string | null;
-  diplomaUrl?: string;
-  medicalBoardRegistrationUrl?: string;
-  passportUrl?: string;
+  // DP-4 : plus de clé de pièce dans la réponse. Les pièces se consultent par le coffre-fort.
   submittedAt: string;
 }
 
@@ -45,12 +43,12 @@ export interface EnrollmentDetailDto {
   registrationType?: RegistrationType;
   rppsNumber?: string | null;
   trainingTitle: string;
+  /** Formation dont relève le dossier : sert à retrouver le dossier en cours après rechargement. */
+  trainingId?: string;
   submittedAt: string;
-  diplomaUrl?: string;
-  medicalBoardRegistrationUrl?: string;
-  passportUrl?: string;
-  conventionS3Key?: string;
-  attestationS3Key?: string;
+  // DP-4 : présence seulement, jamais la clé. Téléchargement par /documents/{type}/{id}/download.
+  hasConvention?: boolean;
+  hasAttestation?: boolean;
   /** Établissement d'accueil de la session. */
   hostInstitution?: string | null;
   /** Frais de formation à régler, en euros. */

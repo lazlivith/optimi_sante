@@ -3,6 +3,8 @@ package com.optimisante.backend.domain.document.controller;
 import com.optimisante.backend.common.storage.ControleFichier;
 import com.optimisante.backend.common.storage.DossierStockage;
 import com.optimisante.backend.common.storage.StorageService;
+import com.optimisante.backend.domain.document.service.DocumentAccessTokenService;
+import com.optimisante.backend.domain.document.service.DocumentLinkService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,10 +31,17 @@ public class StorageController {
     private static final Set<DossierStockage> DOSSIERS_AUTORISES = Set.of(DossierStockage.DOSSIERS_PIECES);
 
     private final StorageService storageService;
+    private final DocumentAccessTokenService jetons;
 
     /**
      * {@code /api/v1/storage/upload} est l'adresse à utiliser ; {@code /api/v1/admin/storage/upload}
      * reste servie pour un écran encore en cache dans un navigateur.
+     *
+     * <p><b>Ne rend plus le {@code public_id} (DP-4).</b> Il livrait au navigateur l'adresse brute
+     * d'un objet Cloudinary. À la place : une <b>référence signée</b> à courte durée — que
+     * l'inscription renvoie au serveur, qui la résout en clé — et une URL d'aperçu passant par
+     * notre backend ({@code /api/v1/documents/file/<jeton>}), jamais Cloudinary. La clé ne quitte
+     * pas le serveur.</p>
      */
     @PostMapping({"/api/v1/storage/upload", "/api/v1/admin/storage/upload"})
     @PreAuthorize("hasAnyRole('MEDECIN', 'ADMIN_ECOMMERCE', 'ADMIN_MOBILITE', 'ADMIN', 'SUPER_ADMIN')")
@@ -43,7 +52,31 @@ public class StorageController {
         DossierStockage dossier = dossier(folder);
         ControleFichier.verifierDocument(file);
         String publicId = storageService.uploadFile(file, dossier);
-        return ResponseEntity.ok(Map.of("publicId", publicId, "message", "Fichier déposé."));
+
+        // La référence EST un jeton de document : l'inscription le résout en clé, et l'aperçu
+        // le sert par notre backend. Le navigateur ne voit jamais le public_id.
+        String reference = jetons.delivrer(publicId, DocumentLinkService.MINUTES_PAR_DEFAUT, null);
+        return ResponseEntity.ok(Map.of(
+                "reference", reference,
+                "previewUrl", "/api/v1/documents/file/" + reference,
+                // ── Alias de transition, à retirer au lot SP-2 ────────────────────────────
+                // Sans lui, LES DEUX ordres de déploiement cassent le dépôt des pièces, et en
+                // silence : la page ancienne lit `publicId` et n'y trouve rien, donc le bouton
+                // « Soumettre » reste désactivé sans qu'aucun message ne l'explique. On garde
+                // donc le NOM de l'ancien champ, avec la RÉFÉRENCE pour valeur — la page
+                // ancienne la range et la renvoie telle quelle, et le serveur la résout. La clé
+                // ne sort pas, et aucune clé fournie par un client n'est jamais acceptée en
+                // retour (EnrollmentService.resoudreReference).
+                //
+                // Vérifié avant de l'ajouter : la page ne fait rien d'autre de cette valeur que
+                // la ranger et la renvoyer. Il n'existe aucun aperçu construit côté navigateur,
+                // donc rien que cet alias puisse casser.
+                //
+                // Ne pas le retirer le lendemain du déploiement : Vercel sert la page neuve aux
+                // nouvelles visites, mais un onglet resté ouvert garde l'ancienne. La fenêtre
+                // dure autant que le plus vieil onglet — trente jours au moins.
+                "publicId", reference,
+                "message", "Fichier déposé."));
     }
 
     private static DossierStockage dossier(String valeur) {

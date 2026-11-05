@@ -143,6 +143,22 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Pièce présentée avec une référence que ce serveur n'a pas délivrée : 409, et un code.
+     *
+     * <p>Doit précéder le filet générique, qui rendrait un 400 « requête invalide » — vrai sur le
+     * plan technique, inutile pour le candidat, qui n'a rien fait de mal : sa page est simplement
+     * plus ancienne que le serveur. Le corps porte un {@code code} en plus du message, pour que
+     * l'écran reconnaisse ce cas sans comparer un texte.</p>
+     */
+    @ExceptionHandler(ReferencePerimeeException.class)
+    public ResponseEntity<Map<String, String>> handleReferencePerimee(ReferencePerimeeException ex) {
+        log.info("Dépôt de pièce refusé : la page du navigateur précède DP-4.");
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("code", ReferencePerimeeException.CODE,
+                             "message", ReferencePerimeeException.MESSAGE));
+    }
+
+    /**
      * La grande majorité des règles métier du projet (dossier déjà traité, code déjà utilisé,
      * places épuisées, code promo expiré...) sont exprimées via IllegalStateException — mappé
      * en 409 Conflict, sémantiquement le plus proche de "état actuel incompatible avec l'action".

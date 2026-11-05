@@ -306,7 +306,7 @@ public class OrderService {
         return new OrderResponseDto(
                 dto.id(), dto.orderNumber(), dto.paymentMethod(), dto.paymentStatus(),
                 dto.status(), dto.isQuote(), dto.totalAmount(), dto.stripePaymentIntentId(),
-                dto.stripeCheckoutSessionId(), null, clientSecret, dto.documentS3Key(),
+                dto.stripeCheckoutSessionId(), null, clientSecret, dto.hasDocument(),
                 dto.promoCode(), dto.discountAmount(), dto.quoteDiscountRate(), dto.createdAt(),
                 dto.paymentCurrency(), dto.paymentAmount(), dto.refundedAmount(), dto.items()
         );
@@ -671,7 +671,7 @@ public class OrderService {
                 order.getStripeCheckoutSessionId(),
                 null, // paymentUrl/clientSecret ne sont renseignés que juste après la création
                 null,
-                order.getDocumentS3Key(),
+                order.getDocumentS3Key() != null && !order.getDocumentS3Key().isBlank(),
                 order.getPromoCode() != null ? order.getPromoCode().getCode() : null,
                 order.getDiscountAmount(),
                 order.getQuoteDiscountRate(),

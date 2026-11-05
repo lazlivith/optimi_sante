@@ -103,7 +103,7 @@ export function AdminOrdersPage() {
                       <StatusBadge status={order.paymentStatus} />
                     </td>
                     <td className="px-6 py-4">
-                      {order.documentS3Key ? (
+                      {order.hasDocument ? (
                         <DocumentButton
                           libelle="Ouvrir"
                           obtenirLien={() => vaultService.getPresignedUrl(
