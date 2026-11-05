@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Méga-menu Catalogue — Optimi Santé</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div role="navigation" aria-label="Toutes les catégories" style="width: 1320px; max-width: 100%; height: 560px; box-sizing: border-box; display: flex; background: #FFFFFF; border: 1px solid #E3E8EC; border-radius: 20px; box-shadow: 0 24px 60px rgba(15, 43, 56, 0.18); overflow: hidden; font-family: 'Source Sans 3', system-ui, sans-serif; color: #13232C;">
+
+<div style="flex: 0 0 400px; overflow-y: auto; padding: 18px 16px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #EEF1F4;">
+<sc-for list="{{families}}" as="f" hint-placeholder-count="8">
+<sc-if value="{{f.isHeader}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; font-weight: 700; letter-spacing: 0.14em; color: #B4500D; padding: 12px 12px 6px;">{{f.label}}</span></sc-if>
+<sc-if value="{{f.isActive}}" hint-placeholder-val="{{false}}"><a href="{{f.href}}" onMouseEnter="{{f.hover}}" onFocus="{{f.hover}}" style="display: flex; align-items: center; gap: 14px; padding: 10px 12px; border-radius: 14px; background: #EEF7FC; border: 1px solid #8EC5E8; text-decoration: none; color: #13232C;"><span style="flex: 0 0 52px; height: 52px; border-radius: 14px; background: #FFFFFF; color: #117098; display: flex; align-items: center; justify-content: center;"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M21 16l-5-5-8 8"></path></svg></span><strong style="flex: 1; font-size: 16px; line-height: 1.3;">{{f.label}}</strong><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#117098" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a></sc-if>
+<sc-if value="{{f.isIdle}}" hint-placeholder-val="{{true}}"><a href="{{f.href}}" onMouseEnter="{{f.hover}}" onFocus="{{f.hover}}" style="display: flex; align-items: center; gap: 14px; padding: 10px 12px; border-radius: 14px; border: 1px solid transparent; text-decoration: none; color: #13232C;"><span style="flex: 0 0 52px; height: 52px; border-radius: 14px; background: #F4F3F0; color: #8796A0; display: flex; align-items: center; justify-content: center;"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M21 16l-5-5-8 8"></path></svg></span><strong style="flex: 1; font-size: 16px; line-height: 1.3;">{{f.label}}</strong><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7FB3D0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a></sc-if>
+</sc-for>
+</div>
+
+<div style="flex: 0 0 400px; overflow-y: auto; padding: 22px 16px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #EEF1F4;">
+<a href="{{famHref}}" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 12px 16px; text-decoration: none; color: #13232C;"><span style="font-size: 17px; font-weight: 700; text-decoration: underline; text-underline-offset: 4px;">Découvrir la page {{famLabel}}</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#13232C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a>
+<sc-for list="{{subs}}" as="s" hint-placeholder-count="5">
+<sc-if value="{{s.isActive}}" hint-placeholder-val="{{false}}"><a href="{{s.href}}" onMouseEnter="{{s.hover}}" onFocus="{{s.hover}}" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 0 16px; border-radius: 12px; background: #EEF7FC; text-decoration: none; color: #13232C; font-size: 16px; font-weight: 600;">{{s.label}}<sc-if value="{{s.hasTypes}}" hint-placeholder-val="{{false}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#117098" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></sc-if></a></sc-if>
+<sc-if value="{{s.isIdle}}" hint-placeholder-val="{{true}}"><a href="{{s.href}}" onMouseEnter="{{s.hover}}" onFocus="{{s.hover}}" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 0 16px; border-radius: 12px; text-decoration: none; color: #13232C; font-size: 16px;">{{s.label}}<sc-if value="{{s.hasTypes}}" hint-placeholder-val="{{false}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7FB3D0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></sc-if></a></sc-if>
+</sc-for>
+</div>
+
+<div style="flex: 1 1 auto; min-width: 0; overflow-y: auto; padding: 26px 28px; display: flex; flex-direction: column; gap: 4px;">
+<sc-for list="{{types}}" as="t" hint-placeholder-count="4">
+<a href="{{t.href}}" style="display: flex; align-items: center; min-height: 40px; font-size: 16px; color: #13232C; text-decoration: none;">{{t.label}}</a>
+</sc-for>
+<sc-if value="{{noTypes}}" hint-placeholder-val="{{false}}"><span style="font-size: 15px; color: #5B6B75; line-height: 1.5;">Cette catégorie n'a pas de sous-niveau : cliquez pour voir ses produits.</span></sc-if>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1320,"height":560}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { fam: 14, sub: 1 }; }
+  data() {
+    const s = (label, types) => ({ label, types: types || [] });
+    return [
+      { header: 'ÉTABLISSEMENTS DE SANTÉ' },
+      { label: 'Équipement hospitalier & mobilier', subs: [s('Lits médicalisés', ['Lits électriques', 'Lits manuels', 'Accessoires de lit']), s('Mobilier d’examen', ['Divans d’examen', 'Fauteuils de prélèvement', 'Escabeaux']), s('Chariots', ['Chariots de soins', 'Chariots d’urgence']), s('Hospitalisation', ['Potences', 'Tables de lit', 'Paravents'])] },
+      { label: 'Diagnostic & monitoring', subs: [s('Diagnostic généraliste', ['Otoscopes et oto-ophtalmoscopes', 'Tensiomètres', 'Stéthoscopes', 'Oxymètres de pouls', 'Lampes de diagnostic', 'Stations de diagnostic modulaires', 'Échelles d’acuité visuelle', 'Lampes d’examen', 'Négatoscopes', 'Miroirs frontaux', 'Marteaux à réflexes']), s('Diagnostic spécialisé', ['ECG et Holters', 'Moniteurs multiparamétriques', 'Spiromètres']), s('Poids et mesures', ['Pèse-personnes', 'Toises', 'Analyseurs de composition corporelle'])] },
+      { label: 'Imagerie & échographie', subs: [s('Échographes', ['Stationnaires', 'Portables', 'Ultra-portables']), s('Sondes échographiques'), s('Consommables d’échographie')] },
+      { label: 'Instrumentation clinique', subs: [s('Instruments de chirurgie', ['Ciseaux', 'Pinces', 'Porte-aiguilles']), s('Lampes d’examen'), s('Stérilisation', ['Autoclaves et stérilisateurs', 'Bacs de décontamination'])] },
+      { label: 'Urgences & réanimation', subs: [s('Défibrillateurs', ['Défibrillateurs automatisés externes', 'Accessoires DAE', 'Pose et mise en service']), s('Ventilation', ['Insufflateurs', 'Masques']), s('Aspiration'), s('Trousses de secours')] },
+      { label: 'Gynécologie & néonatologie', subs: [s('Tables gynécologiques'), s('Néonatologie', ['Pèse-bébés', 'Bilirubinomètres', 'Tables à langer']), s('Accessoires de gynécologie')] },
+      { label: 'Consommables, soins & pansements', subs: [s('Pansements', ['Pansements techniques', 'Pansements adhésifs']), s('Compresses'), s('Contention', ['Bandes', 'Genouillères', 'Molletières']), s('Aiguilles & seringues', ['Aiguilles de sécurité & hypodermiques', 'Seringues'])] },
+      { label: 'Hygiène, désinfection & DASRI', subs: [s('Gants'), s('Désinfection', ['Solutions hydroalcooliques', 'Désinfectants de surface']), s('DASRI', ['Collecteurs']), s('Protection', ['Masques', 'Tabliers'])] },
+      { header: 'DOMICILE & OFFICINE' },
+      { label: 'Orthopédie', subs: [s('Attelles'), s('Genouillères'), s('Chevillères'), s('Ceintures lombaires')] },
+      { label: 'Mobilité', subs: [s('Fauteuils roulants', ['Manuels', 'Électriques']), s('Déambulateurs'), s('Cannes')] },
+      { label: 'Maintien à domicile', subs: [s('Lits médicalisés'), s('Fauteuils releveurs'), s('Tables de lit'), s('Aide à la toilette', ['Chaises hygiéniques', 'Rehausses WC', 'Sièges de bain'])] },
+      { label: 'Incontinence', subs: [s('Protections'), s('Alèses'), s('Accessoires')] },
+      { label: 'Auto-surveillance', href: 'Famille.dc.html', subs: [s('Pesage', ['Pèse-personnes mécaniques', 'Pèse-personnes électroniques', 'Pèse-personnes à colonne']), s('Tensiomètres', ['Électroniques', 'Manuels', 'Brassards & accessoires', 'Pieds & supports']), s('Oxymètres'), s('Thermomètres'), s('Santé connectée', ['Tensiomètres connectés', 'Oxymètres de pouls connectés', 'Balances connectées'])] },
+      { label: 'Diabète', subs: [s('Lecteurs de glycémie'), s('Bandelettes'), s('Lancettes et autopiqueurs')] },
+      { label: 'Respiratoire', subs: [s('Aérosolthérapie par nébulisation'), s('Oxygénothérapie'), s('Aspirateurs de mucosités')] }
+    ];
+  }
+  renderVals() {
+    const all = this.data();
+    const fam = all[this.state.fam] && all[this.state.fam].subs ? all[this.state.fam] : all[14];
+    const families = all.map((f, i) => f.header
+      ? { isHeader: true, isActive: false, isIdle: false, label: f.header }
+      : { isHeader: false, isActive: i === this.state.fam, isIdle: i !== this.state.fam, label: f.label, href: f.href || '#', hover: () => this.setState({ fam: i, sub: 0 }) });
+    const subs = fam.subs.map((s, j) => ({
+      label: s.label, hasTypes: s.types.length > 0,
+      isActive: j === this.state.sub, isIdle: j !== this.state.sub,
+      href: s.label === 'Tensiomètres' && fam.label === 'Auto-surveillance' ? 'Rayon.dc.html' : '#',
+      hover: () => this.setState({ sub: j })
+    }));
+    const cur = fam.subs[this.state.sub] || fam.subs[0];
+    const types = cur.types.map((t) => ({ label: t, href: cur.label === 'Tensiomètres' ? 'Rayon.dc.html' : '#' }));
+    return { families, subs, types, noTypes: types.length === 0, famLabel: fam.label, famHref: fam.href || '#' };
+  }
+}
+</script>
+</body>
+</html>
