@@ -67,30 +67,61 @@ complément et non la source.
 
 ## 2. Les lots, leur ordre, leurs dépendances
 
+> **Révisé le 5 novembre 2026.** Le catalogue n'est plus le premier chantier : la feuille de
+> route arrêtée ce jour place **le stockage privé devant tout**, puis les catégories et l'import,
+> puis Stripe en live, puis les maquettes. Voir
+> `docs/analyse_stockage_prive_et_feuille_de_route.md`, qui fait foi pour l'ordre global ; ce
+> plan-ci reste la référence du **contenu** des lots catalogue.
+>
+> ```
+> 1. Stockage privé  ─►  2. Catégories + import  ─►  3. Stripe live  ─►  4. Maquettes
+>    (SP, 10,5 j)          (M0, CAT, PIL, IMP : 10–12 j)  (ST, 15,5 j)     (M1→L : 19,5 j)
+> ```
+
 | Lot | Objet | Dépend de | Jours | JS |
 |---|---|---|---|---|
 | **M0** | Cadrage, analyse seule | rien | 1 | 0 |
 | **CAT** | Chantier catégories — **chemin critique** | ton arbitrage | 6–8 | 10 Ko |
 | **PIL** | Import pilote LCM — **en attente** | CAT + marge fixée | 0,5 | 0 |
-| **M1** | En-tête et barre de recherche | M0 | 1,5 | 8 Ko |
-| **M2** | Fiche produit | M1 | 4 | 35 Ko |
-| **M3** | Méga-menu, Catalogue, famille, rayon | **CAT** | 7 | 55 Ko |
-| **M4** | Marque | M3 (utile), CAT (filtre) | 2,5 | 10 Ko |
-| **M2-bis** | Caractéristiques, documents, garantie | M2 | 3 | 20 Ko |
-| **L** | Délais de livraison par zone | tes délais | 1,5 | 5 Ko |
+| **IMP** | **Import complet LCM, 7 344 lignes** | PIL vert + décisions 7, 8, 9 | 1,5 | 0 |
+| **M1** | En-tête et barre de recherche | M0 | 1,5 | 10 Ko |
+| **M2** | Fiche produit | M1 | 4 | 40 Ko |
+| **M3a** | Méga-menu, page Catalogue | **CAT** | 3 | 25 Ko |
+| **M3b** | Famille, rayon, panneau de filtres | **CAT** | 4 | 30 Ko |
+| **M4** | Marque | M3b (utile), CAT (filtre) | 2,5 | 12 Ko |
+| **M2-bis** | Caractéristiques, documents, garantie | M2, **SP‑1** | 3 | 25 Ko |
+| **L** | Délais de livraison par zone | tes délais | 1,5 | 6 Ko |
 
-**Total : 27 à 29 jours, 143 Ko de JS.** Réserve non attribuée : **24 Ko**.
+**Total : 29 à 31 jours, 158 Ko de JS.** Réserve attribuable : **25 Ko**.
+
+**Trois changements par rapport à la version du 28 octobre**, chacun motivé :
+
+- **`M3` est coupé en `M3a` et `M3b`.** Sept écrans, 7 jours et 55 Ko dans un lot unique, c'est
+  un lot dont la première capture arrive au septième jour. La coupure suit l'entrée dans le
+  catalogue d'un côté, la navigation dans l'arbre de l'autre — et sépare aussi deux niveaux de
+  dépendance à `CAT` : `M3a` n'a besoin que de la route d'arbre, `M3b` du filtrage par
+  descendance.
+- **`IMP` sort de `PIL`.** Un pilote de 50 lignes et un import de 7 344 ne posent pas les mêmes
+  questions : le second se mesure en durée de transaction, en volume d'images manquantes et en
+  produits à désactiver.
+- **`M2-bis` dépend de `SP‑1`.** Il dépose des documents produit — notices, certificats de
+  conformité — et tous ne sont pas publics : un certificat porte parfois des coordonnées
+  fournisseur. Il dépose donc par `StockageService`, qui n'existe qu'après le lot `SP‑1` du
+  chantier stockage.
 
 ### Le chemin critique, en une phrase
 
-**CAT bloque M3, M4 et l'import pilote.** M1 et M2 n'en dépendent pas et peuvent avancer en
-parallèle. La première production attendue est donc le **fichier d'arbitrage** — après quoi
-c'est toi qui bloques, pas la session.
+**CAT bloque M3a, M3b, M4 et l'import.** M1 et M2 n'en dépendent pas et peuvent avancer en
+parallèle, y compris pendant l'attente de ton arbitrage. La première production attendue est
+donc le **fichier d'arbitrage** — après quoi c'est toi qui bloques, pas la session.
 
 ```
-M0 ──┬── CAT ──┬── M3 ── M4
-     │         └── PIL
-     └── M1 ── M2 ── M2-bis
+SP-1 ──────────────────────────────────┐
+                                       ▼
+M0 ──┬── CAT ──┬── M3a ── M3b ── M4    │
+     │         ├── PIL ── IMP          │
+     │         └──────────────┐        │
+     └── M1 ── M2 ────────────┴── M2-bis
                   L (indépendant, dès que les délais sont fournis)
 ```
 
@@ -98,19 +129,25 @@ M0 ──┬── CAT ──┬── M3 ── M4
 
 ## 3. Le budget de poids, réparti d'avance
 
-167 Ko disponibles. Chaque lot connaît son plafond **avant** de commencer, pour qu'aucun lot
-ne découvre à son ouverture qu'il ne reste rien.
+**Mesuré le 5 novembre 2026 sur `main` (`40d7ef3`) : 1 289 Ko produits, pour un plafond de
+charte de 1 500 Ko — soit 211 Ko disponibles.** Le budget du **catalogue** est de **183 Ko** ;
+les **28 Ko** restants sont le budget du **chantier brochures** (`BR‑4` 22 Ko + `BR‑5` 6 Ko), et
+non une réserve. `211 = 183 + 28`. Chaque lot connaît son plafond **avant** de commencer, pour
+qu'aucun lot ne découvre à son ouverture qu'il ne reste rien.
 
 | Lot | Plafond | Ce qu'il paie |
 |---|---|---|
 | CAT | 10 Ko | écran d'administration de l'arbre (glisser-déposer exclu, voir périmètre) |
-| M1 | 8 Ko | sélecteur de catégorie, formulaire de recherche |
-| M2 | 35 Ko | galerie à balayer, onglets accessibles, barre d'achat fixe, sélecteur de pays |
-| M3 | 55 Ko | méga-menu (chargé à la demande), page Catalogue, page famille, panneau de filtres mobile |
-| M4 | 10 Ko | filtre marque, logos |
-| M2-bis | 20 Ko | éditeur clé-valeur et dépôt de documents dans l'administration |
-| L | 5 Ko | affichage du délai, saisie dans l'écran des tarifs |
-| **Réserve** | **24 Ko** | imprévus, et de quoi refuser un dépassement sans bloquer un lot |
+| M1 | 10 Ko | sélecteur de catégorie, formulaire de recherche |
+| M2 | 40 Ko | galerie à balayer, onglets accessibles, barre d'achat fixe, sélecteur de pays |
+| M3a | 25 Ko | méga-menu (chargé à la demande), page Catalogue et sa version mobile |
+| M3b | 30 Ko | pages famille et rayon, leurs versions mobiles, panneau de filtres mobile |
+| M4 | 12 Ko | filtre marque, logos |
+| M2-bis | 25 Ko | éditeur clé-valeur et dépôt de documents dans l'administration |
+| L | 6 Ko | affichage du délai, saisie dans l'écran des tarifs |
+| ST‑1, ST‑4 | 4 Ko | statut de commande rendu au client, bouton de téléchargement de facture |
+| BR‑4, BR‑5 | 28 Ko | chantier brochures — hors budget catalogue, voir § B.6 bis de l'analyse stockage |
+| **Réserve attribuable** | **21 Ko** | imprévus, et de quoi refuser un dépassement sans bloquer un lot |
 
 **Règles de tenue du budget.** Un lot qui dépasse son plafond ne prend pas dans la réserve de
 lui-même : il s'arrête et le signale. Un lot qui finit sous son plafond rend la différence à
@@ -409,23 +446,69 @@ réel. Poids ≤ 5 Ko.
 
 ## 5. Ce qui passe avant les vrais paiements
 
-À dire clairement : **la maquette ne remplace rien de ce qui suit.** Ces quatre chantiers
-conditionnent l'ouverture des paiements réels, indépendamment de l'avancement du catalogue.
+À dire clairement : **la maquette ne remplace rien de ce qui suit.** Ces huit chantiers
+conditionnent l'ouverture des paiements réels, indépendamment de l'avancement du catalogue. Ils
+sont détaillés, avec leurs dépendances croisées, au § B.4 de
+`docs/analyse_stockage_prive_et_feuille_de_route.md` ; voici leur forme courte.
 
-| Chantier | Pourquoi il bloque | Place |
-|---|---|---|
-| **Webhook de remboursement** | `charge.refunded` doit être reçu et traité ; le test est prêt à être lancé sur `f59ade34` | avant tout |
-| **Lot B du stock** | remise en stock sur annulation et remboursement, `paid_at`/`shipped_at`, journal des ajustements manuels | avant l'inventaire initial |
-| **Cycle de vie des commandes** | une commande payée par carte reste `PENDING` ; « Livrée » n'existe pas ; aucune règle de transition ; le client ne voit jamais `status` | avant les vrais paiements |
-| **Facturation** | aucune facture n'existe, seulement des reçus `REC-` à numérotation sans trou ; pas d'avoir | avant les vrais paiements |
+| Lot | Chantier | Pourquoi il bloque | Jours |
+|---|---|---|---|
+| **ST‑0** | Neutralisation des commandes de test | des ventes fictives en base rendent le premier relevé de chiffre d'affaires illisible | 1 |
+| **ST‑1** | Cycle de vie des commandes | `OrderStatus` n'a ni `PAID` ni `DELIVERED` ; une commande payée reste `PENDING` ; aucune règle de transition ; le client ne voit jamais `status` | 3 |
+| **ST‑2** | Lot B du stock | pas de remise en stock à l'annulation ni au remboursement ; `paid_at` / `shipped_at` absents ; aucun journal des ajustements manuels | 2,5 |
+| **ST‑3** | Test de `charge.refunded` | **le code existe et est complet** ; c'est le test de bout en bout qui manque | 0,5 |
+| **ST‑4** | Factures et avoirs | aucune facture n'existe, seulement des reçus `REC-` ; pas d'avoir. **Dépend de `SP‑1`** : une facture nominative ne se dépose pas dans un stockage public | 4 |
+| **ST‑5** | TVA | `vatRate` existe par catégorie et par produit, mais rien ne tient compte de la destination. **Aucun pays de l'UE hors France n'est livré** : France au taux du produit, reste **exonéré à l'export** avec mention et justificatif de sortie | 2 |
+| **ST‑6** | Acompte d'inscription | le code est correct de bout en bout ; le blocage est opérationnel. Puis **confirmation manuelle par l'admin, vérifiée auprès de Stripe** — l'admin ne déclare pas « payé », il demande au serveur de relire le `PaymentIntent` | 2 |
+| **ST‑7** | Passage en live | clés live sur Render et Vercel, **nouveau** point d'entrée de webhook live avec son propre secret, puis un paiement réel de faible montant et son remboursement | 0,5 |
 
-**Calendrier global, dans l'ordre.** Remboursement et neutralisation des commandes de test →
-**CAT** (en parallèle : M1, M2) → lot B du stock → cycle de vie des commandes → M3 → facturation
-→ inventaire initial → import complet LCM → M4, M2-bis, L.
+**Calendrier global, dans l'ordre arrêté le 5 novembre 2026 :**
 
-Le catalogue et les paiements avancent en parallèle. Ils se rejoignent à l'import complet : un
-catalogue de 7 344 produits sans cycle de vie des commandes ni facturation n'est pas
-vendable.
+**stockage privé (SP)** → **CAT** (en parallèle : M1, M2) → **PIL** → **ST‑0 à ST‑7** → **IMP**
+→ **M3a, M3b** → **M4, M2-bis, L**.
+
+Le catalogue et les paiements ne se croisent qu'à deux endroits, et il faut les tenir : `ST‑4`
+attend `SP‑1`, et `M2-bis` aussi. Pour le reste, un catalogue de 7 344 produits sans cycle de
+vie des commandes ni facturation n'est pas vendable — d'où l'import complet **après** Stripe.
+
+---
+
+## 5 bis. Les dix écrans des maquettes, et le lot qui livre chacun
+
+« Maquettes » désigne exactement les **dix fichiers** de
+`docs/maquette_catalogue_optimisante/maquette_catalogue/`. **Aucune autre page n'est
+concernée** — ni l'accueil, ni le panier, ni le tableau de bord.
+
+| # | Écran | Fichier | Lot |
+|---|---|---|---|
+| 1 | Page Catalogue — ordinateur | `Main.dc.html` | **M3a** |
+| 2 | Méga-menu « Catalogue » | `MegaMenu.dc.html` | **M3a** |
+| 3 | Catalogue — mobile | `CatalogueMobile.dc.html` | **M3a** |
+| 4 | Page famille — ordinateur | `Famille.dc.html` | **M3b** |
+| 5 | Page rayon — ordinateur | `Rayon.dc.html` | **M3b** |
+| 6 | Famille — mobile | `FamilleMobile.dc.html` | **M3b** |
+| 7 | Rayon — mobile | `RayonMobile.dc.html` | **M3b** |
+| 8 | Panneau « Filtrer » — mobile | `FiltresMobile.dc.html` | **M3b** |
+| 9 | Fiche produit — ordinateur | `Produit.dc.html` | **M2** |
+| 10 | Fiche produit — mobile | `ProduitMobile.dc.html` | **M2** |
+
+**Aucun écran n'est orphelin**, et chacun n'est attribué qu'à un seul lot.
+
+**Mais quatre lots ne livrent aucun écran, et c'est à savoir pour les vérifier.** `M1`, `M4`,
+`M2-bis` et `L` ne correspondent à aucun des dix fichiers : ce sont des bandes et des blocs
+**à l'intérieur** d'écrans livrés par `M2`, `M3a` et `M3b`.
+
+| Lot | Ce qu'il livre, et sur quels écrans |
+|---|---|
+| **M1** | l'en-tête et la barre de recherche — présentes sur les **six** écrans de M3a et M3b |
+| **M4** | le filtre marque sur Famille et Rayon, le libellé de marque sur la fiche produit |
+| **M2-bis** | les onglets caractéristiques, documents et garantie **dans** la fiche produit |
+| **L** | la ligne de délai de livraison **dans** la fiche produit |
+
+**Conséquence sur le rapport de fin de lot** (§ 7) : pour ces quatre lots, la vérification réelle
+se fait sur les **captures des écrans de `M2`, `M3a` et `M3b`**, pas sur une page à eux. Un
+rapport pour `M1` qui montrerait une page isolée ne prouverait rien. Les quatre prompts
+correspondants doivent le dire.
 
 ---
 
@@ -532,7 +615,7 @@ Pour mémoire, et pour qu'aucune session ne retombe dans l'un d'eux.
 | Point du plan initial | Ce que dit le code |
 |---|---|
 | Maquettes dans `docs/maquette_catalogue/` | **Faux chemin** : `docs/maquette_catalogue_optimisante/maquette_catalogue/`. Les cinq prompts étaient concernés. |
-| « 1 290 Ko aujourd'hui » | **1 333 Ko**. Marge réelle 167 Ko, pas 210. |
+| « 1 290 Ko aujourd'hui » | **Mon erreur, et le plan avait raison.** J'avais lu 1 333 Ko dans un commentaire périmé de `charte-reference.json` au lieu de mesurer. La mesure donne **1 289 Ko** — soit 211 Ko de marge, pas 167. Corrigé au § 3. Le commentaire `_plafondJsKo` du fichier de référence reste faux et est à corriger au premier lot qui touche au frontend. |
 | « Si l'API ne filtre pas par catégorie, ajoute le paramètre » | `categoryId` **existe déjà**. Rien à ajouter. |
 | « Encadré DAP si le pays est hors UE » | Le code dit **hors de France**, et le serveur porte `droitsALArrivee`. |
 | « Le sélecteur affiche le délai et les frais réels » | **Aucun délai n'existe** dans `EstimationDto`. D'où le lot L. |
@@ -542,3 +625,16 @@ Pour mémoire, et pour qu'aucune session ne retombe dans l'un d'eux.
 | `CatalogPage.tsx` | Existe, sert `/catalog`, **remplacée par M3** sans que le plan le dise. |
 | Redirections 301 | « Prévues au chantier catégories » — **n'existent pas**, 211 adresses indexées. |
 | Nombre de tests ignorés | **Demandé dans aucun prompt**, alors que la règle 6 du dépôt l'exige. |
+
+### Écarts relevés le 5 novembre 2026, à la révision de l'ordre
+
+| Point | Ce que dit le code |
+|---|---|
+| `M3` en un seul lot | Il portait **sept écrans sur dix**, 7 jours et 55 Ko : première capture au septième jour. Coupé en `M3a` / `M3b`. |
+| `M1`, `M4`, `M2-bis`, `L` | Ils ne livrent **aucun** des dix écrans. Leur vérification passe par les captures d'autres lots — ce qu'aucun prompt ne disait (§ 5 bis). |
+| Import complet LCM | Il était **fondu dans `PIL`**. Il en sort : `IMP`, 1,5 jour. |
+| Documents produit de `M2-bis` | Ils ne sont **pas tous publics**. `M2-bis` dépose par `StockageService` et dépend donc de `SP‑1`. |
+| « TVA par pays de livraison » | **Aucun pays de l'UE hors France n'est livré** (`ZoneLivraison` : France, Maghreb, Afrique de l'Ouest et centrale, Afrique de l'Est et australe). Pas de guichet unique, pas de vingt-sept taux : France au taux du produit, reste **exonéré à l'export**. `ST‑5` passe de 5 jours à 2. |
+| « Webhook de remboursement à écrire » | `PaymentWebhookResource.traiterRemboursement` → `StripeRefundHandler` **existe et est complet**. Ce qui manque est le **test**. |
+| Prompts `M3`, `PIL` | `docs/prompts_catalogue/M3_navigation_catalogue.md` couvre désormais deux lots et doit être scindé ; `PIL_import_pilote_lcm.md` affirme à tort que `import/pilote-lcm` est « fusionné dans `main` » — la branche (`65da82a`) a été vérifiée documentaire mais **jamais fusionnée**. |
+| Ce plan vit sur `main` | **Non** : il n'a jamais été fusionné et vit sur `docs/dette-catalogue`, comme D0 et les prompts. Trois branches documentaires attendent une décision de fusion : celle-ci, `docs/doc-priv` et `docs/backlog-securite`. |
