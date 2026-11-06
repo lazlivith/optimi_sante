@@ -9,6 +9,13 @@
 > `docs/plan_integration_catalogue.md` pour `CAT`, `PIL`, `IMP` et les maquettes ;
 > `docs/backlog_brochures_et_securite.md` pour les critères d'acceptation des brochures.
 >
+> **Second arbitrage du 6 novembre 2026** : option **`L1 minimum`** au § 6.5 — la liste stricte
+> pour encaisser un premier acompte réel, **25 jours, mi-janvier 2027** au lieu de début mars —
+> fiche **« Question pour l'avocat »** au § 4 ter sur les articles L6353‑3 et suivants, avec le
+> chiffrage de ce qu'une réponse défavorable coûterait, scission de `EXP‑4` en `4a` / `4b`,
+> correction de `SEC‑1` (**neuf** routes ouvertes, pas sept) et des cinq sous-traitants non
+> vérifiés portés au § 5. Écarts au § 9 ter. **`DP‑4` est déployé** depuis ce jour.
+>
 > **Rédigé le 5 novembre 2026** (branche `docs/cahier-des-charges-v1`, fusionnée dans `main`),
 > **révisé le 6 novembre 2026** après ta relecture : découpage en **deux lancements**,
 > reclassement de `SEC‑2`, tri chiffré des huit points de dette sécurité, ajout de `LEG‑0`,
@@ -231,7 +238,7 @@ manque : ils ferment une porte qui est ouverte **cette nuit**.
 |---|---|---|---|---|---|---|---|---|
 | `LEG‑0` | légal | **Rendre vraie** la phrase de `PrivacyPolicyPage.tsx:180` : hébergement des documents chez un prestataire **hors UE**, migration **en cours** vers un hébergement en France. Et **remplir la section 5**, aujourd'hui un paragraphe vide | Laisser publiée trois mois de plus une affirmation qu'on sait fausse transforme un défaut technique en **déclaration inexacte**. En cas de contrôle, la date à laquelle nous l'avons su compte plus que la date à laquelle nous l'avons corrigé | rien | **L0** | 0,5 | 0 | **texte à soumettre d'abord** |
 | `SEC‑3` | sécurité | **Fermer le dépôt anonyme** de `/api/v1/partnership/**` : contrôle de signature, plafond de taille propre à la route, jeton de formulaire | Deux `POST` multipart en `permitAll` (`PartnershipResource:81` et `:100`), sans contrôle de signature, à **55 Mo par appel** et sans limite de fréquence. N'importe qui peut remplir notre stockage ce soir | rien | **L0** | 1 | 0 | à faire |
-| `SEC‑1` | sécurité | **Plafonner les sept routes `permitAll`**, par adresse et par route. **`/api/v1/ai/chat` en premier** | Un assistant d'IA **que nous payons**, ouvert aux anonymes, sans plafond. La facture ne se découvre qu'après | rien | **L0** | 1,5 | 0 | à faire |
+| `SEC‑1` | sécurité | **Plafonner les neuf routes `permitAll`**, par adresse et par route — le compte était de sept, voir l'encadré. **`/api/v1/ai/chat` en premier.** Et **poser un contrôle d'accès sur `/api/v1/ai/extract`**, qui n'en a aucun | Un assistant d'IA **que nous payons**, ouvert aux anonymes, sans plafond. **Vérifié en production le 6 novembre** : un appel sans jeton obtient une réponse rédigée. La facture ne se découvre qu'après | rien | **L0** | 1,5 | 0 | **vérifié ouvert en production** |
 
 `LEG‑1` réécrit la politique **après `SP‑5`**, quand la phrase exacte devient « hébergées en
 France ». `LEG‑0` n'est donc pas un brouillon de `LEG‑1` : c'est l'état vrai de l'étape
@@ -253,6 +260,26 @@ intermédiaire, et il doit l'être pendant toute la migration.
 | `SEC‑4` | sécurité | Versionner le registre d'incidents (`.md`, sous git), y fixer ce qu'il doit contenir, et le relier à `SP‑5` | Un registre qui n'existe que sur un poste n'est pas un registre | rien | **L1** | 0,5 | 0 | **rédigé, non suivi par git** | — |
 | `SEC‑7` | sécurité | **En-tête `Content-Security-Policy`** : `script-src` en liste blanche, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'none'` — posé au serveur et vérifié par un test | **Atténuation tant que `SEC‑5` n'est pas fait** : le jeton est en `localStorage`, donc à portée de tout script injecté. Une CSP ne supprime pas le risque, elle supprime la **voie** la plus courante d'y arriver. Peu coûteux, immédiat | rien | **L1** | 1 | 0 | à faire | — |
 | `SEC‑5` | sécurité | Jeton hors `localStorage` (cookie `HttpOnly` + `SameSite`) | Une injection de script vole la session. `SEC‑7` atténue, ne corrige pas | `SEC‑7` | **Ap** | 1,5 | 0 | à faire | — |
+
+> **`SEC‑1` — le compte de sept routes était faux, et l'ouverture est vérifiée en production.**
+>
+> Le 6 novembre, un `POST` sur `https://optimisante-backend.onrender.com/api/v1/ai/chat`
+> **sans aucun jeton** a rendu **HTTP 200**, une réponse rédigée et le modèle
+> `mistral/mistral-small-latest`. Ce n'est plus une déduction de lecture de code : la route
+> répond, elle coûte un appel payant à chaque fois, et elle **écrit une ligne de conversation
+> en base** à chaque appel. Ces lignes de test sont à ajouter au périmètre de `ST‑0`.
+>
+> Mon relevé du 5 novembre comptait **sept** routes `permitAll`. Il y en a **neuf** :
+> `SecurityConfig.java:103` et `:104` ouvrent aussi `GET /api/v1/ai/tools/catalog/search` et
+> `GET /api/v1/ai/tools/trainings`, que j'avais lues sans les compter.
+>
+> **Et une dixième porte, d'une autre nature.** `/api/v1/ai/extract` — qui envoie un fichier au
+> worker IA, donc à **Gemini** — ne porte **ni `@PlatformAdmin` ni `@PreAuthorize`**, alors que
+> `/draft` et `/summarize`, écrits juste en dessous dans le même fichier, en portent un chacun.
+> Tout compte client connecté peut donc y déposer un fichier à nos frais. Le risque réel reste
+> limité — **aucun écran du frontend n'appelle cette route** — mais une route morte côté produit
+> et vivante côté serveur est exactement ce qu'un audit doit trouver avant quelqu'un d'autre.
+> `SEC‑1` couvre désormais les neuf plafonds **et** ce contrôle d'accès, à durée inchangée.
 
 **`SEC‑6` — les huit points du backlog, triés un par un.** État **revérifié dans le code le
 6 novembre 2026**, et non repris de la note de suivi du 11 octobre : **deux points étaient déjà
@@ -378,7 +405,8 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 | `EXP‑1` | exploitation | **Sauvegardes** : fréquence constatée et écrite, puis **restauration essayée** sur une base jetable, avec sa date | Une sauvegarde jamais restaurée n'est pas une sauvegarde | rien | **L1** | 1 | 0 | **non vérifié** | toi |
 | `EXP‑2` | exploitation | Supervision des erreurs, **alerte sur échec de webhook**, journaux conservés | Un paiement encaissé dont le webhook échoue est aujourd'hui silencieux | rien | **L1** | 1,5 | 0 | à faire | — |
 | `EXP‑3` | exploitation | **Intégration continue** : build, suite complète, garde-fou de charte à chaque `push`, avec le **nombre d'ignorés** rapporté | `.github/workflows` est vide. La routine de `CLAUDE.md` est tenue de mémoire | rien | **L1** | 1 | 0 | à faire | — |
-| `EXP‑4` | exploitation | **Délivrabilité des e-mails** — et le périmètre est bien plus petit que prévu, voir l'encadré ci-dessous : poser un `rua=` sur le DMARC, resserrer le SPF du domaine apex, poser un `Reply-To` sur les types qui n'en ont pas, et **revérifier un en-tête réel** une fois Mailtrap en mode live | Sans `rua=`, le jour où l'authentification casse, **personne ne l'apprend** : les reçus partent en indésirable et aucun rapport ne remonte | rien | **L1** | 0,5 | 0 | **SPF, DKIM et DMARC déjà en place** | toi (registrar) |
+| `EXP‑4a` | exploitation | **Authentification des e-mails** — périmètre bien plus petit que prévu, voir l'encadré : poser un `rua=` sur le DMARC, resserrer le SPF du domaine apex, et **revérifier un en-tête réel** une fois Mailtrap en mode live | Sans `rua=`, le jour où l'authentification casse, **personne ne l'apprend** : les reçus partent en indésirable et aucun rapport ne remonte | rien | **L1** | 0,5 | 0 | **SPF, DKIM et DMARC déjà en place** | toi (registrar) |
+| `EXP‑4b` | e-mails | **`Reply-To` sur les messages qui en manquent** : reçus de paiement (`PaymentReceiptIssuer`), envois d'identifiants et convocations. Choisir la boîte destinataire par type — `comptabilite@` pour les reçus, `infos@` pour le reste — et **un test d'envoi réel par type**, en répondant depuis une boîte externe | Tout part de `no-reply@optimisante.com` et seuls les accusés « Exercer en France » portent un `Reply-To`. Un client qui répond à son reçu écrit **dans le vide, sans rebond** : il croit avoir écrit, personne ne reçoit rien. C'est le défaut le plus silencieux de la liste | rien | **L1** | 0,5 | 0 | à faire | toi *(quelle boîte par type)* |
 | `QUA‑1` | qualité | Dette d'outillage en un lot : fixture de `ControleBrochureTest` déplacée **dans** `backend/src/test/resources`, suppression de la configuration morte `app.aws.*`, correction de `_plafondJsKo`, correction du « onze statuts » de `parcoursDossier.ts` (il y en a douze), scission du prompt `M3`, correction de l'affirmation fausse de `PIL` | Chacun est un piège pour la prochaine session, et aucun ne coûte cher | rien | **L1** | 1 | 0 | à faire | — |
 | `QUA‑4` | catalogue | Référencement : `sitemap.xml`, `robots.txt`, titres et métadonnées par page | `frontend/public/` ne contient que le favicon, les icônes et la marque. Aucun des deux fichiers n'existe | `CAT` (pour les 301) | **L2** | 1,5 | 0 | à faire | — |
 | `QUA‑2` | qualité | Cause racine de l'instabilité des tests frontend, ou décision écrite de vivre avec | Contournement en place (`testTimeout: 20_000`), cause inconnue. Un test instable est une dette | `EXP‑3` | **Ap** | 1 | 0 | contourné | — |
@@ -410,11 +438,12 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 > elle, rien ne nous préviendra le jour où une signature cassera. Le resserrement du SPF apex
 > (retrait de `+a +mx`) est un second geste, utile mais moins pressant.
 >
-> **Ce qui reste côté code**, et qui vient du point 7 du backlog : les messages partent de
-> `no-reply@optimisante.com` et seuls les accusés « Exercer en France » portent un `Reply-To`.
-> Une réponse à un reçu de paiement, à un envoi d'identifiants ou à une convocation **part dans
-> le vide**. Les boîtes réelles du domaine sont `infos@`, `comptabilite@`, `Tbrittany@` et
-> `Tandoche@` : toute autre adresse écrite dans un message n'existe pas.
+> **Ce qui reste côté code est sorti en lot propre, `EXP‑4b`**, parce qu'il était jusqu'ici noyé
+> dans le libellé de `EXP‑4` et qu'un défaut qui fait disparaître les réponses des clients ne
+> doit pas se lire entre deux virgules. Les messages partent de `no-reply@optimisante.com` et
+> seuls les accusés « Exercer en France » portent un `Reply-To`. Les boîtes réelles du domaine
+> sont `infos@`, `comptabilite@`, `Tbrittany@` et `Tandoche@` : toute autre adresse écrite dans
+> un message n'existe pas. **La décision qui t'appartient** : quelle boîte reçoit quoi.
 
 ### 3.9 Totaux
 
@@ -422,13 +451,15 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 |---|---|---|
 | **`L0` — tout de suite** | **3** | 0 |
 | `LEG‑0`, `SEC‑3`, `SEC‑1` | 3 | |
-| **`L1` — Formations et Exercer en France** | **47** | 1 (`DP‑4` écrit) |
+| **`L1` — Formations et Exercer en France** | **47,5** | **2,5** (`DP‑4` écrit, testé **et déployé le 6/11**) |
+| dont **`L1a`, le minimum pour encaisser** *(§ 6.5)* | **25** | 1,5 |
+| dont `L1b`, après le premier encaissement *(§ 6.5)* | 21 | 0 |
 | dont stockage privé (`DP‑4` + `SP‑1` à `SP‑7`) | 12,5 | 1 |
 | dont brochures (`BR‑2` à `BR‑5`) | 9,5 | 0 |
 | dont paiements (`ST‑0`, `ST‑3`, `ST‑4a`, `ST‑6`, `ST‑7`) | 6,5 | 0 |
 | dont sécurité (`SEC‑2`, `SEC‑4`, `SEC‑7`) | 4 | 0 |
 | dont dette sécurité triée (`SEC‑6a`, `SEC‑6b`, `SEC‑6c`) | 2 | 0 |
-| dont exploitation (`EXP‑1` à `EXP‑4`) | 4 | 0 |
+| dont exploitation (`EXP‑1` à `EXP‑3`, `EXP‑4a`, `EXP‑4b`) | 4,5 | 0 |
 | dont formations (`FOR‑1` à `FOR‑4`) | 3 | 0 |
 | dont légal (`LEG‑1` à `LEG‑5`) | 3 | 0 |
 | dont administration et finances (`CDE‑2`, `FIN‑1`) | 1,5 | 0 |
@@ -443,7 +474,7 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 | dont second entrepôt (`STK‑2`) | 5 à 7 | |
 | dont qualité (`QUA‑2`, `QUA‑3`) | 3 | |
 | dont dette sécurité restante (`SEC‑5`, `SEC‑6d`, `SEC‑6e`) | 3,5 | |
-| **Total des trois** | **105 à 109** | 1 |
+| **Total des trois** | **105,5 à 109,5** | 2,5 |
 | **Reste non estimé** | `BR‑6` et `QUA‑5` seulement | — |
 
 **Ce qui a bougé depuis le 5 novembre**, et pourquoi le total monte de 88,5‑92,5 à 105‑109 :
@@ -567,6 +598,118 @@ première colonne.
 > médicaux, et lesquels restent à 20 % ? C'est la seule des quatre questions qui n'a aucun effet
 > sur le lancement 1.
 
+### 4 ter. Question pour l'avocat — le contrat de formation professionnelle
+
+Fiche séparée, et c'est délibéré : **ce n'est pas une question comptable.** Elle porte sur la
+validité du contrat et sur ce qui peut être encaissé, pas sur la pièce remise ni sur la TVA. Si
+le comptable y répond, il répond hors de son domaine.
+
+C'est aussi la seule question de ce document qui, selon la réponse, **oblige à modifier du code
+déjà en production**. Elle doit donc être posée **avant** `ST‑4a`, pas après.
+
+**Je ne tranche pas, et je ne proposerai pas de réponse.** Ce qui suit décrit notre cas, ce que
+le code fait, ce que nos CGV disent, et ce qu'il faudrait changer selon chaque réponse.
+
+#### Notre situation, telle qu'elle est — à soumettre telle quelle
+
+Quatre caractéristiques qui comptent, et qui ne se devinent pas :
+
+1. **Nous ne dispensons pas la formation.** Elle est dispensée par l'établissement d'accueil
+   (un CHU). Notre objet social déclaré est celui d'un **intermédiaire à valeur ajoutée** : nous
+   instruisons le dossier, le transmettons, et accompagnons le candidat.
+2. **Le candidat est un particulier**, médecin étranger, qui **finance lui-même** — aucun OPCO,
+   aucun employeur, aucun financement public.
+3. **Il est le plus souvent hors de France** au moment de la souscription, et la prestation se
+   déroule en France.
+4. **L'encaissement est déjà en production** depuis la migration `V45`.
+
+#### Ce que le code fait aujourd'hui
+
+| | Valeur | Où |
+|---|---|---|
+| Frais de dossier | encaissés à l'ouverture, **non remboursables** | CGV 3.3 |
+| Acompte frais de formation | **60 %**, exigible **à la confirmation d'admission** par l'établissement | `TuitionPaymentService`, CGV 3.4 |
+| Solde | **40 %**, exigible **à la délivrance du visa** | idem |
+| Rétractation annoncée | **quatorze jours** à compter de la souscription | CGV 3.6 |
+
+Les deux parts sont **dérivées l'une de l'autre** dans `legal.ts:138-143` — elles ne peuvent pas
+diverger — et les appels sont déclenchés par deux statuts de `EnrollmentStatus` :
+`PENDING_TUITION_FEE` pour l'acompte, `VISA_GRANTED` pour le solde.
+
+#### Les six questions
+
+**a) Les articles L6353‑3 et suivants du code du travail s'appliquent-ils à notre cas ?**
+Ils visent la formation professionnelle conclue **à titre individuel et à ses frais** par une
+personne physique. Notre candidat est dans cette situation de fait. Mais nous ne sommes pas
+l'organisme dispensateur, et la formation a lieu dans un établissement public. *Un contrat de
+formation professionnelle distinct des CGV est-il requis, et par qui — nous, ou le CHU ?*
+
+**b) Si oui, quel délai de rétractation, et à partir de quand ?** Nos CGV annoncent
+**quatorze jours** à compter de la souscription. *Ma lecture — à confirmer, c'est précisément
+l'objet de la question — est que le régime du contrat de formation professionnelle prévoit un
+délai plus court, de dix jours, courant à compter de la signature du contrat.* Si c'est le cas,
+nos CGV annoncent un délai plus favorable que le texte : est-ce opposable à nous, sans risque ?
+
+**c) Quelle somme peut être encaissée, et quand ?** *Toujours sous réserve de confirmation, je
+crois lire deux règles : aucune somme ne peut être exigée avant l'expiration du délai de
+rétractation, et à l'issue de ce délai le versement est plafonné à 30 % du prix.* Si elles
+s'appliquent, **notre acompte de 60 % dépasse ce plafond du double**, et nos **frais de
+dossier sont encaissés à l'ouverture**, c'est-à-dire avant tout délai. *Ces deux pratiques
+sont-elles irrégulières dans notre configuration ?*
+
+**d) Le même régime s'applique-t-il à l'accompagnement « Exercer en France » ?** Nos CGV 3.8 le
+qualifient de **prestation de conseil et d'accompagnement administratif**, explicitement **sans
+préparation pédagogique** — ni cours, ni banque de questions, ni examens blancs. *Cette
+qualification suffit-elle à l'exclure du champ de la formation professionnelle, ou le fait
+qu'il prépare à un exercice professionnel l'y ramène-t-il ?* De la réponse dépend si `L1`
+transporte une ou deux contraintes d'échéancier.
+
+**e) Le refus de visa — ce que nos CGV disent aujourd'hui**, cité mot pour mot :
+
+> « **Refus de visa consulaire** — dûment justifié par la notification des autorités, il ouvre
+> droit au remboursement des frais de formation déjà réglés — soit l'acompte, le solde n'étant
+> pas appelé en l'absence de visa — déduction faite des prestations déjà exécutées et des frais
+> engagés auprès de l'établissement d'accueil. Les frais de dossier restent acquis. »
+> — CGV 3.5, `TermsPage.tsx:220-224`
+
+Et, au 3.3 : les frais de dossier sont « **non remboursables**, y compris en cas de refus de
+l'établissement d'accueil ou de refus de visa — sauf exercice du droit de rétractation dans les
+conditions du 3.6 » (`TermsPage.tsx:183-185`).
+
+*Trois questions sur cette clause.* La déduction des « prestations déjà exécutées et frais
+engagés » est-elle valable telle qu'elle est rédigée, sans **plafond ni barème** ? Est-elle
+opposable à un consommateur, ou risque-t-elle la qualification de **clause abusive** faute
+d'être chiffrable à l'avance ? Et le candidat **à qui le visa est refusé** supporte aujourd'hui
+l'intégralité des frais de dossier **plus** une déduction non chiffrée sur son acompte de
+60 % — pour un séjour qui n'aura pas lieu : *est-ce tenable ?*
+
+**f) Une variante d'échéancier conforme, si L6353 s'applique.** À chiffrer, **pas à écrire**
+tant que la réponse n'est pas là :
+
+> rien pendant la rétractation → **30 %** à l'expiration du délai → **30 %** à une étape
+> intermédiaire à définir → **40 %** après la délivrance du visa.
+
+*Cette structure est-elle conforme, et à quelles conditions ?*
+
+#### Ce que cette variante coûterait en code
+
+Chiffré pour que la décision se prenne en connaissance du prix, et **aucune ligne n'est écrite
+avant la réponse** :
+
+| Ce qu'il faut toucher | Pourquoi | Jours |
+|---|---|---|
+| `TuitionPaymentService` | passer de deux versements dérivés l'un de l'autre à **quatre**, dont un déclenché par une **date** et non par un statut — c'est un mécanisme nouveau, pas un changement de pourcentage | 1,5 |
+| `EnrollmentStatus` et l'automate | un état « délai de rétractation en cours » s'insère **avant** `PENDING_TUITION_FEE` ; douze valeurs deviennent treize, et chaque transition est à revoir | 1 |
+| Migration | la table des paiements d'inscription porte deux échéances ; il en faut quatre, et la date d'expiration du délai. **Les dossiers déjà payés au régime 60/40 ne se renumérotent pas** : la migration doit les laisser intacts | 0,5 |
+| `legal.ts` et les CGV | les deux parts ne sont plus dérivées l'une de l'autre ; `LEG‑5` doit décrire quatre échéances au lieu de deux | 0,5 |
+| Écrans | `parcoursDossier.ts`, `MyEnrollmentDetailPage`, `AdminEnrollmentDetailPage` : une étape de plus, et une **attente visible** que le candidat doit comprendre | 1 |
+| Contrat de formation | un document distinct des CGV, à faire accepter et à archiver — gabarit PDF et preuve d'acceptation | 1,5 |
+| **Total** | | **6 jours** |
+
+Six jours, c'est **plus d'un huitième du lancement 1**. C'est la mesure du risque de ne pas
+poser la question maintenant : si la réponse arrive après l'ouverture des encaissements, elle
+ne coûte plus six jours de développement mais une régularisation sur des dossiers réels.
+
 ---
 
 ## 5. Tes tâches, hors code
@@ -590,12 +733,39 @@ attendent la réponse de quelqu'un d'autre.
 
 5. Ajouter l'adresse de rapport au DMARC : `v=DMARC1; p=quarantine; rua=mailto:infos@optimisante.com; fo=1;`.
    **SPF, DKIM et DMARC sont déjà en place et vérifiés** — c'est le rapport qui manque, donc la
-   capacité d'apprendre qu'une signature a cassé. *(`EXP‑4`)*
+   capacité d'apprendre qu'une signature a cassé. *(`EXP‑4a`)*
+5 bis. **Quelle boîte répond à quoi** : `comptabilite@` pour les reçus de paiement, `infos@`
+   pour les identifiants et les convocations — ou ton choix. Aujourd'hui tout part de
+   `no-reply@` et une réponse de client **se perd sans rebond**. *(`EXP‑4b`)*
 
 **Deux copies d'écran, cinq minutes, et elles débloquent le lot le plus critique**
 
 6. La **requête SQL** sur le dossier `0BFDD667` et la page **Events** de Stripe. *(débloque `ST‑6`)*
 7. La **région** de ton compte Cloudinary, lue dans la console. *(confirme le § A.1)*
+
+**La localisation des sous-traitants — cinq lignes que je ne peux pas vérifier depuis le code**
+
+7 bis. La politique de confidentialité ne peut nommer un prestataire et dire où vivent les
+données qu'il traite qu'une fois la ligne vérifiée. Le 6 novembre, **deux lignes sur sept le
+sont**, et le texte de `LEG‑0` a donc été écrit sans nommer personne : une énumération fausse
+dans une politique publiée est pire que pas d'énumération du tout. Ces cinq réponses la
+rendent possible, et elles conditionnent la réécriture complète de `LEG‑1`.
+
+| Sous-traitant | Ce qu'il traite | Où chercher | Statut au 6/11 |
+|---|---|---|---|
+| **Render** | base, dossiers, échanges | console | **vérifié — Francfort, UE** |
+| **Cloudinary** | tous les documents et visuels | console (région) + DPA | **hors UE vérifié ; région non lue** |
+| **Mistral AI** | l'assistant conversationnel | DPA / page sous-traitants | **non vérifié** |
+| **Google (Gemini)** | extraction documentaire — **route sans aucun appelant** | DPA | **non vérifié** |
+| **Stripe** | paiements, identité du payeur | DPA | **non vérifié** |
+| **Mailtrap** | tous les e-mails et leurs pièces jointes | DPA | **non vérifié** |
+| **Vercel** | hébergement de la page, journaux d'accès | console (région) | **non vérifié** |
+
+> **Une précision qui change la portée de la question Gemini.** Le worker IA est configuré en
+> production — `/api/v1/ai/chat` a répondu à un appel anonyme le 6 novembre, modèle
+> `mistral/mistral-small-latest`. L'extraction documentaire par Gemini est donc **disponible**,
+> mais **aucun écran ne l'appelle** : aucune pièce de candidat ne part chez Google aujourd'hui.
+> La route `/api/v1/ai/extract` reste néanmoins ouverte à tout compte connecté — voir `SEC‑1`.
 
 **Envois et vérifications**
 
@@ -735,6 +905,89 @@ est celui que tu as demandé d'ajouter.
 3. **Je ne compte pas `ST‑6` à 0,5 jour**, bien que le diagnostic puisse l'y ramener. Si c'est le
    cas, le lancement 1 gagne une semaine — mais ce gain n'est pas dans les dates ci-dessus, et il
    n'y sera pas avant que les deux copies d'écran existent.
+
+### 6.5 Option « L1 minimum » — encaisser un premier acompte réel
+
+Le test que j'ai appliqué à chaque lot, et un seul : **si on ne le fait pas, le premier acompte
+réel d'un particulier est-il illégal, ou dangereux ?** Pas « est-ce mieux avec », pas « est-ce
+embarrassant sans ». Un lot qui ne franchit pas ce test passe en `L1b`, même utile, même bon
+marché.
+
+#### `L1a` — la liste stricte, 25 jours
+
+| | Lot | Jours | Pourquoi il ne peut pas être retiré |
+|---|---|---|---|
+| **Pièces d'identité** | `SP‑1` | 3 | Les documents sont aujourd'hui **lisibles par qui connaît leur adresse**. Prendre un client payant, c'est prendre un dossier de plus dans un stockage ouvert |
+| | `SP‑2` | 0,5 | Retire l'alias `publicId`, donc la dernière voie par laquelle une clé sort |
+| | `SP‑3` | 2,5 | Sans essai à blanc et sans empreintes, la copie est une perte de données possible |
+| | `SP‑4` | 1 | La copie elle-même |
+| | `SP‑5` | 1 | **Sans ce lot, les anciens fichiers restent publics** : la migration ne vaut que terminée |
+| **Accès admin** | `SEC‑2` | 2,5 | Un compte d'administration ouvre des pièces d'identité. C'est ma phrase 5 |
+| | `SEC‑7` | 1 | Le jeton est en `localStorage` ; une session d'admin volée ouvre les mêmes pièces |
+| | `SEC‑6a` | 1 | La faille du formulaire médecins. « On n'ouvre pas les paiements avec une faille connue » |
+| | `SEC‑6b` | 0,5 | Même zone de code que `SEC‑6a`, retrait et non migration |
+| | `SEC‑4` | 0,5 | L'incident se clôt avec `SP‑5` ; un registre qui n'existe que sur un poste ne clôt rien |
+| **Argent** | `ST‑0` | 1,5 | **Encaisser du vrai argent dans une base qui contient de fausses ventes rend la comptabilité illisible dès le premier jour** |
+| | `ST‑6` | 2 | C'est l'acompte lui-même : sans ce lot, il n'y a rien à encaisser |
+| | `ST‑4a` | 2 | La pièce remise au payeur. **Obligation légale**, et la réponse du comptable la détermine |
+| | `ST‑3` | 0,5 | Un refus de visa **ouvre droit à remboursement** par nos propres CGV. Un remboursement jamais essayé n'est pas un remboursement |
+| | `ST‑7` | 0,5 | Le mode live, et son propre secret de webhook |
+| | `FIN‑1` | 0,5 | — |
+| **Légal** | `LEG‑2` | 0 *(dev)* | **Adhésion au médiateur : obligatoire** pour une vente en ligne à un consommateur. Délai externe |
+| | `LEG‑5` | 0,5 | Le volet formation des CGV, que la réponse du comptable détermine |
+| | `LEG‑4` | 0,5 | Registre des traitements. Obligation, et nous traitons des pièces d'identité |
+| | `LEG‑1` | 1 | Dès que `SP‑5` est fait, le § 9 écrit par `LEG‑0` devient faux à son tour : il annonce une migration **en cours** |
+| **Vérification** | `FOR‑3` | 0,5 | Un « officiel » ou un « certifié » de trop devant un client qui paie n'est plus une maladresse |
+| | `FOR‑4` | 1 | Les huit étapes jouées en entier. **C'est la seule preuve que la chose fonctionne** |
+| | `EXP‑1` | 1 | Une sauvegarde jamais restaurée n'est pas une sauvegarde, et à partir du premier acompte les données ne sont plus reproductibles |
+| | **Total** | **25** | *plus `DP‑4`, 1,5 jour, **acquis** — déployé le 6 novembre* |
+
+#### `L1b` — 21 jours, après le premier encaissement
+
+Chacun échoue au test, et je dis pourquoi plutôt que de le ranger en silence :
+
+| Lot | Jours | Pourquoi il peut attendre |
+|---|---|---|
+| `BR‑2` à `BR‑5` | 9,5 | Elles servent à **recruter des CHU partenaires**. Aucun candidat n'a besoin d'une brochure pour payer son acompte sur une formation déjà ouverte |
+| `SP‑6` | 1 | `SEC‑3` ferme la pire porte, celle des **anonymes**. Les 17 autres routes de dépôt exigent un compte |
+| `SP‑7` | 2 | Aucune purge n'existe aujourd'hui, et le texte validé de `LEG‑0` dit « traitée par nos équipes » — ce qui est exact. La promesse ne précède donc pas le mécanisme |
+| `SEC‑6c` | 0,5 | **Suit `SP‑7` et change donc de rang avec lui.** Il n'était en `L1` que parce que `SP‑7` allait introduire une suppression : sans `SP‑7`, il redevient sans danger |
+| `EXP‑2` | 1,5 | **Sous condition écrite** : les premiers acomptes sont **relus à la main** dans Stripe, un par un. Dès qu'ils ne le sont plus, ce lot redevient bloquant |
+| `EXP‑3` | 1 | La routine de `CLAUDE.md` est tenue de mémoire. Elle l'a été ce soir encore |
+| `EXP‑4a` et `4b` | 1 | Un reçu en indésirable, ou une réponse perdue, se rattrape par téléphone sur dix dossiers. Pas sur cent |
+| `CDE‑2` | 1 | Un écran de confort |
+| `FOR‑1`, `FOR‑2` | 1,5 | Un badge de visa incohérent et une image mal cadrée ne coûtent pas d'argent |
+| `LEG‑3` | 1 | Les conditions partenaires engagent les **CHU**, pas le candidat qui paie |
+| `QUA‑1` | 1 | Dette d'outillage. Elle ne mord que la session suivante |
+| **Total** | **21** | |
+
+**Contrôle de cohérence : 25 + 21 = 46, et l'ancien `L1` valait 47,5** — l'écart de 1,5 est
+exactement `DP‑4`, déployé. Aucun lot n'a disparu dans le découpage.
+
+#### Les deux dates, même méthode
+
++25 %, puis 0,5 jour d'attente de relecture **sur la chaîne critique seulement**, puis les deux
+semaines des fêtes (21 décembre – 1ᵉʳ janvier).
+
+| | Brut | +25 % | Relectures bloquantes | Jours ouvrés | Date |
+|---|---|---|---|---|---|
+| `L0` | 3 | 3,75 | +1,5 *(3 lots)* | 5,25 | **~13 novembre 2026** |
+| **`L1a` — premier acompte réel** | 25 | 31,25 | +3 *(chaîne stockage : `SP‑1`→`SP‑2`→`SP‑3`→`SP‑4`→`SP‑5`→`LEG‑1`)* | **34,25** | **mi-janvier 2027** |
+| `L1b` | 21 | 26,25 | +2,5 *(chaîne brochures et `SP‑6`→`SP‑7`→`SEC‑6c`)* | 28,75 | **fin février 2027** |
+| `L2` | 25,5–27,5 | 32–34,5 | +3 | 35–37,5 | **fin avril 2027** *(inchangé)* |
+
+Le détail du calcul de `L1a`, pour qu'il soit contestable : 34,25 jours ouvrés depuis le
+**16 novembre**, soit 25 jours jusqu'au 18 décembre, puis l'arrêt des fêtes, puis 9,5 jours à
+partir du 4 janvier — **le 15 janvier 2027**.
+
+**Ce que l'option fait gagner : six semaines de chiffre d'affaires.** Le premier acompte réel
+passe de **début mars** à **mi-janvier**, et le lancement 1 complet reste **fin février**, donc
+*avant* la date du plan précédent. Le découpage ne retarde rien.
+
+**Et une réserve qui pèse plus que les autres.** `L1a` commence par `SP‑1`, qui est **bloqué sur
+toi** : les deux projets Scaleway, les buckets, les applications, les clés et les sept variables
+Render. Tant que cela n'existe pas, `L1a` ne démarre pas, et la date de mi-janvier glisse jour
+pour jour. C'est aujourd'hui le seul verrou du premier euro encaissé.
 
 ---
 
@@ -878,6 +1131,20 @@ Les trois suivants sont ce que la vérification a révélé en les traitant.
 | 26 | **La dette de sécurité contenait deux points déjà corrigés** | Le point 5 — les adresses `javascript:`, celui qui était marqué « PRIORITAIRE » — est **corrigé des deux côtés** : `AdresseWeb.exiger` au serveur sur les trois colonnes, `adresseSure` au client. Le point 7 (authentification des e-mails) l'était aussi. **La note de suivi ne le disait pour aucun des deux.** Une dette qu'on croit porter coûte des décisions, même quand elle n'existe plus. |
 | 27 | **Un point de la dette change de rang à cause de `SP‑7`** | Le point 6 — l'extension portée par `Training.imageS3Key` — est **sûr aujourd'hui** parce qu'aucune suppression ne lit cette colonne. Or `SP‑7` introduit précisément une **tâche de purge**. Il passe donc en lancement 1 sous le nom `SEC‑6c`, **avant** `SP‑7` et non après. C'est le genre de dépendance qu'on ne voit qu'en relisant la dette à la lumière du plan. |
 | 28 | **Deux oublis de ma liste de tâches, tous deux à délai externe** | L'**activation du compte Stripe en mode live** (identité de la SAS, IBAN) : plusieurs jours ouvrés, et je l'avais fondue dans `ST‑7` comme si c'était un réglage. Et l'en-tête **`Content-Security-Policy`**, absent de tout l'inventaire : une atténuation à un jour pour le risque que `SEC‑5` met 1,5 jour à supprimer, et qui tient pendant tout l'intervalle. |
+
+### 9 ter. Écarts relevés le 6 novembre 2026, au second arbitrage
+
+| # | Point | Ce que la vérification dit |
+|---|---|---|
+| 29 | **Il n'y a pas sept routes `permitAll`, mais neuf** | `SecurityConfig.java:103` et `:104` ouvrent aussi `GET /api/v1/ai/tools/catalog/search` et `GET /api/v1/ai/tools/trainings`. **Je les avais lues sans les compter** : mon relevé du 5 novembre nommait sept routes dans un fichier qui en ouvre neuf. Un inventaire de sécurité qui se trompe sur le nombre de portes n'a pas de valeur, et celui-ci est le mien. |
+| 30 | **L'assistant IA : vérifié ouvert, pas déduit ouvert** | Un `POST` sur `/api/v1/ai/chat` **sans jeton**, en production, a rendu **HTTP 200**, une réponse rédigée et `mistral/mistral-small-latest`. Ma requête a coûté un appel payant **et écrit une ligne de conversation en base** — écriture provoquée par l'audit, à ajouter au périmètre de `ST‑0`. La différence entre « le code semble l'ouvrir » et « elle répond » est toute la différence entre une hypothèse et un fait. |
+| 31 | **Une dixième porte, d'une autre nature** | `/api/v1/ai/extract` — qui envoie un fichier à **Gemini** — ne porte **ni `@PlatformAdmin` ni `@PreAuthorize`**, alors que `/draft` et `/summarize`, écrits juste en dessous, en portent un chacun. Tout compte client connecté peut y déposer un fichier à nos frais. **Aucun écran ne l'appelle** : morte côté produit, vivante côté serveur. |
+| 32 | **J'ai failli corriger une phrase fausse par deux autres** | Dans mon propre texte `LEG‑0` du matin, j'allais publier « hébergées **aux États-Unis** » — or la **région du compte Cloudinary n'a jamais été lue** — et « encadrés par les **clauses contractuelles types** » — or la certification DPF que j'ai trouvée est active au nom de **Cloudinary Inc.**, tandis que l'entité au contrat dans leur DPA est **Cloudinary Ltd.**, pour laquelle je n'ai trouvé aucune inscription. Les deux phrases sont retirées. **C'est ta règle qui les a arrêtées, pas ma relecture.** |
+| 33 | **Cinq sous-traitants sur sept ne sont pas vérifiés** | Render (Francfort) et Cloudinary (hors UE) le sont. Mistral, Google, Stripe, Mailtrap et Vercel ne le sont pas. Le texte de `LEG‑0` ne nomme donc **aucun prestataire** : une énumération fausse dans une politique publiée est pire que pas d'énumération. Les cinq réponses sont au § 5, tâche **7 bis**, et elles conditionnent `LEG‑1`. |
+| 34 | **Le `Reply-To` était déjà écrit — et c'est le problème** | Il figurait dans le libellé de `EXP‑4`, entre deux virgules, à l'intérieur d'un lot de 0,5 jour qui parlait surtout de DNS. Un défaut qui fait **disparaître les réponses des clients sans rebond** ne se lit pas en incise : il sort en `EXP‑4b`, avec sa propre durée et la décision qui t'appartient — quelle boîte reçoit quoi. |
+| 35 | **`SEC‑6d` et `SEC‑6e` étaient déjà hors du minimum** | Ton arbitrage les fait passer en `L1b` ; ils étaient classés **`Ap`** depuis la révision du 6 novembre, soit **plus loin** que `L1b`. Je les y laisse, parce que l'intention — qu'ils ne bloquent pas le premier encaissement — est tenue, et que les y avancer les ferait passer devant des lots qui comptent davantage. **Dis-le si tu veux les voir en `L1b` quand même.** |
+| 36 | **`L1 minimum` fait gagner six semaines, et désigne un seul verrou** | 25 jours au lieu de 47,5, soit **mi-janvier 2027 au lieu de début mars** pour le premier acompte réel — et `L1b` reste **fin février**, donc *avant* la date du plan précédent. Le découpage ne retarde rien. Mais `L1a` **commence par `SP‑1`**, bloqué sur les deux projets Scaleway : tant qu'ils n'existent pas, la date glisse jour pour jour. C'est aujourd'hui le seul verrou du premier euro encaissé. |
+| 37 | **La question L6353 n'était pas une question comptable** | Je l'avais rangée au § 4 bis avec la TVA et la pièce remise. Elle porte sur la **validité du contrat** et sur **ce qui peut être encaissé** : elle est pour un avocat, et si le comptable y répond, il répond hors de son domaine. Sortie en **§ 4 ter**, avec le chiffrage de ce qu'elle coûterait : **6 jours de code**, dont une migration et un état de plus dans l'automate. C'est la mesure du risque de ne pas la poser avant `ST‑4a`. |
 
 ---
 
