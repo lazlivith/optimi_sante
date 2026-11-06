@@ -108,7 +108,7 @@ export function MyOrdersPage() {
                         {getStatusBadge(order.paymentStatus)}
                       </td>
                       <td className="px-6 py-4">
-                        {order.documentS3Key ? (
+                        {order.hasDocument ? (
                           <DocumentButton
                             libelle={order.isQuote ? 'Ouvrir le devis' : 'Ouvrir le reçu'}
                             obtenirLien={() => vaultService.getPresignedUrl(

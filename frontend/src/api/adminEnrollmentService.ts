@@ -11,10 +11,10 @@ export interface EnrollmentDetailDto {
   doctorName?: string;
   doctorEmail?: string;
   submittedAt: string;
-  diplomaUrl?: string;
-  medicalBoardRegistrationUrl?: string;
-  passportUrl?: string;
-  conventionS3Key?: string;
+  // DP-4 : plus de clé de pièce ni de convention ; présence seulement, téléchargement par
+  // /documents/{type}/{id}/download sous contrôle de rôle.
+  hasConvention?: boolean;
+  hasAttestation?: boolean;
   /** Lieu de la session (texte libre) — a ne pas confondre avec le CHU partenaire. */
   hostInstitution?: string;
   /** CHU dont releve la formation. L'identifiant sert au filtre, le nom a l'affichage. */
