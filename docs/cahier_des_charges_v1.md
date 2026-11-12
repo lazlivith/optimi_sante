@@ -391,7 +391,7 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 | `FOR‑2` | formations | **Images verticales** : image entière sur fond flouté dans la bannière, format conseillé indiqué au dépôt | Les affiches de CHU sont en portrait et sont recadrées | rien | **L1** | 1 | ~3 Ko | à faire | — |
 | `FOR‑3` | formations | Relecture mot à mot des textes publics : aucun « officiel », aucun « certifié », aucun lien vers une autorité | Le test ne couvre que les **liens**. Un adjectif passe | rien | **L1** | 0,5 | 0 | à faire (garde-fou partiel : `AucunLienSortant.test.tsx`) | toi (texte) |
 | `FOR‑4` | formations | Parcours candidat joué **en entier** sur un dossier de test en production, les huit étapes | Chaque étape a été vérifiée seule ; l'enchaînement complet, jamais | `DP‑4` déployé, `ST‑6` | **L1** | 1 | 0 | à faire | toi |
-| `FOR‑5` | formations | **Le formulaire « Transmettre un document justificatif » ne doit pas être proposé quand le dépôt est refusé.** Le masquer, ou afficher la raison **avant** le choix du fichier, et dans tous les cas dire au candidat **ce qui se passe ensuite** — l'administration peut encore ajouter des pièces, lui non | Relevé par toi le 12 novembre en production. Le candidat choisit un type, choisit un fichier, clique, et récolte un **409**. Le serveur a raison ; c'est l'écran qui ment. **La portée est plus large que le dossier transmis** : le médecin ne peut déposer que dans **2 statuts sur 12** (`UNDER_OPTIMI_REVIEW` et `ACTION_REQUIRED`, `EnrollmentService:862-863`), alors que le formulaire est rendu **sans condition de statut** (`MyEnrollmentDetailPage.tsx:304`). Il est donc inutile dans **dix cas sur douze** | rien | **L1b** | 0,5 | 0 | **vérifié, aucun fichier orphelin** | — |
+| `FOR‑5` | formations | **Le formulaire « Transmettre un document justificatif » ne doit pas être proposé quand le dépôt est refusé.** Le masquer, ou afficher la raison **avant** le choix du fichier, et dans tous les cas dire au candidat **ce qui se passe ensuite** — l'administration peut encore ajouter des pièces, lui non | Relevé par toi le 12 novembre en production. Le candidat choisit un type, choisit un fichier, clique, et récolte un **409**. Le serveur a raison ; c'est l'écran qui ment. **La portée est plus large que le dossier transmis** : le médecin ne peut déposer que dans **2 statuts sur 12** (`UNDER_OPTIMI_REVIEW` et `ACTION_REQUIRED`, `EnrollmentService:862-863`), alors que le formulaire est rendu **sans condition de statut** (`MyEnrollmentDetailPage.tsx:304`). Il est donc inutile dans **dix cas sur douze** | rien | **L1a** | 0,5 | 0 | **vérifié, aucun fichier orphelin** | — |
 
 > **`FOR‑5` — ta seconde question : non, aucun fichier ne reste orphelin.** Vérifié dans le code,
 > et c'est l'ordre des opérations qui le garantit : le contrôle de statut est à
@@ -407,12 +407,13 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 > jour où `FOR‑5` sera écrit, et c'est la raison pour laquelle je l'écris dans ce document
 > plutôt que de simplement répondre « non ».
 >
-> **Ce qui est réellement en cause est l'écran, et son classement en `L1b` est discutable.** Il
-> échoue au test strict du § 6.5 — un candidat qui récolte un 409 n'est pas un encaissement
-> illégal ni dangereux — mais c'est le genre de défaut qui fait écrire à un client payant, et
-> `EXP‑4b` étant lui aussi en `L1b`, **son message n'arriverait nulle part**. Les deux sont
-> indépendants pris un par un, et ensemble ils font un client qui ne comprend pas et qu'on
-> n'entend pas. **Dis-moi si tu veux les deux en `L1a`** : cela coûte un jour.
+> **Ce qui est réellement en cause est l'écran.** Il échoue au test strict du § 6.5 — un candidat
+> qui récolte un 409 n'est pas un encaissement illégal ni dangereux — mais c'est le genre de
+> défaut qui fait écrire à un client payant, et `EXP‑4b` fait que son message n'arriverait nulle
+> part. Pris un par un, les deux échouent au test ; ensemble, ils font un client qui ne comprend
+> pas **et** qu'on n'entend pas. **Arbitré le 12 novembre : les deux passent en `L1a`**, pour un
+> jour au total. C'est la seule entorse au test strict, et elle est assumée : elle corrige la
+> limite du test, qui ne sait évaluer qu'un lot à la fois.
 
 ### 3.7 Légal et contenu
 
@@ -433,7 +434,7 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 | `EXP‑2` | exploitation | Supervision des erreurs, **alerte sur échec de webhook**, journaux conservés | Un paiement encaissé dont le webhook échoue est aujourd'hui silencieux | rien | **L1** | 1,5 | 0 | à faire | — |
 | `EXP‑3` | exploitation | **Intégration continue** : build, suite complète, garde-fou de charte à chaque `push`, avec le **nombre d'ignorés** rapporté | `.github/workflows` est vide. La routine de `CLAUDE.md` est tenue de mémoire | rien | **L1** | 1 | 0 | à faire | — |
 | `EXP‑4a` | exploitation | **Authentification des e-mails** — périmètre bien plus petit que prévu, voir l'encadré : poser un `rua=` sur le DMARC, resserrer le SPF du domaine apex, et **revérifier un en-tête réel** une fois Mailtrap en mode live | Sans `rua=`, le jour où l'authentification casse, **personne ne l'apprend** : les reçus partent en indésirable et aucun rapport ne remonte | rien | **L1** | 0,5 | 0 | **SPF, DKIM et DMARC déjà en place** | toi (registrar) |
-| `EXP‑4b` | e-mails | **`Reply-To` sur les messages qui en manquent** : reçus de paiement (`PaymentReceiptIssuer`), envois d'identifiants et convocations. Choisir la boîte destinataire par type — `comptabilite@` pour les reçus, `infos@` pour le reste — et **un test d'envoi réel par type**, en répondant depuis une boîte externe | Tout part de `no-reply@optimisante.com` et seuls les accusés « Exercer en France » portent un `Reply-To`. Un client qui répond à son reçu écrit **dans le vide, sans rebond** : il croit avoir écrit, personne ne reçoit rien. C'est le défaut le plus silencieux de la liste | rien | **L1** | 0,5 | 0 | à faire | toi *(quelle boîte par type)* |
+| `EXP‑4b` | e-mails | **`Reply-To` sur les messages qui en manquent** : reçus de paiement (`PaymentReceiptIssuer`), envois d'identifiants et convocations. Choisir la boîte destinataire par type — `comptabilite@` pour les reçus, `infos@` pour le reste — et **un test d'envoi réel par type**, en répondant depuis une boîte externe | Tout part de `no-reply@optimisante.com` et seuls les accusés « Exercer en France » portent un `Reply-To`. Un client qui répond à son reçu écrit **dans le vide, sans rebond** : il croit avoir écrit, personne ne reçoit rien. C'est le défaut le plus silencieux de la liste | rien | **L1a** | 0,5 | 0 | à faire | toi *(quelle boîte par type)* |
 | `QUA‑1` | qualité | Dette d'outillage en un lot : fixture de `ControleBrochureTest` déplacée **dans** `backend/src/test/resources`, suppression de la configuration morte `app.aws.*`, correction de `_plafondJsKo`, correction du « onze statuts » de `parcoursDossier.ts` (il y en a douze), scission du prompt `M3`, correction de l'affirmation fausse de `PIL` | Chacun est un piège pour la prochaine session, et aucun ne coûte cher | rien | **L1** | 1 | 0 | à faire | — |
 | `QUA‑4` | catalogue | Référencement : `sitemap.xml`, `robots.txt`, titres et métadonnées par page | `frontend/public/` ne contient que le favicon, les icônes et la marque. Aucun des deux fichiers n'existe | `CAT` (pour les 301) | **L2** | 1,5 | 0 | à faire | — |
 | `QUA‑2` | qualité | Cause racine de l'instabilité des tests frontend, ou décision écrite de vivre avec | Contournement en place (`testTimeout: 20_000`), cause inconnue. Un test instable est une dette | `EXP‑3` | **Ap** | 1 | 0 | contourné | — |
@@ -967,9 +968,11 @@ marché.
 | **Vérification** | `FOR‑3` | 0,5 | Un « officiel » ou un « certifié » de trop devant un client qui paie n'est plus une maladresse |
 | | `FOR‑4` | 1 | Les huit étapes jouées en entier. **C'est la seule preuve que la chose fonctionne** |
 | | `EXP‑1` | 1 | Une sauvegarde jamais restaurée n'est pas une sauvegarde, et à partir du premier acompte les données ne sont plus reproductibles |
-| | **Total** | **25** | *plus `DP‑4`, 1,5 jour, **acquis** — déployé le 6 novembre* |
+| **Le client payant** | `FOR‑5` | 0,5 | **Ajouté par arbitrage du 12 novembre.** Seul, il échoue au test ; avec `EXP‑4b`, il fait un client qui ne comprend pas |
+| | `EXP‑4b` | 0,5 | **Idem** : et qu'on n'entend pas. Les deux ensemble valent plus que leur somme, ce que le test, appliqué lot par lot, ne savait pas voir |
+| | **Total** | **26** | *plus `DP‑4`, 1,5 jour, **acquis** — déployé le 6 novembre* |
 
-#### `L1b` — 21 jours, après le premier encaissement
+#### `L1b` — 20,5 jours, après le premier encaissement
 
 Chacun échoue au test, et je dis pourquoi plutôt que de le ranger en silence :
 
@@ -981,17 +984,16 @@ Chacun échoue au test, et je dis pourquoi plutôt que de le ranger en silence :
 | `SEC‑6c` | 0,5 | **Suit `SP‑7` et change donc de rang avec lui.** Il n'était en `L1` que parce que `SP‑7` allait introduire une suppression : sans `SP‑7`, il redevient sans danger |
 | `EXP‑2` | 1,5 | **Sous condition écrite** : les premiers acomptes sont **relus à la main** dans Stripe, un par un. Dès qu'ils ne le sont plus, ce lot redevient bloquant |
 | `EXP‑3` | 1 | La routine de `CLAUDE.md` est tenue de mémoire. Elle l'a été ce soir encore |
-| `EXP‑4a` et `4b` | 1 | Un reçu en indésirable, ou une réponse perdue, se rattrape par téléphone sur dix dossiers. Pas sur cent |
+| `EXP‑4a` | 0,5 | Le `rua=` du DMARC et le SPF apex. Une signature qui casse se découvre tard, mais elle se découvre |
 | `CDE‑2` | 1 | Un écran de confort |
 | `FOR‑1`, `FOR‑2` | 1,5 | Un badge de visa incohérent et une image mal cadrée ne coûtent pas d'argent |
 | `LEG‑3` | 1 | Les conditions partenaires engagent les **CHU**, pas le candidat qui paie |
 | `QUA‑1` | 1 | Dette d'outillage. Elle ne mord que la session suivante |
-| `FOR‑5` | 0,5 | Le formulaire de dépôt proposé là où le serveur refuse. **Classement discutable** : avec `EXP‑4b` aussi en `L1b`, le client ne comprend pas *et* n'est pas entendu — voir l'encadré du § 3.6 |
-| **Total** | **21,5** | |
+| **Total** | **20,5** | |
 
-**Contrôle de cohérence : 25 + 21,5 = 46,5, et `L1` vaut 48** — l'écart de 1,5 est exactement
-`DP‑4`, déployé. Aucun lot n'a disparu dans le découpage, et `FOR‑5`, ajouté le 12 novembre,
-est bien compté dans les deux totaux.
+**Contrôle de cohérence : 26 + 20,5 = 46,5, et `L1` vaut 48** — l'écart de 1,5 est exactement
+`DP‑4`, déployé. Aucun lot n'a disparu dans les deux reclassements du 12 novembre : `FOR‑5` et
+`EXP‑4b` ont changé de colonne, pas de total.
 
 #### Les deux dates, même méthode
 
@@ -1001,13 +1003,14 @@ semaines des fêtes (21 décembre – 1ᵉʳ janvier).
 | | Brut | +25 % | Relectures bloquantes | Jours ouvrés | Date |
 |---|---|---|---|---|---|
 | `L0` | 3 | 3,75 | +1,5 *(3 lots)* | 5,25 | **~13 novembre 2026** |
-| **`L1a` — premier acompte réel** | 25 | 31,25 | +3 *(chaîne stockage : `SP‑1`→`SP‑2`→`SP‑3`→`SP‑4`→`SP‑5`→`LEG‑1`)* | **34,25** | **mi-janvier 2027** |
-| `L1b` | 21,5 | 26,875 | +2,5 *(chaîne brochures et `SP‑6`→`SP‑7`→`SEC‑6c`)* | 29,375 | **fin février 2027** *(inchangé : `FOR‑5` tient dans l'arrondi)* |
+| **`L1a` — premier acompte réel** | 26 | 32,5 | +3 *(chaîne stockage : `SP‑1`→`SP‑2`→`SP‑3`→`SP‑4`→`SP‑5`→`LEG‑1`)* | **35,5** | **mi-janvier 2027** |
+| `L1b` | 20,5 | 25,625 | +2,5 *(chaîne brochures et `SP‑6`→`SP‑7`→`SEC‑6c`)* | 28,125 | **fin février 2027** |
 | `L2` | 25,5–27,5 | 32–34,5 | +3 | 35–37,5 | **fin avril 2027** *(inchangé)* |
 
-Le détail du calcul de `L1a`, pour qu'il soit contestable : 34,25 jours ouvrés depuis le
-**16 novembre**, soit 25 jours jusqu'au 18 décembre, puis l'arrêt des fêtes, puis 9,5 jours à
-partir du 4 janvier — **le 15 janvier 2027**.
+Le détail du calcul de `L1a`, pour qu'il soit contestable : 35,5 jours ouvrés depuis le
+**16 novembre**, soit 25 jours jusqu'au 18 décembre, puis l'arrêt des fêtes, puis 10,5 jours à
+partir du 4 janvier — **le 18 janvier 2027**. Le reclassement de `FOR‑5` et `EXP‑4b` coûte donc
+**un jour ouvré de plus sur la date**, pas une semaine : ils étaient dans `L1b`, qui suivait.
 
 **Ce que l'option fait gagner : six semaines de chiffre d'affaires.** Le premier acompte réel
 passe de **début mars** à **mi-janvier**, et le lancement 1 complet reste **fin février**, donc
@@ -1182,7 +1185,7 @@ Les trois suivants sont ce que la vérification a révélé en les traitant.
 | 38 | **`DP‑4` est déployé et vérifié des deux côtés** | Backend le 6 novembre (miroir `aa4e334`, empreinte `a5452449…`), frontend le 12 (miroir `171b086`, empreinte `a0a73c90…`), empreintes d'arbre égales à celles de `main` **avant** chaque `push`. Vérifications de production conduites par toi : dépôt sur un dossier neuf en 200 **sans aucune clé de stockage**, aucune occurrence de `dossiers-candidats` ni de `optimisante/` dans les échanges, et le décodage de la charge du jeton rendant **trois `false`**. C'est la correction que personne n'avait vue qui est désormais en ligne. |
 | 39 | **Le formulaire de dépôt est inutile dans dix statuts sur douze, et pas seulement sur un dossier transmis** | Tu l'as relevé sur un dossier transmis. La cause est plus large : le médecin ne peut déposer que dans `UNDER_OPTIMI_REVIEW` et `ACTION_REQUIRED` (`EnrollmentService:862-863`), et le formulaire est rendu **sans aucune condition de statut** (`MyEnrollmentDetailPage.tsx:304`). Un écran qui propose une action que le serveur refuse **dix fois sur douze** n'est pas un défaut d'affichage, c'est une promesse fausse. → `FOR‑5`. |
 | 40 | **Aucun fichier ne reste orphelin quand le 409 tombe** — et la question valait d'être posée | Le contrôle de statut est à `EnrollmentService:1005-1008`, le stockage à la **ligne 1011** : l'exception part avant le premier octet écrit, et le dépôt est un **seul appel multipart**, pas un téléversement suivi d'un rattachement. Si l'ordre avait été l'inverse, chaque 409 laisserait une **pièce d'identité** dans le stockage sans ligne en base pour la retrouver — invisible à tout inventaire et à toute purge, celle de `SP‑7` comprise. **Cet ordre ne doit pas être cassé** en écrivant `FOR‑5`, et c'est pour cela qu'il est écrit ici plutôt que répondu en passant. |
-| 41 | **Deux lots de `L1b` se renforcent l'un l'autre, ce que le classement lot par lot ne voit pas** | `FOR‑5` fait écrire un client qui ne comprend pas ; `EXP‑4b` fait que sa réponse **n'arrive nulle part, sans rebond**. Chacun échoue seul au test strict du § 6.5, et je les y laisse — mais ensemble ils valent plus que leur somme. Un jour les met tous les deux en `L1a`. **Arbitrage à toi**, et je le signale au lieu de le trancher parce que le test strict, appliqué mécaniquement, ne pouvait pas le voir. |
+| 41 | **Deux lots de `L1b` se renforcent l'un l'autre, ce que le classement lot par lot ne voit pas** | `FOR‑5` fait écrire un client qui ne comprend pas ; `EXP‑4b` fait que sa réponse **n'arrive nulle part, sans rebond**. Chacun échoue seul au test strict du § 6.5 — mais ensemble ils valent plus que leur somme. **Arbitré le 12 novembre : les deux passent en `L1a`.** `L1a` 25 → **26**, `L1b` 21,5 → **20,5**, total `L1` inchangé à 48, et la date de `L1a` glisse d'**un jour ouvré** — au 18 janvier 2027. C'est la seule entorse au test strict, et elle corrige une limite du test, qui ne sait évaluer qu'un lot à la fois. |
 
 ---
 
