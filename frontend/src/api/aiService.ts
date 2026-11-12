@@ -122,6 +122,30 @@ export const aiService = {
   },
 };
 
+// --------------------------------------------------------------------------- plafond de débit
+
+/** Repli si le corps du 429 est illisible : mieux qu'un code d'erreur nu. */
+const MESSAGE_PLAFOND_PAR_DEFAUT = 'Trop de messages, réessayez dans quelques minutes.';
+
+/**
+ * Le message à montrer au visiteur quand le serveur a répondu 429.
+ *
+ * <p>Le corps porte `message`, rédigé côté serveur. On le lit plutôt que de le réécrire ici :
+ * les trois plafonds n'ont pas le même message, et dupliquer ces textes au client garantit
+ * qu'ils divergeront.</p>
+ */
+async function messageDePlafond(response: Response): Promise<string> {
+  try {
+    const corps = await response.json();
+    if (corps && typeof corps.message === 'string' && corps.message.trim() !== '') {
+      return corps.message;
+    }
+  } catch {
+    // Corps absent ou non JSON : on retombe sur le message générique.
+  }
+  return MESSAGE_PLAFOND_PAR_DEFAUT;
+}
+
 // --------------------------------------------------------------------------- streaming
 
 export interface ChatStreamHandlers {
@@ -175,6 +199,14 @@ export function streamChat(
       });
 
       if (!response.ok || !response.body) {
+        // 429 : le plafond de débit a refusé la requête. Le serveur a rédigé un message
+        // destiné au visiteur — lequel des trois plafonds a parlé change ce qu'il faut lui
+        // dire — et le remplacer par « erreur 429 » priverait la personne de la seule
+        // information utile : quand revenir.
+        if (response.status === 429) {
+          handlers.onError?.(await messageDePlafond(response));
+          return;
+        }
         handlers.onError?.(
           response.status === 409
             ? "Assistant indisponible : le service IA n'est pas démarré ou sa clé API manque."

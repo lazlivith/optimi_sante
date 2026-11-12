@@ -159,6 +159,14 @@ export function App() {
               <Route element={<ProtectedRoute allowedRoles={ALL_ADMIN_ROLES} />}>
                 <Route path="emails" element={<AdminEmailsPage />} />
                 <Route path="alerts" element={<AdminAlertsPage />} />
+              </Route>
+
+              {/* L'assistant d'administration était ouvert aux quatre rôles, alors que quatre
+                  de ses six routes serveur exigeaient déjà @PlatformAdmin : un administrateur
+                  métier ouvrait la page et chaque bouton répondait 403. SEC-1a ayant réservé
+                  les trois routes d'extraction elles aussi, plus rien n'y fonctionnait pour
+                  lui — mieux vaut ne pas proposer la page que la proposer inerte. */}
+              <Route element={<ProtectedRoute allowedRoles={GOV_ROLES} />}>
                 <Route path="ai" element={<AdminAiPage />} />
               </Route>
 

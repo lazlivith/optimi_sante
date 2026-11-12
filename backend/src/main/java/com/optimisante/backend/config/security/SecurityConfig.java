@@ -26,6 +26,8 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+    private final com.optimisante.backend.infrastructure.debit.PlafondDebit plafondDebit;
+    private final com.optimisante.backend.infrastructure.debit.ReglagesPlafondDebit reglagesPlafondDebit;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -112,6 +114,15 @@ public class SecurityConfig {
                 );
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        // Le plafond de débit passe AVANT l'authentification : les routes qu'il protège sont
+        // ouvertes aux anonymes, et une requête refusée ne doit coûter ni décodage de jeton,
+        // ni accès à la base, ni appel au modèle. Construit ici et non injecté comme bean :
+        // un bean de type Filter serait enregistré d'office sur toutes les requêtes.
+        http.addFilterBefore(
+                new com.optimisante.backend.infrastructure.debit.FiltrePlafondDebit(
+                        plafondDebit, reglagesPlafondDebit),
+                JwtAuthenticationFilter.class);
 
         return http.build();
     }

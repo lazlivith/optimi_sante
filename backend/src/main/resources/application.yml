@@ -158,6 +158,16 @@ app:
     # Service IA Python (extraction documentaire Gemini, assistant Mistral). Vide => toutes les
     # fonctions IA sont désactivées proprement. docker-compose fournit http://ai:8200.
     worker-base-url: ${AI_WORKER_URL:}
+  plafond-debit:
+    # Plafonds des routes d'IA ouvertes aux anonymes. Les deux premiers protègent le service
+    # des scripts naïfs ; le troisième est le seul qui borne réellement la dépense, parce qu'il
+    # ne dépend d'aucune donnée fournie par le client. Voir PlafondDebit pour la limite liée à
+    # l'exécution sur une seule instance.
+    actif: ${PLAFOND_DEBIT_ACTIF:true}
+    plafond-par-adresse-par-minute: ${PLAFOND_IA_PAR_MINUTE:20}
+    plafond-par-adresse-par-jour: ${PLAFOND_IA_PAR_JOUR:200}
+    # Un budget, pas une limite technique : à revoir avec le coût réel du modèle.
+    plafond-global-par-jour: ${PLAFOND_IA_GLOBAL_PAR_JOUR:2000}
   aws:
     s3:
       endpoint: ${AWS_S3_ENDPOINT:http://localhost:4566}
@@ -294,6 +304,11 @@ app:
     worker-base-url: ${REPORTING_WORKER_URL:}
   ai:
     worker-base-url: ${AI_WORKER_URL:}
+  plafond-debit:
+    actif: ${PLAFOND_DEBIT_ACTIF:true}
+    plafond-par-adresse-par-minute: ${PLAFOND_IA_PAR_MINUTE:20}
+    plafond-par-adresse-par-jour: ${PLAFOND_IA_PAR_JOUR:200}
+    plafond-global-par-jour: ${PLAFOND_IA_GLOBAL_PAR_JOUR:2000}
 
   cloudinary:
     # Sans repli : tous les documents et visuels y vivent. Démarrer sur un compte « default »
