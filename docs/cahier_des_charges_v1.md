@@ -14,7 +14,12 @@
 > fiche **« Question pour l'avocat »** au § 4 ter sur les articles L6353‑3 et suivants, avec le
 > chiffrage de ce qu'une réponse défavorable coûterait, scission de `EXP‑4` en `4a` / `4b`,
 > correction de `SEC‑1` (**neuf** routes ouvertes, pas sept) et des cinq sous-traitants non
-> vérifiés portés au § 5. Écarts au § 9 ter. **`DP‑4` est déployé** depuis ce jour.
+> vérifiés portés au § 5. Écarts au § 9 ter.
+>
+> **Mis à jour le 12 novembre 2026** : **`DP‑4` est déployé et vérifié des deux côtés** — plus
+> aucune clé de stockage n'atteint le navigateur en production. Ajout de `FOR‑5` (le formulaire
+> de dépôt proposé là où le serveur refuse) et réponse vérifiée sur les fichiers orphelins.
+> Écarts 38 à 41 au § 9 quater.
 >
 > **Rédigé le 5 novembre 2026** (branche `docs/cahier-des-charges-v1`, fusionnée dans `main`),
 > **révisé le 6 novembre 2026** après ta relecture : découpage en **deux lancements**,
@@ -386,6 +391,28 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 | `FOR‑2` | formations | **Images verticales** : image entière sur fond flouté dans la bannière, format conseillé indiqué au dépôt | Les affiches de CHU sont en portrait et sont recadrées | rien | **L1** | 1 | ~3 Ko | à faire | — |
 | `FOR‑3` | formations | Relecture mot à mot des textes publics : aucun « officiel », aucun « certifié », aucun lien vers une autorité | Le test ne couvre que les **liens**. Un adjectif passe | rien | **L1** | 0,5 | 0 | à faire (garde-fou partiel : `AucunLienSortant.test.tsx`) | toi (texte) |
 | `FOR‑4` | formations | Parcours candidat joué **en entier** sur un dossier de test en production, les huit étapes | Chaque étape a été vérifiée seule ; l'enchaînement complet, jamais | `DP‑4` déployé, `ST‑6` | **L1** | 1 | 0 | à faire | toi |
+| `FOR‑5` | formations | **Le formulaire « Transmettre un document justificatif » ne doit pas être proposé quand le dépôt est refusé.** Le masquer, ou afficher la raison **avant** le choix du fichier, et dans tous les cas dire au candidat **ce qui se passe ensuite** — l'administration peut encore ajouter des pièces, lui non | Relevé par toi le 12 novembre en production. Le candidat choisit un type, choisit un fichier, clique, et récolte un **409**. Le serveur a raison ; c'est l'écran qui ment. **La portée est plus large que le dossier transmis** : le médecin ne peut déposer que dans **2 statuts sur 12** (`UNDER_OPTIMI_REVIEW` et `ACTION_REQUIRED`, `EnrollmentService:862-863`), alors que le formulaire est rendu **sans condition de statut** (`MyEnrollmentDetailPage.tsx:304`). Il est donc inutile dans **dix cas sur douze** | rien | **L1b** | 0,5 | 0 | **vérifié, aucun fichier orphelin** | — |
+
+> **`FOR‑5` — ta seconde question : non, aucun fichier ne reste orphelin.** Vérifié dans le code,
+> et c'est l'ordre des opérations qui le garantit : le contrôle de statut est à
+> `EnrollmentService:1005-1008`, le stockage du fichier à la **ligne 1011**. L'exception part
+> **avant** le premier octet écrit. Le dépôt est un **seul appel multipart** vers la route des
+> pièces du dossier — pas un téléversement suivi d'un rattachement — donc il n'existe pas de
+> fenêtre où le fichier serait stocké sans être rattaché.
+>
+> La question était la bonne, et elle méritait d'être posée : si le même contrôle avait été
+> écrit **après** l'appel au stockage, chaque 409 laisserait une pièce d'identité dans le
+> stockage, sans ligne en base pour la retrouver — donc invisible à tout inventaire et à toute
+> purge, y compris celle de `SP‑7`. Le code est bon ici ; **ce n'est pas un ordre à casser** le
+> jour où `FOR‑5` sera écrit, et c'est la raison pour laquelle je l'écris dans ce document
+> plutôt que de simplement répondre « non ».
+>
+> **Ce qui est réellement en cause est l'écran, et son classement en `L1b` est discutable.** Il
+> échoue au test strict du § 6.5 — un candidat qui récolte un 409 n'est pas un encaissement
+> illégal ni dangereux — mais c'est le genre de défaut qui fait écrire à un client payant, et
+> `EXP‑4b` étant lui aussi en `L1b`, **son message n'arriverait nulle part**. Les deux sont
+> indépendants pris un par un, et ensemble ils font un client qui ne comprend pas et qu'on
+> n'entend pas. **Dis-moi si tu veux les deux en `L1a`** : cela coûte un jour.
 
 ### 3.7 Légal et contenu
 
@@ -451,16 +478,16 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 |---|---|---|
 | **`L0` — tout de suite** | **3** | 0 |
 | `LEG‑0`, `SEC‑3`, `SEC‑1` | 3 | |
-| **`L1` — Formations et Exercer en France** | **47,5** | **2,5** (`DP‑4` écrit, testé **et déployé le 6/11**) |
+| **`L1` — Formations et Exercer en France** | **48** | **2,5** (`DP‑4` écrit, testé, **déployé et vérifié des deux côtés le 6 et le 12/11**) |
 | dont **`L1a`, le minimum pour encaisser** *(§ 6.5)* | **25** | 1,5 |
-| dont `L1b`, après le premier encaissement *(§ 6.5)* | 21 | 0 |
+| dont `L1b`, après le premier encaissement *(§ 6.5)* | 21,5 | 0 |
 | dont stockage privé (`DP‑4` + `SP‑1` à `SP‑7`) | 12,5 | 1 |
 | dont brochures (`BR‑2` à `BR‑5`) | 9,5 | 0 |
 | dont paiements (`ST‑0`, `ST‑3`, `ST‑4a`, `ST‑6`, `ST‑7`) | 6,5 | 0 |
 | dont sécurité (`SEC‑2`, `SEC‑4`, `SEC‑7`) | 4 | 0 |
 | dont dette sécurité triée (`SEC‑6a`, `SEC‑6b`, `SEC‑6c`) | 2 | 0 |
 | dont exploitation (`EXP‑1` à `EXP‑3`, `EXP‑4a`, `EXP‑4b`) | 4,5 | 0 |
-| dont formations (`FOR‑1` à `FOR‑4`) | 3 | 0 |
+| dont formations (`FOR‑1` à `FOR‑5`) | 3,5 | 0 |
 | dont légal (`LEG‑1` à `LEG‑5`) | 3 | 0 |
 | dont administration et finances (`CDE‑2`, `FIN‑1`) | 1,5 | 0 |
 | dont qualité (`QUA‑1`) | 1 | 0 |
@@ -474,7 +501,7 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 | dont second entrepôt (`STK‑2`) | 5 à 7 | |
 | dont qualité (`QUA‑2`, `QUA‑3`) | 3 | |
 | dont dette sécurité restante (`SEC‑5`, `SEC‑6d`, `SEC‑6e`) | 3,5 | |
-| **Total des trois** | **105,5 à 109,5** | 2,5 |
+| **Total des trois** | **106 à 110** | 2,5 |
 | **Reste non estimé** | `BR‑6` et `QUA‑5` seulement | — |
 
 **Ce qui a bougé depuis le 5 novembre**, et pourquoi le total monte de 88,5‑92,5 à 105‑109 :
@@ -959,10 +986,12 @@ Chacun échoue au test, et je dis pourquoi plutôt que de le ranger en silence :
 | `FOR‑1`, `FOR‑2` | 1,5 | Un badge de visa incohérent et une image mal cadrée ne coûtent pas d'argent |
 | `LEG‑3` | 1 | Les conditions partenaires engagent les **CHU**, pas le candidat qui paie |
 | `QUA‑1` | 1 | Dette d'outillage. Elle ne mord que la session suivante |
-| **Total** | **21** | |
+| `FOR‑5` | 0,5 | Le formulaire de dépôt proposé là où le serveur refuse. **Classement discutable** : avec `EXP‑4b` aussi en `L1b`, le client ne comprend pas *et* n'est pas entendu — voir l'encadré du § 3.6 |
+| **Total** | **21,5** | |
 
-**Contrôle de cohérence : 25 + 21 = 46, et l'ancien `L1` valait 47,5** — l'écart de 1,5 est
-exactement `DP‑4`, déployé. Aucun lot n'a disparu dans le découpage.
+**Contrôle de cohérence : 25 + 21,5 = 46,5, et `L1` vaut 48** — l'écart de 1,5 est exactement
+`DP‑4`, déployé. Aucun lot n'a disparu dans le découpage, et `FOR‑5`, ajouté le 12 novembre,
+est bien compté dans les deux totaux.
 
 #### Les deux dates, même méthode
 
@@ -973,7 +1002,7 @@ semaines des fêtes (21 décembre – 1ᵉʳ janvier).
 |---|---|---|---|---|---|
 | `L0` | 3 | 3,75 | +1,5 *(3 lots)* | 5,25 | **~13 novembre 2026** |
 | **`L1a` — premier acompte réel** | 25 | 31,25 | +3 *(chaîne stockage : `SP‑1`→`SP‑2`→`SP‑3`→`SP‑4`→`SP‑5`→`LEG‑1`)* | **34,25** | **mi-janvier 2027** |
-| `L1b` | 21 | 26,25 | +2,5 *(chaîne brochures et `SP‑6`→`SP‑7`→`SEC‑6c`)* | 28,75 | **fin février 2027** |
+| `L1b` | 21,5 | 26,875 | +2,5 *(chaîne brochures et `SP‑6`→`SP‑7`→`SEC‑6c`)* | 29,375 | **fin février 2027** *(inchangé : `FOR‑5` tient dans l'arrondi)* |
 | `L2` | 25,5–27,5 | 32–34,5 | +3 | 35–37,5 | **fin avril 2027** *(inchangé)* |
 
 Le détail du calcul de `L1a`, pour qu'il soit contestable : 34,25 jours ouvrés depuis le
@@ -1145,6 +1174,15 @@ Les trois suivants sont ce que la vérification a révélé en les traitant.
 | 35 | **`SEC‑6d` et `SEC‑6e` étaient déjà hors du minimum** | Ton arbitrage les fait passer en `L1b` ; ils étaient classés **`Ap`** depuis la révision du 6 novembre, soit **plus loin** que `L1b`. Je les y laisse, parce que l'intention — qu'ils ne bloquent pas le premier encaissement — est tenue, et que les y avancer les ferait passer devant des lots qui comptent davantage. **Dis-le si tu veux les voir en `L1b` quand même.** |
 | 36 | **`L1 minimum` fait gagner six semaines, et désigne un seul verrou** | 25 jours au lieu de 47,5, soit **mi-janvier 2027 au lieu de début mars** pour le premier acompte réel — et `L1b` reste **fin février**, donc *avant* la date du plan précédent. Le découpage ne retarde rien. Mais `L1a` **commence par `SP‑1`**, bloqué sur les deux projets Scaleway : tant qu'ils n'existent pas, la date glisse jour pour jour. C'est aujourd'hui le seul verrou du premier euro encaissé. |
 | 37 | **La question L6353 n'était pas une question comptable** | Je l'avais rangée au § 4 bis avec la TVA et la pièce remise. Elle porte sur la **validité du contrat** et sur **ce qui peut être encaissé** : elle est pour un avocat, et si le comptable y répond, il répond hors de son domaine. Sortie en **§ 4 ter**, avec le chiffrage de ce qu'elle coûterait : **6 jours de code**, dont une migration et un état de plus dans l'automate. C'est la mesure du risque de ne pas la poser avant `ST‑4a`. |
+
+### 9 quater. Écarts relevés le 12 novembre 2026, après le déploiement de `DP‑4`
+
+| # | Point | Ce que la vérification dit |
+|---|---|---|
+| 38 | **`DP‑4` est déployé et vérifié des deux côtés** | Backend le 6 novembre (miroir `aa4e334`, empreinte `a5452449…`), frontend le 12 (miroir `171b086`, empreinte `a0a73c90…`), empreintes d'arbre égales à celles de `main` **avant** chaque `push`. Vérifications de production conduites par toi : dépôt sur un dossier neuf en 200 **sans aucune clé de stockage**, aucune occurrence de `dossiers-candidats` ni de `optimisante/` dans les échanges, et le décodage de la charge du jeton rendant **trois `false`**. C'est la correction que personne n'avait vue qui est désormais en ligne. |
+| 39 | **Le formulaire de dépôt est inutile dans dix statuts sur douze, et pas seulement sur un dossier transmis** | Tu l'as relevé sur un dossier transmis. La cause est plus large : le médecin ne peut déposer que dans `UNDER_OPTIMI_REVIEW` et `ACTION_REQUIRED` (`EnrollmentService:862-863`), et le formulaire est rendu **sans aucune condition de statut** (`MyEnrollmentDetailPage.tsx:304`). Un écran qui propose une action que le serveur refuse **dix fois sur douze** n'est pas un défaut d'affichage, c'est une promesse fausse. → `FOR‑5`. |
+| 40 | **Aucun fichier ne reste orphelin quand le 409 tombe** — et la question valait d'être posée | Le contrôle de statut est à `EnrollmentService:1005-1008`, le stockage à la **ligne 1011** : l'exception part avant le premier octet écrit, et le dépôt est un **seul appel multipart**, pas un téléversement suivi d'un rattachement. Si l'ordre avait été l'inverse, chaque 409 laisserait une **pièce d'identité** dans le stockage sans ligne en base pour la retrouver — invisible à tout inventaire et à toute purge, celle de `SP‑7` comprise. **Cet ordre ne doit pas être cassé** en écrivant `FOR‑5`, et c'est pour cela qu'il est écrit ici plutôt que répondu en passant. |
+| 41 | **Deux lots de `L1b` se renforcent l'un l'autre, ce que le classement lot par lot ne voit pas** | `FOR‑5` fait écrire un client qui ne comprend pas ; `EXP‑4b` fait que sa réponse **n'arrive nulle part, sans rebond**. Chacun échoue seul au test strict du § 6.5, et je les y laisse — mais ensemble ils valent plus que leur somme. Un jour les met tous les deux en `L1a`. **Arbitrage à toi**, et je le signale au lieu de le trancher parce que le test strict, appliqué mécaniquement, ne pouvait pas le voir. |
 
 ---
 
