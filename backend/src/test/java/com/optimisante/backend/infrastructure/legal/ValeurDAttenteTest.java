@@ -23,7 +23,7 @@ class ValeurDAttenteTest {
         // precisement le piege qu'un contrôle en sous-chaîne ferait tomber.
         for (String reelle : new String[]{
                 "HOLDING GUIDON",
-                "1 rue Larc Gauthier, 33140 Villenave-d'Ornon",
+                "1 rue Marc Gauthier, 33140 Villenave-d'Ornon",
                 "937 848 869 00023",
                 "93784886900023",
                 "FR24937848869",

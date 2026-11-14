@@ -52,7 +52,7 @@ export const LEGAL = {
    * La surcharge par `VITE_LEGAL_*` reste possible pour les corriger sans redeployer.</p>
    */
   adresseSiege: lire(env.VITE_LEGAL_ADRESSE_SIEGE)
-    ?? "1 rue Larc Gauthier, 33140 Villenave-d'Ornon",
+    ?? "1 rue Marc Gauthier, 33140 Villenave-d'Ornon",
   villeSiege: lire(env.VITE_LEGAL_VILLE_SIEGE) ?? "Villenave-d'Ornon, France",
 
   siren: lire(env.VITE_LEGAL_SIREN) ?? '937 848 869',
