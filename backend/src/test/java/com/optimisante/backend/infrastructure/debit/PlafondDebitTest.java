@@ -224,6 +224,6 @@ class PlafondDebitTest {
         assertThat(defaut.actif()).as("actif par défaut : on ne désactive pas un garde-fou par omission").isTrue();
         assertThat(defaut.plafondParAdresseParMinute()).isEqualTo(20);
         assertThat(defaut.plafondParAdresseParJour()).isEqualTo(200);
-        assertThat(defaut.plafondGlobalParJour()).isEqualTo(2_000);
+        assertThat(defaut.plafondGlobalParJour()).isEqualTo(500);
     }
 }

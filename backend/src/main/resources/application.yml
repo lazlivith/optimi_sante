@@ -167,7 +167,7 @@ app:
     plafond-par-adresse-par-minute: ${PLAFOND_IA_PAR_MINUTE:20}
     plafond-par-adresse-par-jour: ${PLAFOND_IA_PAR_JOUR:200}
     # Un budget, pas une limite technique : à revoir avec le coût réel du modèle.
-    plafond-global-par-jour: ${PLAFOND_IA_GLOBAL_PAR_JOUR:2000}
+    plafond-global-par-jour: ${PLAFOND_IA_GLOBAL_PAR_JOUR:500}
   aws:
     s3:
       endpoint: ${AWS_S3_ENDPOINT:http://localhost:4566}
@@ -308,7 +308,7 @@ app:
     actif: ${PLAFOND_DEBIT_ACTIF:true}
     plafond-par-adresse-par-minute: ${PLAFOND_IA_PAR_MINUTE:20}
     plafond-par-adresse-par-jour: ${PLAFOND_IA_PAR_JOUR:200}
-    plafond-global-par-jour: ${PLAFOND_IA_GLOBAL_PAR_JOUR:2000}
+    plafond-global-par-jour: ${PLAFOND_IA_GLOBAL_PAR_JOUR:500}
 
   cloudinary:
     # Sans repli : tous les documents et visuels y vivent. Démarrer sur un compte « default »

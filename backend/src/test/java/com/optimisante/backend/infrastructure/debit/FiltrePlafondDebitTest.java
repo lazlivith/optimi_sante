@@ -38,6 +38,15 @@ class FiltrePlafondDebitTest {
         return requete;
     }
 
+    private MockHttpServletRequest requeteCloudflare(String chemin, String cfConnectingIp,
+                                                     String xForwardedFor) {
+        MockHttpServletRequest requete = requete(chemin, xForwardedFor);
+        if (cfConnectingIp != null) {
+            requete.addHeader("CF-Connecting-IP", cfConnectingIp);
+        }
+        return requete;
+    }
+
     @Test
     @DisplayName("les quatre routes ouvertes sont plafonnées, et elles seules")
     void seulesLesRoutesOuvertesSontPlafonnees() throws Exception {
@@ -143,20 +152,104 @@ class FiltrePlafondDebitTest {
     }
 
     @Test
-    @DisplayName("une chaîne de proxys : seule la première adresse compte")
-    void chaineDeProxysSeuleLaPremiereCompte() throws Exception {
+    @DisplayName("une chaîne de proxys : c'est la DERNIÈRE entrée qui compte, pas la première")
+    void chaineDeProxysSeuleLaDerniereCompte() throws Exception {
         FiltrePlafondDebit filtre = filtre(1, 1_000);
 
-        filtre.doFilter(requete("/api/v1/ai/chat", "1.2.3.4, 10.0.0.1, 10.0.0.2"),
+        // La partie gauche est ce que le client peut inventer ; la droite est ce qu'un proxy a
+        // constaté. Deux requêtes dont seule la gauche change viennent du même endroit.
+        filtre.doFilter(requete("/api/v1/ai/chat", "1.2.3.4, 203.0.113.7"),
                 new MockHttpServletResponse(), new MockFilterChain());
 
         MockHttpServletResponse reponse = new MockHttpServletResponse();
-        filtre.doFilter(requete("/api/v1/ai/chat", "1.2.3.4, 192.168.5.5"),
+        filtre.doFilter(requete("/api/v1/ai/chat", "9.9.9.9, 203.0.113.7"),
                 reponse, new MockFilterChain());
 
         assertThat(reponse.getStatus())
-                .as("le client est le même : le reste de la chaîne ne doit pas lui rendre un crédit")
+                .as("inventer la première entrée ne doit pas rendre un crédit neuf — "
+                        + "c'est exactement ce que faisait la première version")
                 .isEqualTo(429);
+    }
+
+    @Test
+    @DisplayName("les espaces et les entrées vides de la chaîne n'ouvrent pas de faille")
+    void entreesVidesDansLaChaine() throws Exception {
+        FiltrePlafondDebit filtre = filtre(1, 1_000);
+
+        filtre.doFilter(requete("/api/v1/ai/chat", "  203.0.113.7  "),
+                new MockHttpServletResponse(), new MockFilterChain());
+
+        MockHttpServletResponse reponse = new MockHttpServletResponse();
+        filtre.doFilter(requete("/api/v1/ai/chat", "1.1.1.1, 203.0.113.7,  , "),
+                reponse, new MockFilterChain());
+
+        assertThat(reponse.getStatus())
+                .as("une entrée vide ajoutée en queue ne doit pas servir de compteur neuf")
+                .isEqualTo(429);
+    }
+
+    @Test
+    @DisplayName("CF-Connecting-IP est prioritaire sur X-Forwarded-For")
+    void cloudflarePrimeSurXForwardedFor() throws Exception {
+        FiltrePlafondDebit filtre = filtre(1, 1_000);
+
+        // Même client vu par Cloudflare, mais un X-Forwarded-For entièrement différent :
+        // le compteur doit rester le même, puisque c'est CF-Connecting-IP qui est lu.
+        filtre.doFilter(requeteCloudflare("/api/v1/ai/chat", "198.51.100.42", "1.2.3.4, 10.0.0.1"),
+                new MockHttpServletResponse(), new MockFilterChain());
+
+        MockHttpServletResponse reponse = new MockHttpServletResponse();
+        filtre.doFilter(requeteCloudflare("/api/v1/ai/chat", "198.51.100.42", "9.9.9.9, 10.9.9.9"),
+                reponse, new MockFilterChain());
+
+        assertThat(reponse.getStatus()).isEqualTo(429);
+    }
+
+    @Test
+    @DisplayName("deux clients Cloudflare distincts gardent chacun leur crédit")
+    void deuxClientsCloudflareDistincts() throws Exception {
+        FiltrePlafondDebit filtre = filtre(1, 1_000);
+
+        MockHttpServletResponse premier = new MockHttpServletResponse();
+        filtre.doFilter(requeteCloudflare("/api/v1/ai/chat", "198.51.100.42", null),
+                premier, new MockFilterChain());
+        assertThat(premier.getStatus()).isEqualTo(200);
+
+        MockHttpServletResponse second = new MockHttpServletResponse();
+        filtre.doFilter(requeteCloudflare("/api/v1/ai/chat", "198.51.100.43", null),
+                second, new MockFilterChain());
+        assertThat(second.getStatus()).isEqualTo(200);
+    }
+
+    @Test
+    @DisplayName("sans aucun en-tête, on retombe sur getRemoteAddr — juste en développement local")
+    void repliSurGetRemoteAddr() throws Exception {
+        FiltrePlafondDebit filtre = filtre(1, 1_000);
+
+        filtre.doFilter(requete("/api/v1/ai/chat", null),
+                new MockHttpServletResponse(), new MockFilterChain());
+
+        MockHttpServletResponse reponse = new MockHttpServletResponse();
+        filtre.doFilter(requete("/api/v1/ai/chat", null), reponse, new MockFilterChain());
+
+        assertThat(reponse.getStatus())
+                .as("sans en-tête, les deux requêtes viennent de la même adresse directe")
+                .isEqualTo(429);
+    }
+
+    @Test
+    @DisplayName("un en-tête démesuré ne devient pas une clé démesurée")
+    void enTeteDemesureEstBorne() throws Exception {
+        FiltrePlafondDebit filtre = filtre(100, 1_000);
+        String enorme = "9".repeat(5_000);
+
+        MockHttpServletResponse reponse = new MockHttpServletResponse();
+        filtre.doFilter(requeteCloudflare("/api/v1/ai/chat", enorme, null),
+                reponse, new MockFilterChain());
+
+        assertThat(reponse.getStatus())
+                .as("la requête passe, mais la clé de carte est tronquée à 64 caractères")
+                .isEqualTo(200);
     }
 
     @Test

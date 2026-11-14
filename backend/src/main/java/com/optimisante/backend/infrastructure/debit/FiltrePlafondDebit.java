@@ -64,33 +64,80 @@ public class FiltrePlafondDebit extends OncePerRequestFilter {
     }
 
     /**
-     * L'adresse du visiteur, telle qu'on peut la connaître derrière le proxy de Render.
+     * L'adresse du visiteur, dans l'ordre de confiance décroissante.
      *
-     * <p><b>Et une limite qu'il faut énoncer plutôt que masquer.</b> {@code getRemoteAddr()}
-     * rend ici l'adresse du proxy, identique pour tout le monde : s'en servir ferait d'un
-     * plafond « par adresse » un second plafond global. Il faut donc lire
-     * {@code X-Forwarded-For}, dont le premier élément est l'adresse du client telle que le
-     * proxy l'a vue.</p>
+     * <p><b>Pourquoi pas {@code getRemoteAddr()} d'abord.</b> Il rend l'adresse du dernier
+     * intermédiaire, identique pour tout le monde : s'en servir ferait du plafond « par
+     * adresse » un second plafond global, et un seul visiteur fermerait l'assistant à tous.</p>
      *
-     * <p>Cet en-tête est <b>falsifiable</b> : un attaquant qui le renseigne lui-même obtient un
-     * compteur neuf à chaque requête, et contourne les deux plafonds par adresse. C'est une
-     * faiblesse connue et acceptée ici, pour une raison précise : <b>le plafond global, lui,
-     * ne se contourne pas</b>. Il ne dépend d'aucune donnée fournie par le client, et c'est lui
-     * qui borne la dépense. Les plafonds par adresse protègent le service des maladresses et
-     * des scripts naïfs ; le plafond global protège la facture.</p>
+     * <p><b>1. {@code CF-Connecting-IP}.</b> Tout {@code *.onrender.com} est servi au travers
+     * de Cloudflare — relevé le 14 novembre 2026 sur une réponse de production :
+     * {@code Server: cloudflare}, {@code CF-RAY}, {@code cf-cache-status}. C'est l'edge de
+     * <b>Render</b>, pas un compte Cloudflare qui nous appartienne, mais l'en-tête est posé
+     * par lui et porte l'adresse du client telle que l'edge l'a vue.</p>
+     *
+     * <p><b>2. La DERNIÈRE entrée de {@code X-Forwarded-For}, et non la première.</b> La
+     * documentation de Cloudflare indique que {@code X-Forwarded-For} vaut
+     * {@code CF-Connecting-IP} lorsque le client n'en a envoyé aucun — autrement dit l'edge
+     * <b>ajoute</b> sa constatation à ce que le client a fourni. Ce que le client contrôle est
+     * donc à <b>gauche</b>, et la constatation du proxy à <b>droite</b>. Ma première version
+     * lisait la première entrée : elle prenait précisément la partie falsifiable. L'erreur
+     * était de moi.</p>
+     *
+     * <p><b>3. {@code getRemoteAddr()}</b> en dernier recours — en développement local, où il
+     * est juste.</p>
+     *
+     * <p><b>Ce qui reste non vérifié, et comment le vérifier.</b> Que l'edge de Render
+     * <b>écrase</b> un {@code CF-Connecting-IP} fourni par le client n'est affirmé par aucune
+     * documentation que j'aie pu lire : celle de Cloudflare énonce l'écrasement pour d'autres
+     * en-têtes, pas pour celui-ci, et Render ne documente que {@code X-Forwarded-For}. Le test
+     * est pourtant simple une fois ce lot déployé : envoyer plus d'appels que le plafond par
+     * minute en faisant varier {@code CF-Connecting-IP} à chaque requête. Si le 429 tombe
+     * quand même, l'en-tête n'est pas accepté du client et il est digne de confiance ; s'il ne
+     * tombe jamais, il l'est, et il faudra se replier sur la dernière entrée de
+     * {@code X-Forwarded-For}. <b>Dans les deux cas le plafond global tient</b> : il ne lit
+     * aucune donnée fournie par le client. Les plafonds par adresse protègent le service ; le
+     * plafond global protège la facture.</p>
      */
     private String adresseDuVisiteur(HttpServletRequest requete) {
+        String cloudflare = premiereValeurUtile(requete.getHeader("CF-Connecting-IP"));
+        if (cloudflare != null) {
+            return cloudflare;
+        }
+
         String transmise = requete.getHeader("X-Forwarded-For");
         if (transmise != null && !transmise.isBlank()) {
-            String premiere = transmise.split(",")[0].trim();
-            if (!premiere.isEmpty()) {
-                // Borner la longueur : cette valeur devient une clé de carte, et rien
-                // n'empêche un client d'envoyer un en-tête de plusieurs kilo-octets.
-                return premiere.length() > 64 ? premiere.substring(0, 64) : premiere;
+            String[] entrees = transmise.split(",");
+            // La dernière entrée non vide : celle qu'un proxy a constatée, non celle que le
+            // client a pu inventer.
+            for (int i = entrees.length - 1; i >= 0; i--) {
+                String candidate = premiereValeurUtile(entrees[i]);
+                if (candidate != null) {
+                    return candidate;
+                }
             }
         }
+
         String directe = requete.getRemoteAddr();
         return directe == null ? "inconnue" : directe;
+    }
+
+    /**
+     * Nettoie et borne une valeur d'en-tête, ou {@code null} si elle ne sert à rien.
+     *
+     * <p>La borne de 64 caractères n'est pas cosmétique : cette valeur devient une <b>clé de
+     * carte</b>, et rien n'empêche un client d'envoyer un en-tête de plusieurs kilo-octets —
+     * ce qui ferait du compteur de protection un moyen de consommer la mémoire.</p>
+     */
+    private String premiereValeurUtile(String brute) {
+        if (brute == null) {
+            return null;
+        }
+        String nettoyee = brute.trim();
+        if (nettoyee.isEmpty()) {
+            return null;
+        }
+        return nettoyee.length() > 64 ? nettoyee.substring(0, 64) : nettoyee;
     }
 
     private void refuser(HttpServletRequest requete, HttpServletResponse reponse,
