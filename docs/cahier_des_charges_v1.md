@@ -437,9 +437,60 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 | `EXP‑4b` | e-mails | **`Reply-To` sur les messages qui en manquent** : reçus de paiement (`PaymentReceiptIssuer`), envois d'identifiants et convocations. Choisir la boîte destinataire par type — `comptabilite@` pour les reçus, `infos@` pour le reste — et **un test d'envoi réel par type**, en répondant depuis une boîte externe | Tout part de `no-reply@optimisante.com` et seuls les accusés « Exercer en France » portent un `Reply-To`. Un client qui répond à son reçu écrit **dans le vide, sans rebond** : il croit avoir écrit, personne ne reçoit rien. C'est le défaut le plus silencieux de la liste | rien | **L1a** | 0,5 | 0 | à faire | toi *(quelle boîte par type)* |
 | `QUA‑1` | qualité | Dette d'outillage en un lot : fixture de `ControleBrochureTest` déplacée **dans** `backend/src/test/resources`, suppression de la configuration morte `app.aws.*`, correction de `_plafondJsKo`, correction du « onze statuts » de `parcoursDossier.ts` (il y en a douze), scission du prompt `M3`, correction de l'affirmation fausse de `PIL` | Chacun est un piège pour la prochaine session, et aucun ne coûte cher | rien | **L1** | 1 | 0 | à faire | — |
 | `QUA‑4` | catalogue | Référencement : `sitemap.xml`, `robots.txt`, titres et métadonnées par page | `frontend/public/` ne contient que le favicon, les icônes et la marque. Aucun des deux fichiers n'existe | `CAT` (pour les 301) | **L2** | 1,5 | 0 | à faire | — |
-| `QUA‑2` | qualité | Cause racine de l'instabilité des tests frontend, ou décision écrite de vivre avec | Contournement en place (`testTimeout: 20_000`), cause inconnue. Un test instable est une dette | `EXP‑3` | **Ap** | 1 | 0 | contourné | — |
+| `QUA‑2` | qualité | **La suite frontend ne démarre plus dans le dossier de travail** — plus une instabilité, un arrêt. Voir l'encadré de diagnostic ci-dessous | Le contournement de l'instabilité (`testTimeout: 20_000`, `--pool=forks`) ne contourne plus rien : les 14 fichiers échouent **à la collecte**, avant le premier test. Un lot frontend ne peut plus être livré selon `CLAUDE.md` § 6 | `EXP‑3` | **L1a** | 1 | 0 | **diagnostic partiel du 14/11, voir encadré** | — |
 | `QUA‑3` | qualité | Accessibilité : parcours clavier complet et contrastes sur les écrans de vente | Le garde-fou de charte mesure les contrastes ; il ne mesure **pas** le clavier. **Non vérifié** | rien | **Ap** | 2 *(estimation)* | 0 | à faire | — |
 | `QUA‑5` | catalogue | Bandeau promotionnel mobile (`PromoHeroSlider`) | Signalé dans ton inventaire ; **non vérifié** faute d'une description du défaut | rien | **Ap** | *non estimé* | — | **à préciser** | toi |
+
+> **`QUA‑2` — diagnostic du 14 novembre 2026, arrêté à la demi-journée convenue**
+>
+> **Le symptôme.** Les 14 fichiers de test échouent à la **collecte**, avant le premier test :
+> `Error: Vitest failed to find the current suite`, pointant `src/test/preparation.ts:8`
+> (`afterEach(cleanup)`). `Tests: no tests`. Déterministe, reproduit à chaque exécution.
+>
+> **Ce qui est éliminé**, chaque ligne par un essai et non par un raisonnement :
+>
+> | Hypothèse | Essai | Verdict |
+> |---|---|---|
+> | Mon code (`SEC‑1a`) | arbre frontend remis **entièrement propre** | **éliminée** — échec identique |
+> | Node ou npm mis à jour | `node v22.22.0`, `npm 11.7.0` ; le projet ne fixe **ni `engines`, ni `.nvmrc`** | **non concluante** — aucune version attendue à comparer |
+> | Deux copies de vitest | `npm ls` : un seul `vitest@5.0.3`, **dédupliqué** avec celui de `@testing-library/jest-dom` | **éliminée** |
+> | `@vitest/runner` / `@vitest/expect` absents | ils **ne sont pas des paquets séparés** en v5, ils sont intégrés — mon soupçon de la veille était faux | **éliminée** |
+> | Binaire différent de `package.json` | `vitest/5.0.3 win32-x64 node-v22.22.0` contre `^5.0.3` | **éliminée** |
+> | `vitest.workspace`, installation globale, variable `VITEST` | aucun fichier workspace, aucun `vitest` global *(copilot, gemini-cli, nestjs, codex, firebase-tools, vercel)*, aucune variable | **éliminée** |
+> | `node_modules` abîmé | `npm ci` depuis le verrou — **que `npm install` n'avait pas réécrit**, vérifié | **éliminée** |
+> | Cache Vite | `node_modules/.vite` vidé, dans les deux sens | **éliminée** |
+> | Environnement jsdom | échec identique en `--environment=node` | **éliminée** |
+> | Pool d'exécution | échec en `threads` comme en `forks --maxWorkers=1` | **éliminée** |
+> | Résolution par `npx` | `./node_modules/.bin/vitest` appelé directement | **éliminée** |
+> | `dist/` présent | écarté puis remis | **éliminée** |
+> | Accent dans le chemin (`OptimiSanté`) | clone dans un chemin accentué : **101 tests verts** | **éliminée** |
+> | Lecteur `D:` | clone sur `D:`, même dossier parent : **101 tests verts** | **éliminée** |
+>
+> **Ce qui est établi, et qui n'a pas de sens apparent.** Trois faits reproduits :
+>
+> 1. **Un clone neuf du dépôt passe** — 14 fichiers, 101 tests — sur `C:` comme sur `D:`, avec
+>    ou sans accent dans le chemin.
+> 2. Dans le dossier de travail, **retirer `frontend/.env` fait passer la suite**, et le
+>    remettre la fait échouer. Vérifié deux fois dans chaque sens. Le contenu n'y est pour
+>    rien : un `.env` **vide** suffit, et un fichier de commentaires seuls aussi.
+> 3. **Mais le même `.env` vide déposé dans le clone neuf ne casse rien** : 101 tests verts.
+>
+> Donc ce n'est ni le dépôt, ni `.env` seul, mais une **interaction** entre `.env` et quelque
+> chose du dossier de travail que je n'ai pas identifié. Les `node_modules` des deux dossiers
+> comptent le même nombre d'entrées (130), il n'existe aucun `.env` en amont ni aucun `.npmrc`.
+> Un `diff -rq` entre les deux arbres rend **tous** les fichiers différents, ce qui ressemble à
+> un écart de fins de ligne (LF contre CRLF) et reste la piste la plus prometteuse — c'est là
+> qu'il faudra reprendre.
+>
+> **Le contournement, utilisable immédiatement et sans risque** : déplacer `frontend/.env` le
+> temps de lancer la suite, puis le remettre. Il ne contient que `VITE_SITE_URL` (vide) et
+> `VITE_STRIPE_PUBLISHABLE_KEY`, dont aucun test ne dépend — les tests de la clé publique
+> vérifient justement le comportement quand elle manque. **Ce n'est pas une correction** : la
+> cause reste inconnue, et `EXP‑3` tombera sur le même mur avec un `.env` d'intégration.
+>
+> **Reclassé en `L1a`** : tant que la suite frontend ne démarre pas, aucun lot frontend ne peut
+> être livré selon la routine de `CLAUDE.md` § 6 — et `LEG‑0`, `LEG‑1`, `FOR‑5`, `SEC‑2` et les
+> maquettes en dépendent tous.
 
 > **`EXP‑4` — ce que le DNS dit réellement, relevé le 6 novembre 2026**
 >
