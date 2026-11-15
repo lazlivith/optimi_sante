@@ -247,9 +247,12 @@ manque : ils ferment une porte qui est ouverte **cette nuit**.
 
 > **`SEC‑1a` et `SEC‑3` — ce qui est livré, et ce qui ne l'est pas (15 novembre 2026)**
 >
-> Les deux lots sont sur leurs branches, poussés, **ni fusionnés ni déployés** : l'assistant
-> est donc toujours ouvert sans plafond en production. `SEC‑3` est tiré de `SEC‑1a`, dont il
-> réutilise le plafond de débit : **fusionner `SEC‑3` embarque `SEC‑1a`**.
+> **Déployés le 15 novembre 2026**, avec le correctif de l'adresse du siège : `main` =
+> `5f2fb65`, miroir backend `5f9338e` (arbre `8367a43a…`), miroir frontend `07c297b` (arbre
+> `e9f7c166…`). Vérifié en production par le commanditaire : `GET /partnership/formulaire`
+> rend un jeton, `POST /ai/extract` sans compte répond 401. **Le plafond de l'assistant n'a
+> pas encore été mesuré en production** ; l'essai scripté est remis, il ne coûte aucun appel
+> payant. Les statuts « ni fusionné ni déployé » du tableau ci-dessus datent d'avant.
 >
 > **`SEC‑1a` — livré.** `@PlatformAdmin` sur les trois routes d'extraction (`/ai/extract`,
 > `/ai/extract/types`, `/ai/extract/{id}/applied`). Plafond de débit sur `/ai/chat`,
@@ -277,19 +280,38 @@ manque : ils ferment une porte qui est ouverte **cette nuit**.
 > | Limite | Conséquence |
 > |---|---|
 > | Compteurs en mémoire, une seule instance | Faux dès que le backend tourne sur deux instances — même échéance que `SEC‑6e`. Un redémarrage remet les compteurs à zéro |
-> | Que l'edge de Render écrase un `CF-Connecting-IP` fourni par le client : **non vérifié** | Si non, le plafond par adresse se contourne ; le plafond global, lui, ne lit rien du client. À tester après déploiement en faisant varier l'en-tête au-delà du plafond par minute |
+> | ~~Que l'edge de Render écrase un `CF-Connecting-IP` fourni par le client : non vérifié~~ **Levée le 15/11** | Relevé en production : une requête qui porte son propre `CF-Connecting-IP` est refusée par Cloudflare en 403 (`error code: 1000`) avant d'atteindre le backend ; la même sans l'en-tête répond 200. L'en-tête n'est pas falsifiable par ce chemin, le plafond par adresse est fiable. Le javadoc de `FiltrePlafondDebit` dit encore « non vérifié » : à corriger au prochain lot |
 > | Entre l'examen et le débit, une requête concurrente de la même adresse peut prendre le dernier jeton | Dépassement d'une requête au plus par adresse et par fenêtre ; le plafond global reste exact |
 > | Le jeton et le champ piège arrêtent un robot générique, pas un script écrit pour ce site | Contre lui, seul le plafond de débit joue |
 > | La signature ZIP ne distingue pas un DOCX d'une archive renommée | Le savoir demanderait de décompresser le fichier d'un anonyme |
 > | Un client qui n'annonce pas de taille passe le filtre | Refusé après lecture seulement, dans la limite globale de 55 Mo. Voir `SEC‑3b` ci-dessous |
 > | Clé de signature du jeton en mémoire | Un redémarrage périme les formulaires ouverts ; le visiteur doit recharger la page |
-> | `NotificationAlertJob` notifie le seul rôle `ADMIN` | Aucun administrateur métier ne reçoit le lien vers `/admin/alerts` : pas de régression. Mais sur une plateforme pilotée par un seul `SUPER_ADMIN`, ces alertes ne partent chez personne — défaut antérieur, à traiter dans `QUA‑1` |
+> | `NotificationAlertJob` notifie le seul rôle `ADMIN` | Aucun administrateur métier ne reçoit le lien vers `/admin/alerts` : pas de régression. Mais sur une plateforme pilotée par un seul `SUPER_ADMIN`, ces alertes ne partent chez personne — défaut antérieur, devenu le lot `SEC‑8` ci-dessous |
 > | Sur mobile, le bouton de l'assistant recouvre le coin du message d'erreur | Défaut antérieur, visible sur la capture en 375 px ; le message reste lisible |
 >
-> **`SEC‑3b` — à arbitrer.** La limite globale de 55 Mo par fichier s'applique aux 17 routes
-> de dépôt alors que trois usages seulement dépassent 10 Mo (vidéo produit, vidéo de
-> formation, import de catalogue), et cinq routes n'ont **aucune** limite propre. Inventaire
-> et proposition remis le 15 novembre ; non commencé.
+> **`SEC‑3b` — livré le 15 novembre** sur `securite/sec3b-taille-des-requetes` (`050c834`),
+> **ni fusionné ni déployé**. La limite du serveur (55 Mo par fichier) valait pour les 17
+> routes de dépôt alors que quatre seulement en ont besoin, et cinq n'avaient aucune limite à
+> elles. Désormais : toute requête de plus de **11 Mo** est refusée en 413 sur sa taille
+> annoncée, sauf quatre dérogations nommées — vidéo produit et vidéo de formation (55 Mo),
+> galerie (120 Mo), import de catalogue (16 Mo). Limite propre, **taille seule et sans
+> contrainte de format**, sur les cinq routes qui n'en avaient pas : pièces de candidature
+> (deux routes, 10 Mo), image de formation (10 Mo), vidéo de formation (50 Mo), extraction par
+> IA (10 Mo). Un test lit les routes de dépôt dans l'application démarrée et échoue si l'une
+> d'elles n'a pas de taille décidée. Backend : 446 tests, 0 ignoré. Vérifié sur un serveur
+> local. **Limites** : une requête qui n'annonce pas sa taille passe encore le filtre ; la
+> limite du serveur reste donc à 55/120 Mo ; les 50 Mo de la vidéo de formation sont repris
+> de la vidéo produit, faute de valeur écrite auparavant.
+>
+> **`SEC‑8` — livré le 15 novembre** sur `securite/sec8-alertes-sans-destinataire`
+> (`e5e4a2b`), **ni fusionné ni déployé**. La veille par seuils (`NotificationAlertJob` :
+> rapports en échec, commandes impayées, dossiers en attente, stock critique) notifiait le
+> seul rôle `ADMIN` ; elle passe par `notifyAdmins`, donc `ADMIN` et `SUPER_ADMIN`. Un test
+> parcourt les sources et échoue si un autre fichier vise à nouveau le seul rôle `ADMIN`.
+> Backend : 442 tests, 0 ignoré. **Non vérifié en exécution réelle** : la veille tourne à
+> l'heure pile, sans route pour la déclencher. **Non vérifié non plus** : qu'un compte `ADMIN`
+> existe ou non en production, et que les quatre seuils y soient actifs — c'est ce qui dit
+> si des alertes ont réellement été perdues.
 
 `LEG‑1` réécrit la politique **après `SP‑5`**, quand la phrase exacte devient « hébergées en
 France ». `LEG‑0` n'est donc pas un brouillon de `LEG‑1` : c'est l'état vrai de l'étape
