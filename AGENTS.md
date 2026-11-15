@@ -97,6 +97,11 @@ Dans cet ordre, et **les trois** :
 
 Un test instable est une dette à traiter, pas à tolérer.
 
+**Sous Windows**, entrer dans le projet par `cd /d/OptimiSanté_Projet/…` : Node doit voir la
+lettre de lecteur en majuscule, ce que `node -p "process.cwd()"` vérifie. Lancer les tests du
+frontend par `npm run test`, jamais par `npx vitest run` : depuis `d:\`, la suite échoue à la
+collecte sans dire pourquoi, et cela a coûté deux jours.
+
 ## 7. Portée du travail
 
 - Ne pas toucher ni bousculer ce qui fonctionne déjà.
