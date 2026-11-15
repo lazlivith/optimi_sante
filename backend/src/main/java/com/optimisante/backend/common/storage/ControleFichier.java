@@ -67,6 +67,70 @@ public final class ControleFichier {
         SignatureFichier.exigerPdf(fichier);
     }
 
+    /** Le modèle de dossier pèse quelques dizaines de kilo-octets : deux mégaoctets sont larges. */
+    public static final long TAILLE_MAX_CLASSEUR_OCTETS = 2L * 1024 * 1024;
+
+    private static final String CONVENTION_ATTENDUE =
+            "Format non accepté : la convention doit être un PDF, un DOC ou un DOCX.";
+
+    private static final String CLASSEUR_ATTENDU =
+            "Format non accepté : déposez le modèle de dossier au format Excel (.xlsx).";
+
+    /**
+     * Contrôle de la convention signée, déposée <b>par un anonyme</b> depuis la page publique.
+     *
+     * <p>Les formats sont ceux que le formulaire proposait déjà — PDF, DOC, DOCX. Ce qui change
+     * est que le serveur les vérifie : jusqu'ici la liste n'existait que dans l'attribut
+     * {@code accept} du navigateur, qui n'est qu'une suggestion, et n'importe quel fichier de
+     * 55 Mo partait au stockage.</p>
+     *
+     * <p>Le type annoncé n'est pas exigé pour les formats Office : un poste sans Word annonce
+     * {@code application/octet-stream}, ou rien. C'est le contenu qui tranche.</p>
+     *
+     * @throws IllegalArgumentException avec un message à montrer tel quel à l'utilisateur
+     */
+    public static void verifierConvention(MultipartFile fichier) {
+        if (fichier == null || fichier.isEmpty()) {
+            throw new IllegalArgumentException("La convention de partenariat signée est obligatoire.");
+        }
+        if (fichier.getSize() > TAILLE_MAX_OCTETS) {
+            throw new IllegalArgumentException("La convention dépasse 10 Mo.");
+        }
+        boolean reconnu = switch (extension(fichier.getOriginalFilename())) {
+            case "pdf" -> SignatureFichier.estPdf(fichier);
+            case "docx" -> SignatureFichier.estZip(fichier);
+            case "doc" -> SignatureFichier.estOle2(fichier);
+            default -> throw new IllegalArgumentException(CONVENTION_ATTENDUE);
+        };
+        if (!reconnu) {
+            throw new IllegalArgumentException(
+                    "Le contenu de ce fichier ne correspond pas à son extension. "
+                            + "Renommer un fichier ne change pas ce qu'il contient. " + CONVENTION_ATTENDUE);
+        }
+    }
+
+    /**
+     * Contrôle du classeur de dossier soumis à la relecture, lui aussi par un anonyme.
+     *
+     * <p>Ce fichier-là est <b>ouvert et décompressé</b> par le serveur. Le plafond de taille
+     * n'est donc pas une politesse : c'est ce qui borne la mémoire qu'un inconnu peut nous
+     * faire consommer par requête.</p>
+     *
+     * @throws IllegalArgumentException avec un message à montrer tel quel à l'utilisateur
+     */
+    public static void verifierClasseurDossier(MultipartFile fichier) {
+        if (fichier == null || fichier.isEmpty()) {
+            throw new IllegalArgumentException("Aucun fichier reçu.");
+        }
+        if (fichier.getSize() > TAILLE_MAX_CLASSEUR_OCTETS) {
+            throw new IllegalArgumentException(
+                    "Le fichier dépasse 2 Mo : ce n'est pas le modèle de dossier téléchargé ici.");
+        }
+        if (!"xlsx".equals(extension(fichier.getOriginalFilename())) || !SignatureFichier.estZip(fichier)) {
+            throw new IllegalArgumentException(CLASSEUR_ATTENDU);
+        }
+    }
+
     /** @throws IllegalArgumentException avec un message à montrer tel quel à l'utilisateur */
     public static void verifierDocument(MultipartFile fichier) {
         if (fichier == null || fichier.isEmpty()) {

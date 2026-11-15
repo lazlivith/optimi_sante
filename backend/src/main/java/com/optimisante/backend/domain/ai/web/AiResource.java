@@ -61,6 +61,7 @@ public class AiResource {
     // ------------------------------------------------------------------ extraction
 
     @GetMapping("/extract/types")
+    @PlatformAdmin
     public List<Map<String, Object>> extractionTypes() {
         return aiService.extractionTypes();
     }
@@ -70,6 +71,7 @@ public class AiResource {
      * dans le dossier : l'écran appelant fait valider les valeurs par un humain.
      */
     @PostMapping(value = "/extract", consumes = "multipart/form-data")
+    @PlatformAdmin
     public Map<String, Object> extract(@RequestParam("file") MultipartFile file,
                                        @RequestParam(defaultValue = "OTHER") String documentType) {
         if (file == null || file.isEmpty()) {
@@ -80,6 +82,7 @@ public class AiResource {
 
     /** Confirme que les valeurs proposées ont été reportées dans le dossier. */
     @PostMapping("/extract/{jobId}/applied")
+    @PlatformAdmin
     public ResponseEntity<Void> markApplied(@PathVariable UUID jobId) {
         aiService.markApplied(jobId);
         return ResponseEntity.noContent().build();
