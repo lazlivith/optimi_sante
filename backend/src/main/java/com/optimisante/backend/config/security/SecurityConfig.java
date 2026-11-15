@@ -132,6 +132,13 @@ public class SecurityConfig {
                         gardeDepotPartenariat),
                 JwtAuthenticationFilter.class);
 
+        // La taille, pour TOUTES les routes : onze mégaoctets par défaut, davantage pour une
+        // liste fermée. Avant l'authentification lui aussi : une requête trop grosse est refusée
+        // sur sa seule annonce de taille, sans lecture de son corps ni décodage de jeton.
+        http.addFilterBefore(
+                new com.optimisante.backend.infrastructure.debit.FiltreTailleRequete(),
+                JwtAuthenticationFilter.class);
+
         return http.build();
     }
 }

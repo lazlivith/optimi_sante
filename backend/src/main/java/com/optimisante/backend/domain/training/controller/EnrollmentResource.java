@@ -139,6 +139,10 @@ public class EnrollmentResource {
             @RequestParam("documentType") DocumentType documentType,
             Authentication auth) {
         UUID userId = UUID.fromString(auth.getPrincipal().toString());
+        // La taille seulement, pas le format : cette route n'avait aucune limite à elle, et y
+        // imposer d'un coup la liste des formats refuserait des pièces qui passaient hier.
+        com.optimisante.backend.common.storage.ControleFichier.verifierTaille(
+                file, com.optimisante.backend.common.storage.ControleFichier.TAILLE_MAX_OCTETS, "La pièce");
         return ResponseEntity.ok(enrollmentService.uploadEnrollmentDocument(id, userId, file, documentType));
     }
 }

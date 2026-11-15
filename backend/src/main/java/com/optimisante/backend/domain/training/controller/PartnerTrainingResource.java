@@ -66,6 +66,7 @@ public class PartnerTrainingResource {
     public ResponseEntity<PartnerTrainingResponseDto> uploadImage(
             @PathVariable UUID id, @RequestParam("file") MultipartFile file, Authentication auth) {
         UUID partnerUserId = UUID.fromString(auth.getPrincipal().toString());
+        ControleFichier.verifierTaille(file, ControleFichier.TAILLE_MAX_OCTETS, "L'image");
         return ResponseEntity.ok(trainingService.uploadTrainingImage(id, file, partnerUserId));
     }
 
@@ -74,6 +75,8 @@ public class PartnerTrainingResource {
     public ResponseEntity<PartnerTrainingResponseDto> uploadVideo(
             @PathVariable UUID id, @RequestParam("file") MultipartFile file, Authentication auth) {
         UUID partnerUserId = UUID.fromString(auth.getPrincipal().toString());
+        // 50 Mo, la limite déjà appliquée à la vidéo d'un produit. Cette route n'en avait aucune.
+        ControleFichier.verifierTaille(file, 50L * 1024 * 1024, "La vidéo");
         return ResponseEntity.ok(trainingService.uploadTrainingVideo(id, file, partnerUserId));
     }
 
