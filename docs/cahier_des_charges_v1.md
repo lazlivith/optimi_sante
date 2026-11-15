@@ -437,7 +437,7 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 | `EXP‑4b` | e-mails | **`Reply-To` sur les messages qui en manquent** : reçus de paiement (`PaymentReceiptIssuer`), envois d'identifiants et convocations. Choisir la boîte destinataire par type — `comptabilite@` pour les reçus, `infos@` pour le reste — et **un test d'envoi réel par type**, en répondant depuis une boîte externe | Tout part de `no-reply@optimisante.com` et seuls les accusés « Exercer en France » portent un `Reply-To`. Un client qui répond à son reçu écrit **dans le vide, sans rebond** : il croit avoir écrit, personne ne reçoit rien. C'est le défaut le plus silencieux de la liste | rien | **L1a** | 0,5 | 0 | à faire | toi *(quelle boîte par type)* |
 | `QUA‑1` | qualité | Dette d'outillage en un lot : fixture de `ControleBrochureTest` déplacée **dans** `backend/src/test/resources`, suppression de la configuration morte `app.aws.*`, correction de `_plafondJsKo`, correction du « onze statuts » de `parcoursDossier.ts` (il y en a douze), scission du prompt `M3`, correction de l'affirmation fausse de `PIL` | Chacun est un piège pour la prochaine session, et aucun ne coûte cher | rien | **L1** | 1 | 0 | à faire | — |
 | `QUA‑4` | catalogue | Référencement : `sitemap.xml`, `robots.txt`, titres et métadonnées par page | `frontend/public/` ne contient que le favicon, les icônes et la marque. Aucun des deux fichiers n'existe | `CAT` (pour les 301) | **L2** | 1,5 | 0 | à faire | — |
-| `QUA‑2` | qualité | **La suite frontend ne démarre plus dans le dossier de travail** — plus une instabilité, un arrêt. Voir l'encadré de diagnostic ci-dessous | Le contournement de l'instabilité (`testTimeout: 20_000`, `--pool=forks`) ne contourne plus rien : les 14 fichiers échouent **à la collecte**, avant le premier test. Un lot frontend ne peut plus être livré selon `CLAUDE.md` § 6 | `EXP‑3` | **L1a** | 1 | 0 | **diagnostic partiel du 14/11, voir encadré** | — |
+| `QUA‑2` | qualité | **La suite frontend ne démarre plus dans le dossier de travail** — plus une instabilité, un arrêt. Voir l'encadré de diagnostic ci-dessous | Le contournement de l'instabilité (`testTimeout: 20_000`, `--pool=forks`) ne contourne plus rien : les 14 fichiers échouent **à la collecte**, avant le premier test. Un lot frontend ne peut plus être livré selon `CLAUDE.md` § 6 | `EXP‑3` | **L1a** | 1 | 0 | **cause trouvée le 15/11 (casse du lecteur `d:`/`D:`), correctif à valider — voir le second encadré** | — |
 | `QUA‑3` | qualité | Accessibilité : parcours clavier complet et contrastes sur les écrans de vente | Le garde-fou de charte mesure les contrastes ; il ne mesure **pas** le clavier. **Non vérifié** | rien | **Ap** | 2 *(estimation)* | 0 | à faire | — |
 | `QUA‑5` | catalogue | Bandeau promotionnel mobile (`PromoHeroSlider`) | Signalé dans ton inventaire ; **non vérifié** faute d'une description du défaut | rien | **Ap** | *non estimé* | — | **à préciser** | toi |
 
@@ -491,6 +491,77 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 > **Reclassé en `L1a`** : tant que la suite frontend ne démarre pas, aucun lot frontend ne peut
 > être livré selon la routine de `CLAUDE.md` § 6 — et `LEG‑0`, `LEG‑1`, `FOR‑5`, `SEC‑2` et les
 > maquettes en dépendent tous.
+
+> **`QUA‑2` — cause trouvée le 15 novembre 2026 : la casse de la lettre de lecteur**
+>
+> **Cet encadré remplace les conclusions du précédent.** Les faits 2 et 3 du 14 novembre
+> étaient une **fausse corrélation**, et le contournement « écarter `.env` » ne vaut rien.
+>
+> **La cause.** La suite échoue quand le répertoire courant du processus est écrit
+> `d:\OptimiSanté_Projet\…` (lecteur en **minuscule**) et passe quand il est écrit
+> `D:\OptimiSanté_Projet\…`. Rien d'autre n'entre en jeu.
+>
+> | Essai du 15/11 | Répertoire vu par Node | `.env` | Résultat |
+> |---|---|---|---|
+> | dossier d'origine, après `cd /d/…` | `D:\…` | présent | **101 verts** (5 fois) |
+> | dossier d'origine, après `cd /d/…` | `D:\…` | écarté | **101 verts** |
+> | dossier d'origine, répertoire hérité | `d:\…` | présent | **14 échecs** (3 fois) |
+> | dossier d'origine, répertoire hérité | `d:\…` | écarté | **14 échecs** |
+> | même shell, puis `cd /d/…` explicite | `D:\…` | présent | **101 verts** |
+> | **clone neuf** sur `D:`, forcé en `d:\` par `cmd /c "cd /d d:\…"` | `d:\…` | absent | **14 échecs** |
+> | clone neuf sur `D:`, `cd /d/…`, `.env` vide dans `frontend/` | `D:\…` | vide | **101 verts** |
+>
+> Le clone qui échoue dès qu'on le lance en `d:\` clôt la question : ce n'est ni le dépôt,
+> ni un fichier non suivi, ni `.env`.
+>
+> **D'où venait la fausse piste.** Relu dans le journal de la session du 14 : le seul essai
+> vert « sans `.env` » commençait par un `cd /d/…/frontend` explicite ; les essais rouges
+> « avec `.env` » étaient lancés **sans `cd`**, dans le répertoire que l'outil rétablit entre
+> deux commandes — et il le rétablit en `d:\`. Les clones, eux, étaient toujours atteints
+> par un `cd` explicite. La variable qui changeait n'était pas `.env`, c'était le `cd`.
+> Même origine pour « du jour au lendemain, sans modification du dépôt ».
+>
+> **Pourquoi le correctif est nécessaire, et pas seulement confortable.** Ce n'est pas une
+> maladresse de saisie qu'une consigne suffirait à éviter : c'est **l'outil de l'assistant
+> lui-même** (Claude Code, lancé depuis VS Code) qui rétablit le répertoire courant en `d:\`
+> entre deux commandes. Toute commande lancée sans `cd` explicite hérite donc du lecteur en
+> minuscule, à chaque session, sans que personne l'ait tapé. Une règle « toujours entrer par
+> `cd /d/…` » repose sur la mémoire de celui qui lance la suite ; la normalisation doit vivre
+> dans le projet.
+>
+> **Les étapes demandées.** 0 : le `.env` vide du clone était bien dans `frontend/`, et le
+> fait C a été refait sur le clone de `D:` dans le même terminal — vert. 1 : aucun test
+> d'existence de `.env` dans `vite.config.ts`, `vitest.config.ts`, `package.json` ni
+> `src/test/`. 2 : `pwd -W` rend `D:/…`, mais `process.cwd()` rend `d:\…` dans le
+> répertoire hérité — **c'est l'écart**. 3 : la racine de `D:\` contient un projet étranger
+> (`package.json` « @figma/my-make-file », `vite.config.ts`, un `node_modules` **vide**) ;
+> sans effet ici puisque le clone, qui a les mêmes parents, passe — mais à retirer, c'est un
+> piège de résolution en attente. 4 : la trace ne montre que les accès de `loadEnv` de
+> Vite (`.env`, `.env.local`, `.env.test`, `.env.test.local`), aucun autre. 5 : sans objet,
+> la cause étant trouvée avant.
+>
+> **Le mécanisme, déduit et non observé.** L'erreur dit que le `vitest` importé par
+> `preparation.ts` n'est pas l'instance démarrée par le worker. Sous Windows, `d:\…` et
+> `D:\…` désignent le même fichier mais font deux clés de module distinctes. Je n'ai pas
+> cherché le rapport de bogue correspondant chez Vitest : **non vérifié**.
+>
+> **Correctif proposé — non écrit, à valider.** Deux essais hors dépôt :
+>
+> - `npx vitest run --root D:/…` depuis `d:\` : **échoue encore**. Fixer `root` ne suffit pas.
+> - un lanceur de dix lignes qui fait `process.chdir(fs.realpathSync.native(process.cwd()))`
+>   puis lance `vitest run` : **101 verts depuis `d:\`**.
+>
+> Proposition : `frontend/scripts/lancer-tests.mjs` sur ce modèle, et
+> `"test": "node scripts/lancer-tests.mjs"` dans `package.json`. `npm run test` et donc
+> `npm run build` deviennent insensibles à la façon dont le terminal a été ouvert. Un quart
+> de journée, test compris. `vite build` et `vite dev` n'ont pas été examinés sous `d:\`.
+>
+> **En attendant** : toujours entrer dans le dossier par `cd /d/OptimiSanté_Projet/…`, et en
+> cas de doute `node -p "process.cwd()"` — la réponse doit commencer par `D:`.
+>
+> **Dettes soldées par cette cause** : la piste LF/CRLF est abandonnée (le `diff -rq` reste
+> inexpliqué, mais n'a plus de rapport) ; l'exception à la suite verte accordée pour
+> `LEG‑0` n'est plus nécessaire.
 
 > **`EXP‑4` — ce que le DNS dit réellement, relevé le 6 novembre 2026**
 >
