@@ -242,8 +242,54 @@ manque : ils ferment une porte qui est ouverte **cette nuit**.
 | ID | Module | Objet | Pourquoi maintenant et pas en février | Dépend de | L | Jours | JS | Statut |
 |---|---|---|---|---|---|---|---|---|
 | `LEG‑0` | légal | **Rendre vraie** la phrase de `PrivacyPolicyPage.tsx:180` : hébergement des documents chez un prestataire **hors UE**, migration **en cours** vers un hébergement en France. Et **remplir la section 5**, aujourd'hui un paragraphe vide | Laisser publiée trois mois de plus une affirmation qu'on sait fausse transforme un défaut technique en **déclaration inexacte**. En cas de contrôle, la date à laquelle nous l'avons su compte plus que la date à laquelle nous l'avons corrigé | rien | **L0** | 0,5 | 0 | **texte à soumettre d'abord** |
-| `SEC‑3` | sécurité | **Fermer le dépôt anonyme** de `/api/v1/partnership/**` : contrôle de signature, plafond de taille propre à la route, jeton de formulaire | Deux `POST` multipart en `permitAll` (`PartnershipResource:81` et `:100`), sans contrôle de signature, à **55 Mo par appel** et sans limite de fréquence. N'importe qui peut remplir notre stockage ce soir | rien | **L0** | 1 | 0 | à faire |
-| `SEC‑1` | sécurité | **Plafonner les neuf routes `permitAll`**, par adresse et par route — le compte était de sept, voir l'encadré. **`/api/v1/ai/chat` en premier.** Et **poser un contrôle d'accès sur `/api/v1/ai/extract`**, qui n'en a aucun | Un assistant d'IA **que nous payons**, ouvert aux anonymes, sans plafond. **Vérifié en production le 6 novembre** : un appel sans jeton obtient une réponse rédigée. La facture ne se découvre qu'après | rien | **L0** | 1,5 | 0 | **vérifié ouvert en production** |
+| `SEC‑3` | sécurité | **Fermer le dépôt anonyme** de `/api/v1/partnership/**` : contrôle de signature, plafond de taille propre à la route, jeton de formulaire | Deux `POST` multipart en `permitAll` (`PartnershipResource:81` et `:100`), sans contrôle de signature, à **55 Mo par appel** et sans limite de fréquence. N'importe qui peut remplir notre stockage ce soir | rien | **L0** | 1 | 0 | **livré le 15/11 sur `securite/sec3-depot-partenariat` (`a52436f`), vérifié en local, ni fusionné ni déployé — voir l'encadré** |
+| `SEC‑1` | sécurité | **Plafonner les neuf routes `permitAll`**, par adresse et par route — le compte était de sept, voir l'encadré. **`/api/v1/ai/chat` en premier.** Et **poser un contrôle d'accès sur `/api/v1/ai/extract`**, qui n'en a aucun | Un assistant d'IA **que nous payons**, ouvert aux anonymes, sans plafond. **Vérifié en production le 6 novembre** : un appel sans jeton obtient une réponse rédigée. La facture ne se découvre qu'après | rien | **L0** | 1,5 | 0 | **`SEC‑1a` (routes d'IA) livré le 14/11 sur `securite/sec1a-plafonds-ia` (`d3fb97f`), ni fusionné ni déployé ; le reste de `SEC‑1` (les autres routes publiques) reste à faire** |
+
+> **`SEC‑1a` et `SEC‑3` — ce qui est livré, et ce qui ne l'est pas (15 novembre 2026)**
+>
+> Les deux lots sont sur leurs branches, poussés, **ni fusionnés ni déployés** : l'assistant
+> est donc toujours ouvert sans plafond en production. `SEC‑3` est tiré de `SEC‑1a`, dont il
+> réutilise le plafond de débit : **fusionner `SEC‑3` embarque `SEC‑1a`**.
+>
+> **`SEC‑1a` — livré.** `@PlatformAdmin` sur les trois routes d'extraction (`/ai/extract`,
+> `/ai/extract/types`, `/ai/extract/{id}/applied`). Plafond de débit sur `/ai/chat`,
+> `/ai/chat/stream`, `/ai/tools/catalog/search` et `/ai/tools/trainings` : 20 par minute et
+> 200 par jour par adresse, **500 par jour au total**, réglables par variable d'environnement.
+> Réponse 429 avec `Retry-After` et un message lisible, affiché par le widget. Écrit à la
+> main, sans dépendance : `bucket4j` et `resilience4j` sont absents du dépôt Maven local, et
+> le build de référence est hors ligne. `/admin/ai` réservé à la gouvernance.
+>
+> **`SEC‑3` — livré.** Convention : PDF, DOC ou DOCX dont les premiers octets correspondent à
+> l'extension, 10 Mo. Classeur de relecture : `.xlsx`, 2 Mo, vérifié avant d'être ouvert.
+> Filtre qui refuse en 413 sur la taille annoncée. Plafond de débit propre : 10 par minute et
+> 40 par jour par adresse, 300 par jour au total. Jeton de formulaire signé et daté
+> (`GET /api/v1/partnership/formulaire`), délai minimal de 5 s, champ piège. Tous les contrôles
+> passent **avant** le dépôt au stockage. La réponse au dépôt anonyme ne porte plus la clé de
+> stockage. `/admin/alerts` réservé à la gouvernance, comme le menu et comme le serveur.
+>
+> **Vérifié réellement le 15 novembre**, backend de la branche sur le port 8090 et Chrome :
+> un envoi de 57 Mo est refusé en 413 en 5 ms, après 0,3 Mo reçus ; parcours normal réussi ;
+> faux `.docx` refusé avec son message ; onzième envoi refusé en 429 ; l'écran de relecture
+> affiche le message du serveur. Suites : backend 439 tests, frontend 104, 0 ignoré.
+>
+> **Limites connues.**
+>
+> | Limite | Conséquence |
+> |---|---|
+> | Compteurs en mémoire, une seule instance | Faux dès que le backend tourne sur deux instances — même échéance que `SEC‑6e`. Un redémarrage remet les compteurs à zéro |
+> | Que l'edge de Render écrase un `CF-Connecting-IP` fourni par le client : **non vérifié** | Si non, le plafond par adresse se contourne ; le plafond global, lui, ne lit rien du client. À tester après déploiement en faisant varier l'en-tête au-delà du plafond par minute |
+> | Entre l'examen et le débit, une requête concurrente de la même adresse peut prendre le dernier jeton | Dépassement d'une requête au plus par adresse et par fenêtre ; le plafond global reste exact |
+> | Le jeton et le champ piège arrêtent un robot générique, pas un script écrit pour ce site | Contre lui, seul le plafond de débit joue |
+> | La signature ZIP ne distingue pas un DOCX d'une archive renommée | Le savoir demanderait de décompresser le fichier d'un anonyme |
+> | Un client qui n'annonce pas de taille passe le filtre | Refusé après lecture seulement, dans la limite globale de 55 Mo. Voir `SEC‑3b` ci-dessous |
+> | Clé de signature du jeton en mémoire | Un redémarrage périme les formulaires ouverts ; le visiteur doit recharger la page |
+> | `NotificationAlertJob` notifie le seul rôle `ADMIN` | Aucun administrateur métier ne reçoit le lien vers `/admin/alerts` : pas de régression. Mais sur une plateforme pilotée par un seul `SUPER_ADMIN`, ces alertes ne partent chez personne — défaut antérieur, à traiter dans `QUA‑1` |
+> | Sur mobile, le bouton de l'assistant recouvre le coin du message d'erreur | Défaut antérieur, visible sur la capture en 375 px ; le message reste lisible |
+>
+> **`SEC‑3b` — à arbitrer.** La limite globale de 55 Mo par fichier s'applique aux 17 routes
+> de dépôt alors que trois usages seulement dépassent 10 Mo (vidéo produit, vidéo de
+> formation, import de catalogue), et cinq routes n'ont **aucune** limite propre. Inventaire
+> et proposition remis le 15 novembre ; non commencé.
 
 `LEG‑1` réécrit la politique **après `SP‑5`**, quand la phrase exacte devient « hébergées en
 France ». `LEG‑0` n'est donc pas un brouillon de `LEG‑1` : c'est l'état vrai de l'étape
@@ -437,7 +483,7 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 | `EXP‑4b` | e-mails | **`Reply-To` sur les messages qui en manquent** : reçus de paiement (`PaymentReceiptIssuer`), envois d'identifiants et convocations. Choisir la boîte destinataire par type — `comptabilite@` pour les reçus, `infos@` pour le reste — et **un test d'envoi réel par type**, en répondant depuis une boîte externe | Tout part de `no-reply@optimisante.com` et seuls les accusés « Exercer en France » portent un `Reply-To`. Un client qui répond à son reçu écrit **dans le vide, sans rebond** : il croit avoir écrit, personne ne reçoit rien. C'est le défaut le plus silencieux de la liste | rien | **L1a** | 0,5 | 0 | à faire | toi *(quelle boîte par type)* |
 | `QUA‑1` | qualité | Dette d'outillage en un lot : fixture de `ControleBrochureTest` déplacée **dans** `backend/src/test/resources`, suppression de la configuration morte `app.aws.*`, correction de `_plafondJsKo`, correction du « onze statuts » de `parcoursDossier.ts` (il y en a douze), scission du prompt `M3`, correction de l'affirmation fausse de `PIL` | Chacun est un piège pour la prochaine session, et aucun ne coûte cher | rien | **L1** | 1 | 0 | à faire | — |
 | `QUA‑4` | catalogue | Référencement : `sitemap.xml`, `robots.txt`, titres et métadonnées par page | `frontend/public/` ne contient que le favicon, les icônes et la marque. Aucun des deux fichiers n'existe | `CAT` (pour les 301) | **L2** | 1,5 | 0 | à faire | — |
-| `QUA‑2` | qualité | **La suite frontend ne démarre plus dans le dossier de travail** — plus une instabilité, un arrêt. Voir l'encadré de diagnostic ci-dessous | Le contournement de l'instabilité (`testTimeout: 20_000`, `--pool=forks`) ne contourne plus rien : les 14 fichiers échouent **à la collecte**, avant le premier test. Un lot frontend ne peut plus être livré selon `CLAUDE.md` § 6 | `EXP‑3` | **L1a** | 1 | 0 | **cause trouvée le 15/11 (casse du lecteur `d:`/`D:`), correctif à valider — voir le second encadré** | — |
+| `QUA‑2` | qualité | **La suite frontend ne démarre plus dans le dossier de travail** — plus une instabilité, un arrêt. Voir l'encadré de diagnostic ci-dessous | Le contournement de l'instabilité (`testTimeout: 20_000`, `--pool=forks`) ne contourne plus rien : les 14 fichiers échouent **à la collecte**, avant le premier test. Un lot frontend ne peut plus être livré selon `CLAUDE.md` § 6 | `EXP‑3` | **L1a** | 1 | 0 | **cause trouvée et correctif livré le 15/11 sur `qualite/qua2-casse-lecteur` (`fad568d`), non fusionné — voir le second encadré** | — |
 | `QUA‑3` | qualité | Accessibilité : parcours clavier complet et contrastes sur les écrans de vente | Le garde-fou de charte mesure les contrastes ; il ne mesure **pas** le clavier. **Non vérifié** | rien | **Ap** | 2 *(estimation)* | 0 | à faire | — |
 | `QUA‑5` | catalogue | Bandeau promotionnel mobile (`PromoHeroSlider`) | Signalé dans ton inventaire ; **non vérifié** faute d'une description du défaut | rien | **Ap** | *non estimé* | — | **à préciser** | toi |
 
@@ -545,7 +591,18 @@ en live au lancement 1, et le lancement 2 n'a plus à y revenir.
 > `D:\…` désignent le même fichier mais font deux clés de module distinctes. Je n'ai pas
 > cherché le rapport de bogue correspondant chez Vitest : **non vérifié**.
 >
-> **Correctif proposé — non écrit, à valider.** Deux essais hors dépôt :
+> **Correctif livré le 15 novembre** sur `qualite/qua2-casse-lecteur` (`fad568d`), non
+> fusionné. `frontend/scripts/lancer-tests.mjs` remet le répertoire dans la casse du disque
+> et l'annonce quand il le corrige ; `npm run test` et `test:watch` passent par lui. Un
+> `process.chdir` en tête de `vitest.config.ts` a été essayé et **arrive trop tard** : ce
+> fichier porte donc seulement un garde-fou, qui interrompt avec la cause et le remède quand
+> `npx vitest` est lancé directement depuis `d:\`. `CLAUDE.md` et `AGENTS.md` portent la
+> consigne en fin de § 6. Mesuré avant d'écrire : `tsc -b`, `vite build` et `vite dev`
+> passent depuis `d:\`, seuls les tests cassaient. Vérifié : `npm run test` et
+> `npm run build` verts depuis `d:\` comme depuis `D:\`. **Non vérifié sous Linux**, où les
+> deux mécanismes sont inertes par condition.
+>
+> **Ce qui avait été proposé avant l'écriture.** Deux essais hors dépôt :
 >
 > - `npx vitest run --root D:/…` depuis `d:\` : **échoue encore**. Fixer `root` ne suffit pas.
 > - un lanceur de dix lignes qui fait `process.chdir(fs.realpathSync.native(process.cwd()))`
