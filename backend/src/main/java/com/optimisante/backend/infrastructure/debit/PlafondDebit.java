@@ -61,7 +61,20 @@ public class PlafondDebit {
     /** Pour ne journaliser la coupure globale qu'une fois par jour et non à chaque requête. */
     private final AtomicLong derniereAlerteGlobale = new AtomicLong(0);
 
+    /** Ce que ce plafond protège, pour que le journal nomme la bonne chose quand il coupe. */
+    private final String objet;
+
     public PlafondDebit(ReglagesPlafondDebit reglages, Clock horloge) {
+        this(reglages, horloge, "L'assistant");
+    }
+
+    /**
+     * @param objet sujet de la phrase journalisée à la coupure globale, par exemple
+     *              « Le dépôt de partenariat » : un second plafond qui annoncerait la coupure
+     *              de « l'assistant » enverrait l'exploitant chercher au mauvais endroit
+     */
+    public PlafondDebit(ReglagesPlafondDebit reglages, Clock horloge, String objet) {
+        this.objet = objet;
         this.reglages = reglages;
         this.horloge = horloge;
         this.global = new SeauDeJetons(reglages.plafondGlobalParJour(), Duration.ofDays(1), horloge.instant());
@@ -176,9 +189,9 @@ public class PlafondDebit {
     private void journaliserCoupureGlobale(Instant maintenant) {
         long jour = maintenant.toEpochMilli() / Duration.ofDays(1).toMillis();
         if (derniereAlerteGlobale.getAndSet(jour) != jour) {
-            log.error("Plafond de débit GLOBAL atteint : {} appels pour la journée. L'assistant "
+            log.error("Plafond de débit GLOBAL atteint : {} appels pour la journée. {} "
                             + "est coupé jusqu'à demain. Si ce n'est pas un abus, le plafond est trop bas.",
-                    reglages.plafondGlobalParJour());
+                    reglages.plafondGlobalParJour(), objet);
         }
     }
 

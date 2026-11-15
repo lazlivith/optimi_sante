@@ -1,7 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { UploadCloud, CheckCircle2, Building2, ShieldCheck, FileSpreadsheet } from 'lucide-react';
-import { partnershipService } from '../../api/partnershipService';
+import { partnershipService, refusConvention } from '../../api/partnershipService';
 import { Toast, type ToastType } from '../../components/common/Toast';
 import { usePageMeta } from '../../hooks/usePageMeta';
 import { DossierExcelPanel } from '../../components/partnership/DossierExcelPanel';
@@ -34,6 +34,18 @@ export function BecomePartnerPage() {
   const [file, setFile] = useState<File | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
+  // Le jeton date l'affichage du formulaire ; le serveur refuse un envoi qui n'en porte pas.
+  // Le champ piège est invisible : un visiteur le laisse vide, un robot générique le remplit.
+  // Ni l'un ni l'autre n'arrête un script écrit pour ce site — c'est le plafond de débit du
+  // serveur qui s'en charge.
+  const [jeton, setJeton] = useState<string | null>(null);
+  const [piege, setPiege] = useState('');
+  useEffect(() => {
+    let actif = true;
+    partnershipService.jetonFormulaire().then(j => { if (actif) setJeton(j); });
+    return () => { actif = false; };
+  }, []);
+
   const [form, setForm] = useState({
     institutionName: '', finessAccreditation: '', contactPersonName: '',
     contactEmail: '', contactPhone: '', address: ''
@@ -49,12 +61,20 @@ export function BecomePartnerPage() {
       setToast({ message: 'Merci de joindre la convention signée.', type: 'error' });
       return;
     }
+    const refus = refusConvention(file);
+    if (refus) {
+      setToast({ message: refus, type: 'error' });
+      return;
+    }
     setIsSubmitting(true);
     try {
-      await partnershipService.submitRequest({ ...form, conventionFile: file });
+      await partnershipService.submitRequest({ ...form, conventionFile: file, jeton, piege });
       setSuccess(true);
     } catch (err: any) {
       setToast({ message: err.response?.data?.message || "Erreur lors de l'envoi de votre demande.", type: 'error' });
+      // Un jeton refusé ne redeviendra pas valable : on en redemande un, pour que le second
+      // essai ne bute pas sur le même refus.
+      partnershipService.jetonFormulaire().then(setJeton);
     } finally {
       setIsSubmitting(false);
     }
@@ -185,6 +205,22 @@ export function BecomePartnerPage() {
               </div>
             </div>
 
+            {/* Champ piège. Hors écran plutôt que display:none, que les robots savent ignorer ;
+                retiré de la tabulation et des lecteurs d'écran pour qu'aucun visiteur n'y
+                arrive, et sans saisie automatique pour qu'aucun navigateur ne le remplisse. */}
+            <div aria-hidden="true" className="absolute -left-[9999px] w-px h-px overflow-hidden">
+              <label htmlFor="site-internet">Ne pas remplir ce champ</label>
+              <input
+                type="text"
+                id="site-internet"
+                name="siteInternet"
+                tabIndex={-1}
+                autoComplete="off"
+                value={piege}
+                onChange={e => setPiege(e.target.value)}
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Convention de partenariat signée</label>
               <div className={`border-2 border-dashed rounded-2xl p-6 text-center transition-colors ${file ? 'border-brand bg-emerald-50/30' : 'border-slate-300 hover:border-brand bg-slate-50'}`}>
@@ -200,7 +236,7 @@ export function BecomePartnerPage() {
                   <span className="font-semibold text-brand-dark">
                     {file ? file.name : 'Cliquez ou glissez-déposez le fichier'}
                   </span>
-                  <span className="text-sm text-slate-500 mt-1">PDF, DOC, DOCX</span>
+                  <span className="text-sm text-slate-500 mt-1">PDF, DOC, DOCX — 10 Mo au plus</span>
                 </label>
               </div>
             </div>

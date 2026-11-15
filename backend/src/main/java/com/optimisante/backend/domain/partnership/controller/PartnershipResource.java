@@ -12,6 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.optimisante.backend.common.storage.ControleFichier;
+import com.optimisante.backend.infrastructure.debit.GardeDepotPartenariat;
+
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -23,6 +27,21 @@ public class PartnershipResource {
     private final DossierExcelWriter dossierExcelWriter;
     private final ConventionExcelWriter conventionExcelWriter;
     private final DossierExcelReader dossierExcelReader;
+    private final GardeDepotPartenariat gardeDepotPartenariat;
+
+    /**
+     * Ce que le formulaire public demande à son affichage, avant tout envoi.
+     *
+     * <p>Le jeton rendu date l'affichage : l'envoi devra le présenter, et il devra avoir
+     * quelques secondes. Voir {@link GardeDepotPartenariat} pour ce que cela arrête et ce que
+     * cela n'arrête pas.</p>
+     */
+    @GetMapping("/formulaire")
+    public ResponseEntity<Map<String, Object>> formulaire() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(Map.of("jeton", gardeDepotPartenariat.emettreJeton()));
+    }
 
     /**
      * Modèle de convention cadre, en classeur, produit à la demande.
@@ -81,7 +100,18 @@ public class PartnershipResource {
     @PostMapping(value = "/dossier/verification", consumes = "multipart/form-data")
     public ResponseEntity<Map<String, Object>> verifierDossier(
             @RequestParam("fichier") MultipartFile fichier) {
-        var lecture = dossierExcelReader.lire(fichier);
+        DossierExcelReader.Lecture lecture;
+        try {
+            // Avant toute ouverture : ce fichier vient d'un anonyme, et le lire le décompresse.
+            ControleFichier.verifierClasseurDossier(fichier);
+            lecture = dossierExcelReader.lire(fichier);
+        } catch (IllegalArgumentException refus) {
+            // Rendu comme une anomalie et non comme un 400, pour la raison dite plus haut :
+            // l'écran affiche un rapport, il masquerait une erreur.
+            lecture = new DossierExcelReader.Lecture(Map.of(), List.of(), List.of(
+                    new com.optimisante.backend.domain.partnership.excel.AnomalieCellule("—", 0, "Fichier",
+                            nomCourt(fichier), refus.getMessage())));
+        }
         return ResponseEntity.ok(Map.of(
                 "conforme", lecture.conforme(),
                 "identite", lecture.identite(),
@@ -105,8 +135,44 @@ public class PartnershipResource {
             @RequestParam String contactEmail,
             @RequestParam String contactPhone,
             @RequestParam String address,
-            @RequestParam("conventionFile") MultipartFile conventionFile) {
-        return ResponseEntity.ok(partnershipService.submitRequest(
-                institutionName, finessAccreditation, contactPersonName, contactEmail, contactPhone, address, conventionFile));
+            @RequestParam("conventionFile") MultipartFile conventionFile,
+            @RequestParam(required = false) String jeton,
+            @RequestParam(name = "siteInternet", required = false) String piege) {
+        // Tout est vérifié AVANT le dépôt au stockage. Dans l'ordre inverse, un champ trop long
+        // ferait échouer l'écriture en base après l'envoi du fichier, et laisserait au stockage
+        // une convention qu'aucune ligne ne référence.
+        gardeDepotPartenariat.verifierEnvoi(jeton, piege);
+        borner("Le nom de l'institution", institutionName, 255);
+        borner("Le numéro FINESS", finessAccreditation, 255);
+        borner("Le nom du contact", contactPersonName, 255);
+        borner("L'adresse e-mail", contactEmail, 255);
+        borner("Le téléphone", contactPhone, 255);
+        borner("L'adresse", address, 1000);
+        if (!contactEmail.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
+            throw new IllegalArgumentException("L'adresse e-mail de contact n'est pas valide.");
+        }
+        ControleFichier.verifierConvention(conventionFile);
+
+        PartnershipRequestResponseDto recu = partnershipService.submitRequest(
+                institutionName, finessAccreditation, contactPersonName, contactEmail, contactPhone, address, conventionFile);
+        // La clé de stockage ne part pas chez un anonyme : il n'en a aucun usage, et c'est la
+        // règle posée par DP-4 pour tout le reste du site.
+        recu.setConventionFileKey(null);
+        return ResponseEntity.ok(recu);
+    }
+
+    private static void borner(String libelle, String valeur, int maximum) {
+        if (valeur != null && valeur.length() > maximum) {
+            throw new IllegalArgumentException(
+                    libelle + " dépasse " + maximum + " caractères.");
+        }
+    }
+
+    /** Le nom du fichier sans son chemin, borné : il est renvoyé dans le rapport. */
+    private static String nomCourt(MultipartFile fichier) {
+        String nom = fichier == null || fichier.getOriginalFilename() == null
+                ? "" : fichier.getOriginalFilename().replace('\\', '/');
+        nom = nom.substring(nom.lastIndexOf('/') + 1);
+        return nom.length() > 120 ? nom.substring(0, 120) : nom;
     }
 }

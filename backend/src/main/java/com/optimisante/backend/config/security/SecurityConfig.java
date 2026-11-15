@@ -28,6 +28,7 @@ public class SecurityConfig {
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
     private final com.optimisante.backend.infrastructure.debit.PlafondDebit plafondDebit;
     private final com.optimisante.backend.infrastructure.debit.ReglagesPlafondDebit reglagesPlafondDebit;
+    private final com.optimisante.backend.infrastructure.debit.GardeDepotPartenariat gardeDepotPartenariat;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -122,6 +123,13 @@ public class SecurityConfig {
         http.addFilterBefore(
                 new com.optimisante.backend.infrastructure.debit.FiltrePlafondDebit(
                         plafondDebit, reglagesPlafondDebit),
+                JwtAuthenticationFilter.class);
+
+        // Même place et même raison pour le dépôt anonyme de partenariat, avec une de plus :
+        // une requête trop grosse doit être refusée avant que son corps ne soit lu.
+        http.addFilterBefore(
+                new com.optimisante.backend.infrastructure.debit.FiltreDepotPartenariat(
+                        gardeDepotPartenariat),
                 JwtAuthenticationFilter.class);
 
         return http.build();

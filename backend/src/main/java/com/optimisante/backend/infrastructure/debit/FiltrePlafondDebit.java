@@ -99,7 +99,7 @@ public class FiltrePlafondDebit extends OncePerRequestFilter {
      * aucune donnée fournie par le client. Les plafonds par adresse protègent le service ; le
      * plafond global protège la facture.</p>
      */
-    private String adresseDuVisiteur(HttpServletRequest requete) {
+    static String adresseDuVisiteur(HttpServletRequest requete) {
         String cloudflare = premiereValeurUtile(requete.getHeader("CF-Connecting-IP"));
         if (cloudflare != null) {
             return cloudflare;
@@ -129,7 +129,7 @@ public class FiltrePlafondDebit extends OncePerRequestFilter {
      * carte</b>, et rien n'empêche un client d'envoyer un en-tête de plusieurs kilo-octets —
      * ce qui ferait du compteur de protection un moyen de consommer la mémoire.</p>
      */
-    private String premiereValeurUtile(String brute) {
+    private static String premiereValeurUtile(String brute) {
         if (brute == null) {
             return null;
         }

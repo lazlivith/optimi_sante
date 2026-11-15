@@ -168,6 +168,14 @@ app:
     plafond-par-adresse-par-jour: ${PLAFOND_IA_PAR_JOUR:200}
     # Un budget, pas une limite technique : à revoir avec le coût réel du modèle.
     plafond-global-par-jour: ${PLAFOND_IA_GLOBAL_PAR_JOUR:500}
+  depot-partenariat:
+    # Dépôt anonyme de /api/v1/partnership : les deux seules routes où un inconnu envoie un
+    # fichier. « actif: false » lève le plafond de débit et le jeton de formulaire, jamais les
+    # contrôles de fichier. Voir GardeDepotPartenariat pour ce que chaque réglage arrête.
+    actif: ${DEPOT_PARTENARIAT_ACTIF:true}
+    plafond-par-adresse-par-minute: ${DEPOT_PARTENARIAT_PAR_MINUTE:10}
+    plafond-par-adresse-par-jour: ${DEPOT_PARTENARIAT_PAR_JOUR:40}
+    plafond-global-par-jour: ${DEPOT_PARTENARIAT_GLOBAL_PAR_JOUR:300}
   aws:
     s3:
       endpoint: ${AWS_S3_ENDPOINT:http://localhost:4566}
@@ -309,6 +317,11 @@ app:
     plafond-par-adresse-par-minute: ${PLAFOND_IA_PAR_MINUTE:20}
     plafond-par-adresse-par-jour: ${PLAFOND_IA_PAR_JOUR:200}
     plafond-global-par-jour: ${PLAFOND_IA_GLOBAL_PAR_JOUR:500}
+  depot-partenariat:
+    actif: ${DEPOT_PARTENARIAT_ACTIF:true}
+    plafond-par-adresse-par-minute: ${DEPOT_PARTENARIAT_PAR_MINUTE:10}
+    plafond-par-adresse-par-jour: ${DEPOT_PARTENARIAT_PAR_JOUR:40}
+    plafond-global-par-jour: ${DEPOT_PARTENARIAT_GLOBAL_PAR_JOUR:300}
 
   cloudinary:
     # Sans repli : tous les documents et visuels y vivent. Démarrer sur un compte « default »

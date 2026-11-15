@@ -29,7 +29,12 @@ export function DossierExcelPanel() {
       setRapport(await partnershipService.verifierDossier(fichier));
     } catch (e) {
       console.error('Vérification du dossier impossible', e);
-      setErreur("Le contrôle n'a pas pu être effectué. Réessayez dans un instant.");
+      // Un refus du serveur (trop d'envois, fichier trop lourd) porte sa propre explication :
+      // « réessayez dans un instant » serait faux pour qui a atteint le plafond du jour.
+      const message = (e as { response?: { data?: { message?: unknown } } }).response?.data?.message;
+      setErreur(typeof message === 'string' && message.length > 0
+        ? message
+        : "Le contrôle n'a pas pu être effectué. Réessayez dans un instant.");
     } finally {
       setEnCours(false);
     }
