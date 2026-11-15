@@ -11,8 +11,8 @@
     "verifier:charte": "node scripts/verifier-charte.mjs",
     "prebuild": "node scripts/verifier-env.mjs && npm run test && node scripts/verifier-charte.mjs",
     "postbuild": "node scripts/verifier-charte.mjs --poids",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "node scripts/lancer-tests.mjs run",
+    "test:watch": "node scripts/lancer-tests.mjs"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^3.10.0",
