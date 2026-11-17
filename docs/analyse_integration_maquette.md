@@ -43,6 +43,13 @@ qu'on ne relève pas une référence pour faire passer un build.
 > « 1 333 Ko produits aujourd'hui ». C'est faux de 41 Ko. La correction est déjà inscrite
 > au lot `QUA‑1` du cahier des charges ; elle y reste, ce lot ne touche à rien.
 
+**Le budget de `M1` est écrit deux fois, et pas pareil.** La table des lots du plan (§ 2) dit
+**10 Ko** ; le détail du même plan (§ 4 « M1 ») et le prompt du lot disent **≤ 8 Ko**, comme
+critère d'acceptation. C'est une contradiction *interne* au plan, pas entre les documents de la
+préséance — je la signale et je retiens **8 Ko**, parce qu'un critère d'acceptation est plus
+engageant qu'une ligne de table, et parce que le plus strict des deux ne fait courir aucun
+risque. Les 2 Ko d'écart retournent à la réserve de 25 Ko du plan, et non au budget de `M1`.
+
 **Deux dénombrements de catégories vides se contredisent.** Le plan dit 57 catégories sans
 produit ; le commentaire de `CategoryResponseDto` dit « 85 des 211 catégories sont vides ».
 Les deux ont été écrits à des dates différentes, et aucun des deux n'est vérifié aujourd'hui.
@@ -136,10 +143,21 @@ la famille. Ces entrées **sont** les niveaux de l'arbre. Aujourd'hui, les 211 c
 toutes racines, le sélecteur ne peut proposer que « Toutes catégories » et une liste plate de
 211 entrées.
 
-C'est une décision à prendre à l'ouverture de `M1`, et je la signale plutôt que de la prendre :
-livrer le sélecteur avec la liste plate, ou le masquer jusqu'à `CAT`. **Ma recommandation : le
-masquer.** Un sélecteur de 211 entrées plates est moins utile que pas de sélecteur, et
-`M1` garde ainsi sa promesse de ne pas dépendre de `CAT`.
+**La décision est déjà prise, et pas par moi.** Le plan § 4 « M1 » et le prompt du lot disent
+tous deux la même chose : le sélecteur liste les catégories **qui existent aujourd'hui**, il
+deviendra utile avec `CAT` **sans changement de code** puisqu'il lit la même route, et cela
+« se dit dans le rapport, ne se corrige pas ». Le prompt ajoute : « n'anticipe pas l'arbre, ne
+le simule pas. »
+
+J'avais d'abord recommandé de le masquer. **Je retire cette recommandation** : la préséance
+donne raison au plan, et D0 § 5 ne s'y oppose pas — il masque un élément *dont la donnée
+n'existe pas*, et ici la donnée existe, elle est seulement peu utile. Un sélecteur de 211
+entrées plates est médiocre ; ce n'est pas une affirmation fausse, et c'est la différence qui
+compte. Il se livre, et le rapport de `M1` le dit.
+
+Ce qui reste vrai et mérite d'être su : **`M1` dépend de `CAT` pour la qualité de ce
+sélecteur, pas pour son existence.** Le plan avait raison de dire que `M1` ne dépend pas de
+`CAT` ; il manquait cette nuance.
 
 Le reste de `M1` est net et sans dépendance : le champ de recherche existe
 (`Navbar.tsx:119`), il lui manque `role="search"`, un libellé accessible, le bouton
@@ -301,7 +319,7 @@ Voici la liste à reprendre par chaque lot.
 
 | Lot | Masqué, et pourquoi |
 |---|---|
-| `M1` | le sélecteur « Catégorie » de la barre de recherche, jusqu'à `CAT` (§ 3) |
+| `M1` | **rien.** Le sélecteur « Catégorie » se livre avec les catégories existantes ; le rapport dit qu'elles sont 211 et plates (§ 3) |
 | `M2` | « Garantie fabricant » (4 crochets), « Notice d'utilisation (PDF) » (2), le bloc caractéristiques (7), la ligne « Livraison estimée » (2), « WhatsApp » (1) — **soit les 20 crochets sans donnée** |
 | `M3a` | le chapeau de description des familles, si `CAT` ne lui donne pas de champ |
 | `M3b` | le bloc « Marque » du panneau de filtres, jusqu'à `M4` ; « Familles voisines » si le voisinage ne se dérive pas |
@@ -349,8 +367,5 @@ Dans l'ordre de ce qu'il bloque.
 3. **Le fichier d'arbitrage de l'arborescence.** `docs/arborescence_catalogue_v2.xlsx` n'est
    pas dans le dépôt. Sans lui, `CAT` ne s'ouvre pas, et avec lui `M3a`, `M3b`, `M4`, `PIL`
    et `IMP` restent fermés. C'est le chemin critique, et il est de ton côté.
-4. **Le sélecteur « Catégorie »** de `M1` : masqué jusqu'à `CAT`, comme je le recommande, ou
-   livré avec la liste plate.
-
-`M1` et `M2` s'ouvrent sans attendre aucune des quatre — seul le point 4 touche `M1`, et il a
-une réponse par défaut.
+**`M1` et `M2` s'ouvrent sans attendre aucun des trois.** Ils ne touchent ni à l'arbre, ni au
+budget au-delà de leur propre enveloppe (8 Ko et 40 Ko), ni à la production.
