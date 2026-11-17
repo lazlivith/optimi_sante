@@ -26,8 +26,8 @@ D0 § 0 demande de revérifier plutôt que de recopier. Fait, un par un.
 | Motifs de visuel factice, serveur | 6 | 6 dans `VisuelProduit.MOTIFS` | confirmé |
 | URL factices, navigateur | 4 | 4 dans `ProductImage.KNOWN_BROKEN_URLS` | confirmé |
 | Filtrage par catégorie | égalité stricte | `cb.equal(root.get("category").get("id"), …)` | **confirmé** |
-| Catégories en base | 211, toutes racines | *non vérifiable hors production* | **à mesurer** (§ 5) |
-| Catégories sans produit | 57 | **le code dit 85** (voir ci-dessous) | **contradiction** |
+| Catégories en base | 211, toutes racines | **211, toutes racines** (base de dév.) | **confirmé** en dév. ; production à mesurer |
+| Catégories sans produit | 57 | **57** (base de dév.) | **le plan a raison**, le code dit 85 à tort |
 
 ### Deux points à régler avant d'ouvrir `CAT`
 
@@ -50,10 +50,25 @@ préséance — je la signale et je retiens **8 Ko**, parce qu'un critère d'acc
 engageant qu'une ligne de table, et parce que le plus strict des deux ne fait courir aucun
 risque. Les 2 Ko d'écart retournent à la réserve de 25 Ko du plan, et non au budget de `M1`.
 
-**Deux dénombrements de catégories vides se contredisent.** Le plan dit 57 catégories sans
-produit ; le commentaire de `CategoryResponseDto` dit « 85 des 211 catégories sont vides ».
-Les deux ont été écrits à des dates différentes, et aucun des deux n'est vérifié aujourd'hui.
-`CAT` se dimensionne sur ce chiffre : la requête du § 5 le tranche.
+**Deux dénombrements de catégories vides se contredisent — et le plan a raison.** Le plan dit
+57 catégories sans produit ; le commentaire de `CategoryResponseDto` dit « 85 des 211
+catégories sont vides ». **Mesuré le 17 novembre** sur la base de développement locale, par la
+route publique `GET /catalog/categories` :
+
+| Mesure | Valeur mesurée | Plan |
+|---|---|---|
+| Catégories servies | **211** | 211 ✓ |
+| Dont racines | **211** — aucune n'a d'enfant | « toutes racines, profondeur 1 » ✓ |
+| Dont sans aucun produit | **57** | 57 ✓ |
+| Libellés exactement identiques | **0** (les 10 groupes du plan sont des quasi-doublons) | — |
+
+Le commentaire « 85 » de `CategoryResponseDto` est donc **périmé**, et c'est lui qu'il faudra
+corriger, pas le plan. Je ne l'ai pas fait : c'est hors du périmètre de `M0`, qui n'écrit pas
+de code.
+
+**Réserve, et elle compte** : cette mesure porte sur la base de **développement**, pas sur la
+production. Elle vaut comme forte présomption, pas comme réponse. La requête du § 5.2 reste à
+lancer, et c'est elle qui dimensionne `CAT`.
 
 ---
 
