@@ -31,8 +31,25 @@ D0 § 0 demande de revérifier plutôt que de recopier. Fait, un par un.
 
 ### Deux points à régler avant d'ouvrir `CAT`
 
-**Le budget JS ne tient plus à 3 Ko près.** La marge mesurée est de **208 Ko**, et le budget
-arrêté au plan est de **211 Ko** (183 Ko catalogue + 28 Ko brochures). Il manque 3 Ko.
+**Le budget JS ne tient plus à 3 Ko près — tranché le 26 novembre.** La marge mesurée est de
+**208 Ko**, et le budget arrêté au plan est de **211 Ko** (183 Ko catalogue + 28 Ko brochures).
+Il manque 3 Ko.
+
+> **Arbitrage du commanditaire, 26 novembre.** Les 3 Ko se prennent sur la **réserve
+> attribuable**, qui passe de 21 à **18 Ko**. Rien n'est repris ailleurs. Motif : les lots de
+> sécurité livrés depuis — `DP‑4`, `SEC‑1a`, `SEC‑3` — n'avaient aucune ligne au budget parce
+> qu'ils n'étaient pas prévus, et c'est exactement la raison d'être d'une réserve.
+>
+> **Et `M1` rend 8 Ko.** La règle de tenue du budget du plan § 3 le prescrit : « un lot qui
+> finit sous son plafond rend la différence à la réserve, et l'écrit dans son rapport. » `M1`
+> avait 10 Ko et en a consommé **2**, mesurés.
+>
+> | Mouvement | Ko |
+> |---|---|
+> | Réserve au plan du 5 novembre | 21 |
+> | Marge re-mesurée le 17 novembre : 208 et non 211 | **−3** |
+> | `M1` livré à 2 Ko pour un plafond de 10 | **+8** |
+> | **Réserve, une fois `M1` fusionné** | **26** |
 Le plan le disait lui-même : « la marge est consommée **exactement**, sans réserve » — elle
 l'est désormais à découvert. Trois issues, et c'est un arbitrage, pas un détail de mise en
 œuvre : ramener le catalogue à 180 Ko, ramener les brochures à 25 Ko, ou relever le plafond
@@ -378,7 +395,8 @@ Dit explicitement, comme D0 § 7.4 l'exige.
 Dans l'ordre de ce qu'il bloque.
 
 1. **Les deux requêtes du § 5**, dont la sortie clôt `M0` et dimensionne `CAT`.
-2. **Les 3 Ko de budget JS** (§ 1) : catalogue à 180 Ko, ou brochures à 25 Ko.
+2. ~~**Les 3 Ko de budget JS**~~ — **tranché le 26 novembre** : pris sur la réserve
+   attribuable, qui passe de 21 à 18 Ko, puis à 26 une fois les 8 Ko rendus par `M1` (§ 1).
 3. **Le fichier d'arbitrage de l'arborescence.** `docs/arborescence_catalogue_v2.xlsx` n'est
    pas dans le dépôt. Sans lui, `CAT` ne s'ouvre pas, et avec lui `M3a`, `M3b`, `M4`, `PIL`
    et `IMP` restent fermés. C'est le chemin critique, et il est de ton côté.
