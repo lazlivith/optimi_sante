@@ -78,7 +78,16 @@ Deux pièges de syntaxe, appris à l'usage :
 Dans cet ordre, et **les trois** :
 
 1. **Build propre.** La vérification TypeScript de référence est celle du build
-   (`npm run build`), pas `tsc --noEmit` seul. Le garde-fou de charte s'exécute en `postbuild`.
+   (`npm run build`), pas `tsc --noEmit` seul. Le garde-fou de charte s'exécute en **deux
+   temps**, et il faut les deux : le contrôle **complet** — contrastes, cliquet des couleurs,
+   valeurs brutes, HTML non interprété — tourne en `prebuild`, parce qu'il lit les **sources** ;
+   le **poids** tourne en `postbuild`, parce qu'il lit `dist/` et doit mesurer le bundle qu'on
+   vient de produire, pas le précédent. `prebuild` lance aussi `verifier-env.mjs` et **toute la
+   suite de tests du frontend**.
+
+   *Ne juge jamais un build sur la fin de sa sortie.* `… | tail` ne montre que le `postbuild`,
+   donc le poids seul, et laisse croire que c'est tout ce qui a été vérifié. Cette lecture
+   tronquée a déjà fait rapporter une fausse faille de garde-fou le 17 novembre.
 2. **Suite complète verte.** Backend et frontend. Les tests d'intégration sont ignorés sans
    Docker plutôt qu'en échec : **toujours rapporter le nombre d'ignorés**, sans quoi une suite
    verte peut ne rien avoir exécuté.

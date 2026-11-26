@@ -47,7 +47,9 @@ défaut, même si chaque ligne est bonne.
 ## 3. Les garde-fous qui font échouer le build
 
 `npm run build` est la vérification de référence, pas `tsc --noEmit`. Le garde-fou de charte
-tourne en `postbuild` et refuse :
+tourne en **`prebuild`** pour tout ce qui suit — il lit les sources — et en `postbuild` pour le
+seul **poids**, qui lit `dist/`. Ne juge donc jamais un build sur la fin de sa sortie : `| tail`
+ne montre que le poids. Il refuse :
 
 - **Contraste** sous 4,5:1 pour tout couple texte/fond.
 - **Cliquet des couleurs** : `couleursEnDur` est à **247** dans `charte-reference.json`. Il ne

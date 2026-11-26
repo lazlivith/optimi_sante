@@ -255,4 +255,14 @@ if (echecs > 0) {
   console.error(`\n${echecs} contrôle(s) en échec. Le build s’arrête ici.`);
   process.exit(1);
 }
-console.log('\nCharte respectée.');
+// La DERNIÈRE ligne dit ce qui vient d'être vérifié, et non « tout va bien ».
+//
+// Le 17 novembre, une session a lu la sortie d'un build par `| tail`, n'a vu que le passage
+// `--poids` du `postbuild`, et en a conclu que le cliquet des couleurs et les contrastes ne
+// tournaient jamais au build — alors qu'ils tournent en `prebuild`, sur les sources. Elle a
+// rapporté une faille de garde-fou qui n'existait pas. Un « Charte respectée. » nu, en fin de
+// sortie tronquée, se lit comme une promesse plus large que ce que ce passage a contrôlé.
+console.log(seulementPoids
+  ? '\nPoids respecté. (Poids SEUL : contrastes, cliquet des couleurs et valeurs brutes'
+    + ' tournent en prebuild — « npm run verifier:charte » les rejoue.)'
+  : '\nCharte respectée. (Contrastes, cliquet, valeurs brutes, HTML non interprété, poids.)');
