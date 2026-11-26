@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { adminHomeFor, ALL_ADMIN_ROLES } from '../lib/adminUniverses';
 import { SelecteurDevise } from './SelecteurDevise';
-import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, Settings, Search, Briefcase, Database as DatabaseIcon, ShieldCheck } from 'lucide-react';
+import { ShoppingCart, LogOut, User as UserIcon, ChevronDown, Shield, FileText, Settings, Briefcase, Database as DatabaseIcon, ShieldCheck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { NotificationBell } from './common/NotificationBell';
@@ -11,6 +11,7 @@ import { Menu } from 'lucide-react';
 import { MenuMobile } from './MenuMobile';
 import { MenuServices } from './MenuServices';
 import { NAVIGATION_ORDINATEUR } from '../lib/navigationPrincipale';
+import { BarreRecherche } from './catalog/BarreRecherche';
 import { useTiroirNavigation } from '../hooks/useTiroirNavigation';
 
 
@@ -18,13 +19,11 @@ export const Navbar = () => {
   const { totalItems } = useCart();
   const { user, isAuthenticated, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   // Meme tiroir que les espaces d'administration : fermeture a l'echappement, au
   // changement de page et des que l'ecran repasse au-dessus de 1024 px, focus retenu dans
   // le panneau et rendu au bouton. Reecrire tout cela ici en donnerait une seconde version.
   const tiroir = useTiroirNavigation();
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -35,13 +34,6 @@ export const Navbar = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/catalog?search=${encodeURIComponent(searchQuery)}`);
-    }
-  };
 
   const ADMIN_ROLES: string[] = ALL_ADMIN_ROLES;
 
@@ -111,20 +103,14 @@ export const Navbar = () => {
           <LogoOptimi fond="clair" signature={false} className="h-10 lg:h-20 w-auto max-w-[150px] lg:max-w-[280px]" />
         </Link>
 
-        {/* Search Bar — Central */}
-        <form onSubmit={handleSearch}
-              className="order-last w-full min-w-0 lg:order-none lg:w-auto lg:flex-1 lg:max-w-2xl lg:mx-auto">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="search"
-              placeholder="Quel produit recherchez-vous ?"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-100/80 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:bg-white transition-all"
-            />
-          </div>
-        </form>
+        {/* Barre de recherche — centrale.
+
+            Le champ rond d'avant n'avait ni rôle, ni libellé accessible, ni bouton
+            d'envoi : il ne se soumettait qu'à la touche Entrée, et un lecteur d'écran
+            annonçait « zone de recherche » sans dire quoi y mettre. Il envoyait de plus
+            sur `/catalog?search=…`, que la page de résultats ne lisait pas — la recherche
+            de l'en-tête ne filtrait donc rien du tout. */}
+        <BarreRecherche />
 
         {/* Right Zone */}
         <div className="flex items-center gap-1.5 lg:gap-2 shrink-0 ml-auto lg:ml-0">

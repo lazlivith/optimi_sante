@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { catalogService, cheminProduit } from '../api/catalogService';
 import type { Product } from '../api/catalogService';
@@ -7,6 +7,7 @@ import { Search, Mail, Plus, SlidersHorizontal } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { PromoProductVisual } from '../components/catalog/PromoProductVisual';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { useCategoriesBoutique } from '../hooks/useCategoriesBoutique';
 import { useDevise } from '../context/DeviseContext';
 
 /** Produits par requete. Vingt-quatre remplit six rangees de quatre sans laisser de trou. */
@@ -20,41 +21,31 @@ export function CatalogPage() {
   const [searchParams] = useSearchParams();
   const promoOnly = searchParams.get('promo') === 'true';
 
-  const [search, setSearch] = useState('');
+  // Le terme arrive par l'URL, comme la categorie et `promo`.
+  //
+  // Il ne le faisait PAS : `search` naissait a vide et rien ne lisait `?search=`. La barre
+  // de recherche de l'en-tete envoyait donc sur cette page avec le terme dans l'adresse, et
+  // la page affichait le catalogue entier — aucun filtrage, aucun message, rien qui signale
+  // que la recherche n'avait pas eu lieu. C'est le meme oubli que `promo` juste au-dessus.
+  const [search, setSearch] = useState(() => searchParams.get('search') ?? '');
   // La categorie arrive par l'URL quand on vient d'une vignette « Incontournables » : elle
   // amorce l'etat, sans le figer — le visiteur reste libre d'en changer dans la liste.
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(
     () => searchParams.get('category') ?? undefined);
 
-  // Si l'URL change pendant que la page est ouverte — deux vignettes cliquees a la suite —
-  // React ne remonte pas le composant : sans cet effet, la seconde ne changerait rien.
+  // Si l'URL change pendant que la page est ouverte — deux vignettes cliquees a la suite, ou
+  // une seconde recherche lancee depuis l'en-tete — React ne remonte pas le composant : sans
+  // cet effet, la seconde ne changerait rien.
   useEffect(() => {
     setSelectedCategory(searchParams.get('category') ?? undefined);
+    setSearch(searchParams.get('search') ?? '');
   }, [searchParams]);
   const { addToCart } = useCart();
 
-  const { data: categories } = useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const cats = await catalogService.getCategories();
-      if (!cats) return [];
-      const uniqueMap = new Map<string, typeof cats[0]>();
-      cats.forEach(cat => {
-        const decodedName = cat.name.replace(/&amp;/g, '&');
-        const dejaVu = uniqueMap.get(decodedName);
-        // Deux libelles identiques designent le meme rayon : on garde celui qui a
-        // effectivement des produits, sinon le filtre menerait vers le jumeau vide.
-        if (!dejaVu || (dejaVu.productCount ?? 0) < (cat.productCount ?? 0)) {
-          uniqueMap.set(decodedName, { ...cat, name: decodedName });
-        }
-      });
-      // Un rayon sans produit est une impasse : le proposer dans le filtre ne fait
-      // qu'allonger une liste de plus de deux cents entrees.
-      return Array.from(uniqueMap.values())
-        .filter(cat => (cat.productCount ?? 0) > 0)
-        .sort((a, b) => a.name.localeCompare(b.name));
-    }
-  });
+  // Les trois decisions prises sur cette liste — jumeaux de libelle, rayons vides, ordre —
+  // sont passees dans `useCategoriesBoutique`, parce que la barre de recherche de l'en-tete
+  // a besoin des memes. Les laisser ici en aurait donne une seconde version.
+  const { data: categories } = useCategoriesBoutique();
 
   // Le catalogue se parcourt en descendant, page apres page. La version precedente
   // demandait `size: 20` SANS aucune pagination : elle annoncait « 1487 produits » et n'en
