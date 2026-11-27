@@ -1,6 +1,30 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
+/*
+  GARDE-FOU : LETTRE DE LECTEUR EN MINUSCULE (Windows).
+
+  Lancée depuis `d:\…` au lieu de `D:\…`, la suite échoue à la collecte sur tous les fichiers
+  avec « Vitest failed to find the current suite ». Ce message ne dit rien de la cause, et il
+  a coûté deux jours en novembre 2026. On interrompt donc ici, avec la cause et le remède.
+
+  Corriger le répertoire depuis ce fichier ne marche pas : essayé, vitest a déjà retenu le
+  chemin fautif quand il lit sa configuration. La correction vit dans
+  `scripts/lancer-tests.mjs`, que `npm run test` appelle ; ce garde-fou ne sert qu'à qui lance
+  `npx vitest` directement.
+
+  Hors Windows, la condition est toujours fausse.
+*/
+if (process.platform === 'win32' && /^[a-z]:/.test(process.cwd())) {
+  const lecteur = process.cwd().slice(0, 2);
+  throw new Error(
+    `Répertoire courant en ${lecteur}\\ au lieu de ${lecteur.toUpperCase()}\\ — les tests `
+      + 'échoueraient de façon incompréhensible (« Vitest failed to find the current suite »). '
+      + 'Lance "npm run test", ou entre dans le dossier par cd /d/OptimiSanté_Projet/... '
+      + 'puis vérifie avec : node -p "process.cwd()"',
+  );
+}
+
 /**
  * Outillage de test, strictement limité au développement.
  *

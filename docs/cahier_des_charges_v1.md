@@ -315,7 +315,8 @@ de France », pas « hors UE », et le serveur porte `droitsALArrivee`.
 | `EXP‑2` | exploitation | Supervision des erreurs, **alerte sur échec de webhook**, journaux conservés | Un paiement encaissé dont le webhook échoue est aujourd'hui silencieux | rien | **V1** | 1,5 | 0 | à faire | — |
 | `EXP‑3` | exploitation | **Intégration continue** : build, suite complète, garde-fou de charte à chaque `push`, avec le **nombre d'ignorés** rapporté | `.github/workflows` est vide : **aucun `push` ne lance le garde-fou ni la suite**. La routine de `CLAUDE.md` est tenue de mémoire | rien | **V1** | 1 | 0 | à faire | — |
 | `QUA‑1` | qualité | Dette d'outillage en un lot : ~~fixture de `ControleBrochureTest`~~ (**sortie en `QUA‑1a`, faite le 27/11/2026**), suppression de la configuration morte `app.aws.*`, correction de `_plafondJsKo`, correction du « onze statuts » de `parcoursDossier.ts` (il y en a douze), scission du prompt `M3`, correction de l'affirmation fausse de `PIL` | Chacun est un piège pour la prochaine session, et aucun ne coûte cher | rien | **V1** | 1 | 0 | à faire | — |
-| `QUA‑2` | qualité | Cause racine de l'instabilité des tests frontend, ou décision écrite de vivre avec | Contournement en place (`testTimeout: 20_000`), cause inconnue. Un test instable est une dette | `EXP‑3` | AV1 | 1 | 0 | contourné | — |
+| `QUA‑2a` | qualité | **Casse de la lettre de lecteur** sous Windows : lancée depuis `d:\` au lieu de `D:\`, la suite frontend échoue à la collecte sur **tous** les fichiers, avec « Vitest failed to find the current suite » — un message qui ne désigne pas la cause | A coûté deux jours en novembre 2026. `npm run test` passe désormais par `scripts/lancer-tests.mjs`, et `vitest.config.ts` interrompt avec la cause et le remède pour qui lance `npx vitest` directement. **Non vérifié, et non vérifiable sous Linux :** le garde-fou est gardé par `process.platform === 'win32'`, donc sa condition y est fausse par construction — on ne peut pas avoir un `d:\` minuscule sur Linux. Ce qui a été prouvé sous Linux, c'est seulement qu'il **ne casse rien** là-bas (`npm run test` par le lanceur : 101/101 sur l'état de la branche). **Son déclenchement reste à éprouver sous Windows, sur le poste du commanditaire** | rien | AV1 | 0,5 | 0 | **FAIT le 27/11/2026** | — |
+| `QUA‑2b` | qualité | **Cause racine de l'instabilité de délai**, ou décision écrite de vivre avec | **Reste ouvert.** Contournement en place (`testTimeout: 20_000` au lieu de 5 000), cause inconnue. **Localisé à Windows le 27/11/2026** : sous Linux, trois passages consécutifs au délai par défaut de 5 000 ms donnent 117/117, en 18,1 s, 16,2 s et 17,0 s — le contournement n'y porte donc rien. C'est une localisation, pas une explication | `EXP‑3` | AV1 | 1 | 0 | **ouvert** | — |
 | `QUA‑3` | qualité | Accessibilité : parcours clavier complet et contrastes sur les écrans de vente | Le garde-fou de charte mesure les contrastes ; il ne mesure **pas** le clavier. **Non vérifié** | rien | AV1 | 2 *(estimation)* | 0 | à faire | — |
 | `QUA‑4` | catalogue | Référencement : `sitemap.xml`, `robots.txt`, titres et métadonnées par page | `frontend/public/` ne contient que le favicon, les icônes et la marque. Aucun des deux fichiers n'existe | `CAT` (pour les 301) | AV1 | 1,5 | 0 | à faire | — |
 | `QUA‑5` | catalogue | Bandeau promotionnel mobile (`PromoHeroSlider`) | Signalé dans ton inventaire ; **non vérifié** faute d'une description du défaut | rien | AV1 | *non estimé* | — | **à préciser** | toi |
@@ -338,7 +339,7 @@ de France », pas « hors UE », et le serveur porte `droitsALArrivee`.
 | dont maquettes (`M1` → `L`) | 19,5 | — |
 | dont sécurité (`SEC‑2`, `SEC‑5`) | 4 | — |
 | dont second entrepôt (`STK‑2`) | 5 à 7 | — |
-| dont qualité (`QUA‑2`, `QUA‑4`, et `STK‑3`) | 4 | — |
+| dont qualité (`QUA‑2a` **fait**, `QUA‑2b`, `QUA‑4`, et `STK‑3`) | 4 | 0,5 (`QUA‑2a`) |
 | **Non estimé** | `SEC‑6` (8 points du backlog), `BR‑6`, `QUA‑5` | — |
 
 **Si l'on retire les brochures du périmètre V1** (soupape du § B.6 bis), V1 tombe à
@@ -436,7 +437,7 @@ Dans l'ordre où elles débloquent le travail.
         ▼
   5. IMP (1,5 j) · FOR-4 · EXP-1 · EXP-2 · LEG-4 · LEG-2 (ta démarche)
         ▼
-  ══ V1 ══  puis : maquettes (M1 → L) · SEC-2 · SEC-5 · STK-2 · QUA-2/4 · SEC-6
+  ══ V1 ══  puis : maquettes (M1 → L) · SEC-2 · SEC-5 · STK-2 · QUA-2b/4 · SEC-6
 ```
 
 ### 6.2 Le chemin critique, en une phrase
@@ -536,7 +537,7 @@ le calendrier, pas l'arbre.
 | 3 | **`QUA‑4`** référencement (`sitemap.xml`, `robots.txt`, métadonnées) | Sans effet sur une vente ponctuelle, décisif sur le flux à trois mois. Dépend des 301 de `CAT`, donc impossible plus tôt de toute façon. |
 | 4 | **`M1` → `M2` → `M3a` → `M3b` → `M4` → `M2‑bis` → `L`** — les dix écrans | 19,5 jours et 142 Ko pour refaire des écrans qui **fonctionnent**. C'est de la conversion, pas de la capacité : à mesurer sur du trafic réel, pas à deviner avant. `M1` et `M2` peuvent démarrer pendant V1 s'il reste du temps mort. |
 | 5 | **`STK‑2`** second entrepôt, et **`STK‑3`** commande minimum et délais | Un entrepôt au Congo n'a de sens qu'avec un volume qui le remplit. Le mesurer d'abord. |
-| 6 | **`QUA‑2`** cause de l'instabilité des tests, **`QUA‑3`** accessibilité clavier | Deux dettes réelles, aucune ne saigne. `QUA‑2` devient urgent le jour où l'intégration continue de `EXP‑3` rougit sans raison : c'est là qu'on cesse de lire les résultats. |
+| 6 | **`QUA‑2b`** cause de l'instabilité de délai, **`QUA‑3`** accessibilité clavier | Deux dettes réelles, aucune ne saigne. `QUA‑2b` devient urgent le jour où l'intégration continue de `EXP‑3` rougit sans raison : c'est là qu'on cesse de lire les résultats. *Attention à ne pas croire le sujet clos :* `QUA‑2a`, la casse du lecteur, est réglée depuis le 27/11/2026, et c'était la moitié bruyante. La moitié silencieuse — l'instabilité de délai — reste ouverte. |
 | 7 | **`BR‑6`** structuration des brochures par l'IA | Dépend d'une décision non prise, ne bloque rien, et ne sert que si les partenaires déposent beaucoup. |
 
 ---
@@ -559,7 +560,7 @@ le calendrier, pas l'arbre.
 | 12 | « Politique de confidentialité à mettre à jour (fin du transfert hors UE) » | **Plus grave que « à mettre à jour »** : la page **affirme aujourd'hui** « les données sont hébergées dans l'Union européenne » (ligne 180), ce qui est faux pour les pièces des candidats. Et sa section 5 « Coffre-fort documentaire » est un **paragraphe vide** avec un titre et une entrée au sommaire. |
 | 13 | « CGV (délais, remboursements, export, DAP), mentions légales » | **Les CGV sont faites** : 363 lignes, délais, DAP et droits à l'arrivée, rétractation des consommateurs et son exclusion pour les professionnels, remboursements, médiation, litiges. Les mentions légales portent des identifiants **réels**. Le manque n'est pas là : il est dans l'**adhésion à un médiateur** (`legal.ts:92-93`, deux champs `null`, obligation B2C), dans les **conditions partenaires** (aucune occurrence dans tout le dépôt), et dans le **registre des traitements** (introuvable). |
 | 14 | « Intégration continue : les tests tournent-ils automatiquement à chaque push ? » | **Non. `.github/workflows` est vide.** Et il n'y a ni `render.yaml` ni `vercel.json` : l'infrastructure n'est décrite nulle part dans le dépôt. La routine de livraison de `CLAUDE.md` est tenue de mémoire, par celui qui s'en souvient. |
-| 15 | « Instabilité des workers vitest » | **Contournée et documentée**, pas ignorée : `testTimeout: 20_000` au lieu de 5 000, avec son raisonnement dans le fichier. L'épisode « 6 échecs, 33 réussites » n'a jamais été reproduit en dix-huit exécutions. La cause reste inconnue : c'est `QUA‑2`, et son urgence viendra de `EXP‑3`. |
+| 15 | « Instabilité des workers vitest » | **Contournée et documentée**, pas ignorée : `testTimeout: 20_000` au lieu de 5 000, avec son raisonnement dans le fichier. L'épisode « 6 échecs, 33 réussites » n'a jamais été reproduit en dix-huit exécutions. La cause reste inconnue : c'est `QUA‑2b`, et son urgence viendra de `EXP‑3`. **Localisée à Windows le 27/11/2026** : trois passages sous Linux au délai par défaut de 5 000 ms, 117/117 à chaque fois. Le contournement ne sert donc à rien hors Windows — mais on ne sait toujours pas *pourquoi* il sert sous Windows. |
 | 16 | « Écrans inaccessibles ou morts, routes sans test » | Un seul écran manquant trouvé, et il est net : **`prospect_leads` n'a aucun écran**. L'entité et son dépôt existent au serveur, et aucun fichier du frontend ne les mentionne. Côté tests : 45 fichiers au backend dont **17 ignorés sans Docker**, 13 au frontend. |
 | 17 | « Référencement (titres, sitemap, 301) » | **Ni `sitemap.xml` ni `robots.txt`** : `frontend/public/` ne contient que le favicon, les icônes et la marque. **Aucun mécanisme de redirection** côté serveur, pour 211 adresses indexées. Les deux dépendent de `CAT`. |
 | 18 | « Bandeau promotionnel mobile » | **Non vérifié.** `PromoHeroSlider` existe ; je n'ai pas de description du défaut et je n'ai pas voulu en inventer un. `QUA‑5` attend que tu dises ce qui ne va pas. |
