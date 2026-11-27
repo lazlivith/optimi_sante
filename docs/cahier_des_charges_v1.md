@@ -295,11 +295,25 @@ de France », pas « hors UE », et le serveur porte `droitsALArrivee`.
 
 ### 3.8 Qualité et exploitation
 
+> **En tête de `EXP‑3` : rien ne lance le garde-fou sur un `push`.** C'est la vraie exposition,
+> et elle ne change pas selon l'humeur de celui qui livre. Le garde-fou de charte **fonctionne** :
+> il tourne en `prebuild` pour les contrastes, le cliquet des couleurs, les valeurs brutes et le
+> HTML non interprété, en `postbuild` pour le poids. Mais il ne tourne **que si quelqu'un lance
+> `npm run build` sur sa machine**. `.github/workflows` est vide : un `push` vers le monorepo
+> comme vers un miroir ne déclenche aucune vérification. Une couleur en dur, un contraste sous
+> 4,5:1 ou une suite rouge partent en production dès que la routine de `CLAUDE.md` est oubliée
+> une fois — et c'est une routine tenue de mémoire, par un humain, le soir d'une livraison.
+>
+> Le 17 novembre, un rapport a affirmé que le garde-fou lui-même était en panne. C'était faux,
+> et la correction est documentaire. Mais l'épisode a montré où se trouve le risque réel : pas
+> dans le contenu du garde-fou, dans le fait que **son exécution repose sur la discipline** et
+> que rien ne la contrôle. `EXP‑3` est le lot qui supprime cette dépendance.
+
 | ID | Module | Objet | Pourquoi | Dépend de | V1 | Jours | JS | Statut | Qui décide |
 |---|---|---|---|---|---|---|---|---|---|
 | `EXP‑1` | exploitation | **Sauvegardes** : fréquence constatée et écrite, puis **restauration essayée** sur une base jetable, avec sa date | Une sauvegarde jamais restaurée n'est pas une sauvegarde | rien | **V1** | 1 | 0 | **non vérifié** | toi |
 | `EXP‑2` | exploitation | Supervision des erreurs, **alerte sur échec de webhook**, journaux conservés | Un paiement encaissé dont le webhook échoue est aujourd'hui silencieux | rien | **V1** | 1,5 | 0 | à faire | — |
-| `EXP‑3` | exploitation | **Intégration continue** : build, suite complète, garde-fou de charte à chaque `push`, avec le **nombre d'ignorés** rapporté | `.github/workflows` est vide. La routine de `CLAUDE.md` est tenue de mémoire | rien | **V1** | 1 | 0 | à faire | — |
+| `EXP‑3` | exploitation | **Intégration continue** : build, suite complète, garde-fou de charte à chaque `push`, avec le **nombre d'ignorés** rapporté | `.github/workflows` est vide : **aucun `push` ne lance le garde-fou ni la suite**. La routine de `CLAUDE.md` est tenue de mémoire | rien | **V1** | 1 | 0 | à faire | — |
 | `QUA‑1` | qualité | Dette d'outillage en un lot : fixture de `ControleBrochureTest` déplacée **dans** `backend/src/test/resources`, suppression de la configuration morte `app.aws.*`, correction de `_plafondJsKo`, correction du « onze statuts » de `parcoursDossier.ts` (il y en a douze), scission du prompt `M3`, correction de l'affirmation fausse de `PIL` | Chacun est un piège pour la prochaine session, et aucun ne coûte cher | rien | **V1** | 1 | 0 | à faire | — |
 | `QUA‑2` | qualité | Cause racine de l'instabilité des tests frontend, ou décision écrite de vivre avec | Contournement en place (`testTimeout: 20_000`), cause inconnue. Un test instable est une dette | `EXP‑3` | AV1 | 1 | 0 | contourné | — |
 | `QUA‑3` | qualité | Accessibilité : parcours clavier complet et contrastes sur les écrans de vente | Le garde-fou de charte mesure les contrastes ; il ne mesure **pas** le clavier. **Non vérifié** | rien | AV1 | 2 *(estimation)* | 0 | à faire | — |
