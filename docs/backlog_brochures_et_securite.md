@@ -43,11 +43,13 @@
       branché sur la seule route de brochure. Les autres (route `/partnership/requests` et 13
       autres) ne vérifient aucune signature. À généraliser dans un lot dédié, après avoir mesuré
       quels fichiers passaient hier et qui seraient désormais refusés.
-- [ ] **`ControleBrochureTest` lit `../docs/brochures_test/…`, absent du miroir backend.** Sans
-      effet aujourd'hui : le `Dockerfile` backend construit avec `-Dmaven.test.skip=true`, donc
-      le miroir ne lance jamais ce test. À corriger si les tests venaient un jour à tourner
-      depuis le miroir — en embarquant le fixture dans `backend/src/test/resources/` plutôt qu'en
-      le lisant à la racine du monorepo.
+- [x] **`ControleBrochureTest` lit `../docs/brochures_test/…`, absent du miroir backend.**
+      **Corrigé le 27/11/2026 (`QUA‑1a`)** : la pièce vit dans
+      `backend/src/test/resources/brochures-de-test/` et se lit dans le classpath. Mesuré avant
+      et après dans un conteneur Linux avec `backend/` monté **seul** : 1 échec avant, 0 après.
+      La note « sans effet aujourd'hui » était juste — le `Dockerfile` backend construit avec
+      `-Dmaven.test.skip=true` — mais c'est précisément ce que `EXP‑3` va changer : une
+      intégration continue sur le miroir lance les tests, et aurait rougi sur ce seul test.
 - [ ] **Instabilité des workers vitest** (« Failed to start forks worker for test files »),
       observée une fois juste après une suite backend complète. Non reproductible à volonté. À
       traiter si elle réapparaît en intégration continue.

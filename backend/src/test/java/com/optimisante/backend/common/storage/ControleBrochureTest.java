@@ -5,8 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -24,9 +23,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("Contrôle d'une brochure de formation")
 class ControleBrochureTest {
 
-    /** La brochure de test du dépôt, qui sert aussi aux lots suivants. */
-    private static final Path BROCHURE_DE_TEST =
-            Path.of("..", "docs", "brochures_test", "brochure_test_partenaire_CHU_Valbrune.pdf");
+    /**
+     * La brochure de test, lue <b>dans le classpath du module</b>.
+     *
+     * <p><b>Pourquoi pas un chemin de fichier.</b> Elle vivait dans
+     * {@code ../docs/brochures_test/}, donc <b>hors du module</b>. Le miroir de déploiement ne
+     * reçoit que {@code git archive HEAD:backend} : ce test y échouait, et lui seul, avec un
+     * message qui ne désignait pas la cause. Une intégration continue branchée sur le miroir
+     * aurait rougi sans que personne comprenne pourquoi. Une pièce de test appartient au
+     * module qui l'utilise.</p>
+     */
+    private static final String BROCHURE_DE_TEST =
+            "/brochures-de-test/brochure_test_partenaire_CHU_Valbrune.pdf";
 
     private static MockMultipartFile fichier(String nom, String type, byte[] contenu) {
         return new MockMultipartFile("file", nom, type, contenu);
@@ -39,13 +47,16 @@ class ControleBrochureTest {
     @Test
     @DisplayName("accepte la brochure de test du dépôt")
     void accepteLaBrochureDeTest() throws IOException {
-        // Le fichier est versionné : s'il manque, c'est le dépôt qui est en cause, pas la
-        // règle — et le test doit le dire plutôt que de passer en silence.
-        assertThat(Files.exists(BROCHURE_DE_TEST))
-                .as("brochure de test attendue dans %s", BROCHURE_DE_TEST.toAbsolutePath())
-                .isTrue();
+        // Le fichier est versionné dans src/test/resources : s'il manque, c'est le dépôt qui
+        // est en cause, pas la règle — et le test doit le dire plutôt que de passer en silence.
+        byte[] contenu;
+        try (InputStream flux = ControleBrochureTest.class.getResourceAsStream(BROCHURE_DE_TEST)) {
+            assertThat(flux)
+                    .as("brochure de test attendue dans le classpath, à %s", BROCHURE_DE_TEST)
+                    .isNotNull();
+            contenu = flux.readAllBytes();
+        }
 
-        byte[] contenu = Files.readAllBytes(BROCHURE_DE_TEST);
         assertThatCode(() -> ControleFichier.verifierBrochure(
                 fichier("brochure_chu_valbrune.pdf", "application/pdf", contenu)))
                 .doesNotThrowAnyException();
