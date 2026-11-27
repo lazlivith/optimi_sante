@@ -90,6 +90,9 @@ public class EnrollmentDocumentRequestResource {
                                               @RequestParam("file") MultipartFile file,
                                               Authentication auth) {
         UUID doctorId = UUID.fromString(auth.getPrincipal().toString());
+        // La taille seulement : même raison que pour le dépôt de pièce d'un dossier.
+        com.optimisante.backend.common.storage.ControleFichier.verifierTaille(
+                file, com.optimisante.backend.common.storage.ControleFichier.TAILLE_MAX_OCTETS, "La pièce");
         return ResponseEntity.ok(service.fulfilRequest(requestId, doctorId, file));
     }
 }

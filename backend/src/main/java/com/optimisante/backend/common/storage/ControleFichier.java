@@ -33,6 +33,24 @@ public final class ControleFichier {
     private ControleFichier() {
     }
 
+    /**
+     * Borne la taille d'un fichier, <b>et rien d'autre</b>.
+     *
+     * <p>Pour les routes qui n'avaient aucune limite à elles. Y brancher {@link #verifierDocument}
+     * aurait aussi imposé un format : une règle plus stricte posée d'un coup refuserait des
+     * fichiers qui passaient hier, sans que personne ait mesuré lesquels. La taille, elle, ne
+     * refuse rien de légitime.</p>
+     *
+     * @param objet ce que le fichier est pour l'utilisateur, avec son article : « La vidéo »
+     * @throws IllegalArgumentException avec un message à montrer tel quel à l'utilisateur
+     */
+    public static void verifierTaille(MultipartFile fichier, long maximumOctets, String objet) {
+        if (fichier != null && fichier.getSize() > maximumOctets) {
+            throw new IllegalArgumentException(
+                    objet + " dépasse " + (maximumOctets / (1024 * 1024)) + " Mo.");
+        }
+    }
+
     private static final String BROCHURE_ATTENDUE = "Format non accepté : la brochure doit être un PDF.";
 
     /**

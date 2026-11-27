@@ -77,6 +77,10 @@ public class AiResource {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Aucun fichier fourni.");
         }
+        // Ce fichier est chargé en entier en mémoire avant de partir au service d'IA : la
+        // limite borne ce qu'un seul appel peut y occuper.
+        com.optimisante.backend.common.storage.ControleFichier.verifierTaille(
+                file, com.optimisante.backend.common.storage.ControleFichier.TAILLE_MAX_OCTETS, "Le document");
         return aiService.extract(file, documentType);
     }
 
