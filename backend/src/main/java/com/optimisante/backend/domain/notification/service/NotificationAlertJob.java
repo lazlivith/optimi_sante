@@ -1,6 +1,5 @@
 package com.optimisante.backend.domain.notification.service;
 
-import com.optimisante.backend.domain.identity.entity.Role;
 import com.optimisante.backend.domain.notification.entity.AlertThreshold;
 import com.optimisante.backend.domain.notification.repository.AlertThresholdRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,8 +10,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Veille par seuils : à intervalle régulier, exécute chaque sonde activée dans
- * {@code alert_thresholds} et pousse une alerte au rôle ADMIN si le compte observé atteint le
- * seuil. La déduplication ({@code dedupeKey} = clé de la sonde) fait que des déclenchements
+ * {@code alert_thresholds} et pousse une alerte à l'équipe d'administration (ADMIN et
+ * SUPER_ADMIN) si le compte observé atteint le seuil. La déduplication ({@code dedupeKey} = clé de la sonde) fait que des déclenchements
  * répétés se regroupent sur une seule alerte tant qu'elle n'est pas acquittée. Tout est
  * « fail-soft » — un incident de veille ne perturbe rien.
  */
@@ -32,7 +31,12 @@ public class NotificationAlertJob {
             try {
                 int count = probe(t.getKey(), t.getWindowHours());
                 if (count >= t.getThresholdValue()) {
-                    notifications.notifyRole(Role.ADMIN, t.getKey(), t.getSeverity(),
+                    // notifyAdmins et non notifyRole(ADMIN). Jusqu'au 15 novembre 2026 cette
+                    // veille visait le seul rôle ADMIN : sur une plateforme pilotée par un
+                    // unique SUPER_ADMIN, aucune alerte ne partait chez personne, sans la
+                    // moindre erreur. Une veille muette est pire que pas de veille : on se
+                    // croit couvert.
+                    notifications.notifyAdmins(t.getKey(), t.getSeverity(),
                             t.getLabel(), message(t.getKey(), count, t.getWindowHours()),
                             linkFor(t.getKey()), null, t.getKey());
                 }
