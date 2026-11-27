@@ -148,7 +148,7 @@ du 5 novembre (scénario A). Le § 6 respecte cet ordre ; le § 3 dit la vérit�
 | **Manque, et c'est le point le plus sérieux de cet audit** | **Aucun limiteur de débit, nulle part.** Aucune dépendance (ni `bucket4j`, ni `resilience4j` dans `backend/pom.xml`), aucun code. Or `SecurityConfig` ouvre en `permitAll` : `/api/v1/auth/**` (ligne 75), `/api/v1/partnership/**` (96), `/api/v1/doctor-applications/**` (97), `/api/v1/ai/chat` (102), `/api/v1/newsletter/subscribe` (95), `/api/v1/trainings/*/lead-capture` (92), `/api/v1/public/demandes-accompagnement` (110). |
 | | **Et `/api/v1/partnership/**` porte deux dépôts de fichier** (`PartnershipResource:81` et `:100`), donc **anonymes**, **sans contrôle de signature** — `ControleFichier` n'y est pas appelé — avec `max-file-size: 55MB` et `max-request-size: 120MB` (`application.yml:18,21`). N'importe qui peut écrire dans notre stockage, autant de fois qu'il veut, 55 Mo à la fois. |
 | | Pas de double authentification. Le JWT est en `localStorage` (`AuthContext.tsx`, `LoginPage.tsx`) : une faille d'injection de script le vole. |
-| **Registre d'incidents** | Il **existe** — `docs/incident_security/registre_incidents_securite`, un incident, celui du 29 octobre, correctement rédigé — mais il est **non suivi par git**, sans extension de fichier, et n'existe donc que sur ce poste. Il porte une ligne « date de fin de migration à compléter » que `SP‑5` devra renseigner. |
+| **Registre d'incidents** | **Réglé le 27/11/2026 — `SEC‑4` est fait.** Le registre est désormais `docs/incident_security/registre_incidents_securite.md`, **suivi par git**, avec son extension. Il fixe en tête les sept rubriques que porte chaque entrée, renvoie à `SP‑5` pour la date de fin de migration, et date chaque mesure **du jour de son déploiement en production** et non de son écriture. L'incident du 29 octobre y est complété : `DP‑4` déployé en deux fois depuis le même `main fb508cd` — backend le 06/11, frontend le 12/11 — puis `SEC‑3` et `SEC‑1a` le 15/11. *Ce qu'il manquait n'était pas le contenu, c'était que le fichier existe ailleurs que sur un poste.* |
 
 ### 2.13 Légal
 
@@ -197,7 +197,7 @@ en jours de développement ; **JS** est le poids ajouté au JavaScript servi.
 | `SEC‑1` | sécurité | **Limiteur de débit** sur les sept routes `permitAll`, avec un plafond par adresse et par route | Inscription en masse, énumération de mots de passe, et surtout `/api/v1/ai/chat` ouvert : une dépense d'IA sans plafond, par des anonymes | rien | **V1** | 1,5 | 0 | à faire | — |
 | `SEC‑2` | sécurité | Double authentification des comptes d'administration | Un compte d'administration ouvre des pièces d'identité ; un mot de passe seul ne suffit pas | `SEC‑1` | AV1 | 2,5 | ~8 Ko | à faire | toi |
 | `SEC‑3` | sécurité | **Fermer le dépôt anonyme de `/api/v1/partnership/**`** : contrôle de signature, plafond de taille propre à la route, et jeton de formulaire | Écriture anonyme et non contrôlée dans notre stockage, 55 Mo par appel, sans limite de fréquence. Le plus exploitable des manques trouvés | rien (peut rouler avec `SP‑6`) | **V1** | 1 | 0 | à faire | — |
-| `SEC‑4` | sécurité | Versionner le registre d'incidents (`.md`, sous git), y fixer ce qu'il doit contenir, et le relier à `SP‑5` | Un registre qui n'existe que sur un poste n'est pas un registre | rien | **V1** | 0,5 | 0 | **rédigé, non suivi par git** | — |
+| `SEC‑4` | sécurité | Versionner le registre d'incidents (`.md`, sous git), y fixer ce qu'il doit contenir, et le relier à `SP‑5` | Un registre qui n'existe que sur un poste n'est pas un registre | rien | **V1** | 0,5 | 0 | **FAIT le 27/11/2026** | — |
 | `SEC‑5` | sécurité | Jeton hors `localStorage` (cookie `HttpOnly` + `SameSite`) | Une injection de script vole la session | `SEC‑1` | AV1 | 1,5 | 0 | à faire | — |
 | `SEC‑6` | sécurité | Les huit points du backlog sécurité / cloisonnement, dont la faille du formulaire médecins | Mis de côté par toi pendant « Exercer en France », à reprendre en premier après la mise en ligne | — | AV1 | *non estimé* | — | voir `docs/backlog_brochures_et_securite.md` | toi |
 
@@ -324,9 +324,9 @@ de France », pas « hors UE », et le serveur porte `droitsALArrivee`.
 
 | | Jours | dont acquis |
 |---|---|---|
-| **V1** | **60 à 62** | 1 (`DP‑4` écrit) |
+| **V1** | **60 à 62** | 1,5 (`DP‑4` écrit, `SEC‑4` fait) |
 | dont stockage privé (`DP‑4` + `SP`) | 12,5 | 1 |
-| dont sécurité ajoutée (`SEC‑1`, `SEC‑3`, `SEC‑4`) | 3 | 0 |
+| dont sécurité ajoutée (`SEC‑1`, `SEC‑3`, `SEC‑4`) | 3 | 0,5 (`SEC‑4`) — `SEC‑3` et `SEC‑1a` sont **déployés** depuis le 15/11 mais leurs jours ne sont pas répartis sur cette ligne : la colonne est donc **sous-évaluée** |
 | dont catalogue (`M0`, `CAT`, `PIL`, `IMP`) | 9 à 11 | 0 |
 | dont paiements (`ST‑0` à `ST‑7`) | 15,5 | 0 |
 | dont commande et administration (`CDE`, `FIN`) | 3 | 0 |
