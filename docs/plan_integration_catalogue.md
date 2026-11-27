@@ -147,7 +147,24 @@ qu'aucun lot ne découvre à son ouverture qu'il ne reste rien.
 | L | 6 Ko | affichage du délai, saisie dans l'écran des tarifs |
 | ST‑1, ST‑4 | 4 Ko | statut de commande rendu au client, bouton de téléchargement de facture |
 | BR‑4, BR‑5 | 28 Ko | chantier brochures — hors budget catalogue, voir § B.6 bis de l'analyse stockage |
-| **Réserve attribuable** | **21 Ko** | imprévus, et de quoi refuser un dépassement sans bloquer un lot |
+| **Réserve attribuable** | **26 Ko** | imprévus, et de quoi refuser un dépassement sans bloquer un lot |
+
+**La réserve a bougé deux fois depuis le 5 novembre, et voici pourquoi.**
+
+| Mouvement | Ko | Décidé |
+|---|---|---|
+| Réserve d'origine | 21 | 5 novembre |
+| **Marge re-mesurée à 208 Ko et non 211** (1 292 Ko produits, pas 1 289) | **−3** | 26 novembre, par le commanditaire |
+| **`M1` livré à 2 Ko pour un plafond de 10**, différence rendue | **+8** | mesuré au build du 17 novembre |
+| **Réserve aujourd'hui** | **26** | |
+
+Les 3 Ko ne sont repris sur aucun lot. Ils paient les lots de sécurité livrés entre-temps —
+`DP‑4`, `SEC‑1a`, `SEC‑3` — qui n'avaient **aucune ligne à ce budget** parce qu'ils n'étaient
+pas prévus le 5 novembre. C'est la raison d'être d'une réserve attribuable, et non un
+dépassement à rattraper.
+
+Le plafond de `M1` reste écrit à 10 Ko ci-dessus : **c'est l'engagement pris avant le lot, pas
+sa dépense**. Le relire à 2 Ko ferait disparaître la trace de ce qui a été rendu.
 
 **Règles de tenue du budget.** Un lot qui dépasse son plafond ne prend pas dans la réserve de
 lui-même : il s'arrête et le signale. Un lot qui finit sous son plafond rend la différence à

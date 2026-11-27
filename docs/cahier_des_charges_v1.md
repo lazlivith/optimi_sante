@@ -229,8 +229,18 @@ repassent après `ST` sans retravail ; seul `BR‑2` est lié à `SP‑1`.
 ### 3.4 Maquettes — les dix écrans
 
 Aucun de ces lots n'est une condition de V1 : ils refont des écrans qui **fonctionnent**.
-Budget JS arrêté : **183 Ko catalogue + 28 Ko brochures = 211 Ko**, sur une marge mesurée de
-211 Ko (1 289 Ko servis, plafond 1 500). La marge est consommée **exactement**, sans réserve.
+Budget JS arrêté : **183 Ko catalogue + 28 Ko brochures = 211 Ko**.
+
+> **Budget révisé le 26 novembre 2026.** La marge n'était pas de 211 Ko mais de **208** :
+> `main` sert 1 292 Ko, pas 1 289. Les 3 Ko manquants sont **pris sur la réserve
+> attribuable**, qui passe de 21 à 18 Ko — décision du commanditaire, et aucun lot n'est
+> rogné. Motif : les lots de sécurité livrés depuis (`DP‑4`, `SEC‑1a`, `SEC‑3`) n'avaient
+> aucune ligne à ce budget faute d'avoir été prévus, et c'est précisément ce qu'une réserve
+> couvre.
+>
+> **`M1` rend ensuite 8 Ko** : livré à 2 Ko mesurés pour un plafond de 10, comme la règle de
+> tenue du budget l'exige. **Réserve une fois `M1` fusionné : 26 Ko.** La répartition par lot
+> est inchangée ; le détail est au § 3 de `docs/plan_integration_catalogue.md`.
 
 | ID | Module | Objet | Écrans livrés | Dépend de | V1 | Jours | JS |
 |---|---|---|---|---|---|---|---|
